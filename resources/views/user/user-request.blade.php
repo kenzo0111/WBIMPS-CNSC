@@ -350,7 +350,7 @@
         }
         function goHome() {
             // Navigate back to user homepage or access system
-            window.location.href = '{{ route("login") }}';
+            window.location.href = '{{ route("user.user-home-page") }}';
         }
         function toast(msg) {
             try {

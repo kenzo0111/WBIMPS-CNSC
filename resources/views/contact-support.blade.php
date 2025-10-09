@@ -20,7 +20,7 @@
                 </div>
             </div>
             <div class="nav-menu">
-                <a href="{{ url('/') }}" class="back-btn">
+                <a href="{{ url('user/home') }}" class="back-btn">
                     <span class="btn-icon">←</span>
                     <span class="btn-text">Back to Home</span>
                 </a>
