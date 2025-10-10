@@ -53,6 +53,7 @@ php artisan test
 - `/login` — Access System login screen
 - `/admin/dashboard` — Authenticated admin SPA dashboard
 - `/contact-support`, `/forms/*`, `/user/*` — Additional views gated behind auth middleware
+- `/purchase-request/generate`, `/purchase-order/generate`, `/inspection-acceptance-report/generate`, `/inventory-custodian-slip/generate` — Backend endpoints for programmatic PDF generation (interactive fill forms have been retired)
 
 ## 🤝 Contributing
 
