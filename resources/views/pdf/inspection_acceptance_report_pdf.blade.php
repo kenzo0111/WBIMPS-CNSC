@@ -29,16 +29,16 @@
         </tr>
         <tr>
             <td>Fund Cluster: {{ $fund_cluster }}</td>
-            <td style="text-align: right;">Date: {{ $iar_date ? \Carbon\Carbon::parse($iar_date)->format('F d, Y') : '' }}</td>
+            <td style="text-align: right;">Date: @if(!empty($iar_date) && strtotime($iar_date) !== false){{ \Carbon\Carbon::parse($iar_date)->format('F d, Y') }}@else{{ '' }}@endif</td>
         </tr>
     </table>
 
     <table>
         <tr>
-            <td style="width: 25%;">PO No.: {{ $po_number }}</td>
-            <td style="width: 25%;">PO Date: {{ $po_date ? \Carbon\Carbon::parse($po_date)->format('F d, Y') : '' }}</td>
-            <td style="width: 25%;">Delivery Receipt No.: {{ $delivery_receipt }}</td>
-            <td style="width: 25%;">Invoice No.: {{ $invoice_number }}</td>
+            <td style="width: 25%">PO No.: {{ $po_number }}</td>
+            <td style="width: 25%">PO Date: @if(!empty($po_date) && strtotime($po_date) !== false){{ \Carbon\Carbon::parse($po_date)->format('F d, Y') }}@else{{ '' }}@endif</td>
+            <td style="width: 25%">Delivery Receipt No.: {{ $delivery_receipt }}</td>
+            <td style="width: 25%">Invoice No.: {{ $invoice_number }}</td>
         </tr>
         <tr>
             <td colspan="2">Requisitioning Office/Dept.: {{ $requisition_office }}</td>
@@ -80,12 +80,12 @@
                     <div>______________________________</div>
                     <div class="small" style="font-weight: bold;">{{ $inspection_officer }}</div>
                     <div class="small">{{ $inspection_officer_position }}</div>
-                    <div class="small">Date: {{ $inspection_date ? \Carbon\Carbon::parse($inspection_date)->format('F d, Y') : '' }}</div>
+                    <div class="small">Date: @if(!empty($inspection_date) && strtotime($inspection_date) !== false){{ \Carbon\Carbon::parse($inspection_date)->format('F d, Y') }}@else{{ '' }}@endif</div>
                 </div>
             </td>
             <td style="width: 50%; vertical-align: top;">
                 <div style="font-weight: bold; text-transform: uppercase;">Acceptance</div>
-                <p class="small">Date Received: {{ $acceptance_date ? \Carbon\Carbon::parse($acceptance_date)->format('F d, Y') : '' }}</p>
+                <p class="small">Date Received: @if(!empty($acceptance_date) && strtotime($acceptance_date) !== false){{ \Carbon\Carbon::parse($acceptance_date)->format('F d, Y') }}@else{{ '' }}@endif</p>
                 <p class="small">{!! (($acceptance_status ?? 'complete') === 'complete') ? '&#x2611;' : '&#x2610;' !!} Complete &nbsp;&nbsp; {!! (($acceptance_status ?? '') === 'partial') ? '&#x2611;' : '&#x2610;' !!} Partial</p>
                 <p class="small">Remarks: {{ $acceptance_remarks }}</p>
                 <div class="text-center" style="margin-top: 42px;">

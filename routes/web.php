@@ -18,9 +18,12 @@ Route::get('/login', [AccessController::class, 'show'])->name('login');
 Route::post('/login', [AccessController::class, 'authenticate'])->name('login.perform');
 Route::post('/logout', [AccessController::class, 'logout'])->name('logout');
 Route::post('/purchase-request/generate', [PurchaseRequestController::class, 'generatePDF'])->name('purchase-request.generate');
+Route::get('/purchase-request/preview', [PurchaseRequestController::class, 'preview'])->name('purchase-request.preview');
 Route::post('/purchase-order/generate', [PurchaseOrderController::class, 'generatePDF'])->name('purchase-order.generate');
+Route::get('/purchase-order/preview', [PurchaseOrderController::class, 'preview'])->name('purchase-order.preview');
 Route::post('/inspection-acceptance-report/generate', [InspectionAcceptanceReportController::class, 'generatePDF'])->name('inspection-acceptance-report.generate');
 Route::post('/inventory-custodian-slip/generate', [InventoryCustodianSlipController::class, 'generatePDF'])->name('inventory-custodian-slip.generate');
+Route::get('/inventory-custodian-slip/preview', [InventoryCustodianSlipController::class, 'preview'])->name('inventory-custodian-slip.preview');
 
 Route::middleware('auth')->group(function () {
     Route::get('/contact-support', function () { return view('contact-support'); })->name('contact.support');

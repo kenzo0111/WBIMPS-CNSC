@@ -1,838 +1,1107 @@
 // Dashboard JavaScript Application
 
+// Safety fallbacks: if some edits were reverted or partial bundles loaded,
+// define minimal fallbacks to prevent ReferenceErrors at runtime.
+// Use safe checks against the window object to avoid referencing
+// identifiers that may be declared later in the same module (TDZ).
+if (typeof window !== 'undefined') {
+  if (typeof window.LS_KEYS === 'undefined') {
+    window.LS_KEYS = {
+      PRODUCTS: 'spmo_products',
+      STOCK_IN: 'spmo_stock_in',
+      STOCK_OUT: 'spmo_stock_out',
+    }
+  }
+
+  if (typeof window.stockInData === 'undefined') window.stockInData = []
+  if (typeof window.stockOutData === 'undefined') window.stockOutData = []
+
+  if (typeof window.lsAvailable === 'undefined') {
+    // gentle check for localStorage availability
+    window.lsAvailable = function () {
+      try {
+        if (typeof window === 'undefined' || !window.localStorage) return false
+        const key = '__spmo_test__'
+        window.localStorage.setItem(key, key)
+        window.localStorage.removeItem(key)
+        return true
+      } catch (e) {
+        return false
+      }
+    }
+  }
+
+  if (typeof window.toggleDeliveryDateOther === 'undefined') {
+    window.toggleDeliveryDateOther = function (selectElement) {
+      try {
+        const otherInput = document.getElementById('po-delivery-date-other')
+        if (!otherInput) return
+        if (selectElement && selectElement.value === 'others') {
+          otherInput.style.display = 'block'
+          otherInput.focus()
+        } else {
+          otherInput.style.display = 'none'
+          otherInput.value = ''
+        }
+      } catch (err) {
+        console.warn('toggleDeliveryDateOther fallback error', err)
+      }
+    }
+  }
+
+  if (typeof window.toggleDeliveryDateOtherModal === 'undefined') {
+    window.toggleDeliveryDateOtherModal = function (selectElement) {
+      try {
+        const otherInput = document.getElementById('deliveryDateOther')
+        if (!otherInput) return
+        if (selectElement && selectElement.value === 'others') {
+          otherInput.style.display = 'block'
+          otherInput.focus()
+        } else {
+          otherInput.style.display = 'none'
+          otherInput.value = ''
+        }
+      } catch (err) {
+        console.warn('toggleDeliveryDateOtherModal fallback error', err)
+      }
+    }
+  }
+}
+
 // Initialize Lucide icons and load user logs
 document.addEventListener('DOMContentLoaded', () => {
-    lucide.createIcons();
-    loadUserSession(); // Load user session from localStorage
-    loadUserLogs(); // Load user logs from localStorage
-    loadUsers(); // Load users from localStorage
-});
+  lucide.createIcons()
+  loadUserSession() // Load user session from localStorage
+  loadUserLogs() // Load user logs from localStorage
+  loadUsers() // Load users from localStorage
+})
 
 // Application State
 const AppState = {
-    currentPage: 'dashboard',
-    expandedMenus: ['inventory'],
-    currentModal: null,
-    // current logged in user (basic profile)
-    currentUser: {
-        id: 'SA000',
-        name: 'John Doe',
-        email: 'john.doe@cnsc.edu.ph',
-        role: 'Student Assistant',
-        department: 'IT',
-        status: 'Active',
-        created: new Date().toISOString().split('T')[0]
+  currentPage: 'dashboard',
+  expandedMenus: ['inventory'],
+  currentModal: null,
+  // current logged in user (basic profile)
+  currentUser: {
+    id: 'SA000',
+    name: 'John Doe',
+    email: 'john.doe@cnsc.edu.ph',
+    role: 'Student Assistant',
+    department: 'IT',
+    status: 'Active',
+    created: new Date().toISOString().split('T')[0],
+  },
+  currentProductTab: 'expendable',
+  productSearchTerm: '',
+  productSortBy: 'Sort By',
+  productFilterBy: 'Filter By',
+  lowStockThreshold: 20,
+  purchaseOrderItems: [
+    {
+      id: '1',
+      stockPropertyNumber: '',
+      unit: '',
+      description: '',
+      detailedDescription: '',
+      quantity: 0,
+      currentStock: 0,
+      unitCost: 0,
+      amount: 0,
+      generateICS: false,
+      generateRIS: false,
+      generatePAR: false,
+      generateIAR: false,
     },
-    currentProductTab: 'expendable',
-    productSearchTerm: '',
-    productSortBy: 'Sort By',
-    productFilterBy: 'Filter By',
-    lowStockThreshold: 20,
-    purchaseOrderItems: [
-        {
-            id: '1',
-            stockPropertyNumber: '',
-            unit: '',
-            description: '',
-            detailedDescription: '',
-            quantity: 0,
-            currentStock: 0,
-            unitCost: 0,
-            amount: 0,
-            generateICS: false,
-            generateRIS: false,
-            generatePAR: false,
-            generateIAR: false
-        }
-    ],
-    // Wizard step for multi-step PO creation (1-4)
-    purchaseOrderWizardStep: 1,
-    // Temp storage for multi-step PO wizard field values so they persist between steps
-    purchaseOrderDraft: {},
+  ],
+  // Wizard step for multi-step PO creation (1-4)
+  purchaseOrderWizardStep: 1,
+  // Temp storage for multi-step PO wizard field values so they persist between steps
+  purchaseOrderDraft: {},
 
-    // ✅ add these for real data
-    newRequests: [],
-    pendingRequests: [],
-    completedRequests: [],
-    notifications: [
-        {
-            id: 'n1',
-            title: 'New requisition submitted',
-            message: 'REQ-2025-006 has been submitted for approval',
-            time: '2h ago',
-            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-            read: false,
-            type: 'info',
-            icon: 'file-plus'
-        },
-        {
-            id: 'n2',
-            title: 'Stock level low: Paper A4',
-            message: 'Current stock: 15 units. Reorder level: 20 units',
-            time: '1d ago',
-            timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-            read: false,
-            type: 'warning',
-            icon: 'alert-triangle'
-        },
-        {
-            id: 'n3',
-            title: 'PO #1234 approved',
-            message: 'Purchase order has been approved by admin',
-            time: '3d ago',
-            timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-            read: true,
-            type: 'success',
-            icon: 'check-circle'
-        },
-        {
-            id: 'n4',
-            title: 'Stock In completed',
-            message: '50 units of Ballpoint Pen received',
-            time: '5d ago',
-            timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-            read: true,
-            type: 'success',
-            icon: 'package-check'
-        }
-    ],
-    // Unified status list (replaces hardcoded table rows in status management)
-    statusRequests: [],
-    currentStatusFilter: 'all',
+  // ✅ add these for real data
+  newRequests: [],
+  pendingRequests: [],
+  completedRequests: [],
+  notifications: [
+    {
+      id: 'n1',
+      title: 'New requisition submitted',
+      message: 'REQ-2025-006 has been submitted for approval',
+      time: '2h ago',
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+      read: false,
+      type: 'info',
+      icon: 'file-plus',
+    },
+    {
+      id: 'n2',
+      title: 'Stock level low: Paper A4',
+      message: 'Current stock: 15 units. Reorder level: 20 units',
+      time: '1d ago',
+      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      read: false,
+      type: 'warning',
+      icon: 'alert-triangle',
+    },
+    {
+      id: 'n3',
+      title: 'PO #1234 approved',
+      message: 'Purchase order has been approved by admin',
+      time: '3d ago',
+      timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      read: true,
+      type: 'success',
+      icon: 'check-circle',
+    },
+    {
+      id: 'n4',
+      title: 'Stock In completed',
+      message: '50 units of Ballpoint Pen received',
+      time: '5d ago',
+      timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      read: true,
+      type: 'success',
+      icon: 'package-check',
+    },
+  ],
+  // Unified status list (replaces hardcoded table rows in status management)
+  statusRequests: [],
+  currentStatusFilter: 'all',
 
-    // About Us Content
-    aboutUsContent: null
-};
+  // About Us Content
+  aboutUsContent: null,
+}
 
 function getCsrfToken() {
-    const tokenMeta = document.querySelector('meta[name="csrf-token"]');
-    return tokenMeta ? tokenMeta.getAttribute('content') : '';
+  const tokenMeta = document.querySelector('meta[name="csrf-token"]')
+  return tokenMeta ? tokenMeta.getAttribute('content') : ''
+}
+
+// Convert a variety of input date formats to an ISO date string (yyyy-mm-dd)
+// If input is blank, unknown, or a textual term like 'Within 30 Days', return null.
+function normalizeDateForServer(value) {
+  if (!value) return null
+  try {
+    // If it's already a Date object
+    if (value instanceof Date && !isNaN(value)) {
+      return value.toISOString().split('T')[0]
+    }
+
+    // Trim and normalize strings
+    const s = String(value).trim()
+    if (s.length === 0) return null
+
+    // Common non-date textual values we should not send to Carbon
+    const blacklist = [
+      'within 30 days',
+      'within 7 days',
+      'as soon as possible',
+      'tbd',
+      'to be determined',
+      'n/a',
+      'na',
+    ]
+    if (blacklist.includes(s.toLowerCase())) return null
+
+    // If value looks like a number (unix timestamp)
+    if (/^\d+$/.test(s)) {
+      const n = Number(s)
+      // assume seconds if 10 digits, milliseconds if 13
+      const date = s.length === 10 ? new Date(n * 1000) : new Date(n)
+      if (!isNaN(date)) return date.toISOString().split('T')[0]
+    }
+
+    // Try Date.parse
+    const parsed = Date.parse(s)
+    if (!isNaN(parsed)) {
+      return new Date(parsed).toISOString().split('T')[0]
+    }
+
+    // Last resort: try to extract a yyyy-mm-dd pattern
+    const m = s.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/)
+    if (m) {
+      const y = m[1]
+      const mo = m[2].padStart(2, '0')
+      const d = m[3].padStart(2, '0')
+      return `${y}-${mo}-${d}`
+    }
+
+    // Not parseable: return null so server won't attempt Carbon::parse on chaotic text
+    return null
+  } catch (e) {
+    return null
+  }
 }
 
 // Pagination defaults (extendable) for Login Activity Logs
-AppState.loginActivityPage = 1;
-AppState.loginActivityPageSize = 10; // show 10 records per page by default
-
+AppState.loginActivityPage = 1
+AppState.loginActivityPageSize = 10 // show 10 records per page by default
 
 // Mock Data
 const MockData = {
-    inventory: [
-        { stockNumber: 'E001', name: 'Bond Paper A4', currentStock: 45, unit: 'Ream' },
-        { stockNumber: 'E002', name: 'Ballpoint Pen', currentStock: 120, unit: 'Pc' },
-        { stockNumber: 'E003', name: 'Sticky Notes', currentStock: 25, unit: 'Pack' },
-        { stockNumber: 'SE01', name: 'Wireless Mouse', currentStock: 8, unit: 'Pc' },
-        { stockNumber: 'SE02', name: 'HDMI Cable 3m', currentStock: 12, unit: 'Pc' },
-        { stockNumber: 'N001', name: 'Laptop Computer', currentStock: 2, unit: 'Unit' }
-    ],
+  inventory: [
+    {
+      stockNumber: 'E001',
+      name: 'Bond Paper A4',
+      currentStock: 45,
+      unit: 'Ream',
+    },
+    {
+      stockNumber: 'E002',
+      name: 'Ballpoint Pen',
+      currentStock: 120,
+      unit: 'Pc',
+    },
+    {
+      stockNumber: 'E003',
+      name: 'Sticky Notes',
+      currentStock: 25,
+      unit: 'Pack',
+    },
+    {
+      stockNumber: 'SE01',
+      name: 'Wireless Mouse',
+      currentStock: 8,
+      unit: 'Pc',
+    },
+    {
+      stockNumber: 'SE02',
+      name: 'HDMI Cable 3m',
+      currentStock: 12,
+      unit: 'Pc',
+    },
+    {
+      stockNumber: 'N001',
+      name: 'Laptop Computer',
+      currentStock: 2,
+      unit: 'Unit',
+    },
+  ],
 
-    categories: [
-        {
-            id: 'C001',
-            name: 'Expendable',
-            description: 'Items that are used up quickly, have a short lifespan, and are not intended to be reused or tracked long-term. These are typically low-cost supplies.'
-        },
-        {
-            id: 'C002',
-            name: 'Semi-Expendable(Low)',
-            description: 'Items that are not consumed immediately and have a longer useful life, but cost ₱5,000 or less per unit. These are not capitalized as fixed assets, but they are still monitored or assigned to users or departments due to their usefulness and potential for loss.'
-        },
-        {
-            id: 'C003',
-            name: 'Semi-Expendable(High)',
-            description: 'Items with a unit cost more than ₱5,000 but less than ₱50,000. These are not capitalized as PPE, but are considered valuable enough to be tagged, tracked, and documented in the inventory system.'
-        },
-        {
-            id: 'C004',
-            name: 'Non-Expendable',
-            description: 'Assets that are high-cost (₱50,000 and above) and used in operations over multiple years. These are capitalized and recorded in the organization\'s asset registry.'
-        }
-    ],
+  categories: [
+    {
+      id: 'C001',
+      name: 'Expendable',
+      description:
+        'Items that are used up quickly, have a short lifespan, and are not intended to be reused or tracked long-term. These are typically low-cost supplies.',
+    },
+    {
+      id: 'C002',
+      name: 'Semi-Expendable(Low)',
+      description:
+        'Items that are not consumed immediately and have a longer useful life, but cost ₱5,000 or less per unit. These are not capitalized as fixed assets, but they are still monitored or assigned to users or departments due to their usefulness and potential for loss.',
+    },
+    {
+      id: 'C003',
+      name: 'Semi-Expendable(High)',
+      description:
+        'Items with a unit cost more than ₱5,000 but less than ₱50,000. These are not capitalized as PPE, but are considered valuable enough to be tagged, tracked, and documented in the inventory system.',
+    },
+    {
+      id: 'C004',
+      name: 'Non-Expendable',
+      description:
+        "Assets that are high-cost (₱50,000 and above) and used in operations over multiple years. These are capitalized and recorded in the organization's asset registry.",
+    },
+  ],
 
-    products: [],
+  products: [],
 
-    newRequests: [
-    ],
+  newRequests: [],
 
-    pendingRequests: [
-    ],
+  pendingRequests: [],
 
-    completedRequests: [
-    ],
+  completedRequests: [],
 
-    userLogs: [
-        { id: 'LOG001', email: 'cherry@cnsc.edu.ph', name: 'Cherry Ann Quila', action: 'Login', timestamp: '2025-01-15 08:30:15', ipAddress: '192.168.1.100', device: 'Windows PC', status: 'Success' },
-        { id: 'LOG002', email: 'vince@cnsc.edu.ph', name: 'Vince Balce', action: 'Login', timestamp: '2025-01-15 09:15:42', ipAddress: '192.168.1.101', device: 'MacBook', status: 'Success' },
-        { id: 'LOG003', email: 'marinel@cnsc.edu.ph', name: 'Marinel Ledesma', action: 'Login', timestamp: '2025-01-15 10:20:33', ipAddress: '192.168.1.102', device: 'Windows PC', status: 'Success' }
-    ]
-};
+  userLogs: [
+    {
+      id: 'LOG001',
+      email: 'cherry@cnsc.edu.ph',
+      name: 'Cherry Ann Quila',
+      action: 'Login',
+      timestamp: '2025-01-15 08:30:15',
+      ipAddress: '192.168.1.100',
+      device: 'Windows PC',
+      status: 'Success',
+    },
+    {
+      id: 'LOG002',
+      email: 'vince@cnsc.edu.ph',
+      name: 'Vince Balce',
+      action: 'Login',
+      timestamp: '2025-01-15 09:15:42',
+      ipAddress: '192.168.1.101',
+      device: 'MacBook',
+      status: 'Success',
+    },
+    {
+      id: 'LOG003',
+      email: 'marinel@cnsc.edu.ph',
+      name: 'Marinel Ledesma',
+      action: 'Login',
+      timestamp: '2025-01-15 10:20:33',
+      ipAddress: '192.168.1.102',
+      device: 'Windows PC',
+      status: 'Success',
+    },
+  ],
+}
 
 // ==============================
 // Local Storage Persistence Layer
 // ==============================
 const LS_KEYS = {
-    PRODUCTS: 'spmo_products',
-    STOCK_IN: 'spmo_stock_in',
-    STOCK_OUT: 'spmo_stock_out'
-};
+  PRODUCTS: 'spmo_products',
+  STOCK_IN: 'spmo_stock_in',
+  STOCK_OUT: 'spmo_stock_out',
+}
 
 // Initialize in-memory stock datasets early so persistence loader can assign safely
-let stockInData = [];
-let stockOutData = [];
+let stockInData = []
+let stockOutData = []
 
 function lsAvailable() {
-    try {
-        if (typeof localStorage === 'undefined') return false;
-        const k = '__spmo_test__';
-        localStorage.setItem(k, '1');
-        localStorage.removeItem(k);
-        return true;
-    } catch (e) { return false; }
+  try {
+    if (typeof localStorage === 'undefined') return false
+    const k = '__spmo_test__'
+    localStorage.setItem(k, '1')
+    localStorage.removeItem(k)
+    return true
+  } catch (e) {
+    return false
+  }
 }
 
 function persistProducts() {
-    if (!lsAvailable()) return; try { localStorage.setItem(LS_KEYS.PRODUCTS, JSON.stringify(MockData.products || [])); } catch (e) { }
+  if (!lsAvailable()) return
+  try {
+    localStorage.setItem(
+      LS_KEYS.PRODUCTS,
+      JSON.stringify(MockData.products || [])
+    )
+  } catch (e) {}
 }
 function persistStockIn() {
-    if (!lsAvailable()) return; try { localStorage.setItem(LS_KEYS.STOCK_IN, JSON.stringify(stockInData || [])); } catch (e) { }
+  if (!lsAvailable()) return
+  try {
+    localStorage.setItem(LS_KEYS.STOCK_IN, JSON.stringify(stockInData || []))
+  } catch (e) {}
 }
 function persistStockOut() {
-    if (!lsAvailable()) return; try { localStorage.setItem(LS_KEYS.STOCK_OUT, JSON.stringify(stockOutData || [])); } catch (e) { }
+  if (!lsAvailable()) return
+  try {
+    localStorage.setItem(LS_KEYS.STOCK_OUT, JSON.stringify(stockOutData || []))
+  } catch (e) {}
 }
 
 function loadPersistedInventoryData() {
-    if (!lsAvailable()) return;
-    try {
-        const pr = localStorage.getItem(LS_KEYS.PRODUCTS);
-        if (pr) { const arr = JSON.parse(pr); if (Array.isArray(arr)) MockData.products = arr; }
-        const si = localStorage.getItem(LS_KEYS.STOCK_IN);
-        if (si) { const arr = JSON.parse(si); if (Array.isArray(arr)) stockInData = arr; }
-        const so = localStorage.getItem(LS_KEYS.STOCK_OUT);
-        if (so) { const arr = JSON.parse(so); if (Array.isArray(arr)) stockOutData = arr; }
-    } catch (e) { console.warn('Persisted inventory load failed', e); }
+  if (!lsAvailable()) return
+  try {
+    const pr = localStorage.getItem(LS_KEYS.PRODUCTS)
+    if (pr) {
+      const arr = JSON.parse(pr)
+      if (Array.isArray(arr)) MockData.products = arr
+    }
+    const si = localStorage.getItem(LS_KEYS.STOCK_IN)
+    if (si) {
+      const arr = JSON.parse(si)
+      if (Array.isArray(arr)) stockInData = arr
+    }
+    const so = localStorage.getItem(LS_KEYS.STOCK_OUT)
+    if (so) {
+      const arr = JSON.parse(so)
+      if (Array.isArray(arr)) stockOutData = arr
+    }
+  } catch (e) {
+    console.warn('Persisted inventory load failed', e)
+  }
 }
 
-loadPersistedInventoryData();
+loadPersistedInventoryData()
 
 // --- Inventory Synchronization Helpers ---
 // Low stock notification tracking
-AppState.lowStockAlertedIds = AppState.lowStockAlertedIds || [];
+AppState.lowStockAlertedIds = AppState.lowStockAlertedIds || []
 
 function maybeNotifyLowStock(product) {
-    const threshold = AppState.lowStockThreshold || 20;
-    if (!product || !product.id) return;
-    const currentQty = Number(product.quantity) || 0;
-    const already = AppState.lowStockAlertedIds.includes(product.id);
-    if (currentQty < threshold && !already) {
-        // push notification
-        addNotification(
-            'Low stock: ' + product.name,
-            `${product.name} has only ${currentQty} left (Threshold: ${threshold})`,
-            'warning',
-            'alert-triangle'
-        );
-        AppState.lowStockAlertedIds.push(product.id);
-    } else if (currentQty >= threshold && already) {
-        // remove from alerted so future drops will alert again
-        AppState.lowStockAlertedIds = AppState.lowStockAlertedIds.filter(id => id !== product.id);
-    }
+  const threshold = AppState.lowStockThreshold || 20
+  if (!product || !product.id) return
+  const currentQty = Number(product.quantity) || 0
+  const already = AppState.lowStockAlertedIds.includes(product.id)
+  if (currentQty < threshold && !already) {
+    // push notification
+    addNotification(
+      'Low stock: ' + product.name,
+      `${product.name} has only ${currentQty} left (Threshold: ${threshold})`,
+      'warning',
+      'alert-triangle'
+    )
+    AppState.lowStockAlertedIds.push(product.id)
+  } else if (currentQty >= threshold && already) {
+    // remove from alerted so future drops will alert again
+    AppState.lowStockAlertedIds = AppState.lowStockAlertedIds.filter(
+      (id) => id !== product.id
+    )
+  }
 }
 
 function findProductBySku(sku) {
-    if (!sku) return null;
-    return (MockData.products || []).find(p => p.id === sku.trim());
+  if (!sku) return null
+  return (MockData.products || []).find((p) => p.id === sku.trim())
 }
 
 function recalcProductValue(product) {
-    if (!product) return;
-    const qty = Number(product.quantity) || 0;
-    const uc = Number(product.unitCost) || 0;
-    product.totalValue = qty * uc;
+  if (!product) return
+  const qty = Number(product.quantity) || 0
+  const uc = Number(product.unitCost) || 0
+  product.totalValue = qty * uc
 }
 
 function adjustInventoryOnStockIn(newRecord, oldRecord) {
-    const product = findProductBySku(newRecord.sku);
-    if (!product) return; // silently ignore if sku not in products list
-    const prevQty = oldRecord ? (Number(oldRecord.quantity) || 0) : 0;
-    const delta = (Number(newRecord.quantity) || 0) - prevQty; // add difference
-    if (delta !== 0) {
-        product.quantity = (Number(product.quantity) || 0) + delta;
-        // Optionally update unitCost if changed (keep the latest cost as reference)
-        if (newRecord.unitCost && newRecord.unitCost !== product.unitCost) {
-            product.unitCost = newRecord.unitCost;
-        }
-        recalcProductValue(product);
-        maybeNotifyLowStock(product);
-        persistProducts();
+  const product = findProductBySku(newRecord.sku)
+  if (!product) return // silently ignore if sku not in products list
+  const prevQty = oldRecord ? Number(oldRecord.quantity) || 0 : 0
+  const delta = (Number(newRecord.quantity) || 0) - prevQty // add difference
+  if (delta !== 0) {
+    product.quantity = (Number(product.quantity) || 0) + delta
+    // Optionally update unitCost if changed (keep the latest cost as reference)
+    if (newRecord.unitCost && newRecord.unitCost !== product.unitCost) {
+      product.unitCost = newRecord.unitCost
     }
+    recalcProductValue(product)
+    maybeNotifyLowStock(product)
+    persistProducts()
+  }
 }
 
 function adjustInventoryOnStockOut(newRecord, oldRecord) {
-    const product = findProductBySku(newRecord.sku);
-    if (!product) return;
-    const prevQty = oldRecord ? (Number(oldRecord.quantity) || 0) : 0;
-    const delta = (Number(newRecord.quantity) || 0) - prevQty; // positive if new uses more
-    if (delta !== 0) {
-        // delta represents change in issued quantity; subtract that from inventory
-        product.quantity = Math.max(0, (Number(product.quantity) || 0) - delta);
-        recalcProductValue(product);
-        maybeNotifyLowStock(product);
-        persistProducts();
-    }
+  const product = findProductBySku(newRecord.sku)
+  if (!product) return
+  const prevQty = oldRecord ? Number(oldRecord.quantity) || 0 : 0
+  const delta = (Number(newRecord.quantity) || 0) - prevQty // positive if new uses more
+  if (delta !== 0) {
+    // delta represents change in issued quantity; subtract that from inventory
+    product.quantity = Math.max(0, (Number(product.quantity) || 0) - delta)
+    recalcProductValue(product)
+    maybeNotifyLowStock(product)
+    persistProducts()
+  }
 }
 
 function restoreInventoryFromDeletedStockIn(record) {
-    const product = findProductBySku(record?.sku);
-    if (!product) return;
-    product.quantity = Math.max(0, (Number(product.quantity) || 0) - (Number(record.quantity) || 0) + 0); // removal of an addition => subtract quantity
-    recalcProductValue(product);
-    maybeNotifyLowStock(product);
-    persistProducts();
+  const product = findProductBySku(record?.sku)
+  if (!product) return
+  product.quantity = Math.max(
+    0,
+    (Number(product.quantity) || 0) - (Number(record.quantity) || 0) + 0
+  ) // removal of an addition => subtract quantity
+  recalcProductValue(product)
+  maybeNotifyLowStock(product)
+  persistProducts()
 }
 
 function restoreInventoryFromDeletedStockOut(record) {
-    const product = findProductBySku(record?.sku);
-    if (!product) return;
-    // Deleting a stock-out means we should add the issued quantity back
-    product.quantity = (Number(product.quantity) || 0) + (Number(record.quantity) || 0);
-    recalcProductValue(product);
-    maybeNotifyLowStock(product);
-    persistProducts();
+  const product = findProductBySku(record?.sku)
+  if (!product) return
+  // Deleting a stock-out means we should add the issued quantity back
+  product.quantity =
+    (Number(product.quantity) || 0) + (Number(record.quantity) || 0)
+  recalcProductValue(product)
+  maybeNotifyLowStock(product)
+  persistProducts()
 }
 
 function refreshProductsViewIfOpen() {
-    // If current page is products, re-render to reflect counts
-    const productsSection = document.querySelector('.product-tabs');
-    if (productsSection) {
-        loadPageContent('products');
-    }
-    // Also refresh metrics if on dashboard
-    if (AppState.currentPage === 'dashboard') {
-        loadPageContent('dashboard');
-    }
+  // If current page is products, re-render to reflect counts
+  const productsSection = document.querySelector('.product-tabs')
+  if (productsSection) {
+    loadPageContent('products')
+  }
+  // Also refresh metrics if on dashboard
+  if (AppState.currentPage === 'dashboard') {
+    loadPageContent('dashboard')
+  }
 }
 // --- End Inventory Synchronization Helpers ---
 
 // Utility Functions
 function formatCurrency(amount) {
-    return `₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+  return `₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
 }
 
 function getBadgeClass(status, type = 'status') {
-    const badgeClasses = {
-        status: {
-            'active': 'badge green',
-            'inactive': 'badge gray',
-            'draft': 'badge gray',
-            'submitted': 'badge blue',
-            'pending': 'badge yellow',
-            'under-review': 'badge blue',
-            'awaiting-approval': 'badge orange',
-            'approved': 'badge blue',
-            'delivered': 'badge green',
-            'completed': 'badge emerald',
-            'incoming': 'badge purple',
-            'received': 'badge blue',
-            'finished': 'badge emerald',
-            'cancelled': 'badge red',
-            'returned': 'badge orange',
+  const badgeClasses = {
+    status: {
+      active: 'badge green',
+      inactive: 'badge gray',
+      draft: 'badge gray',
+      submitted: 'badge blue',
+      pending: 'badge yellow',
+      'under-review': 'badge blue',
+      'awaiting-approval': 'badge orange',
+      approved: 'badge blue',
+      delivered: 'badge green',
+      completed: 'badge emerald',
+      incoming: 'badge purple',
+      received: 'badge blue',
+      finished: 'badge emerald',
+      cancelled: 'badge red',
+      returned: 'badge orange',
+    },
+    priority: {
+      urgent: 'badge red',
+      high: 'badge orange',
+      medium: 'badge yellow',
+      low: 'badge green',
+    },
+    payment: {
+      paid: 'badge green',
+      pending: 'badge yellow',
+      partial: 'badge orange',
+    },
+  }
 
-        },
-        priority: {
-            'urgent': 'badge red',
-            'high': 'badge orange',
-            'medium': 'badge yellow',
-            'low': 'badge green'
-        },
-        payment: {
-            'paid': 'badge green',
-            'pending': 'badge yellow',
-            'partial': 'badge orange'
-        }
-    };
-
-    return badgeClasses[type][status] || 'badge gray';
+  return badgeClasses[type][status] || 'badge gray'
 }
 
 // Helper function to get status background color
 function getStatusColor(status) {
-    const statusColors = {
-        'active': '#10b981',
-        'inactive': '#6b7280',
-        'draft': '#6b7280',
-        'submitted': '#3b82f6',
-        'pending': '#eab308',
-        'under-review': '#3b82f6',
-        'awaiting-approval': '#f97316',
-        'approved': '#3b82f6',
-        'delivered': '#10b981',
-        'completed': '#059669',
-        'received': '#3b82f6',
-        'finished': '#059669',
-        'cancelled': '#dc2626'
-    };
-    return statusColors[status] || '#6b7280';
+  const statusColors = {
+    active: '#10b981',
+    inactive: '#6b7280',
+    draft: '#6b7280',
+    submitted: '#3b82f6',
+    pending: '#eab308',
+    'under-review': '#3b82f6',
+    'awaiting-approval': '#f97316',
+    approved: '#3b82f6',
+    delivered: '#10b981',
+    completed: '#059669',
+    received: '#3b82f6',
+    finished: '#059669',
+    cancelled: '#dc2626',
+  }
+  return statusColors[status] || '#6b7280'
 }
 
 // UI Alert / Toast helper
 function showAlert(message, type = 'info', duration = 4000) {
-    try {
-        let container = document.getElementById('ui-alert-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'ui-alert-container';
-            container.className = 'ui-alert-container';
-            document.body.appendChild(container);
-        }
-
-        const alertEl = document.createElement('div');
-        alertEl.className = `ui-alert ui-alert-${type}`;
-        alertEl.setAttribute('role', 'status');
-
-        const text = document.createElement('div');
-        text.className = 'ui-alert-text';
-        text.textContent = message;
-
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'ui-alert-close';
-        closeBtn.innerHTML = '✕';
-        closeBtn.onclick = () => {
-            alertEl.classList.add('ui-alert-hide');
-            setTimeout(() => alertEl.remove(), 300);
-        };
-
-        alertEl.appendChild(text);
-        alertEl.appendChild(closeBtn);
-        container.appendChild(alertEl);
-
-        // Auto remove
-        setTimeout(() => {
-            if (!alertEl) return;
-            alertEl.classList.add('ui-alert-hide');
-            setTimeout(() => alertEl.remove(), 300);
-        }, duration);
-    } catch (e) {
-        // Fallback to native alert if something goes wrong
-        try { alert(message); } catch (err) { console.log('Alert:', message); }
+  try {
+    let container = document.getElementById('ui-alert-container')
+    if (!container) {
+      container = document.createElement('div')
+      container.id = 'ui-alert-container'
+      container.className = 'ui-alert-container'
+      document.body.appendChild(container)
     }
+
+    const alertEl = document.createElement('div')
+    alertEl.className = `ui-alert ui-alert-${type}`
+    alertEl.setAttribute('role', 'status')
+
+    const text = document.createElement('div')
+    text.className = 'ui-alert-text'
+    text.textContent = message
+
+    const closeBtn = document.createElement('button')
+    closeBtn.className = 'ui-alert-close'
+    closeBtn.innerHTML = '✕'
+    closeBtn.onclick = () => {
+      alertEl.classList.add('ui-alert-hide')
+      setTimeout(() => alertEl.remove(), 300)
+    }
+
+    alertEl.appendChild(text)
+    alertEl.appendChild(closeBtn)
+    container.appendChild(alertEl)
+
+    // Auto remove
+    setTimeout(() => {
+      if (!alertEl) return
+      alertEl.classList.add('ui-alert-hide')
+      setTimeout(() => alertEl.remove(), 300)
+    }, duration)
+  } catch (e) {
+    // Fallback to native alert if something goes wrong
+    try {
+      alert(message)
+    } catch (err) {
+      console.log('Alert:', message)
+    }
+  }
 }
 
 // User Login Logging Function
 function logUserLogin(email, name, status = 'Success') {
-    try {
-        if (!window.MockData) window.MockData = {};
-        if (!window.MockData.userLogs) window.MockData.userLogs = [];
+  try {
+    if (!window.MockData) window.MockData = {}
+    if (!window.MockData.userLogs) window.MockData.userLogs = []
 
-        // Update user status to Active on successful login
-        if (status === 'Success') {
-            updateUserStatus(email, 'Active');
-        }
-
-        // Generate unique log ID
-        const logId = 'LOG' + String(window.MockData.userLogs.length + 1).padStart(3, '0');
-
-        // Get current timestamp
-        const now = new Date();
-        const timestamp = now.toISOString().replace('T', ' ').substring(0, 19);
-
-        // Detect device info (basic detection)
-        const userAgent = navigator.userAgent;
-        let device = 'Unknown Device';
-        if (userAgent.indexOf('Windows') !== -1) device = 'Windows PC';
-        else if (userAgent.indexOf('Mac') !== -1) device = 'MacBook';
-        else if (userAgent.indexOf('Linux') !== -1) device = 'Linux PC';
-        else if (userAgent.indexOf('Android') !== -1) device = 'Android Device';
-        else if (userAgent.indexOf('iPhone') !== -1 || userAgent.indexOf('iPad') !== -1) device = 'iOS Device';
-
-        // Create log entry
-        const logEntry = {
-            id: logId,
-            email: email || 'unknown@cnsc.edu.ph',
-            name: name || 'Unknown User',
-            action: 'Login',
-            timestamp: timestamp,
-            ipAddress: 'N/A', // In production, this would come from server
-            device: device,
-            status: status
-        };
-
-        // Add to beginning of logs array (newest first)
-        window.MockData.userLogs.unshift(logEntry);
-
-        // Keep only last 100 logs to prevent memory issues
-        if (window.MockData.userLogs.length > 100) {
-            window.MockData.userLogs = window.MockData.userLogs.slice(0, 100);
-        }
-
-        // Also save to localStorage for persistence
-        try {
-            localStorage.setItem('spmo_userLogs', JSON.stringify(window.MockData.userLogs));
-        } catch (e) {
-            console.warn('Could not save user logs to localStorage:', e);
-        }
-
-        console.log('User login logged:', logEntry);
-        return logEntry;
-    } catch (error) {
-        console.error('Error logging user login:', error);
-        return null;
+    // Update user status to Active on successful login
+    if (status === 'Success') {
+      updateUserStatus(email, 'Active')
     }
+
+    // Generate unique log ID
+    const logId =
+      'LOG' + String(window.MockData.userLogs.length + 1).padStart(3, '0')
+
+    // Get current timestamp
+    const now = new Date()
+    const timestamp = now.toISOString().replace('T', ' ').substring(0, 19)
+
+    // Detect device info (basic detection)
+    const userAgent = navigator.userAgent
+    let device = 'Unknown Device'
+    if (userAgent.indexOf('Windows') !== -1) device = 'Windows PC'
+    else if (userAgent.indexOf('Mac') !== -1) device = 'MacBook'
+    else if (userAgent.indexOf('Linux') !== -1) device = 'Linux PC'
+    else if (userAgent.indexOf('Android') !== -1) device = 'Android Device'
+    else if (
+      userAgent.indexOf('iPhone') !== -1 ||
+      userAgent.indexOf('iPad') !== -1
+    )
+      device = 'iOS Device'
+
+    // Create log entry
+    const logEntry = {
+      id: logId,
+      email: email || 'unknown@cnsc.edu.ph',
+      name: name || 'Unknown User',
+      action: 'Login',
+      timestamp: timestamp,
+      ipAddress: 'N/A', // In production, this would come from server
+      device: device,
+      status: status,
+    }
+
+    // Add to beginning of logs array (newest first)
+    window.MockData.userLogs.unshift(logEntry)
+
+    // Keep only last 100 logs to prevent memory issues
+    if (window.MockData.userLogs.length > 100) {
+      window.MockData.userLogs = window.MockData.userLogs.slice(0, 100)
+    }
+
+    // Also save to localStorage for persistence
+    try {
+      localStorage.setItem(
+        'spmo_userLogs',
+        JSON.stringify(window.MockData.userLogs)
+      )
+    } catch (e) {
+      console.warn('Could not save user logs to localStorage:', e)
+    }
+
+    console.log('User login logged:', logEntry)
+    return logEntry
+  } catch (error) {
+    console.error('Error logging user login:', error)
+    return null
+  }
 }
 
 // Update user status in MockData.users
 function updateUserStatus(email, status) {
-    try {
-        if (!window.MockData) window.MockData = {};
-        if (!window.MockData.users) window.MockData.users = [];
+  try {
+    if (!window.MockData) window.MockData = {}
+    if (!window.MockData.users) window.MockData.users = []
 
-        // Find user by email and update status
-        const user = window.MockData.users.find(u => u.email === email);
-        if (user) {
-            user.status = status;
-            console.log(`User ${email} status updated to ${status}`);
+    // Find user by email and update status
+    const user = window.MockData.users.find((u) => u.email === email)
+    if (user) {
+      user.status = status
+      console.log(`User ${email} status updated to ${status}`)
 
-            // Save updated users to localStorage
-            try {
-                localStorage.setItem('mockDataUsers', JSON.stringify(window.MockData.users));
-            } catch (e) {
-                console.warn('Could not save users to localStorage:', e);
-            }
-        }
-    } catch (error) {
-        console.error('Error updating user status:', error);
+      // Save updated users to localStorage
+      try {
+        localStorage.setItem(
+          'mockDataUsers',
+          JSON.stringify(window.MockData.users)
+        )
+      } catch (e) {
+        console.warn('Could not save users to localStorage:', e)
+      }
     }
+  } catch (error) {
+    console.error('Error updating user status:', error)
+  }
 }
 
 // Log user logout
 function logUserLogout(email, name) {
-    try {
-        if (!window.MockData) window.MockData = {};
-        if (!window.MockData.userLogs) window.MockData.userLogs = [];
+  try {
+    if (!window.MockData) window.MockData = {}
+    if (!window.MockData.userLogs) window.MockData.userLogs = []
 
-        // Update user status to Inactive on logout
-        updateUserStatus(email, 'Inactive');
+    // Update user status to Inactive on logout
+    updateUserStatus(email, 'Inactive')
 
-        // Generate unique log ID
-        const logId = 'LOG' + String(window.MockData.userLogs.length + 1).padStart(3, '0');
+    // Generate unique log ID
+    const logId =
+      'LOG' + String(window.MockData.userLogs.length + 1).padStart(3, '0')
 
-        // Get current timestamp
-        const now = new Date();
-        const timestamp = now.toISOString().replace('T', ' ').substring(0, 19);
+    // Get current timestamp
+    const now = new Date()
+    const timestamp = now.toISOString().replace('T', ' ').substring(0, 19)
 
-        // Detect device info
-        const userAgent = navigator.userAgent;
-        let device = 'Unknown Device';
-        if (userAgent.indexOf('Windows') !== -1) device = 'Windows PC';
-        else if (userAgent.indexOf('Mac') !== -1) device = 'MacBook';
-        else if (userAgent.indexOf('Linux') !== -1) device = 'Linux PC';
-        else if (userAgent.indexOf('Android') !== -1) device = 'Android Device';
-        else if (userAgent.indexOf('iPhone') !== -1 || userAgent.indexOf('iPad') !== -1) device = 'iOS Device';
+    // Detect device info
+    const userAgent = navigator.userAgent
+    let device = 'Unknown Device'
+    if (userAgent.indexOf('Windows') !== -1) device = 'Windows PC'
+    else if (userAgent.indexOf('Mac') !== -1) device = 'MacBook'
+    else if (userAgent.indexOf('Linux') !== -1) device = 'Linux PC'
+    else if (userAgent.indexOf('Android') !== -1) device = 'Android Device'
+    else if (
+      userAgent.indexOf('iPhone') !== -1 ||
+      userAgent.indexOf('iPad') !== -1
+    )
+      device = 'iOS Device'
 
-        // Create logout log entry
-        const logEntry = {
-            id: logId,
-            email: email || 'unknown@cnsc.edu.ph',
-            name: name || 'Unknown User',
-            action: 'Logout',
-            timestamp: timestamp,
-            ipAddress: 'N/A',
-            device: device,
-            status: 'Success'
-        };
-
-        // Add to beginning of logs array
-        window.MockData.userLogs.unshift(logEntry);
-
-        // Keep only last 100 logs
-        if (window.MockData.userLogs.length > 100) {
-            window.MockData.userLogs = window.MockData.userLogs.slice(0, 100);
-        }
-
-        // Save to localStorage
-        try {
-            localStorage.setItem('spmo_userLogs', JSON.stringify(window.MockData.userLogs));
-        } catch (e) {
-            console.warn('Could not save user logs to localStorage:', e);
-        }
-
-        console.log('User logout logged:', logEntry);
-        return logEntry;
-    } catch (error) {
-        console.error('Error logging user logout:', error);
-        return null;
+    // Create logout log entry
+    const logEntry = {
+      id: logId,
+      email: email || 'unknown@cnsc.edu.ph',
+      name: name || 'Unknown User',
+      action: 'Logout',
+      timestamp: timestamp,
+      ipAddress: 'N/A',
+      device: device,
+      status: 'Success',
     }
+
+    // Add to beginning of logs array
+    window.MockData.userLogs.unshift(logEntry)
+
+    // Keep only last 100 logs
+    if (window.MockData.userLogs.length > 100) {
+      window.MockData.userLogs = window.MockData.userLogs.slice(0, 100)
+    }
+
+    // Save to localStorage
+    try {
+      localStorage.setItem(
+        'spmo_userLogs',
+        JSON.stringify(window.MockData.userLogs)
+      )
+    } catch (e) {
+      console.warn('Could not save user logs to localStorage:', e)
+    }
+
+    console.log('User logout logged:', logEntry)
+    return logEntry
+  } catch (error) {
+    console.error('Error logging user logout:', error)
+    return null
+  }
 }
 
 // Load user logs from localStorage on page load
 function loadUserLogs() {
-    try {
-        const stored = localStorage.getItem('spmo_userLogs');
-        if (stored) {
-            const logs = JSON.parse(stored);
-            if (Array.isArray(logs) && logs.length > 0) {
-                if (!window.MockData) window.MockData = {};
-                window.MockData.userLogs = logs;
-                console.log('Loaded', logs.length, 'user logs from localStorage');
-            }
-        }
-    } catch (error) {
-        console.error('Error loading user logs:', error);
+  try {
+    const stored = localStorage.getItem('spmo_userLogs')
+    if (stored) {
+      const logs = JSON.parse(stored)
+      if (Array.isArray(logs) && logs.length > 0) {
+        if (!window.MockData) window.MockData = {}
+        window.MockData.userLogs = logs
+        console.log('Loaded', logs.length, 'user logs from localStorage')
+      }
     }
+  } catch (error) {
+    console.error('Error loading user logs:', error)
+  }
 }
 
 // Load users from localStorage on page load
 function loadUsers() {
-    try {
-        const stored = localStorage.getItem('mockDataUsers');
-        if (stored) {
-            const users = JSON.parse(stored);
-            if (Array.isArray(users) && users.length > 0) {
-                if (!window.MockData) window.MockData = {};
-                window.MockData.users = users;
-                console.log('Loaded', users.length, 'users from localStorage');
-            }
-        }
-    } catch (error) {
-        console.error('Error loading users:', error);
+  try {
+    const stored = localStorage.getItem('mockDataUsers')
+    if (stored) {
+      const users = JSON.parse(stored)
+      if (Array.isArray(users) && users.length > 0) {
+        if (!window.MockData) window.MockData = {}
+        window.MockData.users = users
+        console.log('Loaded', users.length, 'users from localStorage')
+      }
     }
+  } catch (error) {
+    console.error('Error loading users:', error)
+  }
 }
 
 // Load user session from localStorage and update AppState
 function loadUserSession() {
-    try {
-        if (window.CURRENT_USER) {
-            const session = {
-                id: window.CURRENT_USER.id || 'GUEST',
-                name: window.CURRENT_USER.name || 'Guest User',
-                email: window.CURRENT_USER.email || '',
-                role: window.CURRENT_USER.role || 'User',
-                department: window.CURRENT_USER.department || 'N/A',
-                loginTime: new Date().toISOString()
-            };
+  try {
+    if (window.CURRENT_USER) {
+      const session = {
+        id: window.CURRENT_USER.id || 'GUEST',
+        name: window.CURRENT_USER.name || 'Guest User',
+        email: window.CURRENT_USER.email || '',
+        role: window.CURRENT_USER.role || 'User',
+        department: window.CURRENT_USER.department || 'N/A',
+        loginTime: new Date().toISOString(),
+      }
 
-            AppState.currentUser = {
-                id: session.id,
-                name: session.name,
-                email: session.email,
-                role: session.role,
-                department: session.department,
-                status: 'Active',
-                created: session.loginTime.split('T')[0]
-            };
+      AppState.currentUser = {
+        id: session.id,
+        name: session.name,
+        email: session.email,
+        role: session.role,
+        department: session.department,
+        status: 'Active',
+        created: session.loginTime.split('T')[0],
+      }
 
-            // Persist to localStorage for SPA interactions
-            try {
-                localStorage.setItem('userSession', JSON.stringify(session));
-            } catch (storageError) {
-                console.warn('Unable to persist user session locally:', storageError);
-            }
+      // Persist to localStorage for SPA interactions
+      try {
+        localStorage.setItem('userSession', JSON.stringify(session))
+      } catch (storageError) {
+        console.warn('Unable to persist user session locally:', storageError)
+      }
 
-            updateUserDisplay();
-            return;
-        }
-
-        const stored = localStorage.getItem('userSession');
-        if (stored) {
-            const session = JSON.parse(stored);
-
-            // Update AppState.currentUser with session data
-            AppState.currentUser = {
-                id: session.id || 'GUEST',
-                name: session.name || 'Guest User',
-                email: session.email || '',
-                role: session.role || 'User',
-                department: session.department || 'N/A',
-                status: 'Active',
-                created: session.loginTime ? session.loginTime.split('T')[0] : new Date().toISOString().split('T')[0]
-            };
-
-            console.log('User session loaded:', AppState.currentUser);
-
-            // Update the UI with current user info
-            updateUserDisplay();
-        } else {
-            console.warn('No user session found. Using default user.');
-        }
-    } catch (error) {
-        console.error('Error loading user session:', error);
+      updateUserDisplay()
+      return
     }
+
+    const stored = localStorage.getItem('userSession')
+    if (stored) {
+      const session = JSON.parse(stored)
+
+      // Update AppState.currentUser with session data
+      AppState.currentUser = {
+        id: session.id || 'GUEST',
+        name: session.name || 'Guest User',
+        email: session.email || '',
+        role: session.role || 'User',
+        department: session.department || 'N/A',
+        status: 'Active',
+        created: session.loginTime
+          ? session.loginTime.split('T')[0]
+          : new Date().toISOString().split('T')[0],
+      }
+
+      console.log('User session loaded:', AppState.currentUser)
+
+      // Update the UI with current user info
+      updateUserDisplay()
+    } else {
+      console.warn('No user session found. Using default user.')
+    }
+  } catch (error) {
+    console.error('Error loading user session:', error)
+  }
 }
 
 // Update user display in the header
 function updateUserDisplay() {
-    const userAvatar = document.getElementById('header-user-avatar');
-    if (userAvatar && AppState.currentUser) {
-        const initials = AppState.currentUser.name.split(' ').map(n => n[0]).slice(0, 2).join('');
-        userAvatar.textContent = initials;
-        userAvatar.title = AppState.currentUser.name;
-    }
+  const userAvatar = document.getElementById('header-user-avatar')
+  if (userAvatar && AppState.currentUser) {
+    const initials = AppState.currentUser.name
+      .split(' ')
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join('')
+    userAvatar.textContent = initials
+    userAvatar.title = AppState.currentUser.name
+  }
 
-    // Reinitialize Lucide icons after updating display
-    setTimeout(() => {
-        if (window.lucide) {
-            lucide.createIcons();
-        }
-    }, 100);
+  // Reinitialize Lucide icons after updating display
+  setTimeout(() => {
+    if (window.lucide) {
+      lucide.createIcons()
+    }
+  }, 100)
 }
 
 // Confirmation modal helper that returns a Promise<boolean>
 function showConfirm(message, title = 'Confirm') {
-    return new Promise((resolve) => {
-        let modal = document.getElementById('confirm-modal');
-        if (!modal) {
-            // Fallback quickly
-            try { resolve(window.confirm(message)); } catch (e) { resolve(false); }
-            return;
-        }
+  return new Promise((resolve) => {
+    let modal = document.getElementById('confirm-modal')
+    if (!modal) {
+      // Fallback quickly
+      try {
+        resolve(window.confirm(message))
+      } catch (e) {
+        resolve(false)
+      }
+      return
+    }
 
-        const msgEl = modal.querySelector('#confirm-message');
-        const titleEl = modal.querySelector('#confirm-title');
-        const okBtn = modal.querySelector('#confirm-ok');
-        const cancelBtn = modal.querySelector('#confirm-cancel');
+    const msgEl = modal.querySelector('#confirm-message')
+    const titleEl = modal.querySelector('#confirm-title')
+    const okBtn = modal.querySelector('#confirm-ok')
+    const cancelBtn = modal.querySelector('#confirm-cancel')
 
-        titleEl.textContent = title;
-        msgEl.textContent = message;
+    titleEl.textContent = title
+    msgEl.textContent = message
 
-        function cleanup(result) {
-            modal.classList.remove('active');
-            okBtn.removeEventListener('click', onOk);
-            cancelBtn.removeEventListener('click', onCancel);
-            document.removeEventListener('keydown', onKeyDown);
-            resolve(result);
-        }
+    function cleanup(result) {
+      modal.classList.remove('active')
+      okBtn.removeEventListener('click', onOk)
+      cancelBtn.removeEventListener('click', onCancel)
+      document.removeEventListener('keydown', onKeyDown)
+      resolve(result)
+    }
 
-        function onOk() { cleanup(true); }
-        function onCancel() { cleanup(false); }
+    function onOk() {
+      cleanup(true)
+    }
+    function onCancel() {
+      cleanup(false)
+    }
 
-        function onKeyDown(e) {
-            if (e.key === 'Escape') { cleanup(false); }
-            if (e.key === 'Enter') { cleanup(true); }
-        }
+    function onKeyDown(e) {
+      if (e.key === 'Escape') {
+        cleanup(false)
+      }
+      if (e.key === 'Enter') {
+        cleanup(true)
+      }
+    }
 
-        okBtn.addEventListener('click', onOk);
-        cancelBtn.addEventListener('click', onCancel);
-        document.addEventListener('keydown', onKeyDown);
+    okBtn.addEventListener('click', onOk)
+    cancelBtn.addEventListener('click', onCancel)
+    document.addEventListener('keydown', onKeyDown)
 
-        modal.classList.add('active');
-    });
+    modal.classList.add('active')
+  })
 }
 
 // closeConfirm used by close button in markup
 function closeConfirm(value = false) {
-    const modal = document.getElementById('confirm-modal');
-    if (!modal) return;
-    modal.classList.remove('active');
-    // trigger no-op: showConfirm's event listeners will resolve when removed
+  const modal = document.getElementById('confirm-modal')
+  if (!modal) return
+  modal.classList.remove('active')
+  // trigger no-op: showConfirm's event listeners will resolve when removed
 }
 
-window.showConfirm = showConfirm;
-window.closeConfirm = closeConfirm;
+window.showConfirm = showConfirm
+window.closeConfirm = closeConfirm
 
 // Safe capitalization helper (handles undefined/null)
 function capitalize(s) {
-    if (!s) return '-';
-    return String(s).charAt(0).toUpperCase() + String(s).slice(1);
+  if (!s) return '-'
+  return String(s).charAt(0).toUpperCase() + String(s).slice(1)
 }
 
 // Load user requests from localStorage and merge with AppState.statusRequests
 function loadUserRequests() {
-    try {
-        const userRequests = JSON.parse(localStorage.getItem('userPurchaseRequests') || '[]');
+  try {
+    const userRequests = JSON.parse(
+      localStorage.getItem('userPurchaseRequests') || '[]'
+    )
 
-        console.log(`Found ${userRequests.length} user requests in localStorage`);
+    console.log(`Found ${userRequests.length} user requests in localStorage`)
 
-        if (userRequests.length > 0) {
-            // Convert user requests to match the statusRequests format
-            const formattedRequests = userRequests.map(req => {
-                // Parse the date properly
-                const submittedDate = req.submittedDate ? new Date(req.submittedDate) : new Date();
-                const year = submittedDate.getFullYear();
-                const month = String(submittedDate.getMonth() + 1).padStart(2, '0');
-                const day = String(submittedDate.getDate()).padStart(2, '0');
-                const formattedDate = `${year}-${month}-${day}`;
+    if (userRequests.length > 0) {
+      // Convert user requests to match the statusRequests format
+      const formattedRequests = userRequests.map((req) => {
+        // Parse the date properly
+        const submittedDate = req.submittedDate
+          ? new Date(req.submittedDate)
+          : new Date()
+        const year = submittedDate.getFullYear()
+        const month = String(submittedDate.getMonth() + 1).padStart(2, '0')
+        const day = String(submittedDate.getDate()).padStart(2, '0')
+        const formattedDate = `${year}-${month}-${day}`
 
-                return {
-                    id: req.requestId,
-                    requester: req.requester || req.email,
-                    department: req.department || 'Unknown',
-                    item: Array.isArray(req.items) ? req.items.map(i => i.description || i.item || '').join(', ') : (req.items || 'N/A'),
-                    priority: (req.priority || 'medium').toLowerCase(),
-                    updatedAt: formattedDate,
-                    status: (req.status || 'incoming').toLowerCase(),
-                    cost: req.totalCost || 0,
-                    source: 'user-form', // Mark as coming from user form
-                    email: req.email,
-                    unit: req.unit,
-                    neededDate: req.neededDate,
-                    rawData: req // Store original request data
-                };
-            });
-
-            console.log('Formatted requests:', formattedRequests);
-
-            // Get existing IDs to avoid duplicates
-            const existingIds = new Set((AppState.statusRequests || []).map(r => r.id));
-
-            // Only add requests that don't already exist
-            const newRequests = formattedRequests.filter(r => !existingIds.has(r.id));
-
-            if (newRequests.length > 0) {
-                // Add new requests at the beginning (most recent first)
-                AppState.statusRequests = [...newRequests, ...(AppState.statusRequests || [])];
-                console.log(`✅ Loaded ${newRequests.length} new user requests from localStorage`);
-                console.log('Total requests now:', AppState.statusRequests.length);
-            } else {
-                console.log('No new requests to add (all already exist)');
-            }
-        } else {
-            console.log('No user requests in localStorage yet');
+        return {
+          id: req.requestId,
+          requester: req.requester || req.email,
+          department: req.department || 'Unknown',
+          item: Array.isArray(req.items)
+            ? req.items.map((i) => i.description || i.item || '').join(', ')
+            : req.items || 'N/A',
+          priority: (req.priority || 'medium').toLowerCase(),
+          updatedAt: formattedDate,
+          status: (req.status || 'incoming').toLowerCase(),
+          cost: req.totalCost || 0,
+          source: 'user-form', // Mark as coming from user form
+          email: req.email,
+          unit: req.unit,
+          neededDate: req.neededDate,
+          rawData: req, // Store original request data
         }
-    } catch (error) {
-        console.error('❌ Error loading user requests from localStorage:', error);
+      })
+
+      console.log('Formatted requests:', formattedRequests)
+
+      // Get existing IDs to avoid duplicates
+      const existingIds = new Set(
+        (AppState.statusRequests || []).map((r) => r.id)
+      )
+
+      // Only add requests that don't already exist
+      const newRequests = formattedRequests.filter(
+        (r) => !existingIds.has(r.id)
+      )
+
+      if (newRequests.length > 0) {
+        // Add new requests at the beginning (most recent first)
+        AppState.statusRequests = [
+          ...newRequests,
+          ...(AppState.statusRequests || []),
+        ]
+        console.log(
+          `✅ Loaded ${newRequests.length} new user requests from localStorage`
+        )
+        console.log('Total requests now:', AppState.statusRequests.length)
+      } else {
+        console.log('No new requests to add (all already exist)')
+      }
+    } else {
+      console.log('No user requests in localStorage yet')
     }
+  } catch (error) {
+    console.error('❌ Error loading user requests from localStorage:', error)
+  }
 }
 
 function renderNotifications() {
-    const listEl = document.getElementById('notifications-list');
-    const badge = document.getElementById('notifications-badge');
-    if (!listEl || !badge) return;
+  const listEl = document.getElementById('notifications-list')
+  const badge = document.getElementById('notifications-badge')
+  if (!listEl || !badge) return
 
-    listEl.innerHTML = '';
-    const unread = (AppState.notifications || []).filter(n => !n.read).length;
-    badge.style.display = unread > 0 ? 'flex' : 'none';
-    badge.textContent = unread > 9 ? '9+' : unread;
+  listEl.innerHTML = ''
+  const unread = (AppState.notifications || []).filter((n) => !n.read).length
+  badge.style.display = unread > 0 ? 'flex' : 'none'
+  badge.textContent = unread > 9 ? '9+' : unread
 
-    // Sort notifications by timestamp (newest first)
-    const sortedNotifications = [...(AppState.notifications || [])].sort((a, b) => {
-        const timeA = a.timestamp ? new Date(a.timestamp) : new Date();
-        const timeB = b.timestamp ? new Date(b.timestamp) : new Date();
-        return timeB - timeA;
-    });
+  // Sort notifications by timestamp (newest first)
+  const sortedNotifications = [...(AppState.notifications || [])].sort(
+    (a, b) => {
+      const timeA = a.timestamp ? new Date(a.timestamp) : new Date()
+      const timeB = b.timestamp ? new Date(b.timestamp) : new Date()
+      return timeB - timeA
+    }
+  )
 
-    if (sortedNotifications.length === 0) {
-        listEl.innerHTML = `
+  if (sortedNotifications.length === 0) {
+    listEl.innerHTML = `
             <div style="padding: 40px 20px; text-align: center; color: #9ca3af;">
                 <i data-lucide="bell-off" style="width: 48px; height: 48px; margin: 0 auto 12px; opacity: 0.5;"></i>
                 <p style="margin: 0; font-size: 14px;">No notifications</p>
             </div>
-        `;
-        lucide.createIcons();
-        return;
+        `
+    lucide.createIcons()
+    return
+  }
+
+  sortedNotifications.forEach((n) => {
+    const typeConfig = {
+      success: { bg: '#ecfdf5', iconColor: '#10b981', borderColor: '#6ee7b7' },
+      warning: { bg: '#fef3c7', iconColor: '#f59e0b', borderColor: '#fcd34d' },
+      error: { bg: '#fee2e2', iconColor: '#ef4444', borderColor: '#fca5a5' },
+      info: { bg: '#dbeafe', iconColor: '#3b82f6', borderColor: '#93c5fd' },
     }
 
-    sortedNotifications.forEach(n => {
-        const typeConfig = {
-            'success': { bg: '#ecfdf5', iconColor: '#10b981', borderColor: '#6ee7b7' },
-            'warning': { bg: '#fef3c7', iconColor: '#f59e0b', borderColor: '#fcd34d' },
-            'error': { bg: '#fee2e2', iconColor: '#ef4444', borderColor: '#fca5a5' },
-            'info': { bg: '#dbeafe', iconColor: '#3b82f6', borderColor: '#93c5fd' }
-        };
+    const config = typeConfig[n.type] || typeConfig.info
+    const isUnread = !n.read
 
-        const config = typeConfig[n.type] || typeConfig.info;
-        const isUnread = !n.read;
-
-        const item = document.createElement('div');
-        item.className = 'notification-item';
-        item.style.cssText = `
+    const item = document.createElement('div')
+    item.className = 'notification-item'
+    item.style.cssText = `
             padding: 12px;
             border-radius: 8px;
             cursor: pointer;
@@ -841,424 +1110,490 @@ function renderNotifications() {
             align-items: flex-start;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             background: ${isUnread ? config.bg : '#ffffff'};
-            border-left: 3px solid ${isUnread ? config.borderColor : 'transparent'};
+            border-left: 3px solid ${
+              isUnread ? config.borderColor : 'transparent'
+            };
             position: relative;
-        `;
+        `
 
-        item.innerHTML = `
-            <div style="flex-shrink: 0; width: 36px; height: 36px; background: ${config.bg}; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid ${config.borderColor};">
-                <i data-lucide="${n.icon || 'bell'}" style="width: 18px; height: 18px; color: ${config.iconColor};"></i>
+    item.innerHTML = `
+            <div style="flex-shrink: 0; width: 36px; height: 36px; background: ${
+              config.bg
+            }; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid ${
+      config.borderColor
+    };">
+                <i data-lucide="${
+                  n.icon || 'bell'
+                }" style="width: 18px; height: 18px; color: ${
+      config.iconColor
+    };"></i>
             </div>
             <div style="flex: 1; min-width: 0;">
                 <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 4px;">
-                    <div style="font-size: 13px; font-weight: 600; color: #111827; line-height: 1.4;">${escapeHtml(n.title)}</div>
-                    ${isUnread ? '<div style="width: 8px; height: 8px; background: #3b82f6; border-radius: 50%; flex-shrink: 0; margin-top: 3px;"></div>' : ''}
+                    <div style="font-size: 13px; font-weight: 600; color: #111827; line-height: 1.4;">${escapeHtml(
+                      n.title
+                    )}</div>
+                    ${
+                      isUnread
+                        ? '<div style="width: 8px; height: 8px; background: #3b82f6; border-radius: 50%; flex-shrink: 0; margin-top: 3px;"></div>'
+                        : ''
+                    }
                 </div>
-                ${n.message ? `<div style="font-size: 12px; color: #6b7280; line-height: 1.4; margin-bottom: 6px;">${escapeHtml(n.message)}</div>` : ''}
+                ${
+                  n.message
+                    ? `<div style="font-size: 12px; color: #6b7280; line-height: 1.4; margin-bottom: 6px;">${escapeHtml(
+                        n.message
+                      )}</div>`
+                    : ''
+                }
                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                     <div style="font-size: 11px; color: #9ca3af; display: flex; align-items: center; gap: 4px;">
                         <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
                         ${escapeHtml(n.time)}
                     </div>
-                    <button class="notification-action-btn" onclick="event.stopPropagation(); toggleNotificationRead('${n.id}');" style="font-size: 11px; color: ${config.iconColor}; border: none; background: none; cursor: pointer; padding: 4px 8px; border-radius: 4px; font-weight: 500; transition: all 0.2s;">
-                        ${isUnread ? '<i data-lucide="check" style="width: 12px; height: 12px;"></i>' : '<i data-lucide="rotate-ccw" style="width: 12px; height: 12px;"></i>'}
+                    <button class="notification-action-btn" onclick="event.stopPropagation(); toggleNotificationRead('${
+                      n.id
+                    }');" style="font-size: 11px; color: ${
+      config.iconColor
+    }; border: none; background: none; cursor: pointer; padding: 4px 8px; border-radius: 4px; font-weight: 500; transition: all 0.2s;">
+                        ${
+                          isUnread
+                            ? '<i data-lucide="check" style="width: 12px; height: 12px;"></i>'
+                            : '<i data-lucide="rotate-ccw" style="width: 12px; height: 12px;"></i>'
+                        }
                     </button>
                 </div>
             </div>
-        `;
+        `
 
-        // Hover effects
-        item.addEventListener('mouseenter', function () {
-            this.style.transform = 'translateX(4px)';
-            this.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.08)';
-        });
+    // Hover effects
+    item.addEventListener('mouseenter', function () {
+      this.style.transform = 'translateX(4px)'
+      this.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.08)'
+    })
 
-        item.addEventListener('mouseleave', function () {
-            this.style.transform = 'translateX(0)';
-            this.style.boxShadow = 'none';
-        });
+    item.addEventListener('mouseleave', function () {
+      this.style.transform = 'translateX(0)'
+      this.style.boxShadow = 'none'
+    })
 
-        item.addEventListener('click', function (e) {
-            if (!e.target.closest('.notification-action-btn')) {
-                toggleNotificationRead(n.id);
-            }
-        });
+    item.addEventListener('click', function (e) {
+      if (!e.target.closest('.notification-action-btn')) {
+        toggleNotificationRead(n.id)
+      }
+    })
 
-        listEl.appendChild(item);
-    });
+    listEl.appendChild(item)
+  })
 
-    // Reinitialize Lucide icons
-    lucide.createIcons();
+  // Reinitialize Lucide icons
+  lucide.createIcons()
 }
 
 function toggleNotifications(e) {
-    e && e.stopPropagation();
-    const menu = document.getElementById('notifications-menu');
-    const btn = document.getElementById('notifications-btn');
-    if (!menu || !btn) return;
-    const isOpen = menu.style.display === 'block';
-    if (isOpen) {
-        closeNotifications();
-    } else {
-        renderNotifications();
-        menu.style.display = 'block';
-        btn.setAttribute('aria-expanded', 'true');
+  e && e.stopPropagation()
+  const menu = document.getElementById('notifications-menu')
+  const btn = document.getElementById('notifications-btn')
+  if (!menu || !btn) return
+  const isOpen = menu.style.display === 'block'
+  if (isOpen) {
+    closeNotifications()
+  } else {
+    renderNotifications()
+    menu.style.display = 'block'
+    btn.setAttribute('aria-expanded', 'true')
 
-        // Add animation class
-        menu.style.animation = 'notificationSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+    // Add animation class
+    menu.style.animation =
+      'notificationSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
 
-        setTimeout(() => {
-            document.addEventListener('click', outsideNotificationsClick);
-        }, 0);
-    }
+    setTimeout(() => {
+      document.addEventListener('click', outsideNotificationsClick)
+    }, 0)
+  }
 }
 
 function closeNotifications() {
-    const menu = document.getElementById('notifications-menu');
-    const btn = document.getElementById('notifications-btn');
-    if (!menu || !btn) return;
+  const menu = document.getElementById('notifications-menu')
+  const btn = document.getElementById('notifications-btn')
+  if (!menu || !btn) return
 
-    // Add closing animation
-    menu.style.animation = 'notificationSlideOut 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
+  // Add closing animation
+  menu.style.animation =
+    'notificationSlideOut 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
 
-    setTimeout(() => {
-        menu.style.display = 'none';
-        btn.setAttribute('aria-expanded', 'false');
-    }, 200);
+  setTimeout(() => {
+    menu.style.display = 'none'
+    btn.setAttribute('aria-expanded', 'false')
+  }, 200)
 
-    document.removeEventListener('click', outsideNotificationsClick);
+  document.removeEventListener('click', outsideNotificationsClick)
 }
 
 function viewAllNotifications() {
-    closeNotifications();
-    navigateToPage('activity');
+  closeNotifications()
+  navigateToPage('activity')
 }
 
 function outsideNotificationsClick(e) {
-    const menu = document.getElementById('notifications-menu');
-    const btn = document.getElementById('notifications-btn');
-    if (!menu || !btn) return;
-    if (menu.contains(e.target) || btn.contains(e.target)) return;
-    closeNotifications();
+  const menu = document.getElementById('notifications-menu')
+  const btn = document.getElementById('notifications-btn')
+  if (!menu || !btn) return
+  if (menu.contains(e.target) || btn.contains(e.target)) return
+  closeNotifications()
 }
 
 function toggleNotificationRead(id) {
-    const n = (AppState.notifications || []).find(x => x.id === id);
-    if (!n) return;
-    n.read = !n.read; // Toggle instead of always setting to true
-    renderNotifications();
+  const n = (AppState.notifications || []).find((x) => x.id === id)
+  if (!n) return
+  n.read = !n.read // Toggle instead of always setting to true
+  renderNotifications()
 }
 
 function markAllNotificationsRead() {
-    (AppState.notifications || []).forEach(n => n.read = true);
-    renderNotifications();
+  ;(AppState.notifications || []).forEach((n) => (n.read = true))
+  renderNotifications()
 }
 
 function deleteNotification(id) {
-    AppState.notifications = (AppState.notifications || []).filter(n => n.id !== id);
-    renderNotifications();
+  AppState.notifications = (AppState.notifications || []).filter(
+    (n) => n.id !== id
+  )
+  renderNotifications()
 }
 
 function clearAllNotifications() {
-    if ((AppState.notifications || []).length === 0) return;
-    if (confirm('Are you sure you want to clear all notifications?')) {
-        AppState.notifications = [];
-        renderNotifications();
-    }
+  if ((AppState.notifications || []).length === 0) return
+  if (confirm('Are you sure you want to clear all notifications?')) {
+    AppState.notifications = []
+    renderNotifications()
+  }
 }
 
 // Add new notification (for demo/testing purposes)
 function addNotification(title, message, type = 'info', icon = 'bell') {
-    const newNotification = {
-        id: 'n' + Date.now(),
-        title: title,
-        message: message,
-        time: 'Just now',
-        timestamp: new Date(),
-        read: false,
-        type: type, // 'success', 'warning', 'error', 'info'
-        icon: icon
-    };
+  const newNotification = {
+    id: 'n' + Date.now(),
+    title: title,
+    message: message,
+    time: 'Just now',
+    timestamp: new Date(),
+    read: false,
+    type: type, // 'success', 'warning', 'error', 'info'
+    icon: icon,
+  }
 
-    AppState.notifications.unshift(newNotification);
-    renderNotifications();
+  AppState.notifications.unshift(newNotification)
+  renderNotifications()
 
-    // Show animation on badge
-    const badge = document.getElementById('notifications-badge');
-    if (badge) {
-        badge.style.animation = 'none';
-        setTimeout(() => {
-            badge.style.animation = 'badgePulse 2s ease-in-out infinite';
-        }, 10);
-    }
+  // Show animation on badge
+  const badge = document.getElementById('notifications-badge')
+  if (badge) {
+    badge.style.animation = 'none'
+    setTimeout(() => {
+      badge.style.animation = 'badgePulse 2s ease-in-out infinite'
+    }, 10)
+  }
 }
 
 // Sidebar Toggle Function
 function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const isCollapsed = sidebar.classList.toggle('collapsed');
+  const sidebar = document.getElementById('sidebar')
+  const isCollapsed = sidebar.classList.toggle('collapsed')
 
-    // Store the collapsed state in localStorage
-    localStorage.setItem('sidebarCollapsed', isCollapsed);
+  // Store the collapsed state in localStorage
+  localStorage.setItem('sidebarCollapsed', isCollapsed)
 
-    // Add/remove tooltips for navigation items
-    updateNavTooltips(isCollapsed);
+  // Add/remove tooltips for navigation items
+  updateNavTooltips(isCollapsed)
 
-    // Reinitialize Lucide icons for the toggle button
-    setTimeout(() => {
-        lucide.createIcons();
-    }, 100);
+  // Reinitialize Lucide icons for the toggle button
+  setTimeout(() => {
+    lucide.createIcons()
+  }, 100)
 }
 
 // Update navigation tooltips based on collapsed state
 function updateNavTooltips(isCollapsed) {
-    if (isCollapsed) {
-        // Add tooltips to all nav buttons
-        document.querySelectorAll('.nav-button').forEach(button => {
-            const textElement = button.querySelector('.nav-content span');
-            if (textElement) {
-                button.setAttribute('data-tooltip', textElement.textContent);
-            }
-        });
-    } else {
-        // Remove tooltips when expanded
-        document.querySelectorAll('.nav-button').forEach(button => {
-            button.removeAttribute('data-tooltip');
-        });
-    }
+  if (isCollapsed) {
+    // Add tooltips to all nav buttons
+    document.querySelectorAll('.nav-button').forEach((button) => {
+      const textElement = button.querySelector('.nav-content span')
+      if (textElement) {
+        button.setAttribute('data-tooltip', textElement.textContent)
+      }
+    })
+  } else {
+    // Remove tooltips when expanded
+    document.querySelectorAll('.nav-button').forEach((button) => {
+      button.removeAttribute('data-tooltip')
+    })
+  }
 }
 
 // Initialize sidebar state from localStorage
 function initializeSidebarState() {
-    const sidebar = document.getElementById('sidebar');
-    const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+  const sidebar = document.getElementById('sidebar')
+  const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true'
 
-    if (isCollapsed) {
-        sidebar.classList.add('collapsed');
-        updateNavTooltips(true);
-    }
+  if (isCollapsed) {
+    sidebar.classList.add('collapsed')
+    updateNavTooltips(true)
+  }
 }
 
 // Navigation Functions
 function initializeNavigation() {
-    // Handle nav item clicks
-    document.querySelectorAll('.nav-item[data-page]').forEach(item => {
-        item.addEventListener('click', () => {
-            const pageId = item.getAttribute('data-page');
-            navigateToPage(pageId);
-        });
-    });
+  // Handle nav item clicks
+  document.querySelectorAll('.nav-item[data-page]').forEach((item) => {
+    item.addEventListener('click', () => {
+      const pageId = item.getAttribute('data-page')
+      navigateToPage(pageId)
+    })
+  })
 
-    // Handle nav group toggles
-    document.querySelectorAll('.nav-header[data-group]').forEach(header => {
-        header.addEventListener('click', () => {
-            const groupId = header.getAttribute('data-group');
-            toggleNavGroup(groupId);
-            // Special-case: when clicking the Status Management header, navigate to the status view
-            if (groupId === 'status') navigateToPage('status');
-        });
-    });
+  // Handle nav group toggles
+  document.querySelectorAll('.nav-header[data-group]').forEach((header) => {
+    header.addEventListener('click', () => {
+      const groupId = header.getAttribute('data-group')
+      toggleNavGroup(groupId)
+      // Special-case: when clicking the Status Management header, navigate to the status view
+      if (groupId === 'status') navigateToPage('status')
+    })
+  })
 
-    // Initialize with dashboard page
-    navigateToPage('dashboard');
+  // Initialize with dashboard page
+  navigateToPage('dashboard')
 
-    // Sync DOM with AppState.expandedMenus (honor initial expanded groups)
-    document.querySelectorAll('.nav-group').forEach(g => {
-        const header = g.querySelector('.nav-header[data-group]');
-        if (!header) return;
-        const id = header.getAttribute('data-group');
-        if (AppState.expandedMenus.includes(id)) {
-            g.classList.add('expanded');
-        } else {
-            g.classList.remove('expanded');
-        }
-    });
+  // Sync DOM with AppState.expandedMenus (honor initial expanded groups)
+  document.querySelectorAll('.nav-group').forEach((g) => {
+    const header = g.querySelector('.nav-header[data-group]')
+    if (!header) return
+    const id = header.getAttribute('data-group')
+    if (AppState.expandedMenus.includes(id)) {
+      g.classList.add('expanded')
+    } else {
+      g.classList.remove('expanded')
+    }
+  })
 }
 
 function navigateToPage(pageId) {
-    AppState.currentPage = pageId;
-    updateActiveNavigation(pageId);
-    loadPageContent(pageId);
+  AppState.currentPage = pageId
+  updateActiveNavigation(pageId)
+  loadPageContent(pageId)
 }
 
 function updateActiveNavigation(pageId) {
-    // Remove active class from all nav items
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
+  // Remove active class from all nav items
+  document.querySelectorAll('.nav-item').forEach((item) => {
+    item.classList.remove('active')
+  })
 
-    // Add active class to current page
-    const currentNavItem = document.querySelector(`[data-page="${pageId}"]`);
-    if (currentNavItem) {
-        currentNavItem.classList.add('active');
+  // Add active class to current page
+  const currentNavItem = document.querySelector(`[data-page="${pageId}"]`)
+  if (currentNavItem) {
+    currentNavItem.classList.add('active')
 
-        // Expand parent group if it's a submenu item
-        const parentGroup = currentNavItem.closest('.nav-group');
-        if (parentGroup) {
-            const groupId = parentGroup.querySelector('.nav-header').getAttribute('data-group');
-            if (!AppState.expandedMenus.includes(groupId)) {
-                AppState.expandedMenus.push(groupId);
-                parentGroup.classList.add('expanded');
-            }
-        }
+    // Expand parent group if it's a submenu item
+    const parentGroup = currentNavItem.closest('.nav-group')
+    if (parentGroup) {
+      const groupId = parentGroup
+        .querySelector('.nav-header')
+        .getAttribute('data-group')
+      if (!AppState.expandedMenus.includes(groupId)) {
+        AppState.expandedMenus.push(groupId)
+        parentGroup.classList.add('expanded')
+      }
     }
+  }
 }
 
 function toggleNavGroup(groupId) {
-    const headerElem = document.querySelector(`[data-group="${groupId}"]`);
-    if (!headerElem) return;
-    const group = headerElem.closest('.nav-group');
+  const headerElem = document.querySelector(`[data-group="${groupId}"]`)
+  if (!headerElem) return
+  const group = headerElem.closest('.nav-group')
 
-    const isCurrentlyExpanded = group.classList.contains('expanded') || AppState.expandedMenus.includes(groupId);
+  const isCurrentlyExpanded =
+    group.classList.contains('expanded') ||
+    AppState.expandedMenus.includes(groupId)
 
-    if (isCurrentlyExpanded) {
-        // Collapse this group
-        group.classList.remove('expanded');
-        AppState.expandedMenus = AppState.expandedMenus.filter(id => id !== groupId);
-    } else {
-        // Accordion behavior: collapse all other groups first
-        document.querySelectorAll('.nav-group.expanded').forEach(g => {
-            g.classList.remove('expanded');
-            const hdr = g.querySelector('.nav-header[data-group]');
-            if (hdr) {
-                const otherId = hdr.getAttribute('data-group');
-                AppState.expandedMenus = AppState.expandedMenus.filter(id => id !== otherId);
-            }
-        });
+  if (isCurrentlyExpanded) {
+    // Collapse this group
+    group.classList.remove('expanded')
+    AppState.expandedMenus = AppState.expandedMenus.filter(
+      (id) => id !== groupId
+    )
+  } else {
+    // Accordion behavior: collapse all other groups first
+    document.querySelectorAll('.nav-group.expanded').forEach((g) => {
+      g.classList.remove('expanded')
+      const hdr = g.querySelector('.nav-header[data-group]')
+      if (hdr) {
+        const otherId = hdr.getAttribute('data-group')
+        AppState.expandedMenus = AppState.expandedMenus.filter(
+          (id) => id !== otherId
+        )
+      }
+    })
 
-        // Expand the requested group
-        group.classList.add('expanded');
-        if (!AppState.expandedMenus.includes(groupId)) AppState.expandedMenus.push(groupId);
-    }
+    // Expand the requested group
+    group.classList.add('expanded')
+    if (!AppState.expandedMenus.includes(groupId))
+      AppState.expandedMenus.push(groupId)
+  }
 }
 
 // Page Content Generation
 function loadPageContent(pageId) {
-    const mainContent = document.getElementById('main-content');
+  const mainContent = document.getElementById('main-content')
 
-    switch (pageId) {
-        case 'dashboard':
-            mainContent.innerHTML = generateDashboardPage();
-            // ensure notifications badge/menu is in sync
-            try { renderNotifications(); } catch (e) { /* ignore if not ready */ }
-            break;
-        case 'categories':
-            mainContent.innerHTML = generateCategoriesPage();
-            break;
-        case 'products':
-            mainContent.innerHTML = generateProductsPage();
-            break;
-        case 'stock-in':
-            mainContent.innerHTML = generateStockInPage();
-            break;
-        case 'stock-out':
-            mainContent.innerHTML = generateStockOutPage();
-            break;
-        case 'status':
-            // Show all statuses
-            initStatusManagement('all');
-            break;
-        case 'incoming':
-            initStatusManagement('incoming');
-            break;
-        case 'received':
-            initStatusManagement('received');
-            break;
-        case 'finished':
-            initStatusManagement('finished');
-            break;
-        case 'cancelled':
-            initStatusManagement('cancelled');
-            break;
-        case 'rejected':
-            initStatusManagement('rejected');
-            break;
-        case 'returned':
-            initStatusManagement('returned');
-            break;
-        case 'new-request':
-            mainContent.innerHTML = generateNewRequestPage();
-            break;
-        case 'pending-approval':
-            mainContent.innerHTML = generatePendingApprovalPage();
-            break;
-        case 'completed-request':
-            mainContent.innerHTML = generateCompletedRequestPage();
-            break;
-        case 'inventory-reports':
-            mainContent.innerHTML = generateInventoryReportsPage();
-            break;
-        case 'requisition-reports':
-            mainContent.innerHTML = generateRequisitionReportsPage();
-            break;
-        case 'status-report':
-            mainContent.innerHTML = generateStatusReportsPage();
-            break;
-        case 'roles': // Roles & Management
-            mainContent.innerHTML = generateRolesManagementPage();
-            break;
-        case 'users': // ✅ Users Management
-            mainContent.innerHTML = generateUsersManagementPage();
-            break;
-        case 'login-activity': // ✅ Login Activity Logs
-            mainContent.innerHTML = generateLoginActivityPage();
-            break;
-        case 'activity': // Activity & Notifications
-            mainContent.innerHTML = generateActivityPage();
-            break;
-        case 'about':
-            mainContent.innerHTML = generateAboutPage();
-            break;
-        case 'support':
-            mainContent.innerHTML = generateSupportPage();
-            break;
-        default:
-            mainContent.innerHTML = generateDashboardPage();
-    }
+  switch (pageId) {
+    case 'dashboard':
+      mainContent.innerHTML = generateDashboardPage()
+      // ensure notifications badge/menu is in sync
+      try {
+        renderNotifications()
+      } catch (e) {
+        /* ignore if not ready */
+      }
+      break
+    case 'categories':
+      mainContent.innerHTML = generateCategoriesPage()
+      break
+    case 'products':
+      mainContent.innerHTML = generateProductsPage()
+      break
+    case 'stock-in':
+      mainContent.innerHTML = generateStockInPage()
+      break
+    case 'stock-out':
+      mainContent.innerHTML = generateStockOutPage()
+      break
+    case 'status':
+      // Show all statuses
+      initStatusManagement('all')
+      break
+    case 'incoming':
+      initStatusManagement('incoming')
+      break
+    case 'received':
+      initStatusManagement('received')
+      break
+    case 'finished':
+      initStatusManagement('finished')
+      break
+    case 'cancelled':
+      initStatusManagement('cancelled')
+      break
+    case 'rejected':
+      initStatusManagement('rejected')
+      break
+    case 'returned':
+      initStatusManagement('returned')
+      break
+    case 'new-request':
+      mainContent.innerHTML = generateNewRequestPage()
+      break
+    case 'pending-approval':
+      mainContent.innerHTML = generatePendingApprovalPage()
+      break
+    case 'completed-request':
+      mainContent.innerHTML = generateCompletedRequestPage()
+      break
+    case 'inventory-reports':
+      mainContent.innerHTML = generateInventoryReportsPage()
+      break
+    case 'requisition-reports':
+      mainContent.innerHTML = generateRequisitionReportsPage()
+      break
+    case 'status-report':
+      mainContent.innerHTML = generateStatusReportsPage()
+      break
+    case 'roles': // Roles & Management
+      mainContent.innerHTML = generateRolesManagementPage()
+      break
+    case 'users': // ✅ Users Management
+      mainContent.innerHTML = generateUsersManagementPage()
+      break
+    case 'login-activity': // ✅ Login Activity Logs
+      mainContent.innerHTML = generateLoginActivityPage()
+      break
+    case 'activity': // Activity & Notifications
+      mainContent.innerHTML = generateActivityPage()
+      break
+    case 'about':
+      mainContent.innerHTML = generateAboutPage()
+      break
+    case 'support':
+      mainContent.innerHTML = generateSupportPage()
+      break
+    default:
+      mainContent.innerHTML = generateDashboardPage()
+  }
 
-    // Reinitialize icons after content update
-    lucide.createIcons();
+  // Reinitialize icons after content update
+  lucide.createIcons()
 
-    // Initialize page-specific event listeners
-    initializePageEvents(pageId);
+  // Initialize page-specific event listeners
+  initializePageEvents(pageId)
 }
 
 function generateDashboardPage() {
-    const currentTime = new Date().toLocaleString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+  const currentTime = new Date().toLocaleString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 
-    // Calculate real statistics from data sources
-    const totalProducts = MockData.products ? MockData.products.length : 0;
-    const lowStockThreshold = 15;
-    const lowStockItems = MockData.products ? MockData.products.filter(p => p.quantity < lowStockThreshold).length : 0;
+  // Calculate real statistics from data sources
+  const totalProducts = MockData.products ? MockData.products.length : 0
+  const lowStockThreshold = 15
+  const lowStockItems = MockData.products
+    ? MockData.products.filter((p) => p.quantity < lowStockThreshold).length
+    : 0
 
-    // Get total users from MockData
-    const totalUsers = window.MockData && window.MockData.users ? window.MockData.users.length : 0;
-    const activeUsers = window.MockData && window.MockData.users ? window.MockData.users.filter(u => u.status === 'Active').length : 0;
+  // Get total users from MockData
+  const totalUsers =
+    window.MockData && window.MockData.users ? window.MockData.users.length : 0
+  const activeUsers =
+    window.MockData && window.MockData.users
+      ? window.MockData.users.filter((u) => u.status === 'Active').length
+      : 0
 
-    // Calculate incoming requests (all status requests that are not finished/cancelled/returned)
-    const incomingStatuses = ['incoming', 'submitted', 'pending', 'under-review', 'awaiting-approval', 'approved'];
-    const incomingRequests = (AppState.statusRequests || []).filter(r => incomingStatuses.includes(r.status)).length;
+  // Calculate incoming requests (all status requests that are not finished/cancelled/returned)
+  const incomingStatuses = [
+    'incoming',
+    'submitted',
+    'pending',
+    'under-review',
+    'awaiting-approval',
+    'approved',
+  ]
+  const incomingRequests = (AppState.statusRequests || []).filter((r) =>
+    incomingStatuses.includes(r.status)
+  ).length
 
-    // Calculate received/delivered today
-    const today = new Date().toISOString().split('T')[0];
-    const receivedToday = (AppState.statusRequests || []).filter(r =>
-        r.status === 'received' && r.updatedAt === today
-    ).length;
+  // Calculate received/delivered today
+  const today = new Date().toISOString().split('T')[0]
+  const receivedToday = (AppState.statusRequests || []).filter(
+    (r) => r.status === 'received' && r.updatedAt === today
+  ).length
 
-    // Calculate finished requests
-    const finishedRequests = (AppState.statusRequests || []).filter(r => r.status === 'finished').length;
+  // Calculate finished requests
+  const finishedRequests = (AppState.statusRequests || []).filter(
+    (r) => r.status === 'finished'
+  ).length
 
-    // Calculate total value of all products
-    const totalInventoryValue = MockData.products ? MockData.products.reduce((sum, p) => sum + (p.totalValue || 0), 0) : 0;
+  // Calculate total value of all products
+  const totalInventoryValue = MockData.products
+    ? MockData.products.reduce((sum, p) => sum + (p.totalValue || 0), 0)
+    : 0
 
-    return `
+  return `
         <div class="page-header">
             <div class="page-header-content">
                 <div>
@@ -1316,7 +1651,11 @@ function generateDashboardPage() {
                     
                     <!-- Compact User Menu Button (avatar only) -->
                     <div id="header-user-block" class="header-user-block" onclick="toggleUserMenu(event)" title="Profile menu">
-                        <div id="header-user-avatar">${AppState.currentUser.name.split(' ').map(n => n[0]).slice(0, 2).join('')}</div>
+                        <div id="header-user-avatar">${AppState.currentUser.name
+                          .split(' ')
+                          .map((n) => n[0])
+                          .slice(0, 2)
+                          .join('')}</div>
                         <i data-lucide="chevron-down" style="width: 16px; height: 16px; color: #6b7280;"></i>
 
                         <!-- Popup menu (hidden by default) - absolute inside header block -->
@@ -1325,11 +1664,19 @@ function generateDashboardPage() {
                             <div style="padding: 12px; border-bottom: 1px solid #e5e7eb; background: #f9fafb;">
                                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
                                     <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 18px;">
-                                        ${AppState.currentUser.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
+                                        ${AppState.currentUser.name
+                                          .split(' ')
+                                          .map((n) => n[0])
+                                          .slice(0, 2)
+                                          .join('')}
                                     </div>
                                     <div style="flex: 1; min-width: 0;">
-                                        <div style="font-weight: 600; color: #111827; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${AppState.currentUser.name}</div>
-                                        <div style="font-size: 12px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${AppState.currentUser.email}</div>
+                                        <div style="font-weight: 600; color: #111827; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${
+                                          AppState.currentUser.name
+                                        }</div>
+                                        <div style="font-size: 12px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${
+                                          AppState.currentUser.email
+                                        }</div>
                                     </div>
                                 </div>
                                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -1431,7 +1778,9 @@ function generateDashboardPage() {
                     <div class="metric-content">
                         <div class="metric-info">
                             <h3>Inventory Value</h3>
-                            <p class="value currency-value">${formatCurrency(totalInventoryValue)}</p>
+                            <p class="value currency-value">${formatCurrency(
+                              totalInventoryValue
+                            )}</p>
                             <p class="change">Total value</p>
                         </div>
                         <div class="metric-icon indigo">
@@ -1546,12 +1895,12 @@ function generateDashboardPage() {
                 </div>
             </div>
         </div>
-    `;
+    `
 }
 
 function generateCategoriesPage() {
-    const categories = MockData.categories || [];
-    return `
+  const categories = MockData.categories || []
+  return `
         <div class="page-header">
             <div class="page-header-content">
                 <div>
@@ -1579,35 +1928,59 @@ function generateCategoriesPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${categories.length ? categories.map((category, index) => `
-                            <tr style="${index % 2 === 0 ? 'background-color: white;' : 'background-color: #f9fafb;'}">
-                                <td style="padding: 16px 24px; font-weight: 500;">${category.id}</td>
-                                <td style="padding: 16px 24px; font-weight: 500;">${category.name}</td>
-                                <td style="padding: 16px 24px; color: #6b7280; max-width: 600px; line-height: 1.5;">${category.description || ''}</td>
+                        ${
+                          categories.length
+                            ? categories
+                                .map(
+                                  (category, index) => `
+                            <tr style="${
+                              index % 2 === 0
+                                ? 'background-color: white;'
+                                : 'background-color: #f9fafb;'
+                            }">
+                                <td style="padding: 16px 24px; font-weight: 500;">${
+                                  category.id
+                                }</td>
+                                <td style="padding: 16px 24px; font-weight: 500;">${
+                                  category.name
+                                }</td>
+                                <td style="padding: 16px 24px; color: #6b7280; max-width: 600px; line-height: 1.5;">${
+                                  category.description || ''
+                                }</td>
                                 <td style="padding: 16px 24px;">
                                     <div class="table-actions">
-                                        <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openCategoryModal('edit','${category.id}')">
+                                        <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openCategoryModal('edit','${
+                                          category.id
+                                        }')">
                                             <i data-lucide="edit"></i>
                                         </button>
-                                        <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteCategory('${category.id}')">
+                                        <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteCategory('${
+                                          category.id
+                                        }')">
                                             <i data-lucide="trash-2"></i>
                                         </button>
                                     </div>
                                 </td>
                             </tr>
-                        `).join('') : `<tr><td colspan="4" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No categories found</td></tr>`}
+                        `
+                                )
+                                .join('')
+                            : `<tr><td colspan="4" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No categories found</td></tr>`
+                        }
                     </tbody>
                 </table>
             </div>
         </div>
-    `;
+    `
 }
 
 function generateProductsPage() {
-    const currentTab = AppState.currentProductTab || 'expendable';
-    const filteredProducts = MockData.products.filter(product => product.type === currentTab.toLowerCase());
+  const currentTab = AppState.currentProductTab || 'expendable'
+  const filteredProducts = MockData.products.filter(
+    (product) => product.type === currentTab.toLowerCase()
+  )
 
-    return `
+  return `
         <div class="page-header">
             <div class="page-header-content">
                 <div>
@@ -1627,13 +2000,19 @@ function generateProductsPage() {
         <div class="page-content">
             <!-- Product Tabs -->
             <div class="product-tabs">
-                <button class="product-tab ${currentTab === 'expendable' ? 'active' : ''}" onclick="switchProductTab('expendable')">
+                <button class="product-tab ${
+                  currentTab === 'expendable' ? 'active' : ''
+                }" onclick="switchProductTab('expendable')">
                     Expendable
                 </button>
-                <button class="product-tab ${currentTab === 'semi-expendable' ? 'active' : ''}" onclick="switchProductTab('semi-expendable')">
+                <button class="product-tab ${
+                  currentTab === 'semi-expendable' ? 'active' : ''
+                }" onclick="switchProductTab('semi-expendable')">
                     Semi-Expendable
                 </button>
-                <button class="product-tab ${currentTab === 'non-expendable' ? 'active' : ''}" onclick="switchProductTab('non-expendable')">
+                <button class="product-tab ${
+                  currentTab === 'non-expendable' ? 'active' : ''
+                }" onclick="switchProductTab('non-expendable')">
                     Non-Expendable
                 </button>
             </div>
@@ -1684,38 +2063,63 @@ function generateProductsPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${filteredProducts.length ? filteredProducts.map((product, index) => {
-        const rowBg = (index % 2 === 0) ? 'background-color: white;' : 'background-color: #f9fafb;';
-        return `
+                        ${
+                          filteredProducts.length
+                            ? filteredProducts
+                                .map((product, index) => {
+                                  const rowBg =
+                                    index % 2 === 0
+                                      ? 'background-color: white;'
+                                      : 'background-color: #f9fafb;'
+                                  return `
                             <tr style="${rowBg}">
                                 <td style="font-weight: 500;">${product.id}</td>
-                                <td style="font-weight: 500;">${product.name}</td>
-                                <td style="color: #6b7280; max-width: 300px;">${product.description || ''}</td>
+                                <td style="font-weight: 500;">${
+                                  product.name
+                                }</td>
+                                <td style="color: #6b7280; max-width: 300px;">${
+                                  product.description || ''
+                                }</td>
                                 <td>${product.quantity ?? 0}</td>
                                 <td>${product.unit || '-'}</td>
-                                <td>${formatCurrency(product.unitCost || 0)}</td>
-                                <td style="font-weight: 500;">${formatCurrency(product.totalValue || 0)}</td>
+                                <td>${formatCurrency(
+                                  product.unitCost || 0
+                                )}</td>
+                                <td style="font-weight: 500;">${formatCurrency(
+                                  product.totalValue || 0
+                                )}</td>
                                 <td>${product.date || ''}</td>
                                 <td>
                                     <div class="table-actions">
-                                        <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteProduct('${product.id}')">
+                                        <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteProduct('${
+                                          product.id
+                                        }')">
                                             <i data-lucide="trash-2"></i>
                                         </button>
-                                        <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openProductModal('edit','${product.id}')">
+                                        <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openProductModal('edit','${
+                                          product.id
+                                        }')">
                                             <i data-lucide="edit"></i>
                                         </button>
                                     </div>
                                 </td>
                             </tr>
-                        `;
-    }).join('') : `<tr><td colspan="9" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No products found</td></tr>`}
+                        `
+                                })
+                                .join('')
+                            : `<tr><td colspan="9" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No products found</td></tr>`
+                        }
                     </tbody>
                 </table>
                 
                 <!-- Enhanced Pagination -->
                 <nav class="enhanced-pagination" aria-label="Pagination">
                     <div class="pagination-left" style="margin-left: 16px">
-                        ${filteredProducts.length === 0 ? 'No entries to display' : `Showing 1 to ${filteredProducts.length} of ${filteredProducts.length} entries`}
+                        ${
+                          filteredProducts.length === 0
+                            ? 'No entries to display'
+                            : `Showing 1 to ${filteredProducts.length} of ${filteredProducts.length} entries`
+                        }
                     </div>
                     <div class="pagination-right" style="margin-right: 16px">
                         <button class="pagination-btn" disabled>Previous</button>
@@ -1727,11 +2131,11 @@ function generateProductsPage() {
                 </nav>
             </div>
         </div>
-    `;
+    `
 }
 
 function generateStockInPage() {
-    return `
+  return `
         <div class="page-header">
             <div class="page-header-content">
                 <div>
@@ -1800,7 +2204,11 @@ function generateStockInPage() {
                 <!-- 🔹 Pagination -->
                 <nav class="enhanced-pagination" aria-label="Pagination">
                     <div class="pagination-left" style="margin-left: 16px">
-                        ${stockInData.length === 0 ? 'No entries to display' : `Showing 1 to ${stockInData.length} of ${stockInData.length} entries`}
+                        ${
+                          stockInData.length === 0
+                            ? 'No entries to display'
+                            : `Showing 1 to ${stockInData.length} of ${stockInData.length} entries`
+                        }
                     </div>
                     <div class="pagination-right" style="margin-right: 16px">
                         <button class="pagination-btn" disabled>Previous</button>
@@ -1812,13 +2220,11 @@ function generateStockInPage() {
                 </nav>
             </div>
         </div>
-    `;
+    `
 }
 
-
-
 function generateStockOutPage() {
-    return `
+  return `
         <div class="page-header">
             <div class="page-header-content">
                 <div>
@@ -1901,7 +2307,11 @@ function generateStockOutPage() {
                     <!-- 🔹 Pagination -->
                     <nav class="enhanced-pagination" aria-label="Pagination">
                         <div class="pagination-left" style="margin-left: 16px">
-                            ${stockOutData.length === 0 ? 'No entries to display' : `Showing 1 to ${stockOutData.length} of ${stockOutData.length} entries`}
+                            ${
+                              stockOutData.length === 0
+                                ? 'No entries to display'
+                                : `Showing 1 to ${stockOutData.length} of ${stockOutData.length} entries`
+                            }
                         </div>
                         <div class="pagination-right" style="margin-right: 16px">
                             <button class="pagination-btn" disabled>Previous</button>
@@ -1914,11 +2324,11 @@ function generateStockOutPage() {
                 </div>
             </div>
         </div>
-    `;
+    `
 }
 
 function generateNewRequestPage() {
-    return `
+  return `
         <section class="page-header">
             <div class="page-header-content">
                 <header>
@@ -1985,12 +2395,18 @@ function generateNewRequestPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${AppState.newRequests && AppState.newRequests.length > 0
-            ? AppState.newRequests.map(request => `
+                        ${
+                          AppState.newRequests &&
+                          AppState.newRequests.length > 0
+                            ? AppState.newRequests
+                                .map(
+                                  (request) => `
                         <tr>
                             <td>${request.id}</td>
                             <td>
-                                <button class="link" onclick="openPurchaseOrderModal('view', '${request.id}')"
+                                <button class="link" onclick="openPurchaseOrderModal('view', '${
+                                  request.id
+                                }')"
                                     style="background: none; border: none; color: #dc2626; text-decoration: underline; cursor: pointer;">
                                     ${request.poNumber}
                                 </button>
@@ -2008,20 +2424,28 @@ function generateNewRequestPage() {
                             <td>${request.department}</td>
                             <td>
                                 <div class="table-actions">
-                                    <button class="icon-action-btn" title="View" onclick="openPurchaseOrderModal('view', '${request.id}')">
+                                    <button class="icon-action-btn" title="View" onclick="openPurchaseOrderModal('view', '${
+                                      request.id
+                                    }')">
                                         <i data-lucide="eye"></i>
                                     </button>
-                                    <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openPurchaseOrderModal('edit', '${request.id}')">
+                                    <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openPurchaseOrderModal('edit', '${
+                                      request.id
+                                    }')">
                                         <i data-lucide="edit"></i>
                                     </button>
-                                    <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteRequest('${request.id}')">
+                                    <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteRequest('${
+                                      request.id
+                                    }')">
                                         <i data-lucide="trash-2"></i>
                                     </button>
                                 </div>
                             </td>
                         </tr>
-                    `).join('')
-            : `
+                    `
+                                )
+                                .join('')
+                            : `
                         <tr>
                             <td colspan="10" class="px-6 py-12 text-center text-gray-500">
                                 <div class="flex flex-col items-center gap-2">
@@ -2029,14 +2453,20 @@ function generateNewRequestPage() {
                                 </div>
                             </td>
                         </tr>
-                    `}
+                    `
+                        }
                     </tbody>
                 </table>
 
                 <!-- 🔹 Pagination -->
                 <nav class="enhanced-pagination" aria-label="Pagination">
                     <div class="pagination-left" style="margin-left: 16px">
-                        ${AppState.newRequests && AppState.newRequests.length > 0 ? `Showing 1 to ${AppState.newRequests.length} of ${AppState.newRequests.length} entries` : 'Showing 0 entries'}
+                        ${
+                          AppState.newRequests &&
+                          AppState.newRequests.length > 0
+                            ? `Showing 1 to ${AppState.newRequests.length} of ${AppState.newRequests.length} entries`
+                            : 'Showing 0 entries'
+                        }
                     </div>
                     <div class="pagination-right" style="margin-right: 16px">
                         <button class="pagination-btn" disabled>Previous</button>
@@ -2048,16 +2478,22 @@ function generateNewRequestPage() {
                 </nav>
             </section>
         </main>
-    `;
+    `
 }
 
-
 function generatePendingApprovalPage() {
-    // Build the pending list from newRequests (prefer newRequests as source of truth)
-    const pendingStatuses = ['submitted', 'pending', 'under-review', 'awaiting-approval'];
-    const pendingList = (AppState.newRequests || []).filter(r => pendingStatuses.includes(r.status));
+  // Build the pending list from newRequests (prefer newRequests as source of truth)
+  const pendingStatuses = [
+    'submitted',
+    'pending',
+    'under-review',
+    'awaiting-approval',
+  ]
+  const pendingList = (AppState.newRequests || []).filter((r) =>
+    pendingStatuses.includes(r.status)
+  )
 
-    return `
+  return `
         <section class="page-header">
             <div class="page-header-content">
                 <header>
@@ -2068,7 +2504,9 @@ function generatePendingApprovalPage() {
                     <p class="page-subtitle">Review and approve purchase requests</p>
                 </header>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <span class="badge yellow">${pendingList.length} Pending Requests</span>
+                    <span class="badge yellow">${
+                      pendingList.length
+                    } Pending Requests</span>
                 </div>
             </div>
         </section>
@@ -2123,51 +2561,85 @@ function generatePendingApprovalPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${pendingList.length > 0
-            ? pendingList.map(request => `
+                        ${
+                          pendingList.length > 0
+                            ? pendingList
+                                .map(
+                                  (request) => `
                                 <tr>
                                     <td>${request.id}</td>
                                     <td>
-                                        <button class="link" onclick="openPurchaseOrderModal('view', '${request.id}')"
+                                        <button class="link" onclick="openPurchaseOrderModal('view', '${
+                                          request.id
+                                        }')"
                                             style="background: none; border: none; color: #dc2626; text-decoration: underline; cursor: pointer;">
                                             ${request.poNumber || '-'}
                                         </button>
                                     </td>
                                     <td>${request.supplier || '-'}</td>
                                     <td>${request.deliveryDate || '-'}</td>
-                                    <td>${formatCurrency(request.totalAmount || 0)}</td>
+                                    <td>${formatCurrency(
+                                      request.totalAmount || 0
+                                    )}</td>
                                     <td>
-                                        <span class="${getBadgeClass(request.priority || 'low', 'priority')}">
-                                            ${request.priority ? capitalize(request.priority) : 'Low'}
+                                        <span class="${getBadgeClass(
+                                          request.priority || 'low',
+                                          'priority'
+                                        )}">
+                                            ${
+                                              request.priority
+                                                ? capitalize(request.priority)
+                                                : 'Low'
+                                            }
                                         </span>
                                     </td>
                                     <td>
-                                        <span class="${getBadgeClass(request.status || 'pending')}">
-                                            ${(request.status || 'pending').replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                        <span class="${getBadgeClass(
+                                          request.status || 'pending'
+                                        )}">
+                                            ${(request.status || 'pending')
+                                              .replace('-', ' ')
+                                              .replace(/\b\w/g, (l) =>
+                                                l.toUpperCase()
+                                              )}
                                         </span>
                                     </td>
                                     <td>${request.requestedBy || '-'}</td>
                                     <td>${request.department || '-'}</td>
-                                    <td>${request.submittedDate || request.requestDate || '-'}</td>
+                                    <td>${
+                                      request.submittedDate ||
+                                      request.requestDate ||
+                                      '-'
+                                    }</td>
                                     <td>
                                         <div class="table-actions">
-                                            <button class="icon-action-btn" title="View" onclick="openPurchaseOrderModal('view', '${request.id}')">
+                                            <button class="icon-action-btn" title="View" onclick="openPurchaseOrderModal('view', '${
+                                              request.id
+                                            }')">
                                                 <i data-lucide="eye"></i>
                                             </button>
-                                            <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openPurchaseOrderModal('edit', '${request.id}')">
+                                            <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openPurchaseOrderModal('edit', '${
+                                              request.id
+                                            }')">
                                                 <i data-lucide="edit"></i>
                                             </button>
-                                            <button class="icon-action-btn icon-action-success" title="Approve" onclick="approveRequest('${request.id}')">
+                                            <button class="icon-action-btn icon-action-success" title="Approve" onclick="approveRequest('${
+                                              request.id
+                                            }')">
                                                 <i data-lucide="check-circle"></i>
                                             </button>
-                                            <button class="icon-action-btn icon-action-danger" title="Reject" onclick="rejectRequest('${request.id}')">
+                                            <button class="icon-action-btn icon-action-danger" title="Reject" onclick="rejectRequest('${
+                                              request.id
+                                            }')">
                                                 <i data-lucide="x-circle"></i>
                                             </button>
                                         </div>
                                     </td>
                                 </tr>
-                            `).join('')
-            : `
+                            `
+                                )
+                                .join('')
+                            : `
                                 <tr>
                                     <td colspan="10" class="px-6 py-12 text-center text-gray-500">
                                         <div class="flex flex-col items-center gap-2">
@@ -2176,27 +2648,31 @@ function generatePendingApprovalPage() {
                                     </td>
                                 </tr>
                             `
-        }
+                        }
                     </tbody>
                 </table>
             </section>
         </main>
-    `;
+    `
 }
 
-
 function generateCompletedRequestPage() {
-    // Prepare lists (mirror the approach used in generatePendingApprovalPage)
-    const allCompleted = (AppState.completedRequests || []);
-    // Visible in this page: treat only actually fulfilled / approved flows as "completed" view entries
-    const visibleStatuses = ['approved', 'delivered', 'completed'];
-    const visibleCompleted = allCompleted.filter(r => visibleStatuses.includes(r.status));
-    const completedList = visibleCompleted.filter(r => r.status === 'completed');
-    const deliveredList = visibleCompleted.filter(r => r.status === 'delivered');
-    const totalRequests = visibleCompleted.length;
-    const totalValue = visibleCompleted.reduce((sum, req) => sum + (req.totalAmount || 0), 0);
+  // Prepare lists (mirror the approach used in generatePendingApprovalPage)
+  const allCompleted = AppState.completedRequests || []
+  // Visible in this page: treat only actually fulfilled / approved flows as "completed" view entries
+  const visibleStatuses = ['approved', 'delivered', 'completed']
+  const visibleCompleted = allCompleted.filter((r) =>
+    visibleStatuses.includes(r.status)
+  )
+  const completedList = visibleCompleted.filter((r) => r.status === 'completed')
+  const deliveredList = visibleCompleted.filter((r) => r.status === 'delivered')
+  const totalRequests = visibleCompleted.length
+  const totalValue = visibleCompleted.reduce(
+    (sum, req) => sum + (req.totalAmount || 0),
+    0
+  )
 
-    return `
+  return `
         <section class="page-header">
             <div class="page-header-content">
                 <header>
@@ -2208,8 +2684,12 @@ function generateCompletedRequestPage() {
                 </header>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <!-- Updated: show total rendered completed-type requests (approved, delivered, completed) -->
-                    <span class="badge green">${visibleCompleted.length} Completed Requests</span>
-                    <span class="badge blue">${deliveredList.length} Delivered</span>
+                    <span class="badge green">${
+                      visibleCompleted.length
+                    } Completed Requests</span>
+                    <span class="badge blue">${
+                      deliveredList.length
+                    } Delivered</span>
                 </div>
             </div>
         </section>
@@ -2256,20 +2736,29 @@ function generateCompletedRequestPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${visibleCompleted.length > 0
-            ? visibleCompleted.map(request => `
+                        ${
+                          visibleCompleted.length > 0
+                            ? visibleCompleted
+                                .map(
+                                  (request) => `
                                 <tr>
                                     <td>${request.id}</td>
                                     <td>
-                                        <button class="link" onclick="openPurchaseOrderModal('view', '${request.id}')"
+                                        <button class="link" onclick="openPurchaseOrderModal('view', '${
+                                          request.id
+                                        }')"
                                             style="background: none; border: none; color: #dc2626; text-decoration: underline; cursor: pointer;">
                                             ${request.poNumber}
                                         </button>
                                     </td>
                                     <td>${request.supplier}</td>
-                                    <td>${formatCurrency(request.totalAmount)}</td>
+                                    <td>${formatCurrency(
+                                      request.totalAmount
+                                    )}</td>
                                     <td>
-                                            <span class="${getBadgeClass(request.status)}">
+                                            <span class="${getBadgeClass(
+                                              request.status
+                                            )}">
                                             ${capitalize(request.status)}
                                         </span>
                                     </td>
@@ -2279,20 +2768,28 @@ function generateCompletedRequestPage() {
                                     <td>${request.deliveredDate || '-'}</td>
                                     <td>
                                         <div class="table-actions">
-                                            <button class="icon-action-btn" title="View" onclick="openPurchaseOrderModal('view', '${request.id}')">
+                                            <button class="icon-action-btn" title="View" onclick="openPurchaseOrderModal('view', '${
+                                              request.id
+                                            }')">
                                                 <i data-lucide="eye"></i>
                                             </button>
-                                            <button class="icon-action-btn icon-action-success" title="Download PO" onclick="downloadPO('${request.id}')">
+                                            <button class="icon-action-btn icon-action-success" title="Download PO" onclick="showPODownloadChooser(event, '${
+                                              request.id
+                                            }')">
                                                 <i data-lucide="download"></i>
                                             </button>
-                                            <button class="icon-action-btn icon-action-warning" title="Archive" onclick="archiveRequest('${request.id}')">
+                                            <button class="icon-action-btn icon-action-warning" title="Archive" onclick="archiveRequest('${
+                                              request.id
+                                            }')">
                                                 <i data-lucide="archive"></i>
                                             </button>
                                         </div>
                                     </td>
                                 </tr>
-                            `).join('')
-            : `
+                            `
+                                )
+                                .join('')
+                            : `
                                 <tr>
                                     <td colspan="9" class="px-6 py-12 text-center text-gray-500">
                                         <div class="flex flex-col items-center gap-2">
@@ -2301,7 +2798,7 @@ function generateCompletedRequestPage() {
                                     </td>
                                 </tr>
                             `
-        }
+                        }
                     </tbody>
                 </table>
 
@@ -2313,17 +2810,21 @@ function generateCompletedRequestPage() {
                     </div>
                     <div style="flex:0 1 180px;display:flex;flex-direction:column;gap:4px;">
                         <p style="font-size:13px;letter-spacing:.5px;text-transform:uppercase;color:#6b7280;font-weight:600;margin:0;">Total Value</p>
-                        <p style="font-size:26px;font-weight:700;color:#111827;line-height:1;margin:0;">${formatCurrency(totalValue)}</p>
+                        <p style="font-size:26px;font-weight:700;color:#111827;line-height:1;margin:0;">${formatCurrency(
+                          totalValue
+                        )}</p>
                     </div>
                     <div style="flex:0 1 180px;display:flex;flex-direction:column;gap:4px;">
                         <!-- Updated to align with header badge: counts all rendered completed-type requests -->
                         <p style="font-size:13px;letter-spacing:.5px;text-transform:uppercase;color:#6b7280;font-weight:600;margin:0;">Completed Requests</p>
-                        <p style="font-size:26px;font-weight:700;color:#16a34a;line-height:1;margin:0;">${visibleCompleted.length}</p>
+                        <p style="font-size:26px;font-weight:700;color:#16a34a;line-height:1;margin:0;">${
+                          visibleCompleted.length
+                        }</p>
                     </div>
                 </aside>
             </section>
         </main>
-    `;
+    `
 }
 
 // -----------------------------
@@ -2331,10 +2832,10 @@ function generateCompletedRequestPage() {
 // -----------------------------
 
 function generateInventoryReportsPage() {
-    // Filters: date range (not used for inventory mock) and department
-    const departments = ['All', 'IT', 'Procurement', 'Finance', 'HR', 'Admin'];
+  // Filters: date range (not used for inventory mock) and department
+  const departments = ['All', 'IT', 'Procurement', 'Finance', 'HR', 'Admin']
 
-    return `
+  return `
         <div class="page-header">
             <div class="page-header-content">
                 <div>
@@ -2369,7 +2870,9 @@ function generateInventoryReportsPage() {
                             Department
                         </label>
                         <select id="inventory-department-filter" class="form-select">
-                            ${departments.map(d => `<option value="${d}">${d}</option>`).join('')}
+                            ${departments
+                              .map((d) => `<option value="${d}">${d}</option>`)
+                              .join('')}
                         </select>
                     </div>
                     <div class="filter-item">
@@ -2478,13 +2981,13 @@ function generateInventoryReportsPage() {
                 </div>
             </div>
         </div>
-    `;
+    `
 }
 
 function generateRequisitionReportsPage() {
-    const departments = ['All', 'IT', 'Procurement', 'Finance', 'HR', 'Admin'];
+  const departments = ['All', 'IT', 'Procurement', 'Finance', 'HR', 'Admin']
 
-    return `
+  return `
         <div class="page-header">
             <div class="page-header-content">
                 <div>
@@ -2519,7 +3022,9 @@ function generateRequisitionReportsPage() {
                             Department
                         </label>
                         <select id="requisition-department-filter" class="form-select">
-                            ${departments.map(d => `<option value="${d}">${d}</option>`).join('')}
+                            ${departments
+                              .map((d) => `<option value="${d}">${d}</option>`)
+                              .join('')}
                         </select>
                     </div>
                     <div class="filter-item">
@@ -2578,15 +3083,29 @@ function generateRequisitionReportsPage() {
                 </div>
             </div>
         </div>
-    `;
+    `
 }
 
 function generateStatusReportsPage() {
-    // Dynamically get departments and statuses from statusRequests
-    const uniqueDepartments = ['All', ...[...new Set((AppState.statusRequests || []).map(r => r.department).filter(Boolean))]];
-    const uniqueStatuses = ['All', ...[...new Set((AppState.statusRequests || []).map(r => r.status).filter(Boolean))]];
+  // Dynamically get departments and statuses from statusRequests
+  const uniqueDepartments = [
+    'All',
+    ...[
+      ...new Set(
+        (AppState.statusRequests || []).map((r) => r.department).filter(Boolean)
+      ),
+    ],
+  ]
+  const uniqueStatuses = [
+    'All',
+    ...[
+      ...new Set(
+        (AppState.statusRequests || []).map((r) => r.status).filter(Boolean)
+      ),
+    ],
+  ]
 
-    return `
+  return `
         <div class="page-header">
             <div class="page-header-content">
                 <div>
@@ -2621,7 +3140,9 @@ function generateStatusReportsPage() {
                             Department
                         </label>
                         <select id="status-department-filter" class="form-select">
-                            ${uniqueDepartments.map(d => `<option value="${d}">${d}</option>`).join('')}
+                            ${uniqueDepartments
+                              .map((d) => `<option value="${d}">${d}</option>`)
+                              .join('')}
                         </select>
                     </div>
                     <div class="filter-item">
@@ -2630,7 +3151,14 @@ function generateStatusReportsPage() {
                             Status
                         </label>
                         <select id="status-status-filter" class="form-select">
-                            ${uniqueStatuses.map(s => `<option value="${s}">${s.charAt(0).toUpperCase() + s.slice(1)}</option>`).join('')}
+                            ${uniqueStatuses
+                              .map(
+                                (s) =>
+                                  `<option value="${s}">${
+                                    s.charAt(0).toUpperCase() + s.slice(1)
+                                  }</option>`
+                              )
+                              .join('')}
                         </select>
                     </div>
                     <div class="filter-item">
@@ -2688,102 +3216,137 @@ function generateStatusReportsPage() {
                 </div>
             </div>
         </div>
-    `;
+    `
 }
 
 // CSV export helpers
 function downloadCSV(filename, rows) {
-    // Add UTF-8 BOM for Excel compatibility
-    const BOM = '\uFEFF';
-    const csvContent = rows.map(r => r.map(c => `"${(c + '').replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+  // Add UTF-8 BOM for Excel compatibility
+  const BOM = '\uFEFF'
+  const csvContent = rows
+    .map((r) => r.map((c) => `"${(c + '').replace(/"/g, '""')}"`).join(','))
+    .join('\n')
+  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
 }
 
 function exportInventoryCSV() {
-    // export only currently filtered rows if filters applied
-    const rows = [['SKU', 'Name', 'Quantity', 'Unit', 'Unit Cost', 'Total Value']];
-    const rowsToExport = (window.__inventoryFilteredRows && window.__inventoryFilteredRows.length) ? window.__inventoryFilteredRows : (MockData.products || []);
-    rowsToExport.forEach(i => rows.push([
-        i.id || i.stockNumber || '',
-        i.name || '',
-        typeof i.quantity === 'number' ? i.quantity : (i.currentStock || 0),
-        i.unit || i.unitMeasure || '',
-        (typeof i.unitCost === 'number' ? i.unitCost : (i.unitPrice || 0)),
-        (typeof i.totalValue === 'number' ? i.totalValue : ((typeof i.quantity === 'number' ? i.quantity : (i.currentStock || 0)) * (i.unitCost || i.unitPrice || 0)))
-    ]));
-    downloadCSV('inventory-report.csv', rows);
+  // export only currently filtered rows if filters applied
+  const rows = [['SKU', 'Name', 'Quantity', 'Unit', 'Unit Cost', 'Total Value']]
+  const rowsToExport =
+    window.__inventoryFilteredRows && window.__inventoryFilteredRows.length
+      ? window.__inventoryFilteredRows
+      : MockData.products || []
+  rowsToExport.forEach((i) =>
+    rows.push([
+      i.id || i.stockNumber || '',
+      i.name || '',
+      typeof i.quantity === 'number' ? i.quantity : i.currentStock || 0,
+      i.unit || i.unitMeasure || '',
+      typeof i.unitCost === 'number' ? i.unitCost : i.unitPrice || 0,
+      typeof i.totalValue === 'number'
+        ? i.totalValue
+        : (typeof i.quantity === 'number' ? i.quantity : i.currentStock || 0) *
+          (i.unitCost || i.unitPrice || 0),
+    ])
+  )
+  downloadCSV('inventory-report.csv', rows)
 }
 
 function exportRequisitionCSV() {
-    const rows = [['Request ID', 'PO Number', 'Supplier', 'Total Amount', 'Status']];
-    const rowsToExport = (window.__requisitionFilteredRows && window.__requisitionFilteredRows.length) ? window.__requisitionFilteredRows : [...(AppState.newRequests || []), ...(AppState.pendingRequests || []), ...(AppState.completedRequests || [])];
-    rowsToExport.forEach(r => rows.push([r.id || '', r.poNumber || '', r.supplier || '', r.totalAmount || 0, r.status || '']));
-    downloadCSV('requisition-report.csv', rows);
+  const rows = [
+    ['Request ID', 'PO Number', 'Supplier', 'Total Amount', 'Status'],
+  ]
+  const rowsToExport =
+    window.__requisitionFilteredRows && window.__requisitionFilteredRows.length
+      ? window.__requisitionFilteredRows
+      : [
+          ...(AppState.newRequests || []),
+          ...(AppState.pendingRequests || []),
+          ...(AppState.completedRequests || []),
+        ]
+  rowsToExport.forEach((r) =>
+    rows.push([
+      r.id || '',
+      r.poNumber || '',
+      r.supplier || '',
+      r.totalAmount || 0,
+      r.status || '',
+    ])
+  )
+  downloadCSV('requisition-report.csv', rows)
 }
 
 function exportStatusCSV() {
-    const rows = [['Status', 'Count', 'Total Cost']];
-    const rowsToExport = (window.__statusSummary && Object.keys(window.__statusSummary).length) ? window.__statusSummary : (function () {
-        const all = [...(AppState.statusRequests || [])];
-        return all.reduce((acc, r) => {
-            acc[r.status || 'unknown'] = (acc[r.status || 'unknown'] || 0) + 1;
-            return acc;
-        }, {});
-    })();
+  const rows = [['Status', 'Count', 'Total Cost']]
+  const rowsToExport =
+    window.__statusSummary && Object.keys(window.__statusSummary).length
+      ? window.__statusSummary
+      : (function () {
+          const all = [...(AppState.statusRequests || [])]
+          return all.reduce((acc, r) => {
+            acc[r.status || 'unknown'] = (acc[r.status || 'unknown'] || 0) + 1
+            return acc
+          }, {})
+        })()
 
-    // Calculate total cost per status from statusRequests
-    const costByStatus = (AppState.statusRequests || []).reduce((acc, r) => {
-        const status = r.status || 'unknown';
-        acc[status] = (acc[status] || 0) + (r.cost || 0);
-        return acc;
-    }, {});
+  // Calculate total cost per status from statusRequests
+  const costByStatus = (AppState.statusRequests || []).reduce((acc, r) => {
+    const status = r.status || 'unknown'
+    acc[status] = (acc[status] || 0) + (r.cost || 0)
+    return acc
+  }, {})
 
-    Object.keys(rowsToExport).forEach(k => rows.push([
-        k,
-        rowsToExport[k],
-        formatCurrency(costByStatus[k] || 0)
-    ]));
-    downloadCSV('status-report.csv', rows);
+  Object.keys(rowsToExport).forEach((k) =>
+    rows.push([k, rowsToExport[k], formatCurrency(costByStatus[k] || 0)])
+  )
+  downloadCSV('status-report.csv', rows)
 }
 
 // Render helpers + Chart wiring
 function renderInventoryReport() {
-    const tbody = document.querySelector('#inventory-report-table tbody');
-    if (!tbody) return;
+  const tbody = document.querySelector('#inventory-report-table tbody')
+  if (!tbody) return
 
-    // Filters (department placeholder & future date filters). Products currently lack dept & date metadata.
-    const dept = document.getElementById('inventory-department-filter')?.value || 'All';
-    const from = document.getElementById('inventory-date-from')?.value;
-    const to = document.getElementById('inventory-date-to')?.value;
+  // Filters (department placeholder & future date filters). Products currently lack dept & date metadata.
+  const dept =
+    document.getElementById('inventory-department-filter')?.value || 'All'
+  const from = document.getElementById('inventory-date-from')?.value
+  const to = document.getElementById('inventory-date-to')?.value
 
-    // Source of truth: live products mutated by Stock In/Out
-    let products = (MockData.products || []).map(p => ({ ...p }));
+  // Source of truth: live products mutated by Stock In/Out
+  let products = (MockData.products || []).map((p) => ({ ...p }))
 
-    // (Future) Department/date filters could be applied here when fields exist
-    if (dept && dept !== 'All') {
-        products = products.filter(p => (p.department || '').toLowerCase().includes(dept.toLowerCase()));
-    }
-    // if products had dateAdded or lastMovementDate we would filter via from/to
-    // For now, ignore from/to as no date metadata is defined in product objects.
+  // (Future) Department/date filters could be applied here when fields exist
+  if (dept && dept !== 'All') {
+    products = products.filter((p) =>
+      (p.department || '').toLowerCase().includes(dept.toLowerCase())
+    )
+  }
+  // if products had dateAdded or lastMovementDate we would filter via from/to
+  // For now, ignore from/to as no date metadata is defined in product objects.
 
-    // Persist filtered set for CSV export
-    window.__inventoryFilteredRows = products;
+  // Persist filtered set for CSV export
+  window.__inventoryFilteredRows = products
 
-    // Build table rows (include total value if present)
-    tbody.innerHTML = products.map(p => {
-        const qty = typeof p.quantity === 'number' ? p.quantity : (p.currentStock || 0);
-        const unit = p.unit || p.unitMeasure || '';
-        const unitCost = (typeof p.unitCost === 'number') ? p.unitCost : (p.unitPrice || 0);
-        const totalValue = typeof p.totalValue === 'number' ? p.totalValue : (qty * unitCost);
-        return `
+  // Build table rows (include total value if present)
+  tbody.innerHTML = products
+    .map((p) => {
+      const qty =
+        typeof p.quantity === 'number' ? p.quantity : p.currentStock || 0
+      const unit = p.unit || p.unitMeasure || ''
+      const unitCost =
+        typeof p.unitCost === 'number' ? p.unitCost : p.unitPrice || 0
+      const totalValue =
+        typeof p.totalValue === 'number' ? p.totalValue : qty * unitCost
+      return `
             <tr>
                 <td style="font-weight:500;">${p.id || p.stockNumber || ''}</td>
                 <td>${p.name || ''}</td>
@@ -2792,272 +3355,376 @@ function renderInventoryReport() {
                 <td>${unitCost ? formatCurrency(unitCost) : '-'}</td>
                 <td>${totalValue ? formatCurrency(totalValue) : '-'}</td>
             </tr>
-        `;
-    }).join('');
+        `
+    })
+    .join('')
 
-    // Chart (Quantity per product) with sorting, top-N, and threshold coloring
-    const thresholdInput = document.getElementById('low-stock-threshold');
-    const threshold = thresholdInput ? (parseInt(thresholdInput.value, 10) || 0) : (AppState.lowStockThreshold || 0);
+  // Chart (Quantity per product) with sorting, top-N, and threshold coloring
+  const thresholdInput = document.getElementById('low-stock-threshold')
+  const threshold = thresholdInput
+    ? parseInt(thresholdInput.value, 10) || 0
+    : AppState.lowStockThreshold || 0
 
-    const pairs = products.map(r => {
-        const qty = (typeof r.quantity === 'number' ? r.quantity : (r.currentStock || 0));
-        return { label: r.name || r.id || '', value: qty };
-    });
-    // Sort desc by quantity and cap to top 20 for readability
-    const TOP_N = 20;
-    const sorted = pairs.sort((a, b) => b.value - a.value).slice(0, TOP_N);
-    const labels = sorted.map(p => p.label);
-    const data = sorted.map(p => p.value);
-    const lowMask = sorted.map(p => p.value <= threshold);
-    renderInventoryChart(labels, data, { threshold, lowMask, topN: TOP_N, totalItems: pairs.length });
+  const pairs = products.map((r) => {
+    const qty =
+      typeof r.quantity === 'number' ? r.quantity : r.currentStock || 0
+    return { label: r.name || r.id || '', value: qty }
+  })
+  // Sort desc by quantity and cap to top 20 for readability
+  const TOP_N = 20
+  const sorted = pairs.sort((a, b) => b.value - a.value).slice(0, TOP_N)
+  const labels = sorted.map((p) => p.label)
+  const data = sorted.map((p) => p.value)
+  const lowMask = sorted.map((p) => p.value <= threshold)
+  renderInventoryChart(labels, data, {
+    threshold,
+    lowMask,
+    topN: TOP_N,
+    totalItems: pairs.length,
+  })
 
-    // Low-stock computation (use current threshold input or AppState.lowStockThreshold fallback)
-    // Threshold computed above
-    const lowStockItems = products.filter(p => {
-        const qty = typeof p.quantity === 'number' ? p.quantity : (p.currentStock || 0);
-        return qty <= threshold;
-    });
+  // Low-stock computation (use current threshold input or AppState.lowStockThreshold fallback)
+  // Threshold computed above
+  const lowStockItems = products.filter((p) => {
+    const qty =
+      typeof p.quantity === 'number' ? p.quantity : p.currentStock || 0
+    return qty <= threshold
+  })
 
-    // Populate low-stock table
-    const lowTbody = document.querySelector('#low-stock-table tbody');
-    if (lowTbody) {
-        lowTbody.innerHTML = lowStockItems.map(p => {
-            const qty = typeof p.quantity === 'number' ? p.quantity : (p.currentStock || 0);
-            const unit = p.unit || p.unitMeasure || '';
-            return `
+  // Populate low-stock table
+  const lowTbody = document.querySelector('#low-stock-table tbody')
+  if (lowTbody) {
+    lowTbody.innerHTML = lowStockItems
+      .map((p) => {
+        const qty =
+          typeof p.quantity === 'number' ? p.quantity : p.currentStock || 0
+        const unit = p.unit || p.unitMeasure || ''
+        return `
                 <tr>
-                    <td style="font-weight:500;">${p.id || p.stockNumber || ''}</td>
+                    <td style="font-weight:500;">${
+                      p.id || p.stockNumber || ''
+                    }</td>
                     <td>${p.name || ''}</td>
                     <td>${qty}</td>
                     <td>${unit}</td>
                 </tr>
-            `;
-        }).join('');
-    }
+            `
+      })
+      .join('')
+  }
 
-    // Update summary widgets
-    const lowCountEl = document.getElementById('low-stock-count');
-    const lowestItemEl = document.getElementById('lowest-item');
-    if (lowCountEl) lowCountEl.textContent = lowStockItems.length;
-    if (lowestItemEl) {
-        if (lowStockItems.length) {
-            const sorted = lowStockItems.slice().sort((a, b) => {
-                const qa = (typeof a.quantity === 'number' ? a.quantity : (a.currentStock || 0));
-                const qb = (typeof b.quantity === 'number' ? b.quantity : (b.currentStock || 0));
-                return qa - qb;
-            });
-            const first = sorted[0];
-            const qty = typeof first.quantity === 'number' ? first.quantity : (first.currentStock || 0);
-            const unit = first.unit || first.unitMeasure || '';
-            lowestItemEl.textContent = `${first.name || first.id} (${qty} ${unit})`;
-        } else {
-            lowestItemEl.textContent = '-';
-        }
+  // Update summary widgets
+  const lowCountEl = document.getElementById('low-stock-count')
+  const lowestItemEl = document.getElementById('lowest-item')
+  if (lowCountEl) lowCountEl.textContent = lowStockItems.length
+  if (lowestItemEl) {
+    if (lowStockItems.length) {
+      const sorted = lowStockItems.slice().sort((a, b) => {
+        const qa =
+          typeof a.quantity === 'number' ? a.quantity : a.currentStock || 0
+        const qb =
+          typeof b.quantity === 'number' ? b.quantity : b.currentStock || 0
+        return qa - qb
+      })
+      const first = sorted[0]
+      const qty =
+        typeof first.quantity === 'number'
+          ? first.quantity
+          : first.currentStock || 0
+      const unit = first.unit || first.unitMeasure || ''
+      lowestItemEl.textContent = `${first.name || first.id} (${qty} ${unit})`
+    } else {
+      lowestItemEl.textContent = '-'
     }
+  }
 
-    // Store low-stock rows for export
-    window.__lowStockRows = lowStockItems;
+  // Store low-stock rows for export
+  window.__lowStockRows = lowStockItems
 }
 
 function exportLowStockCSV() {
-    const rows = [['Stock Number', 'Name', 'Current Stock', 'Unit']];
-    const toExport = (window.__lowStockRows && window.__lowStockRows.length) ? window.__lowStockRows : [];
-    toExport.forEach(i => rows.push([i.stockNumber, i.name, i.currentStock, i.unit]));
-    downloadCSV('low-stock-report.csv', rows);
+  const rows = [['Stock Number', 'Name', 'Current Stock', 'Unit']]
+  const toExport =
+    window.__lowStockRows && window.__lowStockRows.length
+      ? window.__lowStockRows
+      : []
+  toExport.forEach((i) =>
+    rows.push([i.stockNumber, i.name, i.currentStock, i.unit])
+  )
+  downloadCSV('low-stock-report.csv', rows)
 }
 
 function renderRequisitionReport() {
-    const tbody = document.querySelector('#requisition-report-table tbody');
-    if (!tbody) return;
+  const tbody = document.querySelector('#requisition-report-table tbody')
+  if (!tbody) return
 
-    const dept = document.getElementById('requisition-department-filter')?.value || 'All';
-    const from = document.getElementById('requisition-date-from')?.value;
-    const to = document.getElementById('requisition-date-to')?.value;
+  const dept =
+    document.getElementById('requisition-department-filter')?.value || 'All'
+  const from = document.getElementById('requisition-date-from')?.value
+  const to = document.getElementById('requisition-date-to')?.value
 
-    let all = [...(AppState.newRequests || []), ...(AppState.pendingRequests || []), ...(AppState.completedRequests || [])];
+  let all = [
+    ...(AppState.newRequests || []),
+    ...(AppState.pendingRequests || []),
+    ...(AppState.completedRequests || []),
+  ]
 
-    // simple date filtering by requestDate if available
-    if (from) all = all.filter(r => r.requestDate ? new Date(r.requestDate) >= new Date(from) : true);
-    if (to) all = all.filter(r => r.requestDate ? new Date(r.requestDate) <= new Date(to) : true);
+  // simple date filtering by requestDate if available
+  if (from)
+    all = all.filter((r) =>
+      r.requestDate ? new Date(r.requestDate) >= new Date(from) : true
+    )
+  if (to)
+    all = all.filter((r) =>
+      r.requestDate ? new Date(r.requestDate) <= new Date(to) : true
+    )
 
-    // dept filter: assume r.department stores dept code or name
-    if (dept && dept !== 'All') all = all.filter(r => (r.department || '').toLowerCase().includes(dept.toLowerCase()));
+  // dept filter: assume r.department stores dept code or name
+  if (dept && dept !== 'All')
+    all = all.filter((r) =>
+      (r.department || '').toLowerCase().includes(dept.toLowerCase())
+    )
 
-    window.__requisitionFilteredRows = all;
+  window.__requisitionFilteredRows = all
 
-    tbody.innerHTML = all.map(r => `
+  tbody.innerHTML = all
+    .map(
+      (r) => `
         <tr>
             <td style="font-weight:500;">${r.id || '-'}</td>
             <td>${r.poNumber || '-'}</td>
             <td>${r.supplier || '-'}</td>
             <td>${formatCurrency(r.totalAmount || 0)}</td>
-            <td><span class="${getBadgeClass(r.status || 'draft')}">${(r.status || 'Draft')}</span></td>
+            <td><span class="${getBadgeClass(r.status || 'draft')}">${
+        r.status || 'Draft'
+      }</span></td>
         </tr>
-    `).join('');
+    `
+    )
+    .join('')
 
-    // render requisition totals by supplier (bar chart)
-    const totalsBySupplier = all.reduce((acc, r) => {
-        const s = r.supplier || 'Unknown';
-        acc[s] = (acc[s] || 0) + (r.totalAmount || 0);
-        return acc;
-    }, {});
+  // render requisition totals by supplier (bar chart)
+  const totalsBySupplier = all.reduce((acc, r) => {
+    const s = r.supplier || 'Unknown'
+    acc[s] = (acc[s] || 0) + (r.totalAmount || 0)
+    return acc
+  }, {})
 
-    const reqLabels = Object.keys(totalsBySupplier);
-    const reqData = reqLabels.map(l => totalsBySupplier[l]);
-    renderRequisitionChart(reqLabels, reqData);
+  const reqLabels = Object.keys(totalsBySupplier)
+  const reqData = reqLabels.map((l) => totalsBySupplier[l])
+  renderRequisitionChart(reqLabels, reqData)
 }
 
-let __requisitionChartInstance = null;
+let __requisitionChartInstance = null
 function renderRequisitionChart(labels, data) {
-    const ctx = document.getElementById('requisition-chart');
-    if (!ctx) return;
-    if (typeof Chart === 'undefined') return;
-    if (__requisitionChartInstance) __requisitionChartInstance.destroy();
-    __requisitionChartInstance = new Chart(ctx.getContext('2d'), {
-        type: 'bar',
-        data: {
-            labels,
-            datasets: [{
-                label: 'Total Amount (₱)',
-                data,
-                borderRadius: 8,
-                borderSkipped: false,
-                maxBarThickness: 48,
-                backgroundColor: (context) => {
-                    const { chart } = context;
-                    const { ctx: c, chartArea } = chart;
-                    if (!chartArea) return '#6366f1';
-                    const g = c.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
-                    g.addColorStop(0, '#f59e0b'); // amber-500
-                    g.addColorStop(1, '#6366f1'); // indigo-500
-                    return g;
-                }
-            }]
+  const ctx = document.getElementById('requisition-chart')
+  if (!ctx) return
+  if (typeof Chart === 'undefined') return
+  if (__requisitionChartInstance) __requisitionChartInstance.destroy()
+  __requisitionChartInstance = new Chart(ctx.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Total Amount (₱)',
+          data,
+          borderRadius: 8,
+          borderSkipped: false,
+          maxBarThickness: 48,
+          backgroundColor: (context) => {
+            const { chart } = context
+            const { ctx: c, chartArea } = chart
+            if (!chartArea) return '#6366f1'
+            const g = c.createLinearGradient(
+              0,
+              chartArea.bottom,
+              0,
+              chartArea.top
+            )
+            g.addColorStop(0, '#f59e0b') // amber-500
+            g.addColorStop(1, '#6366f1') // indigo-500
+            return g
+          },
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            layout: { padding: 8 },
-            scales: {
-                x: { grid: { display: false }, ticks: { color: '#6b7280', font: { size: 12 } } },
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(0,0,0,0.06)' },
-                    ticks: { color: '#6b7280', font: { size: 12 }, callback: (v) => formatCurrency(v) }
-                }
-            },
-            plugins: {
-                legend: { display: true, labels: { color: '#111827', font: { weight: '600' } } },
-                tooltip: { callbacks: { label: (ctx) => ` ${formatCurrency(ctx.raw)}` } },
-                title: { display: true, text: 'Requisition Totals by Supplier', color: '#111827', font: { weight: '600', size: 14 } },
-                valueDataLabels: { display: true, format: 'currency' }
-            },
-            animation: { duration: 600, easing: 'easeOutQuart' }
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: 8 },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#6b7280', font: { size: 12 } },
         },
-        plugins: [ValueDataLabelsPlugin]
-    });
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(0,0,0,0.06)' },
+          ticks: {
+            color: '#6b7280',
+            font: { size: 12 },
+            callback: (v) => formatCurrency(v),
+          },
+        },
+      },
+      plugins: {
+        legend: {
+          display: true,
+          labels: { color: '#111827', font: { weight: '600' } },
+        },
+        tooltip: {
+          callbacks: { label: (ctx) => ` ${formatCurrency(ctx.raw)}` },
+        },
+        title: {
+          display: true,
+          text: 'Requisition Totals by Supplier',
+          color: '#111827',
+          font: { weight: '600', size: 14 },
+        },
+        valueDataLabels: { display: true, format: 'currency' },
+      },
+      animation: { duration: 600, easing: 'easeOutQuart' },
+    },
+    plugins: [ValueDataLabelsPlugin],
+  })
 }
 
 function renderStatusReport() {
-    const tbody = document.querySelector('#status-report-table tbody');
-    if (!tbody) return;
+  const tbody = document.querySelector('#status-report-table tbody')
+  if (!tbody) return
 
-    const dept = document.getElementById('status-department-filter')?.value || 'All';
-    const statusFilter = document.getElementById('status-status-filter')?.value || 'All';
-    const from = document.getElementById('status-date-from')?.value;
-    const to = document.getElementById('status-date-to')?.value;
+  const dept =
+    document.getElementById('status-department-filter')?.value || 'All'
+  const statusFilter =
+    document.getElementById('status-status-filter')?.value || 'All'
+  const from = document.getElementById('status-date-from')?.value
+  const to = document.getElementById('status-date-to')?.value
 
-    // Use statusRequests from Status Management instead of request arrays
-    let all = [...(AppState.statusRequests || [])];
+  // Use statusRequests from Status Management instead of request arrays
+  let all = [...(AppState.statusRequests || [])]
 
-    // Apply date filters based on updatedAt field
-    if (from) all = all.filter(r => r.updatedAt ? new Date(r.updatedAt) >= new Date(from) : true);
-    if (to) all = all.filter(r => r.updatedAt ? new Date(r.updatedAt) <= new Date(to) : true);
+  // Apply date filters based on updatedAt field
+  if (from)
+    all = all.filter((r) =>
+      r.updatedAt ? new Date(r.updatedAt) >= new Date(from) : true
+    )
+  if (to)
+    all = all.filter((r) =>
+      r.updatedAt ? new Date(r.updatedAt) <= new Date(to) : true
+    )
 
-    // Apply department filter
-    if (dept && dept !== 'All') all = all.filter(r => (r.department || '').toLowerCase().includes(dept.toLowerCase()));
+  // Apply department filter
+  if (dept && dept !== 'All')
+    all = all.filter((r) =>
+      (r.department || '').toLowerCase().includes(dept.toLowerCase())
+    )
 
-    // Apply status filter
-    if (statusFilter && statusFilter !== 'All') all = all.filter(r => (r.status || 'unknown').toLowerCase() === statusFilter.toLowerCase());
+  // Apply status filter
+  if (statusFilter && statusFilter !== 'All')
+    all = all.filter(
+      (r) =>
+        (r.status || 'unknown').toLowerCase() === statusFilter.toLowerCase()
+    )
 
-    const summary = all.reduce((acc, r) => { const s = r.status || 'unknown'; acc[s] = (acc[s] || 0) + 1; return acc; }, {});
-    window.__statusSummary = summary;
+  const summary = all.reduce((acc, r) => {
+    const s = r.status || 'unknown'
+    acc[s] = (acc[s] || 0) + 1
+    return acc
+  }, {})
+  window.__statusSummary = summary
 
-    tbody.innerHTML = Object.keys(summary).map(k => `
+  tbody.innerHTML = Object.keys(summary)
+    .map(
+      (k) => `
         <tr>
             <td>${k}</td>
             <td>${summary[k]}</td>
         </tr>
-    `).join('');
+    `
+    )
+    .join('')
 
-    // render status chart
-    renderStatusChart(Object.keys(summary), Object.values(summary));
+  // render status chart
+  renderStatusChart(Object.keys(summary), Object.values(summary))
 
-    // Replace tbody HTML with separate rows for each status-department combination
-    const rowsHtml = [];
+  // Replace tbody HTML with separate rows for each status-department combination
+  const rowsHtml = []
 
-    Object.keys(summary).forEach(k => {
-        const matches = all.filter(r => (r.status || 'unknown') === k);
+  Object.keys(summary).forEach((k) => {
+    const matches = all.filter((r) => (r.status || 'unknown') === k)
 
-        // Group by department
-        const byDepartment = {};
-        matches.forEach(r => {
-            const dept = r.department || 'Unassigned';
-            if (!byDepartment[dept]) byDepartment[dept] = [];
-            byDepartment[dept].push(r);
-        });
+    // Group by department
+    const byDepartment = {}
+    matches.forEach((r) => {
+      const dept = r.department || 'Unassigned'
+      if (!byDepartment[dept]) byDepartment[dept] = []
+      byDepartment[dept].push(r)
+    })
 
-        // Create a row for each department
-        const departments = Object.keys(byDepartment);
+    // Create a row for each department
+    const departments = Object.keys(byDepartment)
 
-        if (departments.length === 0) {
-            // No departments, show one row with no department
-            rowsHtml.push(`
+    if (departments.length === 0) {
+      // No departments, show one row with no department
+      rowsHtml.push(`
                 <tr>
                     <td style="text-transform: capitalize; font-weight: 500;">${k}</td>
                     <td style="font-weight: 600;">${summary[k]}</td>
                     <td>—</td>
                     <td style="max-width:420px;"><span style="color:#6b7280;">—</span></td>
                 </tr>
-            `);
-        } else {
-            departments.forEach((dept, index) => {
-                const deptRequests = byDepartment[dept];
-                const detailHtml = deptRequests.map(r => `
+            `)
+    } else {
+      departments.forEach((dept, index) => {
+        const deptRequests = byDepartment[dept]
+        const detailHtml = deptRequests
+          .map(
+            (r) => `
                     <div style="margin-bottom:6px;">
-                        <a href="#" onclick="viewStatusRequestDetails('${r.id}'); return false;" style="color:#dc2626; text-decoration:underline;">${r.id}</a>
+                        <a href="#" onclick="viewStatusRequestDetails('${
+                          r.id
+                        }'); return false;" style="color:#dc2626; text-decoration:underline;">${
+              r.id
+            }</a>
                         ${r.requester ? ` - ${r.requester}` : ''}
                         ${r.item ? ` (${r.item})` : ''}
-                        <span style="margin-left:8px; color:#6b7280;">${r.cost ? formatCurrency(r.cost) : ''}</span>
+                        <span style="margin-left:8px; color:#6b7280;">${
+                          r.cost ? formatCurrency(r.cost) : ''
+                        }</span>
                     </div>
-                `).join('');
+                `
+          )
+          .join('')
 
-                rowsHtml.push(`
+        rowsHtml.push(`
                     <tr>
                         <td style="text-transform: capitalize; font-weight: 500;">${k}</td>
                         <td style="font-weight: 600;">${deptRequests.length}</td>
                         <td>${dept}</td>
                         <td style="max-width:420px;">${detailHtml}</td>
                     </tr>
-                `);
-            });
-        }
-    });
+                `)
+      })
+    }
+  })
 
-    tbody.innerHTML = rowsHtml.join('');
+  tbody.innerHTML = rowsHtml.join('')
 }
 
 function showStatusDetails(status) {
-    // Find matching requests from Status Management
-    const all = [...(AppState.statusRequests || [])];
-    const matches = all.filter(r => (r.status || 'unknown') === status);
+  // Find matching requests from Status Management
+  const all = [...(AppState.statusRequests || [])]
+  const matches = all.filter((r) => (r.status || 'unknown') === status)
 
-    const modal = document.getElementById('purchase-order-modal');
-    const modalContent = modal.querySelector('.modal-content');
+  const modal = document.getElementById('purchase-order-modal')
+  const modalContent = modal.querySelector('.modal-content')
 
-    modalContent.innerHTML = `
+  modalContent.innerHTML = `
         <div class="modal-header">
-            <h2 class="modal-title">Requests: ${status.charAt(0).toUpperCase() + status.slice(1)}</h2>
+            <h2 class="modal-title">Requests: ${
+              status.charAt(0).toUpperCase() + status.slice(1)
+            }</h2>
             <button class="modal-close" onclick="closePurchaseOrderModal()">
                 <i data-lucide="x" style="width: 20px; height: 20px;"></i>
             </button>
@@ -3066,250 +3733,359 @@ function showStatusDetails(status) {
             <table class="table">
                 <thead><tr><th>Request ID</th><th>Requester</th><th>Department</th><th>Item</th><th>Priority</th><th>Cost</th><th>Updated</th></tr></thead>
                 <tbody>
-                    ${matches.length ? matches.map(r => `
+                    ${
+                      matches.length
+                        ? matches
+                            .map(
+                              (r) => `
                         <tr>
-                            <td><a href="#" onclick="viewStatusRequestDetails('${r.id}'); return false;" style="color:#dc2626; text-decoration:underline;">${r.id}</a></td>
+                            <td><a href="#" onclick="viewStatusRequestDetails('${
+                              r.id
+                            }'); return false;" style="color:#dc2626; text-decoration:underline;">${
+                                r.id
+                              }</a></td>
                             <td>${r.requester || '-'}</td>
                             <td>${r.department || '-'}</td>
                             <td>${r.item || '-'}</td>
-                            <td><span class="${getBadgeClass(r.priority || 'low', 'priority')}">${capitalize(r.priority || 'low')}</span></td>
+                            <td><span class="${getBadgeClass(
+                              r.priority || 'low',
+                              'priority'
+                            )}">${capitalize(r.priority || 'low')}</span></td>
                             <td>${r.cost ? formatCurrency(r.cost) : '-'}</td>
                             <td>${r.updatedAt || '-'}</td>
                         </tr>
-                    `).join('') : `<tr><td colspan="7">No requests with status ${status}</td></tr>`}
+                    `
+                            )
+                            .join('')
+                        : `<tr><td colspan="7">No requests with status ${status}</td></tr>`
+                    }
                 </tbody>
             </table>
         </div>
         <div class="modal-footer">
             <button class="btn-secondary" onclick="closePurchaseOrderModal()">Close</button>
         </div>
-    `;
+    `
 
-    modal.classList.add('active');
-    lucide.createIcons();
+  modal.classList.add('active')
+  lucide.createIcons()
 }
 
-window.showStatusDetails = showStatusDetails;
+window.showStatusDetails = showStatusDetails
 
 // Chart helpers and renderers
 function numberWithCommas(x) {
-    if (x === null || x === undefined) return '';
-    const n = typeof x === 'number' ? x : Number(String(x).replace(/[^0-9.-]/g, ''));
-    if (isNaN(n)) return String(x);
-    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  if (x === null || x === undefined) return ''
+  const n =
+    typeof x === 'number' ? x : Number(String(x).replace(/[^0-9.-]/g, ''))
+  if (isNaN(n)) return String(x)
+  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
 // Lightweight plugin to draw values above bars
 const ValueDataLabelsPlugin = {
-    id: 'valueDataLabels',
-    afterDatasetsDraw(chart, args, pluginOptions) {
-        const display = chart?.options?.plugins?.valueDataLabels?.display;
-        if (!display) return;
-        const { ctx } = chart;
-        const datasetIndex = pluginOptions?.datasetIndex ?? 0;
-        const meta = chart.getDatasetMeta(datasetIndex);
-        if (!meta?.data) return;
-        ctx.save();
-        ctx.fillStyle = pluginOptions?.color || '#111827';
-        ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        meta.data.forEach((el, i) => {
-            const raw = chart.data?.datasets?.[datasetIndex]?.data?.[i];
-            if (raw === undefined || raw === null) return;
-            const format = chart.options?.plugins?.valueDataLabels?.format;
-            const text = format === 'currency' ? formatCurrency(raw) : numberWithCommas(raw);
-            const x = el.x;
-            const y = el.y - 6;
-            ctx.fillText(text, x, y);
-        });
-        ctx.restore();
-    }
-};
+  id: 'valueDataLabels',
+  afterDatasetsDraw(chart, args, pluginOptions) {
+    const display = chart?.options?.plugins?.valueDataLabels?.display
+    if (!display) return
+    const { ctx } = chart
+    const datasetIndex = pluginOptions?.datasetIndex ?? 0
+    const meta = chart.getDatasetMeta(datasetIndex)
+    if (!meta?.data) return
+    ctx.save()
+    ctx.fillStyle = pluginOptions?.color || '#111827'
+    ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'bottom'
+    meta.data.forEach((el, i) => {
+      const raw = chart.data?.datasets?.[datasetIndex]?.data?.[i]
+      if (raw === undefined || raw === null) return
+      const format = chart.options?.plugins?.valueDataLabels?.format
+      const text =
+        format === 'currency' ? formatCurrency(raw) : numberWithCommas(raw)
+      const x = el.x
+      const y = el.y - 6
+      ctx.fillText(text, x, y)
+    })
+    ctx.restore()
+  },
+}
 
 // Center text plugin for doughnut charts to display the total
 const DoughnutCenterTextPlugin = {
-    id: 'doughnutCenterText',
-    afterDraw(chart, args, opts) {
-        if (chart.config.type !== 'doughnut') return;
-        const dataset = chart.config.data?.datasets?.[0];
-        if (!dataset || !Array.isArray(dataset.data)) return;
-        const total = dataset.data.reduce((a, b) => a + (Number(b) || 0), 0);
-        const { ctx, chartArea } = chart;
-        if (!chartArea) return;
-        const cx = (chartArea.left + chartArea.right) / 2;
-        const cy = (chartArea.top + chartArea.bottom) / 2;
-        ctx.save();
-        ctx.textAlign = 'center';
-        ctx.fillStyle = opts?.color || '#111827';
-        ctx.font = '600 16px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        ctx.fillText(numberWithCommas(total), cx, cy);
-        ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        ctx.fillStyle = '#6b7280';
-        ctx.fillText('Total', cx, cy + 18);
-        ctx.restore();
-    }
-};
-
-// Chart renderers
-let __inventoryChartInstance = null;
-function renderInventoryChart(labels, data, opts = {}) {
-    const ctx = document.getElementById('inventory-chart');
-    if (!ctx) return;
-    if (typeof Chart === 'undefined') return;
-    if (__inventoryChartInstance) __inventoryChartInstance.destroy();
-    const threshold = typeof opts.threshold === 'number' ? opts.threshold : null;
-    const lowMask = Array.isArray(opts.lowMask) ? opts.lowMask : labels.map(() => false);
-    const ThresholdLinePlugin = {
-        id: 'thresholdLine',
-        afterDatasetsDraw(chart) {
-            if (threshold == null) return;
-            const { ctx, chartArea, scales } = chart;
-            if (!chartArea || !scales?.y) return;
-            const y = scales.y.getPixelForValue(threshold);
-            ctx.save();
-            ctx.strokeStyle = '#ef4444';
-            ctx.setLineDash([4, 4]);
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.moveTo(chartArea.left, y);
-            ctx.lineTo(chartArea.right, y);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.fillStyle = '#ef4444';
-            ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-            ctx.textAlign = 'right';
-            ctx.fillText(`Threshold: ${numberWithCommas(threshold)}`, chartArea.right - 4, y - 6);
-            ctx.restore();
-        }
-    };
-
-    __inventoryChartInstance = new Chart(ctx.getContext('2d'), {
-        type: 'bar',
-        data: {
-            labels,
-            datasets: [{
-                label: 'Current Stock',
-                data,
-                borderRadius: 8,
-                borderSkipped: false,
-                maxBarThickness: 48,
-                backgroundColor: (context) => {
-                    const idx = context?.dataIndex ?? 0;
-                    // Low items get warm gradient, others cool gradient
-                    const low = !!lowMask[idx];
-                    const { chart } = context;
-                    const { ctx: c, chartArea } = chart;
-                    if (!chartArea) return low ? '#f97316' : '#3b82f6';
-                    const g = c.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
-                    if (low) {
-                        g.addColorStop(0, '#f97316'); // orange-500
-                        g.addColorStop(1, '#ef4444'); // red-500
-                    } else {
-                        g.addColorStop(0, '#22c55e'); // green-500
-                        g.addColorStop(1, '#3b82f6'); // blue-500
-                    }
-                    return g;
-                }
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            layout: { padding: 8 },
-            scales: {
-                x: { grid: { display: false }, ticks: { color: '#6b7280', font: { size: 12 } } },
-                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { color: '#6b7280', font: { size: 12 }, callback: (v) => numberWithCommas(v) } }
-            },
-            plugins: {
-                legend: { display: true, labels: { color: '#111827', font: { weight: '600' } } },
-                tooltip: { callbacks: { label: (ctx) => ` ${numberWithCommas(ctx.raw)}` } },
-                title: { display: true, text: opts?.totalItems && opts?.topN && opts.totalItems > opts.topN ? `Inventory Stock (Top ${opts.topN} of ${opts.totalItems})` : 'Inventory Stock by Product', color: '#111827', font: { weight: '600', size: 14 } },
-                valueDataLabels: { display: true, format: 'number' }
-            },
-            animation: { duration: 600, easing: 'easeOutQuart' }
-        },
-        plugins: [ValueDataLabelsPlugin, ThresholdLinePlugin]
-    });
+  id: 'doughnutCenterText',
+  afterDraw(chart, args, opts) {
+    if (chart.config.type !== 'doughnut') return
+    const dataset = chart.config.data?.datasets?.[0]
+    if (!dataset || !Array.isArray(dataset.data)) return
+    const total = dataset.data.reduce((a, b) => a + (Number(b) || 0), 0)
+    const { ctx, chartArea } = chart
+    if (!chartArea) return
+    const cx = (chartArea.left + chartArea.right) / 2
+    const cy = (chartArea.top + chartArea.bottom) / 2
+    ctx.save()
+    ctx.textAlign = 'center'
+    ctx.fillStyle = opts?.color || '#111827'
+    ctx.font = '600 16px system-ui, -apple-system, Segoe UI, Roboto, Arial'
+    ctx.fillText(numberWithCommas(total), cx, cy)
+    ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial'
+    ctx.fillStyle = '#6b7280'
+    ctx.fillText('Total', cx, cy + 18)
+    ctx.restore()
+  },
 }
 
-let __statusChartInstance = null;
-function renderStatusChart(labels, data) {
-    const ctx = document.getElementById('status-chart');
-    if (!ctx) return;
-    if (typeof Chart === 'undefined') return;
-    if (__statusChartInstance) __statusChartInstance.destroy();
+// Chart renderers
+let __inventoryChartInstance = null
+function renderInventoryChart(labels, data, opts = {}) {
+  const ctx = document.getElementById('inventory-chart')
+  if (!ctx) return
+  if (typeof Chart === 'undefined') return
+  if (__inventoryChartInstance) __inventoryChartInstance.destroy()
+  const threshold = typeof opts.threshold === 'number' ? opts.threshold : null
+  const lowMask = Array.isArray(opts.lowMask)
+    ? opts.lowMask
+    : labels.map(() => false)
+  const ThresholdLinePlugin = {
+    id: 'thresholdLine',
+    afterDatasetsDraw(chart) {
+      if (threshold == null) return
+      const { ctx, chartArea, scales } = chart
+      if (!chartArea || !scales?.y) return
+      const y = scales.y.getPixelForValue(threshold)
+      ctx.save()
+      ctx.strokeStyle = '#ef4444'
+      ctx.setLineDash([4, 4])
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+      ctx.moveTo(chartArea.left, y)
+      ctx.lineTo(chartArea.right, y)
+      ctx.stroke()
+      ctx.setLineDash([])
+      ctx.fillStyle = '#ef4444'
+      ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial'
+      ctx.textAlign = 'right'
+      ctx.fillText(
+        `Threshold: ${numberWithCommas(threshold)}`,
+        chartArea.right - 4,
+        y - 6
+      )
+      ctx.restore()
+    },
+  }
 
-    // Generate colors based on actual status labels
-    const backgroundColors = labels.map(label => getStatusColor(label.toLowerCase()));
-
-    __statusChartInstance = new Chart(ctx.getContext('2d'), {
-        type: 'doughnut',
-        data: { labels, datasets: [{ data, backgroundColor: backgroundColors, borderWidth: 2, borderColor: '#ffffff' }] },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '62%',
-            layout: { padding: 8 },
-            plugins: {
-                legend: { position: 'top', labels: { color: '#111827', boxWidth: 12, usePointStyle: true } },
-                tooltip: {
-                    callbacks: {
-                        label: (ctx) => {
-                            const total = ctx.dataset.data.reduce((a, b) => a + (Number(b) || 0), 0);
-                            const val = Number(ctx.raw) || 0;
-                            const pct = total ? ((val / total) * 100).toFixed(1) : '0.0';
-                            return ` ${ctx.label}: ${numberWithCommas(val)} (${pct}%)`;
-                        }
-                    }
-                },
-                title: { display: true, text: 'Requests by Status', color: '#111827', font: { weight: '600', size: 14 } },
-                doughnutCenterText: { color: '#111827' }
-            },
-            animation: { animateScale: true, animateRotate: true }
+  __inventoryChartInstance = new Chart(ctx.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Current Stock',
+          data,
+          borderRadius: 8,
+          borderSkipped: false,
+          maxBarThickness: 48,
+          backgroundColor: (context) => {
+            const idx = context?.dataIndex ?? 0
+            // Low items get warm gradient, others cool gradient
+            const low = !!lowMask[idx]
+            const { chart } = context
+            const { ctx: c, chartArea } = chart
+            if (!chartArea) return low ? '#f97316' : '#3b82f6'
+            const g = c.createLinearGradient(
+              0,
+              chartArea.bottom,
+              0,
+              chartArea.top
+            )
+            if (low) {
+              g.addColorStop(0, '#f97316') // orange-500
+              g.addColorStop(1, '#ef4444') // red-500
+            } else {
+              g.addColorStop(0, '#22c55e') // green-500
+              g.addColorStop(1, '#3b82f6') // blue-500
+            }
+            return g
+          },
         },
-        plugins: [DoughnutCenterTextPlugin]
-    });
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: 8 },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#6b7280', font: { size: 12 } },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(0,0,0,0.06)' },
+          ticks: {
+            color: '#6b7280',
+            font: { size: 12 },
+            callback: (v) => numberWithCommas(v),
+          },
+        },
+      },
+      plugins: {
+        legend: {
+          display: true,
+          labels: { color: '#111827', font: { weight: '600' } },
+        },
+        tooltip: {
+          callbacks: { label: (ctx) => ` ${numberWithCommas(ctx.raw)}` },
+        },
+        title: {
+          display: true,
+          text:
+            opts?.totalItems && opts?.topN && opts.totalItems > opts.topN
+              ? `Inventory Stock (Top ${opts.topN} of ${opts.totalItems})`
+              : 'Inventory Stock by Product',
+          color: '#111827',
+          font: { weight: '600', size: 14 },
+        },
+        valueDataLabels: { display: true, format: 'number' },
+      },
+      animation: { duration: 600, easing: 'easeOutQuart' },
+    },
+    plugins: [ValueDataLabelsPlugin, ThresholdLinePlugin],
+  })
+}
+
+let __statusChartInstance = null
+function renderStatusChart(labels, data) {
+  const ctx = document.getElementById('status-chart')
+  if (!ctx) return
+  if (typeof Chart === 'undefined') return
+  if (__statusChartInstance) __statusChartInstance.destroy()
+
+  // Generate colors based on actual status labels
+  const backgroundColors = labels.map((label) =>
+    getStatusColor(label.toLowerCase())
+  )
+
+  __statusChartInstance = new Chart(ctx.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [
+        {
+          data,
+          backgroundColor: backgroundColors,
+          borderWidth: 2,
+          borderColor: '#ffffff',
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '62%',
+      layout: { padding: 8 },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { color: '#111827', boxWidth: 12, usePointStyle: true },
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const total = ctx.dataset.data.reduce(
+                (a, b) => a + (Number(b) || 0),
+                0
+              )
+              const val = Number(ctx.raw) || 0
+              const pct = total ? ((val / total) * 100).toFixed(1) : '0.0'
+              return ` ${ctx.label}: ${numberWithCommas(val)} (${pct}%)`
+            },
+          },
+        },
+        title: {
+          display: true,
+          text: 'Requests by Status',
+          color: '#111827',
+          font: { weight: '600', size: 14 },
+        },
+        doughnutCenterText: { color: '#111827' },
+      },
+      animation: { animateScale: true, animateRotate: true },
+    },
+    plugins: [DoughnutCenterTextPlugin],
+  })
 }
 
 // Hook filters and export buttons after page load
 function initializeReportPageEvents(pageId) {
-    if (pageId === 'inventory-reports') {
-        document.getElementById('inventory-department-filter')?.addEventListener('change', renderInventoryReport);
-        document.getElementById('inventory-date-from')?.addEventListener('change', renderInventoryReport);
-        document.getElementById('inventory-date-to')?.addEventListener('change', renderInventoryReport);
-        document.getElementById('export-inventory-btn')?.addEventListener('click', exportInventoryCSV);
-        document.getElementById('low-stock-threshold')?.addEventListener('change', renderInventoryReport);
-        document.getElementById('low-stock-threshold')?.addEventListener('change', function (e) {
-            const v = parseInt(e.target.value, 10);
-            if (!isNaN(v)) AppState.lowStockThreshold = v;
-        });
-        document.getElementById('export-lowstock-btn')?.addEventListener('click', exportLowStockCSV);
-        // initial render
-        renderInventoryReport();
-    }
-    if (pageId === 'requisition-reports') {
-        document.getElementById('requisition-department-filter')?.addEventListener('change', renderRequisitionReport);
-        document.getElementById('requisition-date-from')?.addEventListener('change', renderRequisitionReport);
-        document.getElementById('requisition-date-to')?.addEventListener('change', renderRequisitionReport);
-        document.getElementById('export-requisition-btn')?.addEventListener('click', exportRequisitionCSV);
-        renderRequisitionReport();
-    }
-    if (pageId === 'status-report') {
-        document.getElementById('status-department-filter')?.addEventListener('change', renderStatusReport);
-        document.getElementById('status-status-filter')?.addEventListener('change', renderStatusReport);
-        document.getElementById('status-date-from')?.addEventListener('change', renderStatusReport);
-        document.getElementById('status-date-to')?.addEventListener('change', renderStatusReport);
-        document.getElementById('export-status-btn')?.addEventListener('click', exportStatusCSV);
-        renderStatusReport();
-    }
+  if (pageId === 'inventory-reports') {
+    document
+      .getElementById('inventory-department-filter')
+      ?.addEventListener('change', renderInventoryReport)
+    document
+      .getElementById('inventory-date-from')
+      ?.addEventListener('change', renderInventoryReport)
+    document
+      .getElementById('inventory-date-to')
+      ?.addEventListener('change', renderInventoryReport)
+    document
+      .getElementById('export-inventory-btn')
+      ?.addEventListener('click', exportInventoryCSV)
+    document
+      .getElementById('low-stock-threshold')
+      ?.addEventListener('change', renderInventoryReport)
+    document
+      .getElementById('low-stock-threshold')
+      ?.addEventListener('change', function (e) {
+        const v = parseInt(e.target.value, 10)
+        if (!isNaN(v)) AppState.lowStockThreshold = v
+      })
+    document
+      .getElementById('export-lowstock-btn')
+      ?.addEventListener('click', exportLowStockCSV)
+    // initial render
+    renderInventoryReport()
+  }
+  if (pageId === 'requisition-reports') {
+    document
+      .getElementById('requisition-department-filter')
+      ?.addEventListener('change', renderRequisitionReport)
+    document
+      .getElementById('requisition-date-from')
+      ?.addEventListener('change', renderRequisitionReport)
+    document
+      .getElementById('requisition-date-to')
+      ?.addEventListener('change', renderRequisitionReport)
+    document
+      .getElementById('export-requisition-btn')
+      ?.addEventListener('click', exportRequisitionCSV)
+    renderRequisitionReport()
+  }
+  if (pageId === 'status-report') {
+    document
+      .getElementById('status-department-filter')
+      ?.addEventListener('change', renderStatusReport)
+    document
+      .getElementById('status-status-filter')
+      ?.addEventListener('change', renderStatusReport)
+    document
+      .getElementById('status-date-from')
+      ?.addEventListener('change', renderStatusReport)
+    document
+      .getElementById('status-date-to')
+      ?.addEventListener('change', renderStatusReport)
+    document
+      .getElementById('export-status-btn')
+      ?.addEventListener('click', exportStatusCSV)
+    renderStatusReport()
+  }
 }
 
 // Ensure initializePageEvents calls the report page events too
-const _origInitializePageEvents = initializePageEvents;
+const _origInitializePageEvents = initializePageEvents
 initializePageEvents = function (pageId) {
-    _origInitializePageEvents(pageId);
-    initializeReportPageEvents(pageId);
+  _origInitializePageEvents(pageId)
+  initializeReportPageEvents(pageId)
 }
 
 // ----------------------------- //
@@ -3317,44 +4093,44 @@ initializePageEvents = function (pageId) {
 // ----------------------------- //
 
 function openPurchaseOrderModal(mode = 'create', requestId = null) {
-    const modal = document.getElementById('purchase-order-modal');
-    const modalContent = modal.querySelector('.modal-content');
+  const modal = document.getElementById('purchase-order-modal')
+  const modalContent = modal.querySelector('.modal-content')
 
-    AppState.currentModal = { mode, requestId };
-    // Reset wizard step if creating new
-    if (mode === 'create') {
-        AppState.purchaseOrderWizardStep = 1;
-        AppState.purchaseOrderDraft = {}; // reset draft on fresh create
-    }
+  AppState.currentModal = { mode, requestId }
+  // Reset wizard step if creating new
+  if (mode === 'create') {
+    AppState.purchaseOrderWizardStep = 1
+    AppState.purchaseOrderDraft = {} // reset draft on fresh create
+  }
 
-    // Load existing request if not create mode
-    let requestData = null;
-    if (requestId) {
-        requestData = AppState.newRequests.find(r => r.id === requestId) ||
-            AppState.pendingRequests.find(r => r.id === requestId) ||
-            AppState.completedRequests.find(r => r.id === requestId);
-    }
+  // Load existing request if not create mode
+  let requestData = null
+  if (requestId) {
+    requestData =
+      AppState.newRequests.find((r) => r.id === requestId) ||
+      AppState.pendingRequests.find((r) => r.id === requestId) ||
+      AppState.completedRequests.find((r) => r.id === requestId)
+  }
 
-    // Use wizard wrapper if create mode, otherwise legacy single view for view mode
-    if (mode === 'create') {
-        modalContent.innerHTML = generatePurchaseOrderWizardShell(requestData);
-        renderPurchaseOrderWizardStep(requestData);
-    } else {
-        modalContent.innerHTML = generatePurchaseOrderModal(mode, requestData);
-    }
-    modal.classList.add('active');
+  // Use wizard wrapper if create mode, otherwise legacy single view for view mode
+  if (mode === 'create') {
+    modalContent.innerHTML = generatePurchaseOrderWizardShell(requestData)
+    renderPurchaseOrderWizardStep(requestData)
+  } else {
+    modalContent.innerHTML = generatePurchaseOrderModal(mode, requestData)
+  }
+  modal.classList.add('active')
 
-    lucide.createIcons();
-    if (mode === 'view') {
-        initializePurchaseOrderModal(requestData);
-    }
+  lucide.createIcons()
+  if (mode === 'view') {
+    initializePurchaseOrderModal(requestData)
+  }
 }
 
-
 function closePurchaseOrderModal() {
-    const modal = document.getElementById('purchase-order-modal');
-    modal.classList.remove('active');
-    AppState.currentModal = null;
+  const modal = document.getElementById('purchase-order-modal')
+  modal.classList.remove('active')
+  AppState.currentModal = null
 }
 
 // ---------------------- //
@@ -3362,7 +4138,7 @@ function closePurchaseOrderModal() {
 // ---------------------- //
 
 function generatePurchaseOrderWizardShell(requestData) {
-    return `
+  return `
         <div class="modal-header" style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; border-bottom: none; padding: 32px 24px;">
             <div style="display: flex; align-items: center; gap: 16px;">
                 <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
@@ -3380,67 +4156,97 @@ function generatePurchaseOrderWizardShell(requestData) {
         </div>
         <div class="modal-body" id="po-wizard-body" style="padding: 32px 24px; background: #f9fafb;"></div>
         <div class="modal-footer" id="po-wizard-footer" style="padding: 20px 24px; background: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; justify-content: flex-end;"></div>
-    `;
+    `
 }
 
 function renderPurchaseOrderWizardStep(requestData) {
-    const body = document.getElementById('po-wizard-body');
-    const footer = document.getElementById('po-wizard-footer');
-    if (!body || !footer) return;
-    const step = AppState.purchaseOrderWizardStep;
+  const body = document.getElementById('po-wizard-body')
+  const footer = document.getElementById('po-wizard-footer')
+  if (!body || !footer) return
+  const step = AppState.purchaseOrderWizardStep
 
-    const totalSteps = 4;
-    const stepLabels = ['Supplier', 'Details', 'Items', 'Review'];
-    const stepIcons = ['truck', 'file-text', 'package', 'check-circle'];
+  const totalSteps = 4
+  const stepLabels = ['Supplier', 'Details', 'Items', 'Review']
+  const stepIcons = ['truck', 'file-text', 'package', 'check-circle']
 
-    const progress = (() => {
-        const parts = [];
-        for (let i = 1; i <= totalSteps; i++) {
-            const isCompleted = i < step;
-            const isActive = i === step;
-            const cls = isCompleted ? 'po-step completed' : (isActive ? 'po-step active' : 'po-step');
-            const stepColor = isCompleted ? '#16a34a' : (isActive ? '#2563eb' : '#9ca3af');
-            parts.push(`
+  const progress = (() => {
+    const parts = []
+    for (let i = 1; i <= totalSteps; i++) {
+      const isCompleted = i < step
+      const isActive = i === step
+      const cls = isCompleted
+        ? 'po-step completed'
+        : isActive
+        ? 'po-step active'
+        : 'po-step'
+      const stepColor = isCompleted
+        ? '#16a34a'
+        : isActive
+        ? '#2563eb'
+        : '#9ca3af'
+      parts.push(`
                 <div class="po-step-wrap">
-                    <div class="${cls}" style="background: ${isCompleted ? '#16a34a' : (isActive ? '#2563eb' : '#e5e7eb')}; color: ${isCompleted || isActive ? 'white' : '#6b7280'}; box-shadow: ${isActive ? '0 4px 6px rgba(37, 99, 235, 0.3)' : 'none'};">
-                        ${isCompleted ? '<i data-lucide="check" style="width: 16px; height: 16px;"></i>' : i}
+                    <div class="${cls}" style="background: ${
+        isCompleted ? '#16a34a' : isActive ? '#2563eb' : '#e5e7eb'
+      }; color: ${isCompleted || isActive ? 'white' : '#6b7280'}; box-shadow: ${
+        isActive ? '0 4px 6px rgba(37, 99, 235, 0.3)' : 'none'
+      };">
+                        ${
+                          isCompleted
+                            ? '<i data-lucide="check" style="width: 16px; height: 16px;"></i>'
+                            : i
+                        }
                     </div>
-                    <div class="po-step-label" style="color: ${stepColor}; font-weight: ${isActive ? '600' : '500'};">${stepLabels[i - 1]}</div>
+                    <div class="po-step-label" style="color: ${stepColor}; font-weight: ${
+        isActive ? '600' : '500'
+      };">${stepLabels[i - 1]}</div>
                 </div>
-            `);
-        }
-        const fillPct = ((step - 1) / (totalSteps - 1)) * 100;
-        return `<div class="po-progress" style="margin-bottom: 32px;"><div class="po-progress-bar-fill" style="width:${fillPct}%; background: linear-gradient(90deg, #16a34a 0%, #2563eb 100%);"></div>${parts.join('')}</div>`;
-    })();
+            `)
+    }
+    const fillPct = ((step - 1) / (totalSteps - 1)) * 100
+    return `<div class="po-progress" style="margin-bottom: 32px;"><div class="po-progress-bar-fill" style="width:${fillPct}%; background: linear-gradient(90deg, #16a34a 0%, #2563eb 100%);"></div>${parts.join(
+      ''
+    )}</div>`
+  })()
 
-    function footerButtons(extraNextCondition = true, nextLabel = 'Next') {
-        return `
+  function footerButtons(extraNextCondition = true, nextLabel = 'Next') {
+    return `
             <button class="btn-secondary" onclick="closePurchaseOrderModal()" style="padding: 10px 24px; font-weight: 500; border-radius: 8px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
                 <i data-lucide="x" style="width: 16px; height: 16px;"></i>
                 Cancel
             </button>
-            ${step > 1 ? `
+            ${
+              step > 1
+                ? `
                 <button class="btn-secondary" onclick="prevPurchaseOrderStep()" style="padding: 10px 24px; font-weight: 500; border-radius: 8px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
                     <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
                     Back
                 </button>
-            ` : ''}
-            ${step < totalSteps ? `
-                <button class="btn btn-primary" ${!extraNextCondition ? 'disabled' : ''} onclick="nextPurchaseOrderStep()" style="padding: 10px 24px; font-weight: 500; border-radius: 8px; background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); box-shadow: 0 4px 6px rgba(37, 99, 235, 0.25); transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
+            `
+                : ''
+            }
+            ${
+              step < totalSteps
+                ? `
+                <button class="btn btn-primary" ${
+                  !extraNextCondition ? 'disabled' : ''
+                } onclick="nextPurchaseOrderStep()" style="padding: 10px 24px; font-weight: 500; border-radius: 8px; background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); box-shadow: 0 4px 6px rgba(37, 99, 235, 0.25); transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
                     ${nextLabel}
                     <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
                 </button>
-            ` : `
+            `
+                : `
                 <button class="btn btn-primary" onclick="finalizePurchaseOrderCreation()" style="padding: 10px 24px; font-weight: 500; border-radius: 8px; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); box-shadow: 0 4px 6px rgba(22, 163, 74, 0.25); transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
                     <i data-lucide="check" style="width: 16px; height: 16px;"></i>
                     Create Purchase Order
                 </button>
-            `}
-        `;
-    }
+            `
+            }
+        `
+  }
 
-    if (step === 1) {
-        body.innerHTML = `
+  if (step === 1) {
+    body.innerHTML = `
             <div class="po-wizard">
                 ${progress}
                 <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
@@ -3459,14 +4265,18 @@ function renderPurchaseOrderWizardStep(requestData) {
                                     <i data-lucide="building" style="width: 14px; height: 14px; color: #6b7280;"></i>
                                     Supplier<span style="color:#dc2626"> *</span>
                                 </label>
-                                <input type="text" class="form-input" id="po-supplier" placeholder="e.g. ABC Office Supplies" value="${AppState.purchaseOrderDraft.supplier || ''}" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                                <input type="text" class="form-input" id="po-supplier" placeholder="e.g. ABC Office Supplies" value="${
+                                  AppState.purchaseOrderDraft.supplier || ''
+                                }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                             </div>
                             <div class="form-group" style="margin-bottom: 16px;">
                                 <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
                                     <i data-lucide="file-text" style="width: 14px; height: 14px; color: #6b7280;"></i>
                                     P.O. Number<span style="color:#dc2626"> *</span>
                                 </label>
-                                <input type="text" class="form-input" id="po-number" placeholder="Enter P.O. number" value="${AppState.purchaseOrderDraft.poNumber || ''}" required style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                                <input type="text" class="form-input" id="po-number" placeholder="Enter P.O. number" value="${
+                                  AppState.purchaseOrderDraft.poNumber || ''
+                                }" required style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                             </div>
                         </div>
                     </div>
@@ -3478,34 +4288,47 @@ function renderPurchaseOrderWizardStep(requestData) {
                                     <i data-lucide="map-pin" style="width: 14px; height: 14px; color: #6b7280;"></i>
                                     Supplier Address
                                 </label>
-                                <textarea class="form-textarea" id="po-supplier-address" placeholder="Street, City, Province" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; min-height: 80px; transition: all 0.2s;">${AppState.purchaseOrderDraft.supplierAddress || ''}</textarea>
+                                <textarea class="form-textarea" id="po-supplier-address" placeholder="Street, City, Province" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; min-height: 80px; transition: all 0.2s;">${
+                                  AppState.purchaseOrderDraft.supplierAddress ||
+                                  ''
+                                }</textarea>
                             </div>
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
                                     <i data-lucide="hash" style="width: 14px; height: 14px; color: #6b7280;"></i>
                                     TIN Number
                                 </label>
-                                <input type="text" class="form-input" id="po-supplier-tin" placeholder="000-000-000-000" value="${AppState.purchaseOrderDraft.supplierTIN || ''}" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                                <input type="text" class="form-input" id="po-supplier-tin" placeholder="000-000-000-000" value="${
+                                  AppState.purchaseOrderDraft.supplierTIN || ''
+                                }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        `;
-        footer.innerHTML = footerButtons(true, 'Next');
-    }
-    else if (step === 2) {
-        const departments = [
-            { value: 'COENG', label: 'College of Engineering' },
-            { value: 'CBPA', label: 'College of Business and Public Administration' },
-            { value: 'CAS', label: 'College of Arts and Sciences' },
-            { value: 'CCMS', label: 'College of Computing and Multimedia Studies' },
-            { value: 'OP', label: 'Office of the President' },
-            { value: 'OVPAA', label: 'Office of the Vice President for Academic Affairs' },
-            { value: 'OVPRE', label: 'Office of the Vice President for Research and Extension' },
-            { value: 'OVPFA', label: 'Office of the Vice President for Finance Affairs' }
-        ];
-        body.innerHTML = `
+        `
+    footer.innerHTML = footerButtons(true, 'Next')
+  } else if (step === 2) {
+    const departments = [
+      { value: 'COENG', label: 'College of Engineering' },
+      { value: 'CBPA', label: 'College of Business and Public Administration' },
+      { value: 'CAS', label: 'College of Arts and Sciences' },
+      { value: 'CCMS', label: 'College of Computing and Multimedia Studies' },
+      { value: 'OP', label: 'Office of the President' },
+      {
+        value: 'OVPAA',
+        label: 'Office of the Vice President for Academic Affairs',
+      },
+      {
+        value: 'OVPRE',
+        label: 'Office of the Vice President for Research and Extension',
+      },
+      {
+        value: 'OVPFA',
+        label: 'Office of the Vice President for Finance Affairs',
+      },
+    ]
+    body.innerHTML = `
             <div class="po-wizard">
                 ${progress}
                 <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
@@ -3526,7 +4349,17 @@ function renderPurchaseOrderWizardStep(requestData) {
                                 </label>
                                 <select class="form-select" id="po-department" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                                     <option value="">Select Department</option>
-                                    ${departments.map(d => `<option value="${d.value}" ${AppState.purchaseOrderDraft.department === d.value ? 'selected' : ''}>${d.label}</option>`).join('')}
+                                    ${departments
+                                      .map(
+                                        (d) =>
+                                          `<option value="${d.value}" ${
+                                            AppState.purchaseOrderDraft
+                                              .department === d.value
+                                              ? 'selected'
+                                              : ''
+                                          }>${d.label}</option>`
+                                      )
+                                      .join('')}
                                 </select>
                             </div>
                             <div class="form-group" style="margin-bottom: 16px;">
@@ -3534,7 +4367,11 @@ function renderPurchaseOrderWizardStep(requestData) {
                                     <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
                                     Date of Purchase
                                 </label>
-                                <input type="date" class="form-input" id="po-date" value="${AppState.purchaseOrderDraft.purchaseDate || ''}" min="${new Date().toISOString().split('T')[0]}" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                                <input type="date" class="form-input" id="po-date" value="${
+                                  AppState.purchaseOrderDraft.purchaseDate || ''
+                                }" min="${
+      new Date().toISOString().split('T')[0]
+    }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                             </div>
                         </div>
                     </div>
@@ -3548,9 +4385,27 @@ function renderPurchaseOrderWizardStep(requestData) {
                                 </label>
                                 <select class="form-select" id="po-mode" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                                     <option value="">Select procurement mode</option>
-                                    <option ${AppState.purchaseOrderDraft.procurementMode === 'Small Value Procurement' ? 'selected' : ''}>Small Value Procurement</option>
-                                    <option ${AppState.purchaseOrderDraft.procurementMode === 'Medium Value Procurement' ? 'selected' : ''}>Medium Value Procurement</option>
-                                    <option ${AppState.purchaseOrderDraft.procurementMode === 'High Value Procurement' ? 'selected' : ''}>High Value Procurement</option>
+                                    <option ${
+                                      AppState.purchaseOrderDraft
+                                        .procurementMode ===
+                                      'Small Value Procurement'
+                                        ? 'selected'
+                                        : ''
+                                    }>Small Value Procurement</option>
+                                    <option ${
+                                      AppState.purchaseOrderDraft
+                                        .procurementMode ===
+                                      'Medium Value Procurement'
+                                        ? 'selected'
+                                        : ''
+                                    }>Medium Value Procurement</option>
+                                    <option ${
+                                      AppState.purchaseOrderDraft
+                                        .procurementMode ===
+                                      'High Value Procurement'
+                                        ? 'selected'
+                                        : ''
+                                    }>High Value Procurement</option>
                                 </select>
                             </div>
                             <div class="form-group" style="margin-bottom: 16px;">
@@ -3558,7 +4413,9 @@ function renderPurchaseOrderWizardStep(requestData) {
                                     <i data-lucide="message-square" style="width: 14px; height: 14px; color: #6b7280;"></i>
                                     Gentlemen Clause
                                 </label>
-                                <textarea class="form-textarea" id="po-gentlemen" placeholder="Please furnish this office ..." style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; min-height: 80px; transition: all 0.2s;">${AppState.purchaseOrderDraft.gentlemen || ''}</textarea>
+                                <textarea class="form-textarea" id="po-gentlemen" placeholder="Please furnish this office ..." style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; min-height: 80px; transition: all 0.2s;">${
+                                  AppState.purchaseOrderDraft.gentlemen || ''
+                                }</textarea>
                             </div>
                         </div>
                     </div>
@@ -3570,7 +4427,10 @@ function renderPurchaseOrderWizardStep(requestData) {
                                     <i data-lucide="map-pin" style="width: 14px; height: 14px; color: #6b7280;"></i>
                                     Place of Delivery
                                 </label>
-                                <input type="text" class="form-input" id="po-place" placeholder="Campus / Building / Room" value="${AppState.purchaseOrderDraft.placeOfDelivery || ''}" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                                <input type="text" class="form-input" id="po-place" placeholder="Campus / Building / Room" value="${
+                                  AppState.purchaseOrderDraft.placeOfDelivery ||
+                                  ''
+                                }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                             </div>
                             <div class="form-group" style="margin-bottom: 16px;">
                                 <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
@@ -3579,37 +4439,92 @@ function renderPurchaseOrderWizardStep(requestData) {
                                 </label>
                                 <select class="form-select" id="po-delivery-date" onchange="toggleDeliveryDateOther(this)" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                                     <option value="">Select delivery timeframe</option>
-                                    <option value="15 days" ${AppState.purchaseOrderDraft.deliveryDate === '15 days' ? 'selected' : ''}>15 days</option>
-                                    <option value="30 days" ${AppState.purchaseOrderDraft.deliveryDate === '30 days' ? 'selected' : ''}>30 days</option>
-                                    <option value="45 days" ${AppState.purchaseOrderDraft.deliveryDate === '45 days' ? 'selected' : ''}>45 days</option>
-                                    <option value="60 days" ${AppState.purchaseOrderDraft.deliveryDate === '60 days' ? 'selected' : ''}>60 days</option>
-                                    <option value="others" ${!['', '15 days', '30 days', '45 days', '60 days'].includes(AppState.purchaseOrderDraft.deliveryDate || '') ? 'selected' : ''}>Others</option>
+                                    <option value="15 days" ${
+                                      AppState.purchaseOrderDraft
+                                        .deliveryDate === '15 days'
+                                        ? 'selected'
+                                        : ''
+                                    }>15 days</option>
+                                    <option value="30 days" ${
+                                      AppState.purchaseOrderDraft
+                                        .deliveryDate === '30 days'
+                                        ? 'selected'
+                                        : ''
+                                    }>30 days</option>
+                                    <option value="45 days" ${
+                                      AppState.purchaseOrderDraft
+                                        .deliveryDate === '45 days'
+                                        ? 'selected'
+                                        : ''
+                                    }>45 days</option>
+                                    <option value="60 days" ${
+                                      AppState.purchaseOrderDraft
+                                        .deliveryDate === '60 days'
+                                        ? 'selected'
+                                        : ''
+                                    }>60 days</option>
+                                    <option value="others" ${
+                                      ![
+                                        '',
+                                        '15 days',
+                                        '30 days',
+                                        '45 days',
+                                        '60 days',
+                                      ].includes(
+                                        AppState.purchaseOrderDraft
+                                          .deliveryDate || ''
+                                      )
+                                        ? 'selected'
+                                        : ''
+                                    }>Others</option>
                                 </select>
-                                <input type="text" class="form-input" id="po-delivery-date-other" placeholder="Specify delivery timeframe" value="${!['', '15 days', '30 days', '45 days', '60 days'].includes(AppState.purchaseOrderDraft.deliveryDate || '') ? AppState.purchaseOrderDraft.deliveryDate : ''}" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; margin-top: 8px; display: ${!['', '15 days', '30 days', '45 days', '60 days'].includes(AppState.purchaseOrderDraft.deliveryDate || '') ? 'block' : 'none'};">
+                                <input type="text" class="form-input" id="po-delivery-date-other" placeholder="Specify delivery timeframe" value="${
+                                  ![
+                                    '',
+                                    '15 days',
+                                    '30 days',
+                                    '45 days',
+                                    '60 days',
+                                  ].includes(
+                                    AppState.purchaseOrderDraft.deliveryDate ||
+                                      ''
+                                  )
+                                    ? AppState.purchaseOrderDraft.deliveryDate
+                                    : ''
+                                }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; margin-top: 8px; display: ${
+      !['', '15 days', '30 days', '45 days', '60 days'].includes(
+        AppState.purchaseOrderDraft.deliveryDate || ''
+      )
+        ? 'block'
+        : 'none'
+    };">
                             </div>
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
                                     <i data-lucide="clock" style="width: 14px; height: 14px; color: #6b7280;"></i>
                                     Delivery Status
                                 </label>
-                                <input type="text" class="form-input" id="po-delivery-term" placeholder="e.g. Partial / Complete" value="${AppState.purchaseOrderDraft.deliveryTerm || ''}" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                                <input type="text" class="form-input" id="po-delivery-term" placeholder="e.g. Partial / Complete" value="${
+                                  AppState.purchaseOrderDraft.deliveryTerm || ''
+                                }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                             </div>
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
                                     <i data-lucide="credit-card" style="width: 14px; height: 14px; color: #6b7280;"></i>
                                     Payment Term
                                 </label>
-                                <input type="text" class="form-input" id="po-payment-term" placeholder="e.g. Net 30" value="${AppState.purchaseOrderDraft.paymentTerm || ''}" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                                <input type="text" class="form-input" id="po-payment-term" placeholder="e.g. Net 30" value="${
+                                  AppState.purchaseOrderDraft.paymentTerm || ''
+                                }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        `;
-        footer.innerHTML = footerButtons(true, 'Next');
-    }
-    else if (step === 3) {
-        body.innerHTML = `
+        `
+    footer.innerHTML = footerButtons(true, 'Next')
+  } else if (step === 3) {
+    body.innerHTML = `
             <div class="po-wizard">
                 ${progress}
                 <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
@@ -3657,16 +4572,21 @@ function renderPurchaseOrderWizardStep(requestData) {
                     </div>
                 </div>
             </div>
-        `;
-        // Initialize after table exists
-        initializePurchaseOrderModal(null, { skipRender: true });
-        renderPOItems();
-        footer.innerHTML = footerButtons(AppState.purchaseOrderItems.length > 0, 'Next');
-        lucide.createIcons();
-    }
-    else if (step === 4) {
-        const totalAmount = AppState.purchaseOrderItems.reduce((s, i) => s + i.amount, 0);
-        body.innerHTML = `
+        `
+    // Initialize after table exists
+    initializePurchaseOrderModal(null, { skipRender: true })
+    renderPOItems()
+    footer.innerHTML = footerButtons(
+      AppState.purchaseOrderItems.length > 0,
+      'Next'
+    )
+    lucide.createIcons()
+  } else if (step === 4) {
+    const totalAmount = AppState.purchaseOrderItems.reduce(
+      (s, i) => s + i.amount,
+      0
+    )
+    body.innerHTML = `
             <div class="po-wizard">
                 ${progress}
                 <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
@@ -3687,11 +4607,15 @@ function renderPurchaseOrderWizardStep(requestData) {
                         <div style="display: flex; gap: 24px; margin-top: 12px;">
                             <div style="flex: 1;">
                                 <p style="margin: 0; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Items</p>
-                                <p style="margin: 4px 0 0 0; font-size: 20px; font-weight: 700; color: #2563eb;">${AppState.purchaseOrderItems.length}</p>
+                                <p style="margin: 4px 0 0 0; font-size: 20px; font-weight: 700; color: #2563eb;">${
+                                  AppState.purchaseOrderItems.length
+                                }</p>
                             </div>
                             <div style="flex: 2;">
                                 <p style="margin: 0; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Total Amount</p>
-                                <p style="margin: 4px 0 0 0; font-size: 20px; font-weight: 700; color: #16a34a;">${formatCurrency(totalAmount)}</p>
+                                <p style="margin: 4px 0 0 0; font-size: 20px; font-weight: 700; color: #16a34a;">${formatCurrency(
+                                  totalAmount
+                                )}</p>
                             </div>
                         </div>
                     </div>
@@ -3710,10 +4634,34 @@ function renderPurchaseOrderWizardStep(requestData) {
                                 </label>
                                 <select class="form-select" id="po-fund-cluster" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                                     <option value="">Select fund cluster</option>
-                                    <option value="01 - Regular Agency Fund" ${AppState.purchaseOrderDraft.fundCluster === '01 - Regular Agency Fund' ? 'selected' : ''}>01 - Regular Agency Fund</option>
-                                    <option value="05 - Income Generated Fund" ${AppState.purchaseOrderDraft.fundCluster === '05 - Income Generated Fund' ? 'selected' : ''}>05 - Income Generated Fund</option>
-                                    <option value="06 - Business Related Fund" ${AppState.purchaseOrderDraft.fundCluster === '06 - Business Related Fund' ? 'selected' : ''}>06 - Business Related Fund</option>
-                                    <option value="07 - General Appropriations Act (GAA)" ${AppState.purchaseOrderDraft.fundCluster === '07 - General Appropriations Act (GAA)' ? 'selected' : ''}>07 - General Appropriations Act (GAA)</option>
+                                    <option value="01 - Regular Agency Fund" ${
+                                      AppState.purchaseOrderDraft
+                                        .fundCluster ===
+                                      '01 - Regular Agency Fund'
+                                        ? 'selected'
+                                        : ''
+                                    }>01 - Regular Agency Fund</option>
+                                    <option value="05 - Income Generated Fund" ${
+                                      AppState.purchaseOrderDraft
+                                        .fundCluster ===
+                                      '05 - Income Generated Fund'
+                                        ? 'selected'
+                                        : ''
+                                    }>05 - Income Generated Fund</option>
+                                    <option value="06 - Business Related Fund" ${
+                                      AppState.purchaseOrderDraft
+                                        .fundCluster ===
+                                      '06 - Business Related Fund'
+                                        ? 'selected'
+                                        : ''
+                                    }>06 - Business Related Fund</option>
+                                    <option value="07 - General Appropriations Act (GAA)" ${
+                                      AppState.purchaseOrderDraft
+                                        .fundCluster ===
+                                      '07 - General Appropriations Act (GAA)'
+                                        ? 'selected'
+                                        : ''
+                                    }>07 - General Appropriations Act (GAA)</option>
                                 </select>
                             </div>
                             <div class="form-group" style="margin-bottom: 16px;">
@@ -3721,14 +4669,19 @@ function renderPurchaseOrderWizardStep(requestData) {
                                     <i data-lucide="banknote" style="width: 14px; height: 14px; color: #6b7280;"></i>
                                     Funds Available (Optional)
                                 </label>
-                                <input type="text" class="form-input" id="po-funds-available" placeholder="e.g. ₱0.00" value="${AppState.purchaseOrderDraft.fundsAvailable || ''}" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                                <input type="text" class="form-input" id="po-funds-available" placeholder="e.g. ₱0.00" value="${
+                                  AppState.purchaseOrderDraft.fundsAvailable ||
+                                  ''
+                                }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                             </div>
                             <div class="form-group" style="margin-bottom: 16px;">
                                 <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
                                     <i data-lucide="sticky-note" style="width: 14px; height: 14px; color: #6b7280;"></i>
                                     Notes (Optional)
                                 </label>
-                                <input type="text" class="form-input" id="po-notes" placeholder="Short note" value="${AppState.purchaseOrderDraft.notes || ''}" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                                <input type="text" class="form-input" id="po-notes" placeholder="Short note" value="${
+                                  AppState.purchaseOrderDraft.notes || ''
+                                }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                             </div>
                         </div>
                     </div>
@@ -3752,7 +4705,9 @@ function renderPurchaseOrderWizardStep(requestData) {
                                     <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
                                     Date of ORS/BURS
                                 </label>
-                                <input type="date" class="form-input" id="po-ors-date" min="${new Date().toISOString().split('T')[0]}" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                                <input type="date" class="form-input" id="po-ors-date" min="${
+                                  new Date().toISOString().split('T')[0]
+                                }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                             </div>
                             <div class="form-group" style="margin-bottom: 16px;">
                                 <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
@@ -3765,168 +4720,209 @@ function renderPurchaseOrderWizardStep(requestData) {
                     </div>
                 </div>
             </div>
-        `;
-        footer.innerHTML = footerButtons(true, 'Create');
-    }
+        `
+    footer.innerHTML = footerButtons(true, 'Create')
+  }
 }
 
 function nextPurchaseOrderStep() {
-    // persist current step form values into draft
-    persistCurrentWizardStep();
-    if (AppState.purchaseOrderWizardStep < 4) {
-        AppState.purchaseOrderWizardStep++;
-        renderPurchaseOrderWizardStep();
-        lucide.createIcons();
-    }
+  // persist current step form values into draft
+  persistCurrentWizardStep()
+  if (AppState.purchaseOrderWizardStep < 4) {
+    AppState.purchaseOrderWizardStep++
+    renderPurchaseOrderWizardStep()
+    lucide.createIcons()
+  }
 }
 
 function prevPurchaseOrderStep() {
-    persistCurrentWizardStep();
-    if (AppState.purchaseOrderWizardStep > 1) {
-        AppState.purchaseOrderWizardStep--;
-        renderPurchaseOrderWizardStep();
-        lucide.createIcons();
-    }
+  persistCurrentWizardStep()
+  if (AppState.purchaseOrderWizardStep > 1) {
+    AppState.purchaseOrderWizardStep--
+    renderPurchaseOrderWizardStep()
+    lucide.createIcons()
+  }
 }
 
 function persistCurrentWizardStep() {
-    const step = AppState.purchaseOrderWizardStep;
-    const modal = document.getElementById('purchase-order-modal');
-    if (!modal) return;
-    if (step === 1) {
-        AppState.purchaseOrderDraft.supplier = modal.querySelector('#po-supplier')?.value || '';
-        AppState.purchaseOrderDraft.supplierAddress = modal.querySelector('#po-supplier-address')?.value || '';
-        AppState.purchaseOrderDraft.supplierTIN = modal.querySelector('#po-supplier-tin')?.value || '';
-        AppState.purchaseOrderDraft.poNumber = modal.querySelector('#po-number')?.value || AppState.purchaseOrderDraft.poNumber;
-    } else if (step === 2) {
-        AppState.purchaseOrderDraft.department = modal.querySelector('#po-department')?.value || '';
-        AppState.purchaseOrderDraft.purchaseDate = modal.querySelector('#po-date')?.value || '';
-        AppState.purchaseOrderDraft.procurementMode = modal.querySelector('#po-mode')?.value || '';
-        AppState.purchaseOrderDraft.gentlemen = modal.querySelector('#po-gentlemen')?.value || '';
-        AppState.purchaseOrderDraft.placeOfDelivery = modal.querySelector('#po-place')?.value || '';
-        // Handle delivery date dropdown with "others" option
-        const deliveryDateSelect = modal.querySelector('#po-delivery-date');
-        const deliveryDateOther = modal.querySelector('#po-delivery-date-other');
-        if (deliveryDateSelect?.value === 'others') {
-            AppState.purchaseOrderDraft.deliveryDate = deliveryDateOther?.value || '';
-        } else {
-            AppState.purchaseOrderDraft.deliveryDate = deliveryDateSelect?.value || '';
-        }
-        AppState.purchaseOrderDraft.deliveryTerm = modal.querySelector('#po-delivery-term')?.value || '';
-        AppState.purchaseOrderDraft.paymentTerm = modal.querySelector('#po-payment-term')?.value || '';
-    } else if (step === 3) {
-        // Step 3 (items) - forms are now integrated into each item, no separate checkboxes to save
-    } else if (step === 4) {
-        AppState.purchaseOrderDraft.orsNo = modal.querySelector('#po-ors-no')?.value || '';
-        AppState.purchaseOrderDraft.orsDate = modal.querySelector('#po-ors-date')?.value || '';
-        AppState.purchaseOrderDraft.orsAmount = modal.querySelector('#po-ors-amount')?.value || '';
-        AppState.purchaseOrderDraft.fundCluster = modal.querySelector('#po-fund-cluster')?.value || '';
-        AppState.purchaseOrderDraft.fundsAvailable = modal.querySelector('#po-funds-available')?.value || '';
-        AppState.purchaseOrderDraft.notes = modal.querySelector('#po-notes')?.value || '';
+  const step = AppState.purchaseOrderWizardStep
+  const modal = document.getElementById('purchase-order-modal')
+  if (!modal) return
+  if (step === 1) {
+    AppState.purchaseOrderDraft.supplier =
+      modal.querySelector('#po-supplier')?.value || ''
+    AppState.purchaseOrderDraft.supplierAddress =
+      modal.querySelector('#po-supplier-address')?.value || ''
+    AppState.purchaseOrderDraft.supplierTIN =
+      modal.querySelector('#po-supplier-tin')?.value || ''
+    AppState.purchaseOrderDraft.poNumber =
+      modal.querySelector('#po-number')?.value ||
+      AppState.purchaseOrderDraft.poNumber
+  } else if (step === 2) {
+    AppState.purchaseOrderDraft.department =
+      modal.querySelector('#po-department')?.value || ''
+    AppState.purchaseOrderDraft.purchaseDate =
+      modal.querySelector('#po-date')?.value || ''
+    AppState.purchaseOrderDraft.procurementMode =
+      modal.querySelector('#po-mode')?.value || ''
+    AppState.purchaseOrderDraft.gentlemen =
+      modal.querySelector('#po-gentlemen')?.value || ''
+    AppState.purchaseOrderDraft.placeOfDelivery =
+      modal.querySelector('#po-place')?.value || ''
+    // Handle delivery date dropdown with "others" option
+    const deliveryDateSelect = modal.querySelector('#po-delivery-date')
+    const deliveryDateOther = modal.querySelector('#po-delivery-date-other')
+    if (deliveryDateSelect?.value === 'others') {
+      AppState.purchaseOrderDraft.deliveryDate = deliveryDateOther?.value || ''
+    } else {
+      AppState.purchaseOrderDraft.deliveryDate = deliveryDateSelect?.value || ''
     }
+    AppState.purchaseOrderDraft.deliveryTerm =
+      modal.querySelector('#po-delivery-term')?.value || ''
+    AppState.purchaseOrderDraft.paymentTerm =
+      modal.querySelector('#po-payment-term')?.value || ''
+  } else if (step === 3) {
+    // Step 3 (items) - forms are now integrated into each item, no separate checkboxes to save
+  } else if (step === 4) {
+    AppState.purchaseOrderDraft.orsNo =
+      modal.querySelector('#po-ors-no')?.value || ''
+    AppState.purchaseOrderDraft.orsDate =
+      modal.querySelector('#po-ors-date')?.value || ''
+    AppState.purchaseOrderDraft.orsAmount =
+      modal.querySelector('#po-ors-amount')?.value || ''
+    AppState.purchaseOrderDraft.fundCluster =
+      modal.querySelector('#po-fund-cluster')?.value || ''
+    AppState.purchaseOrderDraft.fundsAvailable =
+      modal.querySelector('#po-funds-available')?.value || ''
+    AppState.purchaseOrderDraft.notes =
+      modal.querySelector('#po-notes')?.value || ''
+  }
 }
 
 function finalizePurchaseOrderCreation() {
-    // Gather data from wizard fields
-    const modal = document.getElementById('purchase-order-modal');
-    if (!modal) return;
-    // ensure latest review inputs saved
-    persistCurrentWizardStep();
-    const draft = AppState.purchaseOrderDraft || {};
-    const supplier = draft.supplier || '';
-    const supplierAddress = draft.supplierAddress || '';
-    const supplierTIN = draft.supplierTIN || '';
-    const poNumber = draft.poNumber || generateNewPONumber();
-    const department = draft.department || '';
-    const purchaseDate = draft.purchaseDate || '';
-    const procurementMode = draft.procurementMode || '';
-    const gentlemen = draft.gentlemen || '';
-    const placeOfDelivery = draft.placeOfDelivery || '';
-    const deliveryDate = draft.deliveryDate || '';
-    const deliveryTerm = draft.deliveryTerm || '';
-    const paymentTerm = draft.paymentTerm || '';
-    const orsNo = draft.orsNo || '';
-    const orsDate = draft.orsDate || '';
-    const orsAmount = draft.orsAmount || '';
-    const fundCluster = draft.fundCluster || '';
-    const fundsAvailable = draft.fundsAvailable || '';
-    const notes = draft.notes || '';
-    const totalAmount = AppState.purchaseOrderItems.reduce((s, i) => s + i.amount, 0);
+  // Gather data from wizard fields
+  const modal = document.getElementById('purchase-order-modal')
+  if (!modal) return
+  // ensure latest review inputs saved
+  persistCurrentWizardStep()
+  const draft = AppState.purchaseOrderDraft || {}
+  const supplier = draft.supplier || ''
+  const supplierAddress = draft.supplierAddress || ''
+  const supplierTIN = draft.supplierTIN || ''
+  const poNumber = draft.poNumber || generateNewPONumber()
+  const department = draft.department || ''
+  const purchaseDate = draft.purchaseDate || ''
+  const procurementMode = draft.procurementMode || ''
+  const gentlemen = draft.gentlemen || ''
+  const placeOfDelivery = draft.placeOfDelivery || ''
+  const deliveryDate = draft.deliveryDate || ''
+  const deliveryTerm = draft.deliveryTerm || ''
+  const paymentTerm = draft.paymentTerm || ''
+  const orsNo = draft.orsNo || ''
+  const orsDate = draft.orsDate || ''
+  const orsAmount = draft.orsAmount || ''
+  const fundCluster = draft.fundCluster || ''
+  const fundsAvailable = draft.fundsAvailable || ''
+  const notes = draft.notes || ''
+  const totalAmount = AppState.purchaseOrderItems.reduce(
+    (s, i) => s + i.amount,
+    0
+  )
 
-    const newRequestId = generateNextRequestId();
-    const newRequest = {
-        id: newRequestId,
-        poNumber,
-        supplier,
-        supplierAddress,
-        supplierTIN,
-        requestDate: new Date().toISOString().split('T')[0],
-        deliveryDate,
-        deliveredDate: '', // will be set when actually delivered; keep separate from planned deliveryDate
-        purchaseDate,
-        procurementMode,
-        gentlemen,
-        placeOfDelivery,
-        deliveryTerm,
-        paymentTerm,
-        orsNo,
-        orsDate,
-        orsAmount,
-        fundCluster,
-        fundsAvailable,
-        notes,
-        totalAmount,
-        status: 'submitted',
-        requestedBy: 'Current User',
-        department,
-        // Aggregate forms from items (check if any item has each form enabled)
-        generateICS: AppState.purchaseOrderItems.some(item => item.generateICS),
-        generateRIS: AppState.purchaseOrderItems.some(item => item.generateRIS),
-        generatePAR: AppState.purchaseOrderItems.some(item => item.generatePAR),
-        generateIAR: AppState.purchaseOrderItems.some(item => item.generateIAR),
-        items: [...AppState.purchaseOrderItems]
-    };
-    AppState.newRequests.push(newRequest);
-    showAlert(`New purchase order ${poNumber} created successfully!`, 'success');
-    loadPageContent('new-request');
-    closePurchaseOrderModal();
+  const newRequestId = generateNextRequestId()
+  const newRequest = {
+    id: newRequestId,
+    poNumber,
+    supplier,
+    supplierAddress,
+    supplierTIN,
+    requestDate: new Date().toISOString().split('T')[0],
+    deliveryDate,
+    deliveredDate: '', // will be set when actually delivered; keep separate from planned deliveryDate
+    purchaseDate,
+    procurementMode,
+    gentlemen,
+    placeOfDelivery,
+    deliveryTerm,
+    paymentTerm,
+    orsNo,
+    orsDate,
+    orsAmount,
+    fundCluster,
+    fundsAvailable,
+    notes,
+    totalAmount,
+    status: 'submitted',
+    requestedBy: 'Current User',
+    department,
+    // Aggregate forms from items (check if any item has each form enabled)
+    generateICS: AppState.purchaseOrderItems.some((item) => item.generateICS),
+    generateRIS: AppState.purchaseOrderItems.some((item) => item.generateRIS),
+    generatePAR: AppState.purchaseOrderItems.some((item) => item.generatePAR),
+    generateIAR: AppState.purchaseOrderItems.some((item) => item.generateIAR),
+    items: [...AppState.purchaseOrderItems],
+  }
+  AppState.newRequests.push(newRequest)
+  showAlert(`New purchase order ${poNumber} created successfully!`, 'success')
+  loadPageContent('new-request')
+  closePurchaseOrderModal()
 }
 
 // Expose wizard functions
-window.nextPurchaseOrderStep = nextPurchaseOrderStep;
-window.prevPurchaseOrderStep = prevPurchaseOrderStep;
-window.finalizePurchaseOrderCreation = finalizePurchaseOrderCreation;
+window.nextPurchaseOrderStep = nextPurchaseOrderStep
+window.prevPurchaseOrderStep = prevPurchaseOrderStep
+window.finalizePurchaseOrderCreation = finalizePurchaseOrderCreation
 
 // Enhanced Purchase Order Modal with modern design
 function generatePurchaseOrderModal(mode, requestData = null) {
-    const title = mode === 'create' ? 'New Purchase Order' :
-        mode === 'edit' ? 'Edit Purchase Order' : 'Purchase Order Details';
-    const subtitle = mode === 'create' ? 'Create a new purchase order request' :
-        mode === 'edit' ? 'Update purchase order information' :
-            'View purchase order details';
-    const isReadOnly = mode === 'view';
+  const title =
+    mode === 'create'
+      ? 'New Purchase Order'
+      : mode === 'edit'
+      ? 'Edit Purchase Order'
+      : 'Purchase Order Details'
+  const subtitle =
+    mode === 'create'
+      ? 'Create a new purchase order request'
+      : mode === 'edit'
+      ? 'Update purchase order information'
+      : 'View purchase order details'
+  const isReadOnly = mode === 'view'
 
-    // Department List using user's suggested values
-    const departments = [
-        { value: 'COENG', label: 'College of Engineering' },
-        { value: 'CBPA', label: 'College of Business and Public Administration' },
-        { value: 'CAS', label: 'College of Arts and Sciences' },
-        { value: 'CCMS', label: 'College of Computing and Multimedia Studies' },
-        { value: 'OP', label: 'Office of the President' },
-        { value: 'OVPAA', label: 'Office of the Vice President for Academic Affairs' },
-        { value: 'OVPRE', label: 'Office of the Vice President for Research and Extension' },
-        { value: 'OVPFA', label: 'Office of the Vice President for Finance Affairs' }
-    ];
-    const selectedDepartment = requestData?.department || ''; // Default to empty value
+  // Department List using user's suggested values
+  const departments = [
+    { value: 'COENG', label: 'College of Engineering' },
+    { value: 'CBPA', label: 'College of Business and Public Administration' },
+    { value: 'CAS', label: 'College of Arts and Sciences' },
+    { value: 'CCMS', label: 'College of Computing and Multimedia Studies' },
+    { value: 'OP', label: 'Office of the President' },
+    {
+      value: 'OVPAA',
+      label: 'Office of the Vice President for Academic Affairs',
+    },
+    {
+      value: 'OVPRE',
+      label: 'Office of the Vice President for Research and Extension',
+    },
+    {
+      value: 'OVPFA',
+      label: 'Office of the Vice President for Finance Affairs',
+    },
+  ]
+  const selectedDepartment = requestData?.department || '' // Default to empty value
 
-    return `
+  return `
         <div class="modal-header" style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; border-bottom: none; padding: 32px 24px;">
             <div style="display: flex; align-items: center; gap: 16px;">
-                ${mode !== 'create' && requestData ? `
+                ${
+                  mode !== 'create' && requestData
+                    ? `
                     <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
                         <i data-lucide="file-text" style="width: 32px; height: 32px; color: white;"></i>
                     </div>
-                ` : ''}
+                `
+                    : ''
+                }
                 <div style="flex: 1;">
                     <h2 class="modal-title" style="color: white; font-size: 24px; margin-bottom: 4px;">${title}</h2>
                     <p class="modal-subtitle" style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0;">${subtitle}</p>
@@ -3968,7 +4964,9 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                             <textarea class="form-textarea" id="supplierAddress"
                                       placeholder="Enter supplier address" 
                                       style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; min-height: 80px; transition: all 0.2s;"
-                                      ${isReadOnly ? 'readonly' : ''}>${requestData?.supplierAddress || ''}</textarea>
+                                      ${isReadOnly ? 'readonly' : ''}>${
+    requestData?.supplierAddress || ''
+  }</textarea>
                         </div>
                         
                         <div class="form-group" style="margin-bottom: 0;">
@@ -3988,7 +4986,11 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                         <div class="form-group" style="margin-bottom: 20px;">
                             <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
                                 <i data-lucide="file-text" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                                P.O. Number${isReadOnly ? '' : '<span style="color:#dc2626"> *</span>'}
+                                P.O. Number${
+                                  isReadOnly
+                                    ? ''
+                                    : '<span style="color:#dc2626"> *</span>'
+                                }
                             </label>
                             <input type="text" class="form-input" id="poNumber"
                                    value="${requestData?.poNumber || ''}"
@@ -4004,7 +5006,9 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                             </label>
                             <input type="date" class="form-input" id="purchaseDate"
                                    value="${requestData?.purchaseDate || ''}"
-                                   min="${new Date().toISOString().split('T')[0]}"
+                                   min="${
+                                     new Date().toISOString().split('T')[0]
+                                   }"
                                    style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                                    ${isReadOnly ? 'readonly' : ''}>
                         </div>
@@ -4014,11 +5018,34 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                                 <i data-lucide="shopping-cart" style="width: 14px; height: 14px; color: #6b7280;"></i>
                                 Mode of Procurement
                             </label>
-                            <select class="form-select" id="procurementMode" ${isReadOnly ? 'disabled' : ''} style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; ${isReadOnly ? 'background: #f9fafb;' : ''}">
-                                <option ${!requestData?.procurementMode ? 'selected' : ''}>Select procurement mode</option>
-                                <option ${requestData?.procurementMode === 'Small Value Procurement' ? 'selected' : ''}>Small Value Procurement</option>
-                                <option ${requestData?.procurementMode === 'Medium Value Procurement' ? 'selected' : ''}>Medium Value Procurement</option>
-                                <option ${requestData?.procurementMode === 'High Value Procurement' ? 'selected' : ''}>High Value Procurement</option>
+                            <select class="form-select" id="procurementMode" ${
+                              isReadOnly ? 'disabled' : ''
+                            } style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; ${
+    isReadOnly ? 'background: #f9fafb;' : ''
+  }">
+                                <option ${
+                                  !requestData?.procurementMode
+                                    ? 'selected'
+                                    : ''
+                                }>Select procurement mode</option>
+                                <option ${
+                                  requestData?.procurementMode ===
+                                  'Small Value Procurement'
+                                    ? 'selected'
+                                    : ''
+                                }>Small Value Procurement</option>
+                                <option ${
+                                  requestData?.procurementMode ===
+                                  'Medium Value Procurement'
+                                    ? 'selected'
+                                    : ''
+                                }>Medium Value Procurement</option>
+                                <option ${
+                                  requestData?.procurementMode ===
+                                  'High Value Procurement'
+                                    ? 'selected'
+                                    : ''
+                                }>High Value Procurement</option>
                             </select>
                         </div>
                     </div>
@@ -4037,13 +5064,25 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                         <i data-lucide="building-2" style="width: 14px; height: 14px; color: #6b7280;"></i>
                         Department
                     </label>
-                    <select class="form-select" name="department" id="departmentSelect" ${isReadOnly ? 'disabled' : ''} style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; ${isReadOnly ? 'background: #f9fafb;' : ''}">
+                    <select class="form-select" name="department" id="departmentSelect" ${
+                      isReadOnly ? 'disabled' : ''
+                    } style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; ${
+    isReadOnly ? 'background: #f9fafb;' : ''
+  }">
                         <option value="">Select Department</option>
-                        ${departments.map(dept => `
-                            <option value="${dept.value}" ${dept.value === selectedDepartment ? 'selected' : ''}>
+                        ${departments
+                          .map(
+                            (dept) => `
+                            <option value="${dept.value}" ${
+                              dept.value === selectedDepartment
+                                ? 'selected'
+                                : ''
+                            }>
                                 ${dept.label}
                             </option>
-                        `).join('')}
+                        `
+                          )
+                          .join('')}
                     </select>
                 </div>
                 
@@ -4055,7 +5094,9 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                     <textarea class="form-textarea" id="gentlemen"
                               placeholder="Please furnish this Office the following articles subject to the terms and conditions contained herein"
                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; min-height: 80px; transition: all 0.2s;"
-                              ${isReadOnly ? 'readonly' : ''}>${requestData?.gentlemen || ''}</textarea>
+                              ${isReadOnly ? 'readonly' : ''}>${
+    requestData?.gentlemen || ''
+  }</textarea>
                 </div>
             </div>
 
@@ -4085,22 +5126,79 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                                 <i data-lucide="calendar-check" style="width: 14px; height: 14px; color: #6b7280;"></i>
                                 Date of Delivery
                             </label>
-                            ${isReadOnly ? `
+                            ${
+                              isReadOnly
+                                ? `
                                 <input type="text" class="form-input" id="deliveryDate"
-                                       value="${requestData?.deliveryDate || ''}"
+                                       value="${
+                                         requestData?.deliveryDate || ''
+                                       }"
                                        style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                                        readonly>
-                            ` : `
+                            `
+                                : `
                                 <select class="form-select" id="deliveryDate" onchange="toggleDeliveryDateOtherModal(this)" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                                     <option value="">Select delivery timeframe</option>
-                                    <option value="15 days" ${requestData?.deliveryDate === '15 days' ? 'selected' : ''}>15 days</option>
-                                    <option value="30 days" ${requestData?.deliveryDate === '30 days' ? 'selected' : ''}>30 days</option>
-                                    <option value="45 days" ${requestData?.deliveryDate === '45 days' ? 'selected' : ''}>45 days</option>
-                                    <option value="60 days" ${requestData?.deliveryDate === '60 days' ? 'selected' : ''}>60 days</option>
-                                    <option value="others" ${!['', '15 days', '30 days', '45 days', '60 days'].includes(requestData?.deliveryDate || '') && requestData?.deliveryDate ? 'selected' : ''}>Others</option>
+                                    <option value="15 days" ${
+                                      requestData?.deliveryDate === '15 days'
+                                        ? 'selected'
+                                        : ''
+                                    }>15 days</option>
+                                    <option value="30 days" ${
+                                      requestData?.deliveryDate === '30 days'
+                                        ? 'selected'
+                                        : ''
+                                    }>30 days</option>
+                                    <option value="45 days" ${
+                                      requestData?.deliveryDate === '45 days'
+                                        ? 'selected'
+                                        : ''
+                                    }>45 days</option>
+                                    <option value="60 days" ${
+                                      requestData?.deliveryDate === '60 days'
+                                        ? 'selected'
+                                        : ''
+                                    }>60 days</option>
+                                    <option value="others" ${
+                                      ![
+                                        '',
+                                        '15 days',
+                                        '30 days',
+                                        '45 days',
+                                        '60 days',
+                                      ].includes(
+                                        requestData?.deliveryDate || ''
+                                      ) && requestData?.deliveryDate
+                                        ? 'selected'
+                                        : ''
+                                    }>Others</option>
                                 </select>
-                                <input type="text" class="form-input" id="deliveryDateOther" placeholder="Specify delivery timeframe" value="${!['', '15 days', '30 days', '45 days', '60 days'].includes(requestData?.deliveryDate || '') && requestData?.deliveryDate ? requestData.deliveryDate : ''}" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; margin-top: 8px; display: ${!['', '15 days', '30 days', '45 days', '60 days'].includes(requestData?.deliveryDate || '') && requestData?.deliveryDate ? 'block' : 'none'};">
-                            `}
+                                <input type="text" class="form-input" id="deliveryDateOther" placeholder="Specify delivery timeframe" value="${
+                                  ![
+                                    '',
+                                    '15 days',
+                                    '30 days',
+                                    '45 days',
+                                    '60 days',
+                                  ].includes(requestData?.deliveryDate || '') &&
+                                  requestData?.deliveryDate
+                                    ? requestData.deliveryDate
+                                    : ''
+                                }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; margin-top: 8px; display: ${
+                                    ![
+                                      '',
+                                      '15 days',
+                                      '30 days',
+                                      '45 days',
+                                      '60 days',
+                                    ].includes(
+                                      requestData?.deliveryDate || ''
+                                    ) && requestData?.deliveryDate
+                                      ? 'block'
+                                      : 'none'
+                                  };">
+                            `
+                            }
                         </div>
                     </div>
 
@@ -4140,12 +5238,16 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                         Order Items
                     </h3>
                     <div style="display: flex; gap: 8px;">
-                        ${!isReadOnly ? `
+                        ${
+                          !isReadOnly
+                            ? `
                             <button class="btn btn-primary" onclick="addPOItem()" style="padding: 8px 16px; background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); box-shadow: 0 4px 6px rgba(37, 99, 235, 0.25);">
                                 <i data-lucide="plus" class="icon" style="width: 16px; height: 16px;"></i>
                                 Add Item
                             </button>
-                        ` : ''}
+                        `
+                            : ''
+                        }
                     </div>
                 </div>
                 
@@ -4161,15 +5263,27 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                                 <th style="padding: 12px;">Unit Cost</th>
                                 <th style="padding: 12px;">Amount</th>
                                 <th style="padding: 12px;">Forms</th>
-                                ${!isReadOnly ? '<th style="padding: 12px;">Action</th>' : ''}
+                                ${
+                                  !isReadOnly
+                                    ? '<th style="padding: 12px;">Action</th>'
+                                    : ''
+                                }
                             </tr>
                         </thead>
                         <tbody id="po-items-tbody"></tbody>
                         <tfoot>
                             <tr style="border-top: 2px solid #e5e7eb; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
-                                <td colspan="${isReadOnly ? '7' : '8'}" style="text-align: right; font-weight: 600; padding: 16px; color: #1e40af;">Grand Total:</td>
+                                <td colspan="${
+                                  isReadOnly ? '7' : '8'
+                                }" style="text-align: right; font-weight: 600; padding: 16px; color: #1e40af;">Grand Total:</td>
                                 <td style="font-weight: 700; color: #2563eb; padding: 16px; font-size: 16px;" id="grand-total">
-                                    ${requestData ? formatCurrency(requestData.totalAmount || 0) : '₱0.00'}
+                                    ${
+                                      requestData
+                                        ? formatCurrency(
+                                            requestData.totalAmount || 0
+                                          )
+                                        : '₱0.00'
+                                    }
                                 </td>
                                 ${!isReadOnly ? '<td></td>' : ''}
                             </tr>
@@ -4191,20 +5305,44 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                             <i data-lucide="layers" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             Fund Cluster
                         </label>
-                        ${isReadOnly ? `
+                        ${
+                          isReadOnly
+                            ? `
                             <input type="text" class="form-input" id="fundCluster"
                                    value="${requestData?.fundCluster || ''}" 
                                    style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                                    readonly>
-                        ` : `
+                        `
+                            : `
                             <select class="form-select" id="fundCluster" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                                 <option value="">Select fund cluster</option>
-                                <option value="01 - Regular Agency Fund" ${requestData?.fundCluster === '01 - Regular Agency Fund' ? 'selected' : ''}>01 - Regular Agency Fund</option>
-                                <option value="05 - Income Generated Fund" ${requestData?.fundCluster === '05 - Income Generated Fund' ? 'selected' : ''}>05 - Income Generated Fund</option>
-                                <option value="06 - Business Related Fund" ${requestData?.fundCluster === '06 - Business Related Fund' ? 'selected' : ''}>06 - Business Related Fund</option>
-                                <option value="07 - General Appropriations Act (GAA)" ${requestData?.fundCluster === '07 - General Appropriations Act (GAA)' ? 'selected' : ''}>07 - General Appropriations Act (GAA)</option>
+                                <option value="01 - Regular Agency Fund" ${
+                                  requestData?.fundCluster ===
+                                  '01 - Regular Agency Fund'
+                                    ? 'selected'
+                                    : ''
+                                }>01 - Regular Agency Fund</option>
+                                <option value="05 - Income Generated Fund" ${
+                                  requestData?.fundCluster ===
+                                  '05 - Income Generated Fund'
+                                    ? 'selected'
+                                    : ''
+                                }>05 - Income Generated Fund</option>
+                                <option value="06 - Business Related Fund" ${
+                                  requestData?.fundCluster ===
+                                  '06 - Business Related Fund'
+                                    ? 'selected'
+                                    : ''
+                                }>06 - Business Related Fund</option>
+                                <option value="07 - General Appropriations Act (GAA)" ${
+                                  requestData?.fundCluster ===
+                                  '07 - General Appropriations Act (GAA)'
+                                    ? 'selected'
+                                    : ''
+                                }>07 - General Appropriations Act (GAA)</option>
                             </select>
-                        `}
+                        `
+                        }
                     </div>
                     <div class="form-group" style="margin-bottom: 0;">
                         <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
@@ -4279,53 +5417,44 @@ function generatePurchaseOrderModal(mode, requestData = null) {
         <!-- Modal Footer -->
         <div class="modal-footer" style="padding: 20px 24px; background: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; justify-content: flex-end;">
             <button class="btn-secondary" onclick="closePurchaseOrderModal()" style="padding: 10px 24px; font-weight: 500; border-radius: 8px; transition: all 0.2s;">
-                <i data-lucide="${isReadOnly ? 'x' : 'x'}" style="width: 16px; height: 16px;"></i>
+                <i data-lucide="${
+                  isReadOnly ? 'x' : 'x'
+                }" style="width: 16px; height: 16px;"></i>
                 ${isReadOnly ? 'Close' : 'Cancel'}
             </button>
-            ${!isReadOnly ? `
-                <button class="btn btn-primary" onclick="savePurchaseOrder('${requestData?.id || ''}')" style="padding: 10px 24px; font-weight: 500; border-radius: 8px; background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); box-shadow: 0 4px 6px rgba(37, 99, 235, 0.25); transition: all 0.2s;">
-                    <i data-lucide="${mode === 'create' ? 'plus' : 'save'}" style="width: 16px; height: 16px;"></i>
-                    ${mode === 'create' ? 'Create Purchase Order' : 'Update Purchase Order'}
+            ${
+              !isReadOnly
+                ? `
+                <button class="btn btn-primary" onclick="savePurchaseOrder('${
+                  requestData?.id || ''
+                }')" style="padding: 10px 24px; font-weight: 500; border-radius: 8px; background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); box-shadow: 0 4px 6px rgba(37, 99, 235, 0.25); transition: all 0.2s;">
+                    <i data-lucide="${
+                      mode === 'create' ? 'plus' : 'save'
+                    }" style="width: 16px; height: 16px;"></i>
+                    ${
+                      mode === 'create'
+                        ? 'Create Purchase Order'
+                        : 'Update Purchase Order'
+                    }
                 </button>
-            ` : ''}
+            `
+                : ''
+            }
         </div>
 
-    `;
+    `
 }
 
 // Purchase Order Modal item management
 function initializePurchaseOrderModal(requestData = null, options = {}) {
-    const { skipRender = false } = options;
-    if (requestData && requestData.items) {
-        // load items from request
-        AppState.purchaseOrderItems = requestData.items.map(item => ({ ...item }));
-    } else {
-        // reset for new order
-        AppState.purchaseOrderItems = [{
-            id: Date.now().toString(),
-            stockPropertyNumber: '',
-            unit: '',
-            description: '',
-            detailedDescription: '',
-            quantity: 0,
-            currentStock: 0,
-            unitCost: 0,
-            amount: 0,
-            generateICS: false,
-            generateRIS: false,
-            generatePAR: false,
-            generateIAR: false
-        }];
-    }
-
-    if (!skipRender) {
-        renderPOItems();
-    }
-}
-
-
-function addPOItem() {
-    const newItem = {
+  const { skipRender = false } = options
+  if (requestData && requestData.items) {
+    // load items from request
+    AppState.purchaseOrderItems = requestData.items.map((item) => ({ ...item }))
+  } else {
+    // reset for new order
+    AppState.purchaseOrderItems = [
+      {
         id: Date.now().toString(),
         stockPropertyNumber: '',
         unit: '',
@@ -4338,65 +5467,101 @@ function addPOItem() {
         generateICS: false,
         generateRIS: false,
         generatePAR: false,
-        generateIAR: false
-    };
-    AppState.purchaseOrderItems.push(newItem);
-    showAlert('New item added to purchase order!', 'info');
-    renderPOItems();
+        generateIAR: false,
+      },
+    ]
+  }
+
+  if (!skipRender) {
+    renderPOItems()
+  }
+}
+
+function addPOItem() {
+  const newItem = {
+    id: Date.now().toString(),
+    stockPropertyNumber: '',
+    unit: '',
+    description: '',
+    detailedDescription: '',
+    quantity: 0,
+    currentStock: 0,
+    unitCost: 0,
+    amount: 0,
+    generateICS: false,
+    generateRIS: false,
+    generatePAR: false,
+    generateIAR: false,
+  }
+  AppState.purchaseOrderItems.push(newItem)
+  showAlert('New item added to purchase order!', 'info')
+  renderPOItems()
 }
 
 function removePOItem(id) {
-    if (AppState.purchaseOrderItems.length > 1) {
-        AppState.purchaseOrderItems = AppState.purchaseOrderItems.filter(item => item.id !== id);
-        renderPOItems();
-    }
+  if (AppState.purchaseOrderItems.length > 1) {
+    AppState.purchaseOrderItems = AppState.purchaseOrderItems.filter(
+      (item) => item.id !== id
+    )
+    renderPOItems()
+  }
 }
 
 function updatePOItem(id, field, value) {
-    const itemIndex = AppState.purchaseOrderItems.findIndex(item => item.id === id);
-    if (itemIndex === -1) return;
+  const itemIndex = AppState.purchaseOrderItems.findIndex(
+    (item) => item.id === id
+  )
+  if (itemIndex === -1) return
 
-    const item = AppState.purchaseOrderItems[itemIndex];
-    item[field] = value;
+  const item = AppState.purchaseOrderItems[itemIndex]
+  item[field] = value
 
-    if (field === 'stockPropertyNumber') {
-        const stockItem = MockData.inventory.find(inv => inv.stockNumber === value);
-        if (stockItem) {
-            item.description = stockItem.name;
-            item.unit = stockItem.unit;
-            item.currentStock = stockItem.currentStock;
-        }
+  if (field === 'stockPropertyNumber') {
+    const stockItem = MockData.inventory.find(
+      (inv) => inv.stockNumber === value
+    )
+    if (stockItem) {
+      item.description = stockItem.name
+      item.unit = stockItem.unit
+      item.currentStock = stockItem.currentStock
     }
+  }
 
-    if (field === 'quantity' || field === 'unitCost') {
-        item.amount = (item.quantity || 0) * (item.unitCost || 0);
-    }
+  if (field === 'quantity' || field === 'unitCost') {
+    item.amount = (item.quantity || 0) * (item.unitCost || 0)
+  }
 
-    AppState.purchaseOrderItems[itemIndex] = item;
-    renderPOItems();
+  AppState.purchaseOrderItems[itemIndex] = item
+  renderPOItems()
 }
 
 function updatePOItemForm(itemId, formField, checked) {
-    const itemIndex = AppState.purchaseOrderItems.findIndex(i => i.id === itemId);
-    if (itemIndex === -1) return;
+  const itemIndex = AppState.purchaseOrderItems.findIndex(
+    (i) => i.id === itemId
+  )
+  if (itemIndex === -1) return
 
-    const item = AppState.purchaseOrderItems[itemIndex];
-    item[formField] = checked;
+  const item = AppState.purchaseOrderItems[itemIndex]
+  item[formField] = checked
 
-    AppState.purchaseOrderItems[itemIndex] = item;
-    // No need to re-render the entire table for checkbox changes
+  AppState.purchaseOrderItems[itemIndex] = item
+  // No need to re-render the entire table for checkbox changes
 }
 
 function renderPOItems() {
-    const tbody = document.getElementById('po-items-tbody');
-    const isReadOnly = AppState.currentModal?.mode === 'view';
+  const tbody = document.getElementById('po-items-tbody')
+  const isReadOnly = AppState.currentModal?.mode === 'view'
 
-    tbody.innerHTML = AppState.purchaseOrderItems.map(item => `
+  tbody.innerHTML = AppState.purchaseOrderItems
+    .map(
+      (item) => `
         <tr>
             <td style="padding: 12px;">
                 <input type="text" 
                        value="${item.stockPropertyNumber}" 
-                       onchange="updatePOItem('${item.id}', 'stockPropertyNumber', this.value)"
+                       onchange="updatePOItem('${
+                         item.id
+                       }', 'stockPropertyNumber', this.value)"
                        class="form-input" 
                        style="height: 32px;" 
                        placeholder="e.g., 1"
@@ -4414,7 +5579,9 @@ function renderPOItems() {
             <td style="padding: 12px;">
                 <input type="text" 
                        value="${item.description}" 
-                       onchange="updatePOItem('${item.id}', 'description', this.value)"
+                       onchange="updatePOItem('${
+                         item.id
+                       }', 'description', this.value)"
                        class="form-input" 
                        style="height: 32px;" 
                        placeholder="Item name"
@@ -4422,16 +5589,22 @@ function renderPOItems() {
             </td>
             <td style="padding: 12px;">
                 <textarea value="${item.detailedDescription}" 
-                          onchange="updatePOItem('${item.id}', 'detailedDescription', this.value)"
+                          onchange="updatePOItem('${
+                            item.id
+                          }', 'detailedDescription', this.value)"
                           class="form-textarea" 
                           style="height: 32px; min-height: 32px; resize: none;" 
                           placeholder="Detailed specifications..."
-                          ${isReadOnly ? 'readonly' : ''}>${item.detailedDescription}</textarea>
+                          ${isReadOnly ? 'readonly' : ''}>${
+        item.detailedDescription
+      }</textarea>
             </td>
           <td style="padding: 12px;">
           <input type="number" 
               value="${item.quantity || ''}" 
-              onchange="updatePOItem('${item.id}', 'quantity', parseFloat(this.value) || 0)"
+              onchange="updatePOItem('${
+                item.id
+              }', 'quantity', parseFloat(this.value) || 0)"
               class="form-input" 
               style="height: 32px;" 
               placeholder="Qty"
@@ -4441,69 +5614,128 @@ function renderPOItems() {
                 <input type="number" 
                        step="0.01"
                        value="${item.unitCost || ''}" 
-                       onchange="updatePOItem('${item.id}', 'unitCost', parseFloat(this.value) || 0)"
+                       onchange="updatePOItem('${
+                         item.id
+                       }', 'unitCost', parseFloat(this.value) || 0)"
                        class="form-input" 
                        style="height: 32px;" 
                        placeholder="0.00"
                        ${isReadOnly ? 'readonly' : ''}>
             </td>
-            <td style="padding: 12px; font-weight: 500;">${formatCurrency(item.amount)}</td>
+            <td style="padding: 12px; font-weight: 500;">${formatCurrency(
+              item.amount
+            )}</td>
             <td style="padding: 12px;">
-                ${!isReadOnly ? `
+                ${
+                  !isReadOnly
+                    ? `
                     <div style="display: flex; gap: 4px; flex-wrap: wrap; align-items: center;">
                         <label style="display: inline-flex; align-items: center; gap: 2px; padding: 4px 6px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 4px; cursor: pointer; font-size: 11px; white-space: nowrap;" title="Inventory Custodian Slip">
-                            <input type="checkbox" ${item.generateICS ? 'checked' : ''} onchange="updatePOItemForm('${item.id}', 'generateICS', this.checked)" style="width: 14px; height: 14px; cursor: pointer;">
+                            <input type="checkbox" ${
+                              item.generateICS ? 'checked' : ''
+                            } onchange="updatePOItemForm('${
+                        item.id
+                      }', 'generateICS', this.checked)" style="width: 14px; height: 14px; cursor: pointer;">
                             <span style="font-weight: 500; color: #0369a1;">ICS</span>
                         </label>
                         <label style="display: inline-flex; align-items: center; gap: 2px; padding: 4px 6px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px; cursor: pointer; font-size: 11px; white-space: nowrap;" title="Requisition and Issue Slip">
-                            <input type="checkbox" ${item.generateRIS ? 'checked' : ''} onchange="updatePOItemForm('${item.id}', 'generateRIS', this.checked)" style="width: 14px; height: 14px; cursor: pointer;">
+                            <input type="checkbox" ${
+                              item.generateRIS ? 'checked' : ''
+                            } onchange="updatePOItemForm('${
+                        item.id
+                      }', 'generateRIS', this.checked)" style="width: 14px; height: 14px; cursor: pointer;">
                             <span style="font-weight: 500; color: #15803d;">RIS</span>
                         </label>
                         <label style="display: inline-flex; align-items: center; gap: 2px; padding: 4px 6px; background: #fef3c7; border: 1px solid #fde68a; border-radius: 4px; cursor: pointer; font-size: 11px; white-space: nowrap;" title="Property Acknowledgement Receipt">
-                            <input type="checkbox" ${item.generatePAR ? 'checked' : ''} onchange="updatePOItemForm('${item.id}', 'generatePAR', this.checked)" style="width: 14px; height: 14px; cursor: pointer;">
+                            <input type="checkbox" ${
+                              item.generatePAR ? 'checked' : ''
+                            } onchange="updatePOItemForm('${
+                        item.id
+                      }', 'generatePAR', this.checked)" style="width: 14px; height: 14px; cursor: pointer;">
                             <span style="font-weight: 500; color: #a16207;">PAR</span>
                         </label>
                         <label style="display: inline-flex; align-items: center; gap: 2px; padding: 4px 6px; background: #fce7f3; border: 1px solid #fbcfe8; border-radius: 4px; cursor: pointer; font-size: 11px; white-space: nowrap;" title="Inspection and Acceptance Report">
-                            <input type="checkbox" ${item.generateIAR ? 'checked' : ''} onchange="updatePOItemForm('${item.id}', 'generateIAR', this.checked)" style="width: 14px; height: 14px; cursor: pointer;">
+                            <input type="checkbox" ${
+                              item.generateIAR ? 'checked' : ''
+                            } onchange="updatePOItemForm('${
+                        item.id
+                      }', 'generateIAR', this.checked)" style="width: 14px; height: 14px; cursor: pointer;">
                             <span style="font-weight: 500; color: #be185d;">IAR</span>
                         </label>
                     </div>
-                ` : `
+                `
+                    : `
                     <div style="display: flex; gap: 4px; flex-wrap: wrap;">
-                        ${item.generateICS ? '<span style="padding: 2px 6px; background: #bae6fd; border-radius: 4px; font-size: 11px; font-weight: 500; color: #0369a1;">ICS</span>' : ''}
-                        ${item.generateRIS ? '<span style="padding: 2px 6px; background: #bbf7d0; border-radius: 4px; font-size: 11px; font-weight: 500; color: #15803d;">RIS</span>' : ''}
-                        ${item.generatePAR ? '<span style="padding: 2px 6px; background: #fde68a; border-radius: 4px; font-size: 11px; font-weight: 500; color: #a16207;">PAR</span>' : ''}
-                        ${item.generateIAR ? '<span style="padding: 2px 6px; background: #fbcfe8; border-radius: 4px; font-size: 11px; font-weight: 500; color: #be185d;">IAR</span>' : ''}
+                        ${
+                          item.generateICS
+                            ? '<span style="padding: 2px 6px; background: #bae6fd; border-radius: 4px; font-size: 11px; font-weight: 500; color: #0369a1;">ICS</span>'
+                            : ''
+                        }
+                        ${
+                          item.generateRIS
+                            ? '<span style="padding: 2px 6px; background: #bbf7d0; border-radius: 4px; font-size: 11px; font-weight: 500; color: #15803d;">RIS</span>'
+                            : ''
+                        }
+                        ${
+                          item.generatePAR
+                            ? '<span style="padding: 2px 6px; background: #fde68a; border-radius: 4px; font-size: 11px; font-weight: 500; color: #a16207;">PAR</span>'
+                            : ''
+                        }
+                        ${
+                          item.generateIAR
+                            ? '<span style="padding: 2px 6px; background: #fbcfe8; border-radius: 4px; font-size: 11px; font-weight: 500; color: #be185d;">IAR</span>'
+                            : ''
+                        }
                     </div>
-                `}
+                `
+                }
             </td>
-            ${!isReadOnly ? `
+            ${
+              !isReadOnly
+                ? `
                 <td style="padding: 12px;">
                     <button onclick="removePOItem('${item.id}')" 
                             class="btn-outline-red" 
                             style="width: 32px; height: 32px; padding: 0;"
-                            ${AppState.purchaseOrderItems.length === 1 ? 'disabled' : ''}>
+                            ${
+                              AppState.purchaseOrderItems.length === 1
+                                ? 'disabled'
+                                : ''
+                            }>
                         <i data-lucide="trash-2" class="icon"></i>
                     </button>
                 </td>
-            ` : ''}
+            `
+                : ''
+            }
         </tr>
-    `).join('');
+    `
+    )
+    .join('')
 
-    // Update grand total
-    const grandTotal = AppState.purchaseOrderItems.reduce((total, item) => total + item.amount, 0);
-    document.getElementById('grand-total').textContent = formatCurrency(grandTotal);
+  // Update grand total
+  const grandTotal = AppState.purchaseOrderItems.reduce(
+    (total, item) => total + item.amount,
+    0
+  )
+  document.getElementById('grand-total').textContent =
+    formatCurrency(grandTotal)
 
-    // Reinitialize icons
-    lucide.createIcons();
+  // Reinitialize icons
+  lucide.createIcons()
 }
 
 function updateStockSummary() {
-    const summary = document.getElementById('stock-summary');
-    const newItems = AppState.purchaseOrderItems.filter(item => item.currentStock === 0 && item.stockPropertyNumber).length;
-    const totalQuantity = AppState.purchaseOrderItems.reduce((sum, item) => sum + item.quantity, 0);
+  const summary = document.getElementById('stock-summary')
+  const newItems = AppState.purchaseOrderItems.filter(
+    (item) => item.currentStock === 0 && item.stockPropertyNumber
+  ).length
+  const totalQuantity = AppState.purchaseOrderItems.reduce(
+    (sum, item) => sum + item.quantity,
+    0
+  )
 
-    summary.innerHTML = `
+  summary.innerHTML = `
         <div>
             <p style="font-size: 14px; color: #1e40af;">
                 <span style="font-weight: 500;">New Items (No Current Stock):</span> ${newItems}
@@ -4517,41 +5749,46 @@ function updateStockSummary() {
                 <span style="font-weight: 500;">Total Quantity Requested:</span> ${totalQuantity}
             </p>
         </div>
-    `;
+    `
 }
 
 async function deleteRequest(requestId) {
-    const ok = await showConfirm("Are you sure you want to delete this request?", 'Delete Request');
-    if (!ok) return;
+  const ok = await showConfirm(
+    'Are you sure you want to delete this request?',
+    'Delete Request'
+  )
+  if (!ok) return
 
-    // Remove from newRequests
-    AppState.newRequests = AppState.newRequests.filter(r => r.id !== requestId);
+  // Remove from newRequests
+  AppState.newRequests = AppState.newRequests.filter((r) => r.id !== requestId)
 
-    // If you want to handle other tables later:
-    AppState.pendingRequests = AppState.pendingRequests.filter(r => r.id !== requestId);
-    AppState.completedRequests = AppState.completedRequests.filter(r => r.id !== requestId);
+  // If you want to handle other tables later:
+  AppState.pendingRequests = AppState.pendingRequests.filter(
+    (r) => r.id !== requestId
+  )
+  AppState.completedRequests = AppState.completedRequests.filter(
+    (r) => r.id !== requestId
+  )
 
-    // Refresh table
-    loadPageContent('new-request');
+  // Refresh table
+  loadPageContent('new-request')
 }
 
-
-
 function generateNextRequestId() {
-    const prefix = 'REQ-';
-    // 1. Map all existing IDs
-    const highestNum = AppState.newRequests
-        .map(r => r.id)
-        // 2. Filter for valid REQ-### format and parse the number
-        .filter(id => id.startsWith(prefix) && id.length > prefix.length)
-        .map(id => parseInt(id.substring(prefix.length)))
-        .filter(num => !isNaN(num))
-        // 3. Find the maximum number, defaulting to 0 if none exist
-        .reduce((max, num) => Math.max(max, num), 0);
+  const prefix = 'REQ-'
+  // 1. Map all existing IDs
+  const highestNum = AppState.newRequests
+    .map((r) => r.id)
+    // 2. Filter for valid REQ-### format and parse the number
+    .filter((id) => id.startsWith(prefix) && id.length > prefix.length)
+    .map((id) => parseInt(id.substring(prefix.length)))
+    .filter((num) => !isNaN(num))
+    // 3. Find the maximum number, defaulting to 0 if none exist
+    .reduce((max, num) => Math.max(max, num), 0)
 
-    const nextNum = highestNum + 1;
-    // 4. Pad with leading zeros to ensure a length of 3 (e.g., 1 -> '001')
-    return `${prefix}${String(nextNum).padStart(3, '0')}`;
+  const nextNum = highestNum + 1
+  // 4. Pad with leading zeros to ensure a length of 3 (e.g., 1 -> '001')
+  return `${prefix}${String(nextNum).padStart(3, '0')}`
 }
 
 /**
@@ -4560,22 +5797,22 @@ function generateNextRequestId() {
  * @returns {string} The new P.O. Number.
  */
 function generateNewPONumber() {
-    const now = new Date();
-    const year = now.getFullYear();
-    // Months are 0-indexed, so add 1 and pad (e.g., 9 -> '10')
-    const month = String(now.getMonth() + 1).padStart(2, '0');
+  const now = new Date()
+  const year = now.getFullYear()
+  // Months are 0-indexed, so add 1 and pad (e.g., 9 -> '10')
+  const month = String(now.getMonth() + 1).padStart(2, '0')
 
-    const datePrefix = `${year}-${month}`;
+  const datePrefix = `${year}-${month}`
 
-    // Count how many requests already exist for the current year/month
-    const count = AppState.newRequests
-        .filter(r => r.poNumber && r.poNumber.startsWith(datePrefix))
-        .length;
+  // Count how many requests already exist for the current year/month
+  const count = AppState.newRequests.filter(
+    (r) => r.poNumber && r.poNumber.startsWith(datePrefix)
+  ).length
 
-    const nextCount = count + 1;
-    const paddedCount = String(nextCount).padStart(3, '0');
+  const nextCount = count + 1
+  const paddedCount = String(nextCount).padStart(3, '0')
 
-    return `${datePrefix}-${paddedCount}`;
+  return `${datePrefix}-${paddedCount}`
 }
 
 /**
@@ -4584,266 +5821,295 @@ function generateNewPONumber() {
  */
 
 function savePurchaseOrder(existingId = null) {
-    const modal = document.getElementById('purchase-order-modal');
+  const modal = document.getElementById('purchase-order-modal')
 
-    // Retrieve input values using new IDs from enhanced modal
-    const supplier = document.getElementById('supplierName')?.value || '';
-    const supplierAddress = document.getElementById('supplierAddress')?.value || '';
-    const supplierTIN = document.getElementById('supplierTIN')?.value || '';
-    const poNumber = document.getElementById('poNumber')?.value || '';
-    const purchaseDate = document.getElementById('purchaseDate')?.value || '';
-    const procurementMode = document.getElementById('procurementMode')?.value || '';
-    const department = document.getElementById('departmentSelect')?.value || '';
-    const gentlemen = document.getElementById('gentlemen')?.value || '';
-    const placeOfDelivery = document.getElementById('placeOfDelivery')?.value || '';
-    // Handle delivery date dropdown with "others" option
-    const deliveryDateSelect = document.getElementById('deliveryDate');
-    const deliveryDateOther = document.getElementById('deliveryDateOther');
-    let deliveryDate = '';
-    if (deliveryDateSelect?.value === 'others') {
-        deliveryDate = deliveryDateOther?.value || '';
-    } else {
-        deliveryDate = deliveryDateSelect?.value || '';
+  // Retrieve input values using new IDs from enhanced modal
+  const supplier = document.getElementById('supplierName')?.value || ''
+  const supplierAddress =
+    document.getElementById('supplierAddress')?.value || ''
+  const supplierTIN = document.getElementById('supplierTIN')?.value || ''
+  const poNumber = document.getElementById('poNumber')?.value || ''
+  const purchaseDate = document.getElementById('purchaseDate')?.value || ''
+  const procurementMode =
+    document.getElementById('procurementMode')?.value || ''
+  const department = document.getElementById('departmentSelect')?.value || ''
+  const gentlemen = document.getElementById('gentlemen')?.value || ''
+  const placeOfDelivery =
+    document.getElementById('placeOfDelivery')?.value || ''
+  // Handle delivery date dropdown with "others" option
+  const deliveryDateSelect = document.getElementById('deliveryDate')
+  const deliveryDateOther = document.getElementById('deliveryDateOther')
+  let deliveryDate = ''
+  if (deliveryDateSelect?.value === 'others') {
+    deliveryDate = deliveryDateOther?.value || ''
+  } else {
+    deliveryDate = deliveryDateSelect?.value || ''
+  }
+  const deliveryTerm = document.getElementById('deliveryTerm')?.value || ''
+  const paymentTerm = document.getElementById('paymentTerm')?.value || ''
+  const fundCluster = document.getElementById('fundCluster')?.value || ''
+  const fundsAvailable = document.getElementById('fundsAvailable')?.value || ''
+  const fundNotes = document.getElementById('fundNotes')?.value || ''
+  const orsNo = document.getElementById('orsNo')?.value || ''
+  const orsDate = document.getElementById('orsDate')?.value || ''
+  const orsAmount = document.getElementById('orsAmount')?.value || ''
+  const generateICS = document.getElementById('generateICS')?.checked || false
+  const generateRIS = document.getElementById('generateRIS')?.checked || false
+  const generatePAR = document.getElementById('generatePAR')?.checked || false
+  const generateIAR = document.getElementById('generateIAR')?.checked || false
+
+  const totalAmount = AppState.purchaseOrderItems.reduce(
+    (sum, item) => sum + item.amount,
+    0
+  )
+
+  let finalPoNumber = poNumber
+  if (!existingId && !poNumber) {
+    finalPoNumber = generateNewPONumber()
+    const poInput = document.getElementById('poNumber')
+    if (poInput) poInput.value = finalPoNumber
+  }
+
+  if (existingId) {
+    // Update existing request
+    console.log(`[UPDATE] Updating Request ID: ${existingId}`)
+    const idx = AppState.newRequests.findIndex((r) => r.id === existingId)
+    if (idx !== -1) {
+      AppState.newRequests[idx] = {
+        ...AppState.newRequests[idx],
+        supplier,
+        supplierAddress,
+        supplierTIN,
+        poNumber: finalPoNumber,
+        purchaseDate,
+        procurementMode,
+        department,
+        gentlemen,
+        placeOfDelivery,
+        deliveryDate,
+        deliveryTerm,
+        paymentTerm,
+        fundCluster,
+        fundsAvailable,
+        notes: fundNotes,
+        orsNo,
+        orsDate,
+        orsAmount,
+        generateICS,
+        generateRIS,
+        generatePAR,
+        generateIAR,
+        totalAmount,
+        items: [...AppState.purchaseOrderItems],
+      }
     }
-    const deliveryTerm = document.getElementById('deliveryTerm')?.value || '';
-    const paymentTerm = document.getElementById('paymentTerm')?.value || '';
-    const fundCluster = document.getElementById('fundCluster')?.value || '';
-    const fundsAvailable = document.getElementById('fundsAvailable')?.value || '';
-    const fundNotes = document.getElementById('fundNotes')?.value || '';
-    const orsNo = document.getElementById('orsNo')?.value || '';
-    const orsDate = document.getElementById('orsDate')?.value || '';
-    const orsAmount = document.getElementById('orsAmount')?.value || '';
-    const generateICS = document.getElementById('generateICS')?.checked || false;
-    const generateRIS = document.getElementById('generateRIS')?.checked || false;
-    const generatePAR = document.getElementById('generatePAR')?.checked || false;
-    const generateIAR = document.getElementById('generateIAR')?.checked || false;
+  } else {
+    // Create new request
+    const newRequestId = generateNextRequestId()
+    console.log(`[CREATE] Creating new Request ID: ${newRequestId}`)
 
-    const totalAmount = AppState.purchaseOrderItems.reduce((sum, item) => sum + item.amount, 0);
-
-    let finalPoNumber = poNumber;
-    if (!existingId && !poNumber) {
-        finalPoNumber = generateNewPONumber();
-        const poInput = document.getElementById('poNumber');
-        if (poInput) poInput.value = finalPoNumber;
+    const newRequest = {
+      id: newRequestId,
+      poNumber: finalPoNumber,
+      supplier,
+      supplierAddress,
+      supplierTIN,
+      purchaseDate,
+      procurementMode,
+      requestDate: new Date().toISOString().split('T')[0],
+      department,
+      gentlemen,
+      placeOfDelivery,
+      deliveryDate,
+      deliveryTerm,
+      paymentTerm,
+      fundCluster,
+      fundsAvailable,
+      notes: fundNotes,
+      orsNo,
+      orsDate,
+      orsAmount,
+      generateICS,
+      generateRIS,
+      generatePAR,
+      generateIAR,
+      totalAmount,
+      status: 'submitted',
+      requestedBy: 'Current User',
+      items: [...AppState.purchaseOrderItems],
     }
+    AppState.newRequests.push(newRequest)
+  }
 
-    if (existingId) {
-        // Update existing request
-        console.log(`[UPDATE] Updating Request ID: ${existingId}`);
-        const idx = AppState.newRequests.findIndex(r => r.id === existingId);
-        if (idx !== -1) {
-            AppState.newRequests[idx] = {
-                ...AppState.newRequests[idx],
-                supplier,
-                supplierAddress,
-                supplierTIN,
-                poNumber: finalPoNumber,
-                purchaseDate,
-                procurementMode,
-                department,
-                gentlemen,
-                placeOfDelivery,
-                deliveryDate,
-                deliveryTerm,
-                paymentTerm,
-                fundCluster,
-                fundsAvailable,
-                notes: fundNotes,
-                orsNo,
-                orsDate,
-                orsAmount,
-                generateICS,
-                generateRIS,
-                generatePAR,
-                generateIAR,
-                totalAmount,
-                items: [...AppState.purchaseOrderItems]
-            };
-        }
-    } else {
-        // Create new request
-        const newRequestId = generateNextRequestId();
-        console.log(`[CREATE] Creating new Request ID: ${newRequestId}`);
+  // Show success alert
+  if (existingId) {
+    showAlert('Purchase order updated successfully!', 'success')
+  } else {
+    showAlert(
+      `New purchase order ${finalPoNumber} created successfully!`,
+      'success'
+    )
+  }
 
-        const newRequest = {
-            id: newRequestId,
-            poNumber: finalPoNumber,
-            supplier,
-            supplierAddress,
-            supplierTIN,
-            purchaseDate,
-            procurementMode,
-            requestDate: new Date().toISOString().split('T')[0],
-            department,
-            gentlemen,
-            placeOfDelivery,
-            deliveryDate,
-            deliveryTerm,
-            paymentTerm,
-            fundCluster,
-            fundsAvailable,
-            notes: fundNotes,
-            orsNo,
-            orsDate,
-            orsAmount,
-            generateICS,
-            generateRIS,
-            generatePAR,
-            generateIAR,
-            totalAmount,
-            status: "submitted",
-            requestedBy: "Current User",
-            items: [...AppState.purchaseOrderItems]
-        };
-        AppState.newRequests.push(newRequest);
-    }
-
-    // Show success alert
-    if (existingId) {
-        showAlert('Purchase order updated successfully!', 'success');
-    } else {
-        showAlert(`New purchase order ${finalPoNumber} created successfully!`, 'success');
-    }
-
-    // Refresh UI and close modal
-    loadPageContent('new-request');
-    closePurchaseOrderModal();
-    console.log("--- Current New Requests State ---", AppState.newRequests);
+  // Refresh UI and close modal
+  loadPageContent('new-request')
+  closePurchaseOrderModal()
+  console.log('--- Current New Requests State ---', AppState.newRequests)
 }
-
 
 // Product Tab Functions
 function switchProductTab(tabName) {
-    AppState.currentProductTab = tabName;
-    // Reset search and filters when switching tabs
-    AppState.productSearchTerm = '';
-    AppState.productSortBy = 'Sort By';
-    AppState.productFilterBy = 'Filter By';
-    loadPageContent('products');
+  AppState.currentProductTab = tabName
+  // Reset search and filters when switching tabs
+  AppState.productSearchTerm = ''
+  AppState.productSortBy = 'Sort By'
+  AppState.productFilterBy = 'Filter By'
+  loadPageContent('products')
 }
 
 // Page-specific event initialization
 function initializePageEvents(pageId) {
-    // Add page-specific event listeners here
-    switch (pageId) {
-        case 'products':
-            initializeProductsPageEvents();
-            break;
-        case 'new-request':
-        case 'pending-approval':
-        case 'completed-request':
-            // Initialize PO modal triggers
-            break;
-        default:
-            break;
-    }
+  // Add page-specific event listeners here
+  switch (pageId) {
+    case 'products':
+      initializeProductsPageEvents()
+      break
+    case 'new-request':
+    case 'pending-approval':
+    case 'completed-request':
+      // Initialize PO modal triggers
+      break
+    default:
+      break
+  }
 }
 
 function initializeProductsPageEvents() {
-    // Initialize search functionality
-    const searchInput = document.getElementById('product-search');
-    if (searchInput) {
-        searchInput.addEventListener('input', function (e) {
-            AppState.productSearchTerm = e.target.value;
-            updateProductsTable();
-        });
-    }
+  // Initialize search functionality
+  const searchInput = document.getElementById('product-search')
+  if (searchInput) {
+    searchInput.addEventListener('input', function (e) {
+      AppState.productSearchTerm = e.target.value
+      updateProductsTable()
+    })
+  }
 
-    // Initialize sort and filter dropdowns
-    const sortBy = document.getElementById('sort-by');
-    const filterBy = document.getElementById('filter-by');
+  // Initialize sort and filter dropdowns
+  const sortBy = document.getElementById('sort-by')
+  const filterBy = document.getElementById('filter-by')
 
-    if (sortBy) {
-        sortBy.addEventListener('change', function (e) {
-            AppState.productSortBy = e.target.value;
-            updateProductsTable();
-        });
-    }
+  if (sortBy) {
+    sortBy.addEventListener('change', function (e) {
+      AppState.productSortBy = e.target.value
+      updateProductsTable()
+    })
+  }
 
-    if (filterBy) {
-        filterBy.addEventListener('change', function (e) {
-            AppState.productFilterBy = e.target.value;
-            updateProductsTable();
-        });
-    }
+  if (filterBy) {
+    filterBy.addEventListener('change', function (e) {
+      AppState.productFilterBy = e.target.value
+      updateProductsTable()
+    })
+  }
 
-    // ...existing code...
+  // ...existing code...
 }
 
 function updateProductsTable() {
-    const currentTab = AppState.currentProductTab || 'expendable';
-    let filteredProducts = MockData.products.filter(product => product.type === currentTab.toLowerCase());
+  const currentTab = AppState.currentProductTab || 'expendable'
+  let filteredProducts = MockData.products.filter(
+    (product) => product.type === currentTab.toLowerCase()
+  )
 
-    // Apply search filter
-    if (AppState.productSearchTerm) {
-        const searchTerm = AppState.productSearchTerm.toLowerCase();
-        filteredProducts = filteredProducts.filter(product =>
-            product.name.toLowerCase().includes(searchTerm) ||
-            product.description.toLowerCase().includes(searchTerm) ||
-            product.id.toLowerCase().includes(searchTerm)
-        );
+  // Apply search filter
+  if (AppState.productSearchTerm) {
+    const searchTerm = AppState.productSearchTerm.toLowerCase()
+    filteredProducts = filteredProducts.filter(
+      (product) =>
+        product.name.toLowerCase().includes(searchTerm) ||
+        product.description.toLowerCase().includes(searchTerm) ||
+        product.id.toLowerCase().includes(searchTerm)
+    )
+  }
+
+  // Apply filter
+  if (AppState.productFilterBy && AppState.productFilterBy !== 'Filter By') {
+    switch (AppState.productFilterBy) {
+      case 'High Value (>₱5,000)':
+        filteredProducts = filteredProducts.filter(
+          (product) => product.totalValue > 5000
+        )
+        break
+      case 'Medium Value (₱1,000-₱5,000)':
+        filteredProducts = filteredProducts.filter(
+          (product) => product.totalValue >= 1000 && product.totalValue <= 5000
+        )
+        break
+      case 'Low Value (<₱1,000)':
+        filteredProducts = filteredProducts.filter(
+          (product) => product.totalValue < 1000
+        )
+        break
+      case 'Low Quantity (<20)':
+        filteredProducts = filteredProducts.filter(
+          (product) => product.quantity < 20
+        )
+        break
+      case 'Recent (Last 30 days)':
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+        filteredProducts = filteredProducts.filter(
+          (product) => new Date(product.date) >= thirtyDaysAgo
+        )
+        break
     }
+  }
 
-    // Apply filter
-    if (AppState.productFilterBy && AppState.productFilterBy !== 'Filter By') {
-        switch (AppState.productFilterBy) {
-            case 'High Value (>₱5,000)':
-                filteredProducts = filteredProducts.filter(product => product.totalValue > 5000);
-                break;
-            case 'Medium Value (₱1,000-₱5,000)':
-                filteredProducts = filteredProducts.filter(product => product.totalValue >= 1000 && product.totalValue <= 5000);
-                break;
-            case 'Low Value (<₱1,000)':
-                filteredProducts = filteredProducts.filter(product => product.totalValue < 1000);
-                break;
-            case 'Low Quantity (<20)':
-                filteredProducts = filteredProducts.filter(product => product.quantity < 20);
-                break;
-            case 'Recent (Last 30 days)':
-                const thirtyDaysAgo = new Date();
-                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-                filteredProducts = filteredProducts.filter(product => new Date(product.date) >= thirtyDaysAgo);
-                break;
-        }
+  // Apply sorting
+  if (AppState.productSortBy && AppState.productSortBy !== 'Sort By') {
+    switch (AppState.productSortBy) {
+      case 'Product Name (A-Z)':
+        filteredProducts.sort((a, b) => a.name.localeCompare(b.name))
+        break
+      case 'Product Name (Z-A)':
+        filteredProducts.sort((a, b) => b.name.localeCompare(a.name))
+        break
+      case 'Date (Newest)':
+        filteredProducts.sort((a, b) => new Date(b.date) - new Date(a.date))
+        break
+      case 'Date (Oldest)':
+        filteredProducts.sort((a, b) => new Date(a.date) - new Date(b.date))
+        break
+      case 'Total Value (High to Low)':
+        filteredProducts.sort((a, b) => b.totalValue - a.totalValue)
+        break
+      case 'Total Value (Low to High)':
+        filteredProducts.sort((a, b) => a.totalValue - b.totalValue)
+        break
     }
+  }
 
-    // Apply sorting
-    if (AppState.productSortBy && AppState.productSortBy !== 'Sort By') {
-        switch (AppState.productSortBy) {
-            case 'Product Name (A-Z)':
-                filteredProducts.sort((a, b) => a.name.localeCompare(b.name));
-                break;
-            case 'Product Name (Z-A)':
-                filteredProducts.sort((a, b) => b.name.localeCompare(a.name));
-                break;
-            case 'Date (Newest)':
-                filteredProducts.sort((a, b) => new Date(b.date) - new Date(a.date));
-                break;
-            case 'Date (Oldest)':
-                filteredProducts.sort((a, b) => new Date(a.date) - new Date(b.date));
-                break;
-            case 'Total Value (High to Low)':
-                filteredProducts.sort((a, b) => b.totalValue - a.totalValue);
-                break;
-            case 'Total Value (Low to High)':
-                filteredProducts.sort((a, b) => a.totalValue - b.totalValue);
-                break;
-        }
-    }
-
-    // Update table body
-    const tbody = document.querySelector('.table tbody');
-    if (tbody) {
-        tbody.innerHTML = filteredProducts.map((product, index) => {
-            const rowBg = (index % 2 === 0) ? 'background-color: white;' : 'background-color: #f9fafb;';
-            return `
+  // Update table body
+  const tbody = document.querySelector('.table tbody')
+  if (tbody) {
+    tbody.innerHTML = filteredProducts
+      .map((product, index) => {
+        const rowBg =
+          index % 2 === 0
+            ? 'background-color: white;'
+            : 'background-color: #f9fafb;'
+        return `
             <tr style="${rowBg}">
                 <td style="font-weight: 500;">${product.id}</td>
                 <td style="font-weight: 500;">${product.name}</td>
-                <td style="color: #6b7280; max-width: 300px;">${product.description}</td>
+                <td style="color: #6b7280; max-width: 300px;">${
+                  product.description
+                }</td>
                 <td>${product.quantity}</td>
                 <td>${formatCurrency(product.unitCost)}</td>
-                <td style="font-weight: 500;">${formatCurrency(product.totalValue)}</td>
+                <td style="font-weight: 500;">${formatCurrency(
+                  product.totalValue
+                )}</td>
                 <td>${product.date}</td>
                 <td>
                     <div class="table-actions">
@@ -4856,176 +6122,237 @@ function updateProductsTable() {
                     </div>
                 </td>
             </tr>
-        `}).join('');
+        `
+      })
+      .join('')
 
-        // Update pagination count
-        const paginationLeft = document.querySelector('.pagination-left');
-        if (paginationLeft) {
-            paginationLeft.textContent = `Showing 1 to ${filteredProducts.length}`;
-        }
-
-        // Reinitialize icons
-        lucide.createIcons();
+    // Update pagination count
+    const paginationLeft = document.querySelector('.pagination-left')
+    if (paginationLeft) {
+      paginationLeft.textContent = `Showing 1 to ${filteredProducts.length}`
     }
+
+    // Reinitialize icons
+    lucide.createIcons()
+  }
 }
 
 // Action functions
 function approveRequest(requestId) {
-    console.log('Approving request:', requestId);
+  console.log('Approving request:', requestId)
 
-    // Find in newRequests first
-    const idx = AppState.newRequests.findIndex(r => r.id === requestId);
-    let request = null;
-    if (idx !== -1) {
-        request = AppState.newRequests[idx];
-        // mark approved
-        request.status = 'approved';
-        request.approvedBy = 'Approver User';
-        request.approvedDate = new Date().toISOString().split('T')[0];
+  // Find in newRequests first
+  const idx = AppState.newRequests.findIndex((r) => r.id === requestId)
+  let request = null
+  if (idx !== -1) {
+    request = AppState.newRequests[idx]
+    // mark approved
+    request.status = 'approved'
+    request.approvedBy = 'Approver User'
+    request.approvedDate = new Date().toISOString().split('T')[0]
 
-        // Move to completedRequests
-        AppState.completedRequests.push(request);
-        AppState.newRequests.splice(idx, 1);
-    } else {
-        // try pendingRequests fallback
-        const pidx = AppState.pendingRequests.findIndex(r => r.id === requestId);
-        if (pidx !== -1) {
-            request = AppState.pendingRequests[pidx];
-            request.status = 'approved';
-            request.approvedBy = 'Approver User';
-            request.approvedDate = new Date().toISOString().split('T')[0];
-            AppState.completedRequests.push(request);
-            AppState.pendingRequests.splice(pidx, 1);
-        }
+    // Move to completedRequests
+    AppState.completedRequests.push(request)
+    AppState.newRequests.splice(idx, 1)
+  } else {
+    // try pendingRequests fallback
+    const pidx = AppState.pendingRequests.findIndex((r) => r.id === requestId)
+    if (pidx !== -1) {
+      request = AppState.pendingRequests[pidx]
+      request.status = 'approved'
+      request.approvedBy = 'Approver User'
+      request.approvedDate = new Date().toISOString().split('T')[0]
+      AppState.completedRequests.push(request)
+      AppState.pendingRequests.splice(pidx, 1)
     }
+  }
 
-    if (request) {
-        showAlert(`Request ${requestId} approved successfully!`, 'success');
-    } else {
-        showAlert(`Request ${requestId} not found.`, 'error');
-    }
+  if (request) {
+    showAlert(`Request ${requestId} approved successfully!`, 'success')
+  } else {
+    showAlert(`Request ${requestId} not found.`, 'error')
+  }
 
-    // Refresh Pending Approval view
-    loadPageContent('pending-approval');
+  // Refresh Pending Approval view
+  loadPageContent('pending-approval')
 }
 
 async function rejectRequest(requestId) {
-    console.log('Rejecting request:', requestId);
-    const ok = await showConfirm(`Are you sure you want to reject request ${requestId}?`, 'Reject Request');
-    if (!ok) return;
+  console.log('Rejecting request:', requestId)
+  const ok = await showConfirm(
+    `Are you sure you want to reject request ${requestId}?`,
+    'Reject Request'
+  )
+  if (!ok) return
 
-    // Try to find and mark rejected
-    const idx = AppState.newRequests.findIndex(r => r.id === requestId);
-    let request = null;
-    if (idx !== -1) {
-        request = AppState.newRequests[idx];
-        request.status = 'rejected';
-        request.rejectedBy = 'Approver User';
-        request.rejectedDate = new Date().toISOString().split('T')[0];
-        AppState.rejectedRequests = AppState.rejectedRequests || [];
-        AppState.rejectedRequests.push(request);
-        AppState.newRequests.splice(idx, 1);
-    } else {
-        const pidx = AppState.pendingRequests.findIndex(r => r.id === requestId);
-        if (pidx !== -1) {
-            request = AppState.pendingRequests[pidx];
-            request.status = 'rejected';
-            request.rejectedBy = 'Approver User';
-            request.rejectedDate = new Date().toISOString().split('T')[0];
-            AppState.rejectedRequests = AppState.rejectedRequests || [];
-            AppState.rejectedRequests.push(request);
-            AppState.pendingRequests.splice(pidx, 1);
-        }
+  // Try to find and mark rejected
+  const idx = AppState.newRequests.findIndex((r) => r.id === requestId)
+  let request = null
+  if (idx !== -1) {
+    request = AppState.newRequests[idx]
+    request.status = 'rejected'
+    request.rejectedBy = 'Approver User'
+    request.rejectedDate = new Date().toISOString().split('T')[0]
+    AppState.rejectedRequests = AppState.rejectedRequests || []
+    AppState.rejectedRequests.push(request)
+    AppState.newRequests.splice(idx, 1)
+  } else {
+    const pidx = AppState.pendingRequests.findIndex((r) => r.id === requestId)
+    if (pidx !== -1) {
+      request = AppState.pendingRequests[pidx]
+      request.status = 'rejected'
+      request.rejectedBy = 'Approver User'
+      request.rejectedDate = new Date().toISOString().split('T')[0]
+      AppState.rejectedRequests = AppState.rejectedRequests || []
+      AppState.rejectedRequests.push(request)
+      AppState.pendingRequests.splice(pidx, 1)
     }
+  }
 
-    if (request) {
-        showAlert(`Request ${requestId} rejected.`, 'warning');
-    } else {
-        showAlert(`Request ${requestId} not found.`, 'error');
-    }
+  if (request) {
+    showAlert(`Request ${requestId} rejected.`, 'warning')
+  } else {
+    showAlert(`Request ${requestId} not found.`, 'error')
+  }
 
-    loadPageContent('pending-approval');
+  loadPageContent('pending-approval')
 }
 
 // Enhanced: added optional second parameter for clean print (removes toolbar & page title)
 // Usage: downloadPO('PO-123'); // clean by default
 //        downloadPO('PO-123', { clean: false }); // old behaviour with toolbar
 function downloadPO(requestId, opts = {}) {
-    const clean = opts.clean !== undefined ? !!opts.clean : true; // default to clean output
-    // Locate request in any collection
-    const request = (AppState.newRequests || []).concat(AppState.pendingRequests || [], AppState.completedRequests || [])
-        .find(r => r.id === requestId);
-    if (!request) {
-        showAlert(`Purchase Order ${requestId} not found.`, 'error');
-        return;
-    }
+  const clean = opts.clean !== undefined ? !!opts.clean : true // default to clean output
+  // Locate request in any collection
+  const request = (AppState.newRequests || [])
+    .concat(AppState.pendingRequests || [], AppState.completedRequests || [])
+    .find((r) => r.id === requestId)
+  if (!request) {
+    showAlert(`Purchase Order ${requestId} not found.`, 'error')
+    return
+  }
 
-    const currentUser = AppState.currentUser || {};
-    const poNumber = request.poNumber || 'PO-UNKNOWN';
+  const currentUser = AppState.currentUser || {}
+  const poNumber = request.poNumber || 'PO-UNKNOWN'
 
-    const poData = {
-        supplier: request.supplier || '',
-        poNumber: request.poNumber || '',
-        address: request.supplierAddress || '',
-        dateOfPurchase: request.purchaseDate || request.requestDate || '',
-        tinNumber: request.supplierTIN || '',
-        modeOfPayment: request.procurementMode || '',
-        placeOfDelivery: request.placeOfDelivery || '',
-        deliveryTerm: request.deliveryTerm || '',
-        dateOfDelivery: request.deliveryDate || '',
-        paymentTerm: request.paymentTerm || '',
-        fundCluster: request.fundCluster || '',
-        orsBursNo: request.orsNo || '',
-        fundsAvailable: request.fundsAvailable || '',
-        orsBursDate: request.orsDate || '',
-        orsBursAmount: request.orsAmount || '',
-        notes: request.notes || '',
-        items: (request.items || []).map(it => ({
-            stockPropertyNumber: it.stockPropertyNumber || '',
-            unit: it.unit || '',
-            description: it.description || it.detailedDescription || '',
-            quantity: it.quantity || 0,
-            unitCost: it.unitCost || 0,
-            amount: it.amount || ((it.quantity || 0) * (it.unitCost || 0))
-        }))
-    };
+  const poData = {
+    supplier: request.supplier || '',
+    poNumber: request.poNumber || '',
+    address: request.supplierAddress || '',
+    dateOfPurchase: request.purchaseDate || request.requestDate || '',
+    tinNumber: request.supplierTIN || '',
+    modeOfPayment: request.procurementMode || '',
+    placeOfDelivery: request.placeOfDelivery || '',
+    deliveryTerm: request.deliveryTerm || '',
+    dateOfDelivery: request.deliveryDate || '',
+    paymentTerm: request.paymentTerm || '',
+    fundCluster: request.fundCluster || '',
+    orsBursNo: request.orsNo || '',
+    fundsAvailable: request.fundsAvailable || '',
+    orsBursDate: request.orsDate || '',
+    orsBursAmount: request.orsAmount || '',
+    notes: request.notes || '',
+    items: (request.items || []).map((it) => ({
+      stockPropertyNumber: it.stockPropertyNumber || '',
+      unit: it.unit || '',
+      description: it.description || it.detailedDescription || '',
+      quantity: it.quantity || 0,
+      unitCost: it.unitCost || 0,
+      amount: it.amount || (it.quantity || 0) * (it.unitCost || 0),
+    })),
+  }
 
-    const signatures = {
-        authorization: currentUser.role && /president/i.test(currentUser.role) ? currentUser.name : '________________________',
-        accountant: currentUser.role && /accountant/i.test(currentUser.role) ? currentUser.name : '________________________',
-        supplier: '________________________'
-    };
+  const signatures = {
+    authorization:
+      currentUser.role && /president/i.test(currentUser.role)
+        ? currentUser.name
+        : '________________________',
+    accountant:
+      currentUser.role && /accountant/i.test(currentUser.role)
+        ? currentUser.name
+        : '________________________',
+    supplier: '________________________',
+  }
 
-    function esc(str) { return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-    function fmtMoney(v) { if (v === undefined || v === null || v === '') return ''; return '₱' + Number(v).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-    function fmtDate(d) { if (!d) return ''; const dt = new Date(d); if (isNaN(dt)) return esc(d); return dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }); }
+  function esc(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+  }
+  function fmtMoney(v) {
+    if (v === undefined || v === null || v === '') return ''
+    return (
+      '₱' +
+      Number(v).toLocaleString('en-PH', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+    )
+  }
+  function fmtDate(d) {
+    if (!d) return ''
+    const dt = new Date(d)
+    if (isNaN(dt)) return esc(d)
+    return dt.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    })
+  }
 
-    function buildItems(poData) {
-        const rows = poData.items.map(it => `
+  function buildItems(poData) {
+    const rows = poData.items
+      .map(
+        (it) => `
             <tr>
-                <td class=\"table-cell-border text-center h-8\">${esc(it.stockPropertyNumber)}</td>
-                <td class=\"table-cell-border text-center h-8\">${esc(it.unit)}</td>
+                <td class=\"table-cell-border text-center h-8\">${esc(
+                  it.stockPropertyNumber
+                )}</td>
+                <td class=\"table-cell-border text-center h-8\">${esc(
+                  it.unit
+                )}</td>
                 <td class=\"table-cell-border h-8\">${esc(it.description)}</td>
-                <td class=\"table-cell-border text-center h-8\">${esc(it.quantity)}</td>
-                <td class=\"table-cell-border text-right h-8\">${it.unitCost ? fmtMoney(it.unitCost) : ''}</td>
-                <td class=\"table-cell-border-top text-right h-8\">${it.amount ? fmtMoney(it.amount) : ''}</td>
-            </tr>`).join('');
-        const min = 8 - poData.items.length;
-        const fillers = min > 0 ? Array.from({ length: min }).map(() => '<tr><td class=\"table-cell-border h-8\">&nbsp;</td><td class=\"table-cell-border h-8\">&nbsp;</td><td class=\"table-cell-border h-8\">&nbsp;</td><td class=\"table-cell-border h-8\">&nbsp;</td><td class=\"table-cell-border h-8\">&nbsp;</td><td class=\"table-cell-border-top h-8\">&nbsp;</td></tr>').join('') : '';
-        return rows + fillers;
-    }
+                <td class=\"table-cell-border text-center h-8\">${esc(
+                  it.quantity
+                )}</td>
+                <td class=\"table-cell-border text-right h-8\">${
+                  it.unitCost ? fmtMoney(it.unitCost) : ''
+                }</td>
+                <td class=\"table-cell-border-top text-right h-8\">${
+                  it.amount ? fmtMoney(it.amount) : ''
+                }</td>
+            </tr>`
+      )
+      .join('')
+    const min = 8 - poData.items.length
+    const fillers =
+      min > 0
+        ? Array.from({ length: min })
+            .map(
+              () =>
+                '<tr><td class="table-cell-border h-8">&nbsp;</td><td class="table-cell-border h-8">&nbsp;</td><td class="table-cell-border h-8">&nbsp;</td><td class="table-cell-border h-8">&nbsp;</td><td class="table-cell-border h-8">&nbsp;</td><td class="table-cell-border-top h-8">&nbsp;</td></tr>'
+            )
+            .join('')
+        : ''
+    return rows + fillers
+  }
 
-    const grandTotal = poData.items.reduce((s, it) => s + (it.amount || 0), 0);
+  const grandTotal = poData.items.reduce((s, it) => s + (it.amount || 0), 0)
 
-    function buildHTML(filename) {
-        const titleText = clean ? '' : esc(filename);
-        const toolbarHTML = clean ? '' : `
+  function buildHTML(filename) {
+    const titleText = clean ? '' : esc(filename)
+    const toolbarHTML = clean
+      ? ''
+      : `
                 <div class=\"toolbar\">
                     <span style=\"font-weight:600;\">Purchase Order Export</span>
-                    <label>Filename: <input id=\"po-filename-input\" value='${esc(filename)}' style='width:180px'></label>
+                    <label>Filename: <input id=\"po-filename-input\" value='${esc(
+                      filename
+                    )}' style='width:180px'></label>
                     <button class=\"secondary\" onclick=\"window.print()\">Print / PDF</button>
-                </div>`;
-        return `<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><title>${titleText}</title><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><style>
+                </div>`
+    return `<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><title>${titleText}</title><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><style>
                 @page { size: A4 portrait; margin: 16mm 14mm 18mm 14mm; }
                 html, body { height:100%; }
                 body{margin:0;font-family:'Times New Roman',Times,serif;font-size:10px;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
@@ -5053,16 +6380,44 @@ function downloadPO(requestId, opts = {}) {
                     <div class=\"purchase-order-doc table-border-2\" style=\"border:1px solid #ccc;font-size:12px;\">
                         <div style=\"text-align:center;margin-bottom:16px;\"><h1 style=\"font-size:14px;font-weight:700;margin:0 0 6px;\">PURCHASE ORDER</h1><p style=\"font-size:12px;text-decoration:underline;margin:0 0 3px;\">Camarines Norte State College</p><p style=\"font-size:10px;font-style:italic;margin:0;color:#444\">Entity Name</p></div>
                         <div class=\"table-border-2\" style=\"border:2px solid #000;\"><table style=\"font-size:11px;\"><tbody>
-              <tr><td class=\"table-cell-border-right\" style=\"width:15%;font-weight:700;\">Supplier:</td><td colspan=\"3\" class=\"table-cell-border-right\" style=\"width:45%;\">${esc(poData.supplier)}</td><td class=\"table-cell-border-right\" style=\"width:15%;font-weight:700;\">P.O. No.:</td><td style=\"width:25%;padding:4px;\">${esc(poData.poNumber)}</td></tr>
-              <tr><td class=\"table-cell-border\" style=\"font-weight:700;\">Address:</td><td colspan=\"3\" class=\"table-cell-border-right table-cell-border-top\">${esc(poData.address)}</td><td class=\"table-cell-border-right table-cell-border-top\" style=\"font-weight:700;\">Date:</td><td class=\"table-cell-border-top\">${fmtDate(poData.dateOfPurchase)}</td></tr>
-              <tr><td class=\"table-cell-border\" style=\"font-weight:700;\">TIN:</td><td colspan=\"3\" class=\"table-cell-border-right table-cell-border-top\">${esc(poData.tinNumber)}</td><td class=\"table-cell-border-right table-cell-border-top\" style=\"font-weight:700;\">Mode of Procurement:</td><td class=\"table-cell-border-top\">${esc(poData.modeOfPayment)}</td></tr>
+              <tr><td class=\"table-cell-border-right\" style=\"width:15%;font-weight:700;\">Supplier:</td><td colspan=\"3\" class=\"table-cell-border-right\" style=\"width:45%;\">${esc(
+                poData.supplier
+              )}</td><td class=\"table-cell-border-right\" style=\"width:15%;font-weight:700;\">P.O. No.:</td><td style=\"width:25%;padding:4px;\">${esc(
+      poData.poNumber
+    )}</td></tr>
+              <tr><td class=\"table-cell-border\" style=\"font-weight:700;\">Address:</td><td colspan=\"3\" class=\"table-cell-border-right table-cell-border-top\">${esc(
+                poData.address
+              )}</td><td class=\"table-cell-border-right table-cell-border-top\" style=\"font-weight:700;\">Date:</td><td class=\"table-cell-border-top\">${fmtDate(
+      poData.dateOfPurchase
+    )}</td></tr>
+              <tr><td class=\"table-cell-border\" style=\"font-weight:700;\">TIN:</td><td colspan=\"3\" class=\"table-cell-border-right table-cell-border-top\">${esc(
+                poData.tinNumber
+              )}</td><td class=\"table-cell-border-right table-cell-border-top\" style=\"font-weight:700;\">Mode of Procurement:</td><td class=\"table-cell-border-top\">${esc(
+      poData.modeOfPayment
+    )}</td></tr>
               <tr><td colspan=\"6\" class=\"table-cell-border-top\" style=\"padding:12px;\"><strong style=\"font-size:12px;\">Gentlemen:</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Please furnish this Office the following articles subject to the terms and conditions contained herein:</td></tr>
-              <tr><td class=\"table-cell-border\" style=\"font-weight:700;\">Place of Delivery:</td><td colspan=\"2\" class=\"table-cell-border-right table-cell-border-top\">${esc(poData.placeOfDelivery)}</td><td class=\"table-cell-border-right table-cell-border-top\" style=\"font-weight:700;\">Delivery Term:</td><td colspan=\"2\" class=\"table-cell-border-top\">${esc(poData.deliveryTerm)}</td></tr>
-              <tr><td class=\"table-cell-border\" style=\"font-weight:700;\">Date of Delivery:</td><td colspan=\"2\" class=\"table-cell-border-right table-cell-border-top\">${fmtDate(poData.dateOfDelivery)}</td><td class=\"table-cell-border-right table-cell-border-top\" style=\"font-weight:700;\">Payment Term:</td><td colspan=\"2\" class=\"table-cell-border-top\">${esc(poData.paymentTerm)}</td></tr>
+              <tr><td class=\"table-cell-border\" style=\"font-weight:700;\">Place of Delivery:</td><td colspan=\"2\" class=\"table-cell-border-right table-cell-border-top\">${esc(
+                poData.placeOfDelivery
+              )}</td><td class=\"table-cell-border-right table-cell-border-top\" style=\"font-weight:700;\">Delivery Term:</td><td colspan=\"2\" class=\"table-cell-border-top\">${esc(
+      poData.deliveryTerm
+    )}</td></tr>
+              <tr><td class=\"table-cell-border\" style=\"font-weight:700;\">Date of Delivery:</td><td colspan=\"2\" class=\"table-cell-border-right table-cell-border-top\">${fmtDate(
+                poData.dateOfDelivery
+              )}</td><td class=\"table-cell-border-right table-cell-border-top\" style=\"font-weight:700;\">Payment Term:</td><td colspan=\"2\" class=\"table-cell-border-top\">${esc(
+      poData.paymentTerm
+    )}</td></tr>
               <tr><td class=\"table-cell-border text-center font-semibold\" style=\"width:13%;\">Stock/Property Number</td><td class=\"table-cell-border text-center font-semibold\" style=\"width:8%;\">Unit</td><td class=\"table-cell-border text-center font-semibold\" style=\"width:39%;\">Description</td><td class=\"table-cell-border text-center font-semibold\" style=\"width:10%;\">Quantity</td><td class=\"table-cell-border text-center font-semibold\" style=\"width:15%;\">Unit Cost</td><td class=\"table-cell-border-top text-center font-semibold\" style=\"width:15%;\">Amount</td></tr>
               ${buildItems(poData)}
-              <tr><td colspan=\"5\" class=\"table-cell-border text-right font-semibold\">Grand Total:</td><td class=\"table-cell-border-top text-right font-bold\">${grandTotal ? fmtMoney(grandTotal) : ''}</td></tr>
-              ${poData.notes ? `<tr><td class='table-cell-border font-semibold'>Note:</td><td colspan='5' class='table-cell-border-top'>${esc(poData.notes)}</td></tr>` : ''}
+              <tr><td colspan=\"5\" class=\"table-cell-border text-right font-semibold\">Grand Total:</td><td class=\"table-cell-border-top text-right font-bold\">${
+                grandTotal ? fmtMoney(grandTotal) : ''
+              }</td></tr>
+              ${
+                poData.notes
+                  ? `<tr><td class='table-cell-border font-semibold'>Note:</td><td colspan='5' class='table-cell-border-top'>${esc(
+                      poData.notes
+                    )}</td></tr>`
+                  : ''
+              }
                             <tr>
                                 <td colspan=\"3\" class=\"table-cell-border text-center\" style=\"padding:16px;height:160px;vertical-align:top;\">
                                     <p style=\"margin-bottom:8px;font-style:italic;font-size:10px;\">In case of failure to make the total delivery within the time specified above, a penalty of one percent (1%) of the total contract price shall be imposed for each day of delay, until the obligation is fully complied with.</p>
@@ -5080,231 +6435,429 @@ function downloadPO(requestId, opts = {}) {
                                     </div>
                                 </td>
                             </tr>
-              <tr><td class=\"table-cell-border font-semibold\" style=\"width:15%;\">Fund Cluster:</td><td class=\"table-cell-border-right table-cell-border-top\" style=\"width:35%;\">${esc(poData.fundCluster)}</td><td class=\"table-cell-border font-semibold\" style=\"width:15%;\">ORS/BURS No.:</td><td colspan=\"3\" class=\"table-cell-border-top\">${esc(poData.orsBursNo)}</td></tr>
-              <tr><td class=\"table-cell-border font-semibold\">Funds Available:</td><td class=\"table-cell-border-right table-cell-border-top\">${esc(poData.fundsAvailable)}</td><td class=\"table-cell-border font-semibold text-center\">Date of ORS/BURS:</td><td class=\"table-cell-border\">${fmtDate(poData.orsBursDate)}</td><td class=\"table-cell-border font-semibold text-center\">Amount:</td><td class=\"table-cell-border-top\">${esc(poData.orsBursAmount)}</td></tr>
-              <tr><td colspan=\"6\" class=\"table-cell-border-top text-center\" style=\"padding:16px;height:80px;vertical-align:bottom;\"><div style=\"height:48px;border-bottom:2px solid #dc2626;margin:0 auto 4px;width:192px;display:flex;align-items:flex-end;justify-content:center;font-size:10px;\">${esc(signatures.accountant)}</div><p style=\"font-size:10px;font-weight:700;margin:4px 0 0;\">Accountant's Signature</p></td></tr>
+              <tr><td class=\"table-cell-border font-semibold\" style=\"width:15%;\">Fund Cluster:</td><td class=\"table-cell-border-right table-cell-border-top\" style=\"width:35%;\">${esc(
+                poData.fundCluster
+              )}</td><td class=\"table-cell-border font-semibold\" style=\"width:15%;\">ORS/BURS No.:</td><td colspan=\"3\" class=\"table-cell-border-top\">${esc(
+      poData.orsBursNo
+    )}</td></tr>
+              <tr><td class=\"table-cell-border font-semibold\">Funds Available:</td><td class=\"table-cell-border-right table-cell-border-top\">${esc(
+                poData.fundsAvailable
+              )}</td><td class=\"table-cell-border font-semibold text-center\">Date of ORS/BURS:</td><td class=\"table-cell-border\">${fmtDate(
+      poData.orsBursDate
+    )}</td><td class=\"table-cell-border font-semibold text-center\">Amount:</td><td class=\"table-cell-border-top\">${esc(
+      poData.orsBursAmount
+    )}</td></tr>
+              <tr><td colspan=\"6\" class=\"table-cell-border-top text-center\" style=\"padding:16px;height:80px;vertical-align:bottom;\"><div style=\"height:48px;border-bottom:2px solid #dc2626;margin:0 auto 4px;width:192px;display:flex;align-items:flex-end;justify-content:center;font-size:10px;\">${esc(
+                signatures.accountant
+              )}</div><p style=\"font-size:10px;font-weight:700;margin:4px 0 0;\">Accountant's Signature</p></td></tr>
             </tbody></table></div>
           </div>
         </div>
-        </body></html>`;
+        </body></html>`
+  }
+
+  try {
+    const filenameBase = poNumber || 'purchase-order'
+    const html = buildHTML(filenameBase)
+    const w = window.open('', '_blank')
+    if (!w) {
+      showAlert('Popup blocked. Please allow popups for preview.', 'warning')
+      return
+    }
+    w.document.open()
+    w.document.write(html)
+    w.document.close()
+    if (clean) {
+      try {
+        w.document.title = ''
+      } catch (e) {
+        /* ignore */
+      }
+      // Optionally auto-trigger print for clean mode
+      setTimeout(() => {
+        w.print()
+      }, 300)
+    }
+    showAlert('PO preview opened. Use Print / PDF.', 'success')
+  } catch (e) {
+    console.error('PO preview failed', e)
+    showAlert('Failed to open PO preview.', 'error')
+  }
+}
+
+// Server-side PDF download for Purchase Order using `purchase_order_pdf` view
+async function downloadPOServer(requestId) {
+  // Find request data
+  const request = (AppState.newRequests || [])
+    .concat(AppState.pendingRequests || [], AppState.completedRequests || [])
+    .find((r) => r.id === requestId)
+  if (!request) {
+    showAlert(`Purchase Order ${requestId} not found.`, 'error')
+    return
+  }
+
+  // Prepare payload matching Blade view variable names exactly
+  const payload = {
+    supplier: request.supplier || '',
+    supplier_address: request.supplierAddress || request.supplier_address || '',
+    po_number: request.poNumber || request.po_number || requestId,
+    // Normalize date fields: ensure we send ISO date strings or null.
+    date_of_purchase: normalizeDateForServer(
+      request.purchaseDate || request.requestDate || null
+    ),
+    tin_number: request.supplierTIN || request.tin_number || '',
+    mode_of_procurement:
+      request.procurementMode ||
+      request.mode_of_procurement ||
+      request.modeOfPayment ||
+      '',
+    place_of_delivery:
+      request.placeOfDelivery || request.place_of_delivery || '',
+    delivery_term: request.deliveryTerm || request.delivery_term || '',
+    date_of_delivery: normalizeDateForServer(
+      request.deliveryDate || request.date_of_delivery || null
+    ),
+    payment_term: request.paymentTerm || request.payment_term || '',
+    items: (request.items || []).map((it) => ({
+      stock_number:
+        it.stockPropertyNumber || it.stock_number || it.stock_number || '',
+      unit: it.unit || '',
+      description:
+        it.description ||
+        it.detailedDescription ||
+        it.detailed_description ||
+        '',
+      quantity: it.quantity || 0,
+      unit_cost: it.unitCost || it.unit_cost || 0,
+      amount:
+        it.amount !== undefined
+          ? it.amount
+          : (it.quantity || 0) * (it.unitCost || 0),
+    })),
+    fund_cluster: request.fundCluster || request.fund_cluster || '',
+    ors_burs_no: request.orsNo || request.ors_burs_no || '',
+    funds_available: request.fundsAvailable || request.funds_available || '',
+    ors_burs_date: normalizeDateForServer(
+      request.orsDate || request.ors_burs_date || null
+    ),
+    ors_burs_amount: request.orsAmount || request.ors_burs_amount || '',
+    accountant_signature:
+      request.accountantSignature || request.accountant_signature || '',
+    entity_name:
+      (AppState.currentUser && AppState.currentUser.entity_name) ||
+      'Camarines Norte State College',
+    entity_address: request.entityAddress || request.entity_address || '',
+  }
+
+  try {
+    showLoadingModal('Preparing Purchase Order PDF...')
+
+    const response = await fetch('/purchase-order/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}))
+      throw new Error(err.message || 'Failed to generate PDF')
     }
 
-    try {
-        const filenameBase = poNumber || 'purchase-order';
-        const html = buildHTML(filenameBase);
-        const w = window.open('', '_blank');
-        if (!w) {
-            showAlert('Popup blocked. Please allow popups for preview.', 'warning');
-            return;
-        }
-        w.document.open();
-        w.document.write(html);
-        w.document.close();
-        if (clean) {
-            try { w.document.title = ''; } catch (e) { /* ignore */ }
-            // Optionally auto-trigger print for clean mode
-            setTimeout(() => { w.print(); }, 300);
-        }
-        showAlert('PO preview opened. Use Print / PDF.', 'success');
-    } catch (e) {
-        console.error('PO preview failed', e);
-        showAlert('Failed to open PO preview.', 'error');
+    // Get blob and trigger download
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const filename = `${payload.po_number || 'purchase-order'}.pdf`
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+
+    showAlert('Purchase Order PDF downloaded.', 'success')
+  } catch (error) {
+    console.error('downloadPOServer error', error)
+    showAlert(
+      error.message || 'Failed to download Purchase Order PDF.',
+      'error'
+    )
+  } finally {
+    hideLoadingModal()
+  }
+}
+
+// Small chooser UI to let user pick Preview (client) or Download (server PDF)
+function showPODownloadChooser(event, requestId) {
+  event = event || window.event
+  const existing = document.getElementById('po-download-chooser')
+  if (existing) existing.remove()
+
+  const menu = document.createElement('div')
+  menu.id = 'po-download-chooser'
+  menu.style.position = 'absolute'
+  menu.style.zIndex = 9999
+  menu.style.background = '#fff'
+  menu.style.border = '1px solid #ddd'
+  menu.style.padding = '6px'
+  menu.style.borderRadius = '6px'
+  menu.style.boxShadow = '0 6px 18px rgba(0,0,0,0.08)'
+
+  const previewBtn = document.createElement('button')
+  previewBtn.className = 'btn btn-sm'
+  previewBtn.textContent = 'Preview (client)'
+  previewBtn.style.marginRight = '6px'
+  previewBtn.onclick = function (e) {
+    e.stopPropagation()
+    downloadPO(requestId, { clean: true })
+    menu.remove()
+  }
+
+  const downloadBtn = document.createElement('button')
+  downloadBtn.className = 'btn btn-sm btn-primary'
+  downloadBtn.textContent = 'Download PDF (server)'
+  downloadBtn.onclick = function (e) {
+    e.stopPropagation()
+    downloadPOServer(requestId)
+    menu.remove()
+  }
+
+  menu.appendChild(previewBtn)
+  menu.appendChild(downloadBtn)
+
+  document.body.appendChild(menu)
+
+  // position near the clicked element
+  const rect =
+    event.target && event.target.getBoundingClientRect
+      ? event.target.getBoundingClientRect()
+      : event.srcElement && event.srcElement.getBoundingClientRect
+      ? event.srcElement.getBoundingClientRect()
+      : { left: event.clientX, top: event.clientY, width: 0, height: 0 }
+  menu.style.left = rect.left + window.scrollX + 'px'
+  menu.style.top = rect.bottom + window.scrollY + 6 + 'px'
+
+  // Close on outside click
+  function onDocClick(ev) {
+    if (!menu.contains(ev.target)) {
+      menu.remove()
+      document.removeEventListener('click', onDocClick)
     }
+  }
+  setTimeout(() => document.addEventListener('click', onDocClick), 10)
 }
 
 async function archiveRequest(requestId) {
-    console.log('Archiving request:', requestId);
-    const ok = await showConfirm(`Are you sure you want to archive request ${requestId}?`, 'Archive Request');
-    if (!ok) return;
+  console.log('Archiving request:', requestId)
+  const ok = await showConfirm(
+    `Are you sure you want to archive request ${requestId}?`,
+    'Archive Request'
+  )
+  if (!ok) return
 
-    showAlert(`Request ${requestId} archived.`, 'success');
-    loadPageContent(AppState.currentPage);
+  showAlert(`Request ${requestId} archived.`, 'success')
+  loadPageContent(AppState.currentPage)
 }
 
 function openModal(type) {
-    console.log('Opening modal for:', type);
-    showAlert(`${type} modal not yet implemented`, 'info');
+  console.log('Opening modal for:', type)
+  showAlert(`${type} modal not yet implemented`, 'info')
 }
 
 // Modal close on outside click
 document.addEventListener('click', function (e) {
-    const modal = document.getElementById('purchase-order-modal');
-    if (e.target === modal) {
-        closePurchaseOrderModal();
-    }
-});
+  const modal = document.getElementById('purchase-order-modal')
+  if (e.target === modal) {
+    closePurchaseOrderModal()
+  }
+})
 
 // Make functions globally available
-window.navigateToPage = navigateToPage;
-window.switchProductTab = switchProductTab;
-window.updateProductsTable = updateProductsTable;
-window.openPurchaseOrderModal = openPurchaseOrderModal;
-window.closePurchaseOrderModal = closePurchaseOrderModal;
-window.addPOItem = addPOItem;
-window.removePOItem = removePOItem;
-window.updatePOItem = updatePOItem;
-window.updatePOItemForm = updatePOItemForm;
-window.savePurchaseOrder = savePurchaseOrder;
-window.approveRequest = approveRequest;
-window.rejectRequest = rejectRequest;
-window.downloadPO = downloadPO;
-window.archiveRequest = archiveRequest;
-window.openModal = openModal;
+window.navigateToPage = navigateToPage
+window.switchProductTab = switchProductTab
+window.updateProductsTable = updateProductsTable
+window.openPurchaseOrderModal = openPurchaseOrderModal
+window.closePurchaseOrderModal = closePurchaseOrderModal
+window.addPOItem = addPOItem
+window.removePOItem = removePOItem
+window.updatePOItem = updatePOItem
+window.updatePOItemForm = updatePOItemForm
+window.savePurchaseOrder = savePurchaseOrder
+window.approveRequest = approveRequest
+window.rejectRequest = rejectRequest
+window.downloadPO = downloadPO
+window.downloadPOServer = downloadPOServer
+window.showPODownloadChooser = showPODownloadChooser
+window.archiveRequest = archiveRequest
+window.openModal = openModal
 
 // -----------------------------
 // User profile menu helpers
 // -----------------------------
 function toggleUserMenu(event) {
-    const menu = document.getElementById('user-menu');
-    if (!menu) return;
-    const isVisible = menu.style.display === 'block';
-    menu.style.display = isVisible ? 'none' : 'block';
+  const menu = document.getElementById('user-menu')
+  if (!menu) return
+  const isVisible = menu.style.display === 'block'
+  menu.style.display = isVisible ? 'none' : 'block'
 
-    // Reinitialize Lucide icons when menu is opened
-    if (!isVisible) {
-        setTimeout(() => {
-            if (window.lucide) {
-                lucide.createIcons();
-            }
-        }, 50);
-    }
+  // Reinitialize Lucide icons when menu is opened
+  if (!isVisible) {
+    setTimeout(() => {
+      if (window.lucide) {
+        lucide.createIcons()
+      }
+    }, 50)
+  }
 }
 
 function closeUserMenu() {
-    const menu = document.getElementById('user-menu');
-    if (menu) menu.style.display = 'none';
+  const menu = document.getElementById('user-menu')
+  if (menu) menu.style.display = 'none'
 }
 
 // Helper: resolve the correct path to AccessSystem (login) page from any current nested location
 function resolveLoginPath() {
-    try {
-        const routes = window.APP_ROUTES || {};
-        if (typeof routes.login === 'string' && routes.login.trim().length > 0) {
-            return routes.login;
-        }
-
-        const base = typeof routes.base === 'string' && routes.base.trim().length > 0
-            ? routes.base.replace(/\/$/, '')
-            : (window.location.origin || '');
-
-        const loginPath = '/login';
-        return base ? `${base}${loginPath}` : loginPath;
-    } catch (e) {
-        return '/login'; // last resort
+  try {
+    const routes = window.APP_ROUTES || {}
+    if (typeof routes.login === 'string' && routes.login.trim().length > 0) {
+      return routes.login
     }
+
+    const base =
+      typeof routes.base === 'string' && routes.base.trim().length > 0
+        ? routes.base.replace(/\/$/, '')
+        : window.location.origin || ''
+
+    const loginPath = '/login'
+    return base ? `${base}${loginPath}` : loginPath
+  } catch (e) {
+    return '/login' // last resort
+  }
 }
 
 async function logout() {
-    if (window.__isLoggingOut) return;
-    window.__isLoggingOut = true;
+  if (window.__isLoggingOut) return
+  window.__isLoggingOut = true
 
-    closeUserMenu();
-    showLoadingModal('Signing you out securely...');
+  closeUserMenu()
+  showLoadingModal('Signing you out securely...')
+
+  try {
+    const response = await fetch(window.APP_ROUTES?.logout || '/logout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      body: JSON.stringify({}),
+    })
+
+    const data = await response
+      .json()
+      .catch(() => ({ message: 'You have been signed out successfully.' }))
+
+    if (!response.ok) {
+      throw new Error(data?.message || 'Logout failed.')
+    }
+
+    if (AppState.currentUser && AppState.currentUser.email) {
+      try {
+        logUserLogout(AppState.currentUser.email, AppState.currentUser.name)
+      } catch (logError) {
+        console.warn('Logout log error', logError)
+      }
+    }
+
+    AppState.currentUser = {
+      id: null,
+      name: 'Guest',
+      email: '',
+      role: '',
+      department: '',
+      status: 'Inactive',
+      created: '',
+    }
 
     try {
-        const response = await fetch(window.APP_ROUTES?.logout || '/logout', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': getCsrfToken()
-            },
-            body: JSON.stringify({})
-        });
-
-        const data = await response.json().catch(() => ({ message: 'You have been signed out successfully.' }));
-
-        if (!response.ok) {
-            throw new Error(data?.message || 'Logout failed.');
-        }
-
-        if (AppState.currentUser && AppState.currentUser.email) {
-            try { logUserLogout(AppState.currentUser.email, AppState.currentUser.name); } catch (logError) { console.warn('Logout log error', logError); }
-        }
-
-        AppState.currentUser = {
-            id: null,
-            name: 'Guest',
-            email: '',
-            role: '',
-            department: '',
-            status: 'Inactive',
-            created: ''
-        };
-
-        try {
-            localStorage.removeItem('userSession');
-            localStorage.removeItem('authToken');
-            sessionStorage.clear();
-        } catch (storageError) {
-            console.warn('Unable to clear local session storage:', storageError);
-        }
-
-        const redirectTarget = data?.redirect || resolveLoginPath();
-
-        setTimeout(() => {
-            hideLoadingModal();
-            showSuccessModal({
-                title: 'Logged Out',
-                message: data?.message || 'You have been signed out successfully. Redirecting to Access System...',
-                icon: 'log-out',
-                redirect: redirectTarget,
-                delay: 900
-            });
-        }, 600);
-    } catch (error) {
-        console.error('Logout error', error);
-        hideLoadingModal();
-        showAlert(error.message || 'An error occurred while logging out', 'error');
-        window.__isLoggingOut = false;
+      localStorage.removeItem('userSession')
+      localStorage.removeItem('authToken')
+      sessionStorage.clear()
+    } catch (storageError) {
+      console.warn('Unable to clear local session storage:', storageError)
     }
+
+    const redirectTarget = data?.redirect || resolveLoginPath()
+
+    setTimeout(() => {
+      hideLoadingModal()
+      showSuccessModal({
+        title: 'Logged Out',
+        message:
+          data?.message ||
+          'You have been signed out successfully. Redirecting to Access System...',
+        icon: 'log-out',
+        redirect: redirectTarget,
+        delay: 900,
+      })
+    }, 600)
+  } catch (error) {
+    console.error('Logout error', error)
+    hideLoadingModal()
+    showAlert(error.message || 'An error occurred while logging out', 'error')
+    window.__isLoggingOut = false
+  }
 }
 
 // Close user menu on outside click
 document.addEventListener('click', function (e) {
-    const menu = document.getElementById('user-menu');
-    const block = document.getElementById('header-user-block');
-    if (!menu || !block) return;
-    const menuDisplay = window.getComputedStyle(menu).display;
-    if (menuDisplay === 'none') return;
+  const menu = document.getElementById('user-menu')
+  const block = document.getElementById('header-user-block')
+  if (!menu || !block) return
+  const menuDisplay = window.getComputedStyle(menu).display
+  if (menuDisplay === 'none') return
 
-    if (!menu.contains(e.target) && !block.contains(e.target)) {
-        menu.style.display = 'none';
-    }
-});
+  if (!menu.contains(e.target) && !block.contains(e.target)) {
+    menu.style.display = 'none'
+  }
+})
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function () {
-    initializeSidebarState();
-    initializeNavigation();
+  initializeSidebarState()
+  initializeNavigation()
 
-    // Load user requests from localStorage
-    loadUserRequests();
+  // Load user requests from localStorage
+  loadUserRequests()
 
-    // Initialize icons
-    lucide.createIcons();
-});
+  // Initialize icons
+  lucide.createIcons()
+})
 
 // -----------------------------
 // Loading & Success Modals
 // -----------------------------
 function ensureModalRoot() {
-    let root = document.getElementById('global-modal-root');
-    if (!root) {
-        root = document.createElement('div');
-        root.id = 'global-modal-root';
-        document.body.appendChild(root);
-    }
-    return root;
+  let root = document.getElementById('global-modal-root')
+  if (!root) {
+    root = document.createElement('div')
+    root.id = 'global-modal-root'
+    document.body.appendChild(root)
+  }
+  return root
 }
 
 function showLoadingModal(text = 'Processing...') {
-    const root = ensureModalRoot();
-    let modal = document.getElementById('loading-modal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'loading-modal';
-        modal.innerHTML = `
+  const root = ensureModalRoot()
+  let modal = document.getElementById('loading-modal')
+  if (!modal) {
+    modal = document.createElement('div')
+    modal.id = 'loading-modal'
+    modal.innerHTML = `
             <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(17,24,39,0.45);backdrop-filter:blur(2px);z-index:2000;">
                 <div style="background:#ffffff;padding:32px 40px;border-radius:16px;box-shadow:0 20px 40px -10px rgba(0,0,0,0.25);display:flex;flex-direction:column;align-items:center;gap:20px;min-width:300px;">
                     <div class="spinner" style="width:56px;height:56px;border:6px solid #e5e7eb;border-top-color:#2563eb;border-radius:50%;animation:spmo-spin 0.9s linear infinite;"></div>
@@ -5313,34 +6866,40 @@ function showLoadingModal(text = 'Processing...') {
                         <p style="margin:6px 0 0 0;font-size:13px;color:#6b7280;">Please wait…</p>
                     </div>
                 </div>
-            </div>`;
-        root.appendChild(modal);
-        // spinner keyframes (inject once)
-        if (!document.getElementById('spinner-style')) {
-            const style = document.createElement('style');
-            style.id = 'spinner-style';
-            style.textContent = '@keyframes spmo-spin{to{transform:rotate(360deg)}}';
-            document.head.appendChild(style);
-        }
-    } else {
-        const textEl = modal.querySelector('#loading-modal-text');
-        if (textEl) textEl.textContent = text;
-        modal.style.display = 'block';
+            </div>`
+    root.appendChild(modal)
+    // spinner keyframes (inject once)
+    if (!document.getElementById('spinner-style')) {
+      const style = document.createElement('style')
+      style.id = 'spinner-style'
+      style.textContent = '@keyframes spmo-spin{to{transform:rotate(360deg)}}'
+      document.head.appendChild(style)
     }
+  } else {
+    const textEl = modal.querySelector('#loading-modal-text')
+    if (textEl) textEl.textContent = text
+    modal.style.display = 'block'
+  }
 }
 
 function hideLoadingModal() {
-    const modal = document.getElementById('loading-modal');
-    if (modal) modal.style.display = 'none';
+  const modal = document.getElementById('loading-modal')
+  if (modal) modal.style.display = 'none'
 }
 
-function showSuccessModal({ title = 'Success', message = 'Operation completed successfully.', icon = 'check-circle', redirect = null, delay = 1500 } = {}) {
-    const root = ensureModalRoot();
-    let modal = document.getElementById('success-modal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'success-modal';
-        modal.innerHTML = `
+function showSuccessModal({
+  title = 'Success',
+  message = 'Operation completed successfully.',
+  icon = 'check-circle',
+  redirect = null,
+  delay = 1500,
+} = {}) {
+  const root = ensureModalRoot()
+  let modal = document.getElementById('success-modal')
+  if (!modal) {
+    modal = document.createElement('div')
+    modal.id = 'success-modal'
+    modal.innerHTML = `
             <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(17,24,39,0.4);backdrop-filter:blur(2px);z-index:2100;">
                 <div style="background:#ffffff;padding:32px 40px;border-radius:16px;box-shadow:0 20px 40px -10px rgba(0,0,0,0.25);display:flex;flex-direction:column;align-items:center;gap:18px;min-width:320px;">
                     <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#dcfce7,#bbf7d0);display:flex;align-items:center;justify-content:center;">
@@ -5349,52 +6908,88 @@ function showSuccessModal({ title = 'Success', message = 'Operation completed su
                     <h3 id="success-modal-title" style="margin:0;font-size:20px;color:#111827;font-weight:700;">${title}</h3>
                     <p id="success-modal-message" style="margin:0;font-size:14px;color:#6b7280;text-align:center;line-height:1.5;">${message}</p>
                 </div>
-            </div>`;
-        root.appendChild(modal);
-    } else {
-        modal.querySelector('#success-modal-title').textContent = title;
-        modal.querySelector('#success-modal-message').textContent = message;
-        modal.querySelector('i[data-lucide]')?.setAttribute('data-lucide', icon);
-        modal.style.display = 'block';
-    }
-    // Recreate icons inside modal
-    setTimeout(() => { if (window.lucide) lucide.createIcons(); }, 10);
+            </div>`
+    root.appendChild(modal)
+  } else {
+    modal.querySelector('#success-modal-title').textContent = title
+    modal.querySelector('#success-modal-message').textContent = message
+    modal.querySelector('i[data-lucide]')?.setAttribute('data-lucide', icon)
+    modal.style.display = 'block'
+  }
+  // Recreate icons inside modal
+  setTimeout(() => {
+    if (window.lucide) lucide.createIcons()
+  }, 10)
 
-    if (redirect) {
-        setTimeout(() => { window.location.href = redirect; }, delay);
-    } else {
-        // Auto hide if no redirect
-        setTimeout(() => { const m = document.getElementById('success-modal'); if (m) m.style.display = 'none'; }, delay);
-    }
+  if (redirect) {
+    setTimeout(() => {
+      window.location.href = redirect
+    }, delay)
+  } else {
+    // Auto hide if no redirect
+    setTimeout(() => {
+      const m = document.getElementById('success-modal')
+      if (m) m.style.display = 'none'
+    }, delay)
+  }
 }
 
-window.logout = logout;
+window.logout = logout
 
 // ------------------------ //
 // Roles & Management Page  //
 // ------------------------//
 
 function generateRolesManagementPage() {
-    // Sample data for initial load only
-    const initialMembers = [
-        { id: "SA001", group: "Group Juan", name: "Cherry Ann Quila", role: "Leader", email: "cherry@cnsc.edu.ph", department: "IT", status: "Active", created: "2025-01-15" },
-        { id: "SA002", group: "Group Juan", name: "Vince Balce", role: "Member", email: "vince@cnsc.edu.ph", department: "Finance", status: "Inactive", created: "2025-02-01" },
-        { id: "SA003", group: "Group Juan", name: "Marinel Ledesma", role: "Member", email: "marinel@cnsc.edu.ph", department: "HR", status: "Active", created: "2025-03-10" }
-    ];
+  // Sample data for initial load only
+  const initialMembers = [
+    {
+      id: 'SA001',
+      group: 'Group Juan',
+      name: 'Cherry Ann Quila',
+      role: 'Leader',
+      email: 'cherry@cnsc.edu.ph',
+      department: 'IT',
+      status: 'Active',
+      created: '2025-01-15',
+    },
+    {
+      id: 'SA002',
+      group: 'Group Juan',
+      name: 'Vince Balce',
+      role: 'Member',
+      email: 'vince@cnsc.edu.ph',
+      department: 'Finance',
+      status: 'Inactive',
+      created: '2025-02-01',
+    },
+    {
+      id: 'SA003',
+      group: 'Group Juan',
+      name: 'Marinel Ledesma',
+      role: 'Member',
+      email: 'marinel@cnsc.edu.ph',
+      department: 'HR',
+      status: 'Active',
+      created: '2025-03-10',
+    },
+  ]
 
-    // FIX: Only initialize MockData.users if it doesn't already exist.
-    if (!window.MockData) window.MockData = {};
-    if (!window.MockData.users) {
-        window.MockData.users = initialMembers;
-    }
+  // FIX: Only initialize MockData.users if it doesn't already exist.
+  if (!window.MockData) window.MockData = {}
+  if (!window.MockData.users) {
+    window.MockData.users = initialMembers
+  }
 
-    const membersToRender = window.MockData.users;
+  const membersToRender = window.MockData.users
 
-    // Calculate statistics
-    const totalMembers = membersToRender.length;
-    const activeMembers = membersToRender.filter(m => m.status === 'Active').length;
+  // Calculate statistics
+  const totalMembers = membersToRender.length
+  const activeMembers = membersToRender.filter(
+    (m) => m.status === 'Active'
+  ).length
 
-    const html = `
+  const html = `
         <div class="page-header">
             <div class="page-header-content">
                 <div>
@@ -5504,7 +7099,9 @@ function generateRolesManagementPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${membersToRender.map((member, index) => `
+                        ${membersToRender
+                          .map(
+                            (member, index) => `
                             <tr style="transition: all 0.2s;">
                                 <td style="padding-left: 24px;">
                                     <div style="font-family: 'Courier New', monospace; font-size: 13px; color: #6b7280; font-weight: 600;">
@@ -5514,216 +7111,277 @@ function generateRolesManagementPage() {
                                 <td>
                                     <div style="display: flex; align-items: center; gap: 12px;">
                                         <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px;">
-                                            ${member.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                                            ${member.name
+                                              .split(' ')
+                                              .map((n) => n[0])
+                                              .join('')
+                                              .substring(0, 2)}
                                         </div>
                                         <div>
-                                            <div style="font-weight: 600; color: #111827;">${member.name}</div>
-                                            <div style="font-size: 11px; color: #9ca3af;">${member.group}</div>
+                                            <div style="font-weight: 600; color: #111827;">${
+                                              member.name
+                                            }</div>
+                                            <div style="font-size: 11px; color: #9ca3af;">${
+                                              member.group
+                                            }</div>
                                         </div>
                                     </div>
                                 </td>
-                                <td style="color: #4b5563; font-size: 14px;">${member.email}</td>
+                                <td style="color: #4b5563; font-size: 14px;">${
+                                  member.email
+                                }</td>
                                 <td>
-                                    <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: ${member.role === 'Leader' ? '#fef3c7' : '#e0f2fe'}; color: ${member.role === 'Leader' ? '#92400e' : '#0c4a6e'}; border-radius: 20px; font-size: 13px; font-weight: 600;">
-                                        <i data-lucide="${member.role === 'Leader' ? 'crown' : 'user'}" style="width:12px;height:12px;"></i>
+                                    <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: ${
+                                      member.role === 'Leader'
+                                        ? '#fef3c7'
+                                        : '#e0f2fe'
+                                    }; color: ${
+                              member.role === 'Leader' ? '#92400e' : '#0c4a6e'
+                            }; border-radius: 20px; font-size: 13px; font-weight: 600;">
+                                        <i data-lucide="${
+                                          member.role === 'Leader'
+                                            ? 'crown'
+                                            : 'user'
+                                        }" style="width:12px;height:12px;"></i>
                                         ${member.role}
                                     </span>
                                 </td>
-                                <td style="color: #6b7280; font-size: 14px;">${member.department}</td>
+                                <td style="color: #6b7280; font-size: 14px;">${
+                                  member.department
+                                }</td>
                                 <td>
-                                    <span class="badge ${member.status === 'Active' ? 'green' : 'gray'}" style="display: inline-flex; align-items: center; gap: 6px;">
+                                    <span class="badge ${
+                                      member.status === 'Active'
+                                        ? 'green'
+                                        : 'gray'
+                                    }" style="display: inline-flex; align-items: center; gap: 6px;">
                                         <span style="width: 6px; height: 6px; background: currentColor; border-radius: 50%;"></span>
                                         ${member.status}
                                     </span>
                                 </td>
-                                <td style="color: #6b7280; font-size: 14px;">${member.created}</td>
+                                <td style="color: #6b7280; font-size: 14px;">${
+                                  member.created
+                                }</td>
                                 <td style="padding-right: 24px;">
                                     <div class="table-actions">
-                                        <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openUserModal('edit', '${member.id}')">
+                                        <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openUserModal('edit', '${
+                                          member.id
+                                        }')">
                                             <i data-lucide="edit"></i>
                                         </button>
-                                        <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteMember('${member.id}')">
+                                        <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteMember('${
+                                          member.id
+                                        }')">
                                             <i data-lucide="trash-2"></i>
                                         </button>
                                     </div>
                                 </td>
                             </tr>
-                        `).join("")}
+                        `
+                          )
+                          .join('')}
                     </tbody>
                 </table>
             </div>
         </div>
-    `;
+    `
 
-    // Ensure icons render
-    setTimeout(() => {
-        if (window.lucide) lucide.createIcons();
-    }, 0);
+  // Ensure icons render
+  setTimeout(() => {
+    if (window.lucide) lucide.createIcons()
+  }, 0)
 
-    return html;
+  return html
 }
 
 function saveUser(userId) {
-    // 1. Get elements by their IDs
-    const nameInput = document.getElementById('userName');
-    const emailInput = document.getElementById('userEmail');
-    const roleInput = document.getElementById('userRole');
-    const departmentInput = document.getElementById('userDepartment');
-    const statusInput = document.getElementById('userStatus');
-    const createdInput = document.getElementById('userCreated');
+  // 1. Get elements by their IDs
+  const nameInput = document.getElementById('userName')
+  const emailInput = document.getElementById('userEmail')
+  const roleInput = document.getElementById('userRole')
+  const departmentInput = document.getElementById('userDepartment')
+  const statusInput = document.getElementById('userStatus')
+  const createdInput = document.getElementById('userCreated')
 
-    // 2. Gather form data
-    const userData = {
-        name: nameInput ? nameInput.value : '',
-        email: emailInput ? emailInput.value : '',
-        role: roleInput ? roleInput.value : '',
-        department: departmentInput ? departmentInput.value : '',
-        status: statusInput ? statusInput.value : 'Active',
-        created: createdInput ? (createdInput.value || new Date().toISOString().split('T')[0]) : new Date().toISOString().split('T')[0]
-    };
+  // 2. Gather form data
+  const userData = {
+    name: nameInput ? nameInput.value : '',
+    email: emailInput ? emailInput.value : '',
+    role: roleInput ? roleInput.value : '',
+    department: departmentInput ? departmentInput.value : '',
+    status: statusInput ? statusInput.value : 'Active',
+    created: createdInput
+      ? createdInput.value || new Date().toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0],
+  }
 
-    if (!userId) {
-        // --- CREATE NEW USER ---
-        if (!window.MockData) window.MockData = {};
-        if (!window.MockData.users) window.MockData.users = [];
+  if (!userId) {
+    // --- CREATE NEW USER ---
+    if (!window.MockData) window.MockData = {}
+    if (!window.MockData.users) window.MockData.users = []
 
-        // Robust ID generation
-        const maxIdNum = window.MockData.users
-            .map(u => parseInt(String(u.id).replace(/\D/g, ''), 10))
-            .filter(n => !isNaN(n))
-            .reduce((max, current) => Math.max(max, current), 0);
+    // Robust ID generation
+    const maxIdNum = window.MockData.users
+      .map((u) => parseInt(String(u.id).replace(/\D/g, ''), 10))
+      .filter((n) => !isNaN(n))
+      .reduce((max, current) => Math.max(max, current), 0)
 
-        const newIdNumber = maxIdNum + 1;
+    const newIdNumber = maxIdNum + 1
 
-        const newUser = {
-            id: `SA${String(newIdNumber).padStart(3, '0')}`,
-            group: "New Group",
-            ...userData
-        };
-
-        window.MockData.users.push(newUser);
-        showAlert(`New user ${userData.name} added successfully!`, 'success');
-    } else if (userId === 'current') {
-        // Update AppState.currentUser
-        AppState.currentUser = {
-            ...AppState.currentUser,
-            ...userData
-        };
-
-        // Also update MockData user if exists
-        if (window.MockData && Array.isArray(window.MockData.users)) {
-            const idx = window.MockData.users.findIndex(u => u.id === AppState.currentUser.id);
-            if (idx !== -1) {
-                window.MockData.users[idx] = { ...window.MockData.users[idx], ...AppState.currentUser };
-            }
-        }
-
-        // Update avatar only (header no longer shows name/role)
-        const avatarEl = document.getElementById('header-user-avatar');
-        if (avatarEl) avatarEl.textContent = AppState.currentUser.name.split(' ').map(n => n[0]).slice(0, 2).join('');
-        showAlert('Profile updated successfully!', 'success');
-    } else {
-        // --- UPDATE EXISTING USER (EDIT) ---
-        const existing = window.MockData.users.find(u => u.id === userId);
-        if (existing) {
-            Object.assign(existing, userData);
-            showAlert(`User ${userData.name} updated successfully!`, 'success');
-        }
+    const newUser = {
+      id: `SA${String(newIdNumber).padStart(3, '0')}`,
+      group: 'New Group',
+      ...userData,
     }
 
-    closeUserModal();
-    refreshRolesTable(); // Refresh the table to reflect changes
+    window.MockData.users.push(newUser)
+    showAlert(`New user ${userData.name} added successfully!`, 'success')
+  } else if (userId === 'current') {
+    // Update AppState.currentUser
+    AppState.currentUser = {
+      ...AppState.currentUser,
+      ...userData,
+    }
+
+    // Also update MockData user if exists
+    if (window.MockData && Array.isArray(window.MockData.users)) {
+      const idx = window.MockData.users.findIndex(
+        (u) => u.id === AppState.currentUser.id
+      )
+      if (idx !== -1) {
+        window.MockData.users[idx] = {
+          ...window.MockData.users[idx],
+          ...AppState.currentUser,
+        }
+      }
+    }
+
+    // Update avatar only (header no longer shows name/role)
+    const avatarEl = document.getElementById('header-user-avatar')
+    if (avatarEl)
+      avatarEl.textContent = AppState.currentUser.name
+        .split(' ')
+        .map((n) => n[0])
+        .slice(0, 2)
+        .join('')
+    showAlert('Profile updated successfully!', 'success')
+  } else {
+    // --- UPDATE EXISTING USER (EDIT) ---
+    const existing = window.MockData.users.find((u) => u.id === userId)
+    if (existing) {
+      Object.assign(existing, userData)
+      showAlert(`User ${userData.name} updated successfully!`, 'success')
+    }
+  }
+
+  closeUserModal()
+  refreshRolesTable() // Refresh the table to reflect changes
 }
 
 /**
  * REVISED: Delete member using the new table refresh function.
  */
 async function deleteMember(memberId) {
-    const ok = await showConfirm("Are you sure you want to delete this member?", 'Delete Member');
-    if (!ok) return;
+  const ok = await showConfirm(
+    'Are you sure you want to delete this member?',
+    'Delete Member'
+  )
+  if (!ok) return
 
-    // Find the user name before deleting
-    const user = window.MockData.users.find(u => u.id === memberId);
-    const userName = user ? user.name : 'User';
+  // Find the user name before deleting
+  const user = window.MockData.users.find((u) => u.id === memberId)
+  const userName = user ? user.name : 'User'
 
-    // Delete the user
-    window.MockData.users = window.MockData.users.filter(u => u.id !== memberId);
+  // Delete the user
+  window.MockData.users = window.MockData.users.filter((u) => u.id !== memberId)
 
-    // Show success toast
-    showAlert(`${userName} has been successfully deleted`, 'success');
+  // Show success toast
+  showAlert(`${userName} has been successfully deleted`, 'success')
 
-    // Refresh the table to reflect deletion
-    refreshRolesTable();
+  // Refresh the table to reflect deletion
+  refreshRolesTable()
 }
 
-
-
 function refreshRolesTable() {
-    // Assuming your main content container has the ID 'main-content'
-    const mainContentArea = document.getElementById('main-content');
+  // Assuming your main content container has the ID 'main-content'
+  const mainContentArea = document.getElementById('main-content')
 
-    if (mainContentArea) {
-        // Regenerate the entire page HTML using the updated MockData.users
-        const newPageHTML = generateRolesManagementPage();
+  if (mainContentArea) {
+    // Regenerate the entire page HTML using the updated MockData.users
+    const newPageHTML = generateRolesManagementPage()
 
-        mainContentArea.innerHTML = newPageHTML;
+    mainContentArea.innerHTML = newPageHTML
 
-        // Ensure icons are re-rendered
-        setTimeout(() => {
-            if (window.lucide) lucide.createIcons();
-        }, 0);
-    }
+    // Ensure icons are re-rendered
+    setTimeout(() => {
+      if (window.lucide) lucide.createIcons()
+    }, 0)
+  }
 }
 
 function openUserModal(mode = 'view', userId = null) {
-    const modal = document.getElementById('user-modal');
-    const modalContent = modal.querySelector('.modal-content');
+  const modal = document.getElementById('user-modal')
+  const modalContent = modal.querySelector('.modal-content')
 
-    let userData = null;
-    if (userId === 'current') {
-        userData = AppState.currentUser;
-    } else if (userId && window.MockData && window.MockData.users) {
-        // Find user data for 'edit' or 'view' mode
-        userData = window.MockData.users.find(u => u.id === userId);
-    }
+  let userData = null
+  if (userId === 'current') {
+    userData = AppState.currentUser
+  } else if (userId && window.MockData && window.MockData.users) {
+    // Find user data for 'edit' or 'view' mode
+    userData = window.MockData.users.find((u) => u.id === userId)
+  }
 
-    modalContent.innerHTML = generateUserModal(mode, userData);
-    modal.classList.add('active');
+  modalContent.innerHTML = generateUserModal(mode, userData)
+  modal.classList.add('active')
 
-    if (window.lucide) lucide.createIcons();
+  if (window.lucide) lucide.createIcons()
 }
 
-
 function closeUserModal() {
-    const modal = document.getElementById('user-modal');
-    modal.classList.remove('active');
+  const modal = document.getElementById('user-modal')
+  modal.classList.remove('active')
 }
 
 // Enhanced User Modal with better design
 function generateUserModal(mode = 'view', userData = null) {
-    const title = mode === 'create' ? 'Add New User' :
-        mode === 'edit' ? 'Edit User Profile' :
-            'User Profile';
+  const title =
+    mode === 'create'
+      ? 'Add New User'
+      : mode === 'edit'
+      ? 'Edit User Profile'
+      : 'User Profile'
 
-    const subtitle = mode === 'create' ? 'Create a new user account' :
-        mode === 'edit' ? 'Update user information' :
-            'View user details';
+  const subtitle =
+    mode === 'create'
+      ? 'Create a new user account'
+      : mode === 'edit'
+      ? 'Update user information'
+      : 'View user details'
 
-    const isReadOnly = mode === 'view';
+  const isReadOnly = mode === 'view'
 
-    // Generate initials for avatar
-    const initials = userData?.name ?
-        userData.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() :
-        'NU';
+  // Generate initials for avatar
+  const initials = userData?.name
+    ? userData.name
+        .split(' ')
+        .map((n) => n[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase()
+    : 'NU'
 
-    return `
+  return `
         <div class="modal-header" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; border-bottom: none; padding: 32px 24px;">
             <div style="display: flex; align-items: center; gap: 16px;">
-                ${mode !== 'create' ? `
+                ${
+                  mode !== 'create'
+                    ? `
                     <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 600; backdrop-filter: blur(10px);">
                         ${initials}
                     </div>
-                ` : ''}
+                `
+                    : ''
+                }
                 <div style="flex: 1;">
                     <h2 class="modal-title" style="color: white; font-size: 24px; margin-bottom: 4px;">${title}</h2>
                     <p class="modal-subtitle" style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0;">${subtitle}</p>
@@ -5782,18 +7440,36 @@ function generateUserModal(mode = 'view', userData = null) {
                             <i data-lucide="shield" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             Role
                         </label>
-                        ${isReadOnly ? `
-                            <input type="text" class="form-input" value="${userData?.role || ''}" readonly style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; background: #f9fafb;">
-                        ` : `
+                        ${
+                          isReadOnly
+                            ? `
+                            <input type="text" class="form-input" value="${
+                              userData?.role || ''
+                            }" readonly style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; background: #f9fafb;">
+                        `
+                            : `
                             <select class="form-select" id="userRole" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                                 <option value="">Select role</option>
-                                <option ${userData?.role === 'Admin' ? 'selected' : ''}>Admin</option>
-                                <option ${userData?.role === 'Manager' ? 'selected' : ''}>Manager</option>
-                                <option ${userData?.role === 'User' ? 'selected' : ''}>User</option>
-                                <option ${userData?.role === 'Student Assistant' ? 'selected' : ''}>Student Assistant</option>
-                                <option ${userData?.role === 'Viewer' ? 'selected' : ''}>Viewer</option>
+                                <option ${
+                                  userData?.role === 'Admin' ? 'selected' : ''
+                                }>Admin</option>
+                                <option ${
+                                  userData?.role === 'Manager' ? 'selected' : ''
+                                }>Manager</option>
+                                <option ${
+                                  userData?.role === 'User' ? 'selected' : ''
+                                }>User</option>
+                                <option ${
+                                  userData?.role === 'Student Assistant'
+                                    ? 'selected'
+                                    : ''
+                                }>Student Assistant</option>
+                                <option ${
+                                  userData?.role === 'Viewer' ? 'selected' : ''
+                                }>Viewer</option>
                             </select>
-                        `}
+                        `
+                        }
                     </div>
 
                     <div class="form-group" style="margin-bottom: 20px;">
@@ -5801,19 +7477,49 @@ function generateUserModal(mode = 'view', userData = null) {
                             <i data-lucide="building" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             Department
                         </label>
-                        ${isReadOnly ? `
-                            <input type="text" class="form-input" value="${userData?.department || ''}" readonly style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; background: #f9fafb;">
-                        ` : `
+                        ${
+                          isReadOnly
+                            ? `
+                            <input type="text" class="form-input" value="${
+                              userData?.department || ''
+                            }" readonly style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; background: #f9fafb;">
+                        `
+                            : `
                             <select class="form-select" id="userDepartment" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                                 <option value="">Select department</option>
-                                <option ${userData?.department === 'IT' ? 'selected' : ''}>IT</option>
-                                <option ${userData?.department === 'Procurement' ? 'selected' : ''}>Procurement</option>
-                                <option ${userData?.department === 'Finance' ? 'selected' : ''}>Finance</option>
-                                <option ${userData?.department === 'HR' ? 'selected' : ''}>HR</option>
-                                <option ${userData?.department === 'Admin' ? 'selected' : ''}>Admin</option>
-                                <option ${userData?.department === 'Operations' ? 'selected' : ''}>Operations</option>
+                                <option ${
+                                  userData?.department === 'IT'
+                                    ? 'selected'
+                                    : ''
+                                }>IT</option>
+                                <option ${
+                                  userData?.department === 'Procurement'
+                                    ? 'selected'
+                                    : ''
+                                }>Procurement</option>
+                                <option ${
+                                  userData?.department === 'Finance'
+                                    ? 'selected'
+                                    : ''
+                                }>Finance</option>
+                                <option ${
+                                  userData?.department === 'HR'
+                                    ? 'selected'
+                                    : ''
+                                }>HR</option>
+                                <option ${
+                                  userData?.department === 'Admin'
+                                    ? 'selected'
+                                    : ''
+                                }>Admin</option>
+                                <option ${
+                                  userData?.department === 'Operations'
+                                    ? 'selected'
+                                    : ''
+                                }>Operations</option>
                             </select>
-                        `}
+                        `
+                        }
                     </div>
                 </div>
             </div>
@@ -5831,17 +7537,35 @@ function generateUserModal(mode = 'view', userData = null) {
                             <i data-lucide="activity" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             Status
                         </label>
-                        ${isReadOnly ? `
-                            <span class="badge ${userData?.status === 'Active' ? 'green' : 'red'}" style="display: inline-flex; padding: 8px 16px; font-size: 14px;">
-                                <i data-lucide="${userData?.status === 'Active' ? 'check-circle' : 'x-circle'}" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                        ${
+                          isReadOnly
+                            ? `
+                            <span class="badge ${
+                              userData?.status === 'Active' ? 'green' : 'red'
+                            }" style="display: inline-flex; padding: 8px 16px; font-size: 14px;">
+                                <i data-lucide="${
+                                  userData?.status === 'Active'
+                                    ? 'check-circle'
+                                    : 'x-circle'
+                                }" style="width: 16px; height: 16px; margin-right: 6px;"></i>
                                 ${userData?.status || 'Inactive'}
                             </span>
-                        ` : `
+                        `
+                            : `
                             <select class="form-select" id="userStatus" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
-                                <option value="Active" ${userData?.status === 'Active' ? 'selected' : ''}>Active</option>
-                                <option value="Inactive" ${userData?.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
+                                <option value="Active" ${
+                                  userData?.status === 'Active'
+                                    ? 'selected'
+                                    : ''
+                                }>Active</option>
+                                <option value="Inactive" ${
+                                  userData?.status === 'Inactive'
+                                    ? 'selected'
+                                    : ''
+                                }>Inactive</option>
                             </select>
-                        `}
+                        `
+                        }
                     </div>
 
                     <div class="form-group" style="margin-bottom: 0;">
@@ -5850,9 +7574,14 @@ function generateUserModal(mode = 'view', userData = null) {
                             ${mode === 'create' ? 'Join Date' : 'Created Date'}
                         </label>
                         <input type="date" class="form-input" id="userCreated"
-                               value="${userData?.created || new Date().toISOString().split('T')[0]}"
+                               value="${
+                                 userData?.created ||
+                                 new Date().toISOString().split('T')[0]
+                               }"
                                min="${new Date().toISOString().split('T')[0]}"
-                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; ${isReadOnly ? 'background: #f9fafb;' : ''}"
+                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; ${
+                                 isReadOnly ? 'background: #f9fafb;' : ''
+                               }"
                                ${isReadOnly ? 'readonly' : ''}>
                     </div>
                 </div>
@@ -5861,45 +7590,81 @@ function generateUserModal(mode = 'view', userData = null) {
 
         <div class="modal-footer" style="background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 20px 24px; display: flex; gap: 12px; justify-content: flex-end;">
             <button class="btn-secondary" onclick="closeUserModal()" style="padding: 10px 24px; font-weight: 500; border: 2px solid #d1d5db; transition: all 0.2s;">
-                <i data-lucide="${isReadOnly ? 'x' : 'arrow-left'}" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                <i data-lucide="${
+                  isReadOnly ? 'x' : 'arrow-left'
+                }" style="width: 16px; height: 16px; margin-right: 6px;"></i>
                 ${isReadOnly ? 'Close' : 'Cancel'}
             </button>
-            ${!isReadOnly ? `
-                <button class="btn btn-primary" onclick="saveUser('${userData?.id || ''}')" style="padding: 10px 24px; font-weight: 500; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); box-shadow: 0 4px 6px rgba(220, 38, 38, 0.25); transition: all 0.2s;">
-                    <i data-lucide="${mode === 'create' ? 'user-plus' : 'save'}" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+            ${
+              !isReadOnly
+                ? `
+                <button class="btn btn-primary" onclick="saveUser('${
+                  userData?.id || ''
+                }')" style="padding: 10px 24px; font-weight: 500; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); box-shadow: 0 4px 6px rgba(220, 38, 38, 0.25); transition: all 0.2s;">
+                    <i data-lucide="${
+                      mode === 'create' ? 'user-plus' : 'save'
+                    }" style="width: 16px; height: 16px; margin-right: 6px;"></i>
                     ${mode === 'create' ? 'Add User' : 'Save Changes'}
                 </button>
-            ` : ''}
+            `
+                : ''
+            }
         </div>
-    `;
+    `
 }
-
 
 // ------------------------- //
 //   Users Management Page  //
 // ------------------------- //
 
 function generateUsersManagementPage() {
-    // Initialize MockData if not exists
-    if (!window.MockData) window.MockData = {};
-    if (!window.MockData.users) {
-        // Initialize with default users if empty
-        window.MockData.users = [
-            { id: "SA001", group: "Group Juan", name: "Cherry Ann Quila", role: "Leader", email: "cherry@cnsc.edu.ph", department: "IT", status: "Active", created: "2025-01-15" },
-            { id: "SA002", group: "Group Juan", name: "Vince Balce", role: "Member", email: "vince@cnsc.edu.ph", department: "Finance", status: "Inactive", created: "2025-02-01" },
-            { id: "SA003", group: "Group Juan", name: "Marinel Ledesma", role: "Member", email: "marinel@cnsc.edu.ph", department: "HR", status: "Active", created: "2025-03-10" }
-        ];
-    }
+  // Initialize MockData if not exists
+  if (!window.MockData) window.MockData = {}
+  if (!window.MockData.users) {
+    // Initialize with default users if empty
+    window.MockData.users = [
+      {
+        id: 'SA001',
+        group: 'Group Juan',
+        name: 'Cherry Ann Quila',
+        role: 'Leader',
+        email: 'cherry@cnsc.edu.ph',
+        department: 'IT',
+        status: 'Active',
+        created: '2025-01-15',
+      },
+      {
+        id: 'SA002',
+        group: 'Group Juan',
+        name: 'Vince Balce',
+        role: 'Member',
+        email: 'vince@cnsc.edu.ph',
+        department: 'Finance',
+        status: 'Inactive',
+        created: '2025-02-01',
+      },
+      {
+        id: 'SA003',
+        group: 'Group Juan',
+        name: 'Marinel Ledesma',
+        role: 'Member',
+        email: 'marinel@cnsc.edu.ph',
+        department: 'HR',
+        status: 'Active',
+        created: '2025-03-10',
+      },
+    ]
+  }
 
-    // Use shared data from MockData
-    const users = window.MockData.users;
+  // Use shared data from MockData
+  const users = window.MockData.users
 
-    // Calculate statistics
-    const totalUsers = users.length;
-    const activeUsers = users.filter(u => u.status === 'Active').length;
-    const inactiveUsers = users.filter(u => u.status === 'Inactive').length;
+  // Calculate statistics
+  const totalUsers = users.length
+  const activeUsers = users.filter((u) => u.status === 'Active').length
+  const inactiveUsers = users.filter((u) => u.status === 'Inactive').length
 
-    return `
+  return `
         <div class="page-header">
             <div class="page-header-content">
                 <div>
@@ -6003,41 +7768,73 @@ function generateUsersManagementPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${users.map((user, index) => `
+                        ${users
+                          .map(
+                            (user, index) => `
                             <tr style="transition: all 0.2s;">
                                 <td style="padding-left: 24px;">
                                     <div style="display: flex; align-items: center; gap: 12px;">
                                         <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px;">
-                                            ${user.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                                            ${user.name
+                                              .split(' ')
+                                              .map((n) => n[0])
+                                              .join('')
+                                              .substring(0, 2)}
                                         </div>
                                         <div>
-                                            <div style="font-weight: 600; color: #111827;">${user.name}</div>
-                                            <div style="font-size: 12px; color: #6b7280;">${user.id}</div>
+                                            <div style="font-weight: 600; color: #111827;">${
+                                              user.name
+                                            }</div>
+                                            <div style="font-size: 12px; color: #6b7280;">${
+                                              user.id
+                                            }</div>
                                         </div>
                                     </div>
                                 </td>
-                                <td style="color: #4b5563; font-size: 14px;">${user.email}</td>
+                                <td style="color: #4b5563; font-size: 14px;">${
+                                  user.email
+                                }</td>
                                 <td>
-                                    <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: ${user.role === 'Leader' ? '#ede9fe' : '#e0f2fe'}; color: ${user.role === 'Leader' ? '#7c3aed' : '#0284c7'}; border-radius: 20px; font-size: 13px; font-weight: 500;">
-                                        <i data-lucide="${user.role === 'Leader' ? 'crown' : 'user'}" style="width:12px;height:12px;"></i>
+                                    <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: ${
+                                      user.role === 'Leader'
+                                        ? '#ede9fe'
+                                        : '#e0f2fe'
+                                    }; color: ${
+                              user.role === 'Leader' ? '#7c3aed' : '#0284c7'
+                            }; border-radius: 20px; font-size: 13px; font-weight: 500;">
+                                        <i data-lucide="${
+                                          user.role === 'Leader'
+                                            ? 'crown'
+                                            : 'user'
+                                        }" style="width:12px;height:12px;"></i>
                                         ${user.role}
                                     </span>
                                 </td>
-                                <td style="color: #6b7280; font-size: 14px;">${user.department}</td>
+                                <td style="color: #6b7280; font-size: 14px;">${
+                                  user.department
+                                }</td>
                                 <td>
-                                    <span class="badge ${user.status.toLowerCase() === 'active' ? 'green' : 'gray'}" style="display: inline-flex; align-items: center; gap: 6px;">
+                                    <span class="badge ${
+                                      user.status.toLowerCase() === 'active'
+                                        ? 'green'
+                                        : 'gray'
+                                    }" style="display: inline-flex; align-items: center; gap: 6px;">
                                         <span style="width: 6px; height: 6px; background: currentColor; border-radius: 50%;"></span>
                                         ${user.status}
                                     </span>
                                 </td>
-                                <td style="padding-right: 24px; color: #6b7280; font-size: 14px;">${user.created}</td>
+                                <td style="padding-right: 24px; color: #6b7280; font-size: 14px;">${
+                                  user.created
+                                }</td>
                             </tr>
-                        `).join("")}
+                        `
+                          )
+                          .join('')}
                     </tbody>
                 </table>
             </div>
         </div>
-    `;
+    `
 }
 
 // -------------------------------- //
@@ -6045,37 +7842,43 @@ function generateUsersManagementPage() {
 // -------------------------------- //
 
 function generateLoginActivityPage() {
-    // Initialize userLogs if not exists
-    if (!window.MockData) window.MockData = {};
-    if (!window.MockData.userLogs) {
-        window.MockData.userLogs = [];
-    }
+  // Initialize userLogs if not exists
+  if (!window.MockData) window.MockData = {}
+  if (!window.MockData.userLogs) {
+    window.MockData.userLogs = []
+  }
 
-    const userLogs = window.MockData.userLogs || [];
+  const userLogs = window.MockData.userLogs || []
 
-    // ---- Pagination calculations ----
-    const pageSize = AppState.loginActivityPageSize || 10;
-    const totalLogs = userLogs.length;
-    const totalPages = Math.max(1, Math.ceil(totalLogs / pageSize));
-    let currentPage = AppState.loginActivityPage || 1;
-    if (currentPage > totalPages) currentPage = totalPages; // clamp if logs reduced
-    if (currentPage < 1) currentPage = 1;
-    const startIndex = (currentPage - 1) * pageSize;
-    const paginatedLogs = userLogs.slice(startIndex, startIndex + pageSize);
-    const showingFrom = totalLogs === 0 ? 0 : startIndex + 1;
-    const showingTo = startIndex + paginatedLogs.length;
+  // ---- Pagination calculations ----
+  const pageSize = AppState.loginActivityPageSize || 10
+  const totalLogs = userLogs.length
+  const totalPages = Math.max(1, Math.ceil(totalLogs / pageSize))
+  let currentPage = AppState.loginActivityPage || 1
+  if (currentPage > totalPages) currentPage = totalPages // clamp if logs reduced
+  if (currentPage < 1) currentPage = 1
+  const startIndex = (currentPage - 1) * pageSize
+  const paginatedLogs = userLogs.slice(startIndex, startIndex + pageSize)
+  const showingFrom = totalLogs === 0 ? 0 : startIndex + 1
+  const showingTo = startIndex + paginatedLogs.length
 
-    // Calculate statistics
-    // (totalLogs already computed above)
-    const successfulLogins = userLogs.filter(log => log.status.toLowerCase() === 'success').length;
-    const failedLogins = userLogs.filter(log => log.status.toLowerCase() === 'failed').length;
-    const uniqueUsers = [...new Set(userLogs.map(log => log.email))].length;
+  // Calculate statistics
+  // (totalLogs already computed above)
+  const successfulLogins = userLogs.filter(
+    (log) => log.status.toLowerCase() === 'success'
+  ).length
+  const failedLogins = userLogs.filter(
+    (log) => log.status.toLowerCase() === 'failed'
+  ).length
+  const uniqueUsers = [...new Set(userLogs.map((log) => log.email))].length
 
-    // Get today's date
-    const today = new Date().toISOString().split('T')[0];
-    const todayLogins = userLogs.filter(log => log.timestamp.startsWith(today)).length;
+  // Get today's date
+  const today = new Date().toISOString().split('T')[0]
+  const todayLogins = userLogs.filter((log) =>
+    log.timestamp.startsWith(today)
+  ).length
 
-    return `
+  return `
         <div class="page-header">
             <div class="page-header-content">
                 <div>
@@ -6165,7 +7968,9 @@ function generateLoginActivityPage() {
                 </div>
             </div>
             
-            ${userLogs.length === 0 ? `
+            ${
+              userLogs.length === 0
+                ? `
                 <div style="text-align: center; padding: 80px 20px; background: linear-gradient(135deg, #fafafa 0%, #ffffff 100%);">
                     <div style="width: 100px; height: 100px; background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%); border-radius: 24px; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; box-shadow: 0 8px 16px rgba(59, 130, 246, 0.1);">
                         <i data-lucide="shield-alert" style="width:48px;height:48px;color:#3b82f6;opacity:0.6;"></i>
@@ -6183,7 +7988,8 @@ function generateLoginActivityPage() {
                         </div>
                     </div>
                 </div>
-            ` : `
+            `
+                : `
                 <div style="overflow-x:auto;">
                     <div style="max-height:420px; overflow-y:auto; overscroll-behavior:contain;">
                     <table class="table sticky-header" style="margin:0;">
@@ -6234,15 +8040,27 @@ function generateLoginActivityPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            ${paginatedLogs.map((log, index) => {
-        const isSuccess = log.status.toLowerCase() === 'success';
-        const deviceIcon = log.device.includes('Windows') ? 'monitor' :
-            log.device.includes('Mac') ? 'laptop' :
-                log.device.includes('Android') || log.device.includes('iOS') ? 'smartphone' :
-                    'monitor';
+                            ${paginatedLogs
+                              .map((log, index) => {
+                                const isSuccess =
+                                  log.status.toLowerCase() === 'success'
+                                const deviceIcon = log.device.includes(
+                                  'Windows'
+                                )
+                                  ? 'monitor'
+                                  : log.device.includes('Mac')
+                                  ? 'laptop'
+                                  : log.device.includes('Android') ||
+                                    log.device.includes('iOS')
+                                  ? 'smartphone'
+                                  : 'monitor'
 
-        return `
-                                <tr style="transition: all 0.2s; ${index === 0 ? 'background: linear-gradient(to right, rgba(59, 130, 246, 0.03), transparent);' : ''}">
+                                return `
+                                <tr style="transition: all 0.2s; ${
+                                  index === 0
+                                    ? 'background: linear-gradient(to right, rgba(59, 130, 246, 0.03), transparent);'
+                                    : ''
+                                }">
                                     <td style="padding-left: 24px;">
                                         <div style="display: flex; align-items: center; gap: 8px;">
                                             <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
@@ -6250,10 +8068,18 @@ function generateLoginActivityPage() {
                                             </div>
                                             <div>
                                                 <div style="font-family: 'Courier New', monospace; font-size: 13px; color: #111827; font-weight: 600;">
-                                                    ${log.timestamp.split(' ')[1]}
+                                                    ${
+                                                      log.timestamp.split(
+                                                        ' '
+                                                      )[1]
+                                                    }
                                                 </div>
                                                 <div style="font-family: 'Courier New', monospace; font-size: 11px; color: #6b7280;">
-                                                    ${log.timestamp.split(' ')[0]}
+                                                    ${
+                                                      log.timestamp.split(
+                                                        ' '
+                                                      )[0]
+                                                    }
                                                 </div>
                                             </div>
                                         </div>
@@ -6261,15 +8087,23 @@ function generateLoginActivityPage() {
                                     <td>
                                         <div style="display: flex; align-items: center; gap: 10px;">
                                             <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 12px; flex-shrink: 0;">
-                                                ${log.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                                                ${log.name
+                                                  .split(' ')
+                                                  .map((n) => n[0])
+                                                  .join('')
+                                                  .substring(0, 2)}
                                             </div>
-                                            <div style="font-weight: 600; color: #111827;">${log.name}</div>
+                                            <div style="font-weight: 600; color: #111827;">${
+                                              log.name
+                                            }</div>
                                         </div>
                                     </td>
                                     <td>
                                         <div style="display: flex; align-items: center; gap: 6px;">
                                             <i data-lucide="at-sign" style="width:14px;height:14px;color:#9ca3af;"></i>
-                                            <span style="color: #4b5563; font-size: 13px;">${log.email}</span>
+                                            <span style="color: #4b5563; font-size: 13px;">${
+                                              log.email
+                                            }</span>
                                         </div>
                                     </td>
                                     <td>
@@ -6283,23 +8117,39 @@ function generateLoginActivityPage() {
                                             <div style="width: 32px; height: 32px; background: #f3f4f6; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                                                 <i data-lucide="${deviceIcon}" style="width:16px;height:16px;color:#4b5563;"></i>
                                             </div>
-                                            <span style="font-size: 13px; color: #4b5563; font-weight: 500;">${log.device}</span>
+                                            <span style="font-size: 13px; color: #4b5563; font-weight: 500;">${
+                                              log.device
+                                            }</span>
                                         </div>
                                     </td>
                                     <td>
                                         <div style="display: flex; align-items: center; gap: 6px;">
                                             <i data-lucide="wifi" style="width:12px;height:12px;color:#9ca3af;"></i>
-                                            <span style="font-family: 'Courier New', monospace; font-size: 12px; color: #6b7280;">${log.ipAddress}</span>
+                                            <span style="font-family: 'Courier New', monospace; font-size: 12px; color: #6b7280;">${
+                                              log.ipAddress
+                                            }</span>
                                         </div>
                                     </td>
                                     <td style="padding-right: 24px;">
-                                        <span class="badge ${isSuccess ? 'green' : 'red'}" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600; padding: 6px 14px; box-shadow: 0 1px 3px ${isSuccess ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'};">
-                                            <i data-lucide="${isSuccess ? 'check-circle' : 'x-circle'}" style="width:14px;height:14px;"></i>
+                                        <span class="badge ${
+                                          isSuccess ? 'green' : 'red'
+                                        }" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600; padding: 6px 14px; box-shadow: 0 1px 3px ${
+                                  isSuccess
+                                    ? 'rgba(16, 185, 129, 0.2)'
+                                    : 'rgba(239, 68, 68, 0.2)'
+                                };">
+                                            <i data-lucide="${
+                                              isSuccess
+                                                ? 'check-circle'
+                                                : 'x-circle'
+                                            }" style="width:14px;height:14px;"></i>
                                             ${log.status}
                                         </span>
                                     </td>
                                 </tr>
-                            `}).join("")}
+                            `
+                              })
+                              .join('')}
                         </tbody>
                     </table>
                     </div>
@@ -6311,56 +8161,85 @@ function generateLoginActivityPage() {
                         Showing ${showingFrom} to ${showingTo} of ${totalLogs} entries
                     </div>
                     <div class="pagination-right" style="margin-right:16px; display:flex; gap:4px;">
-                        <button class="pagination-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="setLoginActivityPage(${currentPage - 1})">Previous</button>
+                        <button class="pagination-btn" ${
+                          currentPage === 1 ? 'disabled' : ''
+                        } onclick="setLoginActivityPage(${
+                    currentPage - 1
+                  })">Previous</button>
                         ${(() => {
-            const buttons = [];
-            const maxButtons = 5;
-            let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
-            let end = start + maxButtons - 1;
-            if (end > totalPages) { end = totalPages; start = Math.max(1, end - maxButtons + 1); }
-            for (let p = start; p <= end; p++) {
-                buttons.push(`<button class=\"pagination-btn ${p === currentPage ? 'active' : ''}\" onclick=\\"setLoginActivityPage(${p})\\">${p}</button>`);
-            }
-            return buttons.join('');
-        })()}
-                        <button class="pagination-btn" ${currentPage === totalPages ? 'disabled' : ''} onclick="setLoginActivityPage(${currentPage + 1})">Next</button>
+                          const buttons = []
+                          const maxButtons = 5
+                          let start = Math.max(
+                            1,
+                            currentPage - Math.floor(maxButtons / 2)
+                          )
+                          let end = start + maxButtons - 1
+                          if (end > totalPages) {
+                            end = totalPages
+                            start = Math.max(1, end - maxButtons + 1)
+                          }
+                          for (let p = start; p <= end; p++) {
+                            buttons.push(
+                              `<button class=\"pagination-btn ${
+                                p === currentPage ? 'active' : ''
+                              }\" onclick=\\"setLoginActivityPage(${p})\\">${p}</button>`
+                            )
+                          }
+                          return buttons.join('')
+                        })()}
+                        <button class="pagination-btn" ${
+                          currentPage === totalPages ? 'disabled' : ''
+                        } onclick="setLoginActivityPage(${
+                    currentPage + 1
+                  })">Next</button>
                     </div>
                 </nav>
-            `}
+            `
+            }
         </div>
-    `;
+    `
 }
 
 // ---- Pagination handlers for Login Activity (exposed globally) ----
 function setLoginActivityPage(page) {
-    const totalLogs = (window.MockData && window.MockData.userLogs) ? window.MockData.userLogs.length : 0;
-    const totalPages = Math.max(1, Math.ceil(totalLogs / (AppState.loginActivityPageSize || 10)));
-    const clamped = Math.min(Math.max(1, page), totalPages);
-    AppState.loginActivityPage = clamped;
-    loadPageContent('login-activity');
+  const totalLogs =
+    window.MockData && window.MockData.userLogs
+      ? window.MockData.userLogs.length
+      : 0
+  const totalPages = Math.max(
+    1,
+    Math.ceil(totalLogs / (AppState.loginActivityPageSize || 10))
+  )
+  const clamped = Math.min(Math.max(1, page), totalPages)
+  AppState.loginActivityPage = clamped
+  loadPageContent('login-activity')
 }
-window.setLoginActivityPage = setLoginActivityPage;
+window.setLoginActivityPage = setLoginActivityPage
 
 // ----------------------------- //
 // About Us Page               //
 // ----------------------------- //
 function generateAboutPage() {
-    const currentYear = new Date().getFullYear();
+  const currentYear = new Date().getFullYear()
 
-    // Get stored About Us content or use defaults
-    const aboutContent = AppState.aboutUsContent || {
-        heroTitle: 'SPMO System',
-        heroSubtitle: 'Revolutionizing Inventory & Procurement Management for Camarines Norte State College',
-        mission: 'To provide a comprehensive, user-friendly platform that streamlines inventory management, automates procurement processes, and ensures transparency in resource allocation across all departments of CNSC.',
-        vision: 'To be the leading digital solution for educational institutions, setting the standard for efficient resource management, data-driven decision making, and operational excellence.',
-        institution: 'Camarines Norte State College - Supply and Property Management Office',
-        email: 'cnsc.spmo@.edu.ph',
-        phone: '(054) 440-1134',
-        heroImage: '',
-        institutionLogo: ''
-    };
+  // Get stored About Us content or use defaults
+  const aboutContent = AppState.aboutUsContent || {
+    heroTitle: 'SPMO System',
+    heroSubtitle:
+      'Revolutionizing Inventory & Procurement Management for Camarines Norte State College',
+    mission:
+      'To provide a comprehensive, user-friendly platform that streamlines inventory management, automates procurement processes, and ensures transparency in resource allocation across all departments of CNSC.',
+    vision:
+      'To be the leading digital solution for educational institutions, setting the standard for efficient resource management, data-driven decision making, and operational excellence.',
+    institution:
+      'Camarines Norte State College - Supply and Property Management Office',
+    email: 'cnsc.spmo@.edu.ph',
+    phone: '(054) 440-1134',
+    heroImage: '',
+    institutionLogo: '',
+  }
 
-    return `
+  return `
         <div class="page-header">
             <div class="page-header-content">
                 <div>
@@ -6382,10 +8261,20 @@ function generateAboutPage() {
 
         <div class="page-content">
             <!-- Hero Section -->
-            <div class="card" style="background: ${aboutContent.heroImage ? `linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%), url('${aboutContent.heroImage}') center/cover` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}; color: white; padding: 48px 32px; text-align: center; border: none;">
+            <div class="card" style="background: ${
+              aboutContent.heroImage
+                ? `linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%), url('${aboutContent.heroImage}') center/cover`
+                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+            }; color: white; padding: 48px 32px; text-align: center; border: none;">
                 <div style="max-width: 800px; margin: 0 auto;">
-                    ${aboutContent.institutionLogo ? `<img src="${aboutContent.institutionLogo}" alt="Institution Logo" style="width: 100px; height: 100px; object-fit: contain; margin: 0 auto 20px; display: block; background: white; border-radius: 12px; padding: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">` : ''}
-                    <h2 id="hero-title" style="margin: 0 0 16px 0; font-size: 32px; font-weight: 700; color: white;">${aboutContent.heroTitle}</h2>
+                    ${
+                      aboutContent.institutionLogo
+                        ? `<img src="${aboutContent.institutionLogo}" alt="Institution Logo" style="width: 100px; height: 100px; object-fit: contain; margin: 0 auto 20px; display: block; background: white; border-radius: 12px; padding: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">`
+                        : ''
+                    }
+                    <h2 id="hero-title" style="margin: 0 0 16px 0; font-size: 32px; font-weight: 700; color: white;">${
+                      aboutContent.heroTitle
+                    }</h2>
                     <p id="hero-subtitle" style="font-size: 18px; line-height: 1.8; margin: 0; opacity: 0.95;">
                         ${aboutContent.heroSubtitle}
                     </p>
@@ -6551,7 +8440,9 @@ function generateAboutPage() {
                             </div>
                             <div>
                                 <p style="margin: 0; font-weight: 600; color: #111827; font-size: 14px;">Institution</p>
-                                <p id="institution-text" style="margin: 0; color: #6b7280; font-size: 14px;">${aboutContent.institution}</p>
+                                <p id="institution-text" style="margin: 0; color: #6b7280; font-size: 14px;">${
+                                  aboutContent.institution
+                                }</p>
                             </div>
                         </div>
 
@@ -6561,7 +8452,9 @@ function generateAboutPage() {
                             </div>
                             <div>
                                 <p style="margin: 0; font-weight: 600; color: #111827; font-size: 14px;">Institutional Email</p>
-                                <p id="email-text" style="margin: 0; color: #6b7280; font-size: 14px;">${aboutContent.email}</p>
+                                <p id="email-text" style="margin: 0; color: #6b7280; font-size: 14px;">${
+                                  aboutContent.email
+                                }</p>
                             </div>
                         </div>
 
@@ -6571,7 +8464,9 @@ function generateAboutPage() {
                             </div>
                             <div>
                                 <p style="margin: 0; font-weight: 600; color: #111827; font-size: 14px;">Contact Number</p>
-                                <p id="phone-text" style="margin: 0; color: #6b7280; font-size: 14px;">${aboutContent.phone}</p>
+                                <p id="phone-text" style="margin: 0; color: #6b7280; font-size: 14px;">${
+                                  aboutContent.phone
+                                }</p>
                             </div>
                         </div>
                     </div>
@@ -6585,30 +8480,44 @@ function generateAboutPage() {
                 </p>
             </div>
         </div>
-    `;
+    `
 }
 
 // ----------------------------- //
 // Support Page (Submit Ticket Only)//
 // ----------------------------- //
 function generateSupportPage() {
-    // Load existing support tickets from localStorage
-    let tickets = [];
-    try {
-        const raw = localStorage.getItem('spmo_supportTickets');
-        if (raw) tickets = JSON.parse(raw) || [];
-    } catch (e) { tickets = []; }
+  // Load existing support tickets from localStorage
+  let tickets = []
+  try {
+    const raw = localStorage.getItem('spmo_supportTickets')
+    if (raw) tickets = JSON.parse(raw) || []
+  } catch (e) {
+    tickets = []
+  }
 
-    const ticketRows = tickets.map(t => `
+  const ticketRows =
+    tickets
+      .map(
+        (t) => `
         <tr>
-            <td style="font-weight:600;color:#111827;">${escapeHtml(t.name)}</td>
+            <td style="font-weight:600;color:#111827;">${escapeHtml(
+              t.name
+            )}</td>
             <td>${escapeHtml(t.email)}</td>
-            <td>${escapeHtml(t.message).slice(0, 60)}${t.message.length > 60 ? '…' : ''}</td>
-            <td><span class="badge ${t.status === 'Open' ? 'yellow' : 'green'}" style="font-size:11px;">${t.status}</span></td>
+            <td>${escapeHtml(t.message).slice(0, 60)}${
+          t.message.length > 60 ? '…' : ''
+        }</td>
+            <td><span class="badge ${
+              t.status === 'Open' ? 'yellow' : 'green'
+            }" style="font-size:11px;">${t.status}</span></td>
             <td style="font-size:12px;color:#6b7280;">${t.created}</td>
-        </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;padding:20px;color:#6b7280;">No support tickets yet</td></tr>';
+        </tr>`
+      )
+      .join('') ||
+    '<tr><td colspan="5" style="text-align:center;padding:20px;color:#6b7280;">No support tickets yet</td></tr>'
 
-    return `
+  return `
         <div class="page-header">
             <div class="page-header-content">
                 <div>
@@ -6652,58 +8561,93 @@ function generateSupportPage() {
                 </div>
             </div>
         </div>
-    `;
+    `
 }
 
 // Escape helper
 function escapeHtml(str) {
-    return (str || '').replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c] || c));
+  return (str || '').replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[
+        c
+      ] || c)
+  )
 }
 
 // Refresh tickets list (re-render only tickets table body without full page reload)
 function refreshSupportTickets() {
-    if (AppState.currentPage !== 'support') return;
-    let tickets = []; try { const raw = localStorage.getItem('spmo_supportTickets'); if (raw) tickets = JSON.parse(raw) || [] } catch (e) { tickets = []; }
-    const body = document.getElementById('support-ticket-body');
-    if (!body) return;
-    body.innerHTML = tickets.map(t => `<tr><td style=\"font-weight:600;color:#111827;\">${escapeHtml(t.name)}</td><td>${escapeHtml(t.email)}</td><td>${escapeHtml(t.message).slice(0, 60)}${t.message.length > 60 ? '…' : ''}</td><td><span class=\"badge ${t.status === 'Open' ? 'yellow' : 'green'}\" style=\"font-size:11px;\">${t.status}</span></td><td style=\"font-size:12px;color:#6b7280;\">${t.created}</td></tr>`).join('') || '<tr><td colspan="5" style="text-align:center;padding:20px;color:#6b7280;">No support tickets yet</td></tr>';
+  if (AppState.currentPage !== 'support') return
+  let tickets = []
+  try {
+    const raw = localStorage.getItem('spmo_supportTickets')
+    if (raw) tickets = JSON.parse(raw) || []
+  } catch (e) {
+    tickets = []
+  }
+  const body = document.getElementById('support-ticket-body')
+  if (!body) return
+  body.innerHTML =
+    tickets
+      .map(
+        (t) =>
+          `<tr><td style=\"font-weight:600;color:#111827;\">${escapeHtml(
+            t.name
+          )}</td><td>${escapeHtml(t.email)}</td><td>${escapeHtml(
+            t.message
+          ).slice(0, 60)}${
+            t.message.length > 60 ? '…' : ''
+          }</td><td><span class=\"badge ${
+            t.status === 'Open' ? 'yellow' : 'green'
+          }\" style=\"font-size:11px;\">${
+            t.status
+          }</span></td><td style=\"font-size:12px;color:#6b7280;\">${
+            t.created
+          }</td></tr>`
+      )
+      .join('') ||
+    '<tr><td colspan="5" style="text-align:center;padding:20px;color:#6b7280;">No support tickets yet</td></tr>'
 }
-window.refreshSupportTickets = refreshSupportTickets;
+window.refreshSupportTickets = refreshSupportTickets
 
 // Extend initializePageEvents to wire support page events
-const _origInitPageEvents_forSupport = initializePageEvents;
+const _origInitPageEvents_forSupport = initializePageEvents
 initializePageEvents = function (pageId) {
-    _origInitPageEvents_forSupport(pageId);
-    if (pageId === 'support') {
-        // Simply refresh tickets; submission form removed.
-        refreshSupportTickets();
-    }
-};
+  _origInitPageEvents_forSupport(pageId)
+  if (pageId === 'support') {
+    // Simply refresh tickets; submission form removed.
+    refreshSupportTickets()
+  }
+}
 
 // Edit About Us Modal
 function editAboutUs() {
-    const currentContent = AppState.aboutUsContent || {
-        heroTitle: 'SPMO System',
-        heroSubtitle: 'Revolutionizing Inventory & Procurement Management for Camarines Norte State College',
-        mission: 'To provide a comprehensive, user-friendly platform that streamlines inventory management, automates procurement processes, and ensures transparency in resource allocation across all departments of CNSC.',
-        vision: 'To be the leading digital solution for educational institutions, setting the standard for efficient resource management, data-driven decision making, and operational excellence.',
-        institution: 'Camarines Norte State College - Supply and Property Management Office',
-        email: 'cnsc.spmo@.edu.ph',
-        phone: '(054) 440-1134',
-        heroImage: '',
-        institutionLogo: ''
-    };
+  const currentContent = AppState.aboutUsContent || {
+    heroTitle: 'SPMO System',
+    heroSubtitle:
+      'Revolutionizing Inventory & Procurement Management for Camarines Norte State College',
+    mission:
+      'To provide a comprehensive, user-friendly platform that streamlines inventory management, automates procurement processes, and ensures transparency in resource allocation across all departments of CNSC.',
+    vision:
+      'To be the leading digital solution for educational institutions, setting the standard for efficient resource management, data-driven decision making, and operational excellence.',
+    institution:
+      'Camarines Norte State College - Supply and Property Management Office',
+    email: 'cnsc.spmo@.edu.ph',
+    phone: '(054) 440-1134',
+    heroImage: '',
+    institutionLogo: '',
+  }
 
-    let modal = document.getElementById('edit-about-modal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'edit-about-modal';
-        modal.className = 'modal-overlay';
-        document.body.appendChild(modal);
-    }
+  let modal = document.getElementById('edit-about-modal')
+  if (!modal) {
+    modal = document.createElement('div')
+    modal.id = 'edit-about-modal'
+    modal.className = 'modal-overlay'
+    document.body.appendChild(modal)
+  }
 
-    modal.className = 'modal-overlay active';
-    modal.innerHTML = `
+  modal.className = 'modal-overlay active'
+  modal.innerHTML = `
         <div class="modal-content" style="max-width: 700px; max-height: 90vh; overflow: hidden; padding: 0; display: flex; flex-direction: column;">
             <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; flex-shrink: 0;">
                 <h2 style="margin: 0; font-size: 24px; font-weight: 600; display: flex; align-items: center; gap: 10px;">
@@ -6723,14 +8667,22 @@ function editAboutUs() {
                             <input type="file" id="edit-logo-upload" accept="image/*" 
                                    style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
                             <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Upload institution logo (recommended: 200x200px)</p>
-                            ${currentContent.institutionLogo ? `<div style="margin-top: 8px;"><img src="${currentContent.institutionLogo}" style="width: 80px; height: 80px; object-fit: contain; border: 1px solid #e5e7eb; border-radius: 8px; padding: 4px;"><button onclick="removeAboutImage('logo')" class="btn btn-secondary" style="margin-left: 8px; padding: 4px 8px; font-size: 12px;">Remove</button></div>` : ''}
+                            ${
+                              currentContent.institutionLogo
+                                ? `<div style="margin-top: 8px;"><img src="${currentContent.institutionLogo}" style="width: 80px; height: 80px; object-fit: contain; border: 1px solid #e5e7eb; border-radius: 8px; padding: 4px;"><button onclick="removeAboutImage('logo')" class="btn btn-secondary" style="margin-left: 8px; padding: 4px 8px; font-size: 12px;">Remove</button></div>`
+                                : ''
+                            }
                         </div>
                         <div>
                             <label style="display: block; margin-bottom: 6px; font-weight: 500; font-size: 14px; color: #374151;">Hero Background Image</label>
                             <input type="file" id="edit-hero-upload" accept="image/*" 
                                    style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
                             <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Upload hero background image (recommended: 1920x600px)</p>
-                            ${currentContent.heroImage ? `<div style="margin-top: 8px;"><img src="${currentContent.heroImage}" style="width: 120px; height: 40px; object-fit: cover; border: 1px solid #e5e7eb; border-radius: 4px;"><button onclick="removeAboutImage('hero')" class="btn btn-secondary" style="margin-left: 8px; padding: 4px 8px; font-size: 12px;">Remove</button></div>` : ''}
+                            ${
+                              currentContent.heroImage
+                                ? `<div style="margin-top: 8px;"><img src="${currentContent.heroImage}" style="width: 120px; height: 40px; object-fit: cover; border: 1px solid #e5e7eb; border-radius: 4px;"><button onclick="removeAboutImage('hero')" class="btn btn-secondary" style="margin-left: 8px; padding: 4px 8px; font-size: 12px;">Remove</button></div>`
+                                : ''
+                            }
                         </div>
                     </div>
                 </div>
@@ -6741,13 +8693,18 @@ function editAboutUs() {
                     <div style="display: flex; flex-direction: column; gap: 12px;">
                         <div>
                             <label style="display: block; margin-bottom: 6px; font-weight: 500; font-size: 14px; color: #374151;">Title</label>
-                            <input type="text" id="edit-hero-title" value="${currentContent.heroTitle.replace(/"/g, '&quot;')}" 
+                            <input type="text" id="edit-hero-title" value="${currentContent.heroTitle.replace(
+                              /"/g,
+                              '&quot;'
+                            )}" 
                                    style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
                         </div>
                         <div>
                             <label style="display: block; margin-bottom: 6px; font-weight: 500; font-size: 14px; color: #374151;">Subtitle</label>
                             <textarea id="edit-hero-subtitle" rows="2" 
-                                      style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical;">${currentContent.heroSubtitle.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+                                      style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical;">${currentContent.heroSubtitle
+                                        .replace(/</g, '&lt;')
+                                        .replace(/>/g, '&gt;')}</textarea>
                         </div>
                     </div>
                 </div>
@@ -6759,12 +8716,16 @@ function editAboutUs() {
                         <div>
                             <label style="display: block; margin-bottom: 6px; font-weight: 500; font-size: 14px; color: #374151;">Our Mission</label>
                             <textarea id="edit-mission" rows="3" 
-                                      style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical;">${currentContent.mission.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+                                      style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical;">${currentContent.mission
+                                        .replace(/</g, '&lt;')
+                                        .replace(/>/g, '&gt;')}</textarea>
                         </div>
                         <div>
                             <label style="display: block; margin-bottom: 6px; font-weight: 500; font-size: 14px; color: #374151;">Our Vision</label>
                             <textarea id="edit-vision" rows="3" 
-                                      style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical;">${currentContent.vision.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+                                      style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical;">${currentContent.vision
+                                        .replace(/</g, '&lt;')
+                                        .replace(/>/g, '&gt;')}</textarea>
                         </div>
                     </div>
                 </div>
@@ -6775,17 +8736,26 @@ function editAboutUs() {
                     <div style="display: flex; flex-direction: column; gap: 12px;">
                         <div>
                             <label style="display: block; margin-bottom: 6px; font-weight: 500; font-size: 14px; color: #374151;">Institution</label>
-                            <input type="text" id="edit-institution" value="${currentContent.institution.replace(/"/g, '&quot;')}" 
+                            <input type="text" id="edit-institution" value="${currentContent.institution.replace(
+                              /"/g,
+                              '&quot;'
+                            )}" 
                                    style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
                         </div>
                         <div>
                             <label style="display: block; margin-bottom: 6px; font-weight: 500; font-size: 14px; color: #374151;">Institutional Email</label>
-                            <input type="email" id="edit-email" value="${currentContent.email.replace(/"/g, '&quot;')}" 
+                            <input type="email" id="edit-email" value="${currentContent.email.replace(
+                              /"/g,
+                              '&quot;'
+                            )}" 
                                    style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
                         </div>
                         <div>
                             <label style="display: block; margin-bottom: 6px; font-weight: 500; font-size: 14px; color: #374151;">Contact Number</label>
-                            <input type="tel" id="edit-phone" value="${currentContent.phone.replace(/"/g, '&quot;')}" 
+                            <input type="tel" id="edit-phone" value="${currentContent.phone.replace(
+                              /"/g,
+                              '&quot;'
+                            )}" 
                                    style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
                         </div>
                     </div>
@@ -6803,113 +8773,125 @@ function editAboutUs() {
                 </button>
             </div>
         </div>
-    `;
+    `
 
-    try { lucide.createIcons(); } catch (e) { }
+  try {
+    lucide.createIcons()
+  } catch (e) {}
 }
 
 function closeEditAboutModal() {
-    const modal = document.getElementById('edit-about-modal');
-    if (modal) {
-        modal.className = 'modal-overlay';
-        setTimeout(() => modal.remove(), 300);
-    }
+  const modal = document.getElementById('edit-about-modal')
+  if (modal) {
+    modal.className = 'modal-overlay'
+    setTimeout(() => modal.remove(), 300)
+  }
 }
 
 function saveAboutUs() {
-    // Get values from form
-    const heroTitle = document.getElementById('edit-hero-title').value.trim();
-    const heroSubtitle = document.getElementById('edit-hero-subtitle').value.trim();
-    const mission = document.getElementById('edit-mission').value.trim();
-    const vision = document.getElementById('edit-vision').value.trim();
-    const institution = document.getElementById('edit-institution').value.trim();
-    const email = document.getElementById('edit-email').value.trim();
-    const phone = document.getElementById('edit-phone').value.trim();
+  // Get values from form
+  const heroTitle = document.getElementById('edit-hero-title').value.trim()
+  const heroSubtitle = document
+    .getElementById('edit-hero-subtitle')
+    .value.trim()
+  const mission = document.getElementById('edit-mission').value.trim()
+  const vision = document.getElementById('edit-vision').value.trim()
+  const institution = document.getElementById('edit-institution').value.trim()
+  const email = document.getElementById('edit-email').value.trim()
+  const phone = document.getElementById('edit-phone').value.trim()
 
-    // Validation
-    if (!heroTitle || !heroSubtitle || !mission || !vision || !institution || !email || !phone) {
-        showAlert('Please fill in all fields', 'error');
-        return;
+  // Validation
+  if (
+    !heroTitle ||
+    !heroSubtitle ||
+    !mission ||
+    !vision ||
+    !institution ||
+    !email ||
+    !phone
+  ) {
+    showAlert('Please fill in all fields', 'error')
+    return
+  }
+
+  // Handle image uploads
+  const logoFile = document.getElementById('edit-logo-upload').files[0]
+  const heroFile = document.getElementById('edit-hero-upload').files[0]
+
+  // Keep existing images if no new file is uploaded
+  let logoImage = AppState.aboutUsContent?.institutionLogo || ''
+  let heroImage = AppState.aboutUsContent?.heroImage || ''
+
+  const processImages = () => {
+    // Save to AppState
+    AppState.aboutUsContent = {
+      heroTitle,
+      heroSubtitle,
+      mission,
+      vision,
+      institution,
+      email,
+      phone,
+      institutionLogo: logoImage,
+      heroImage: heroImage,
     }
 
-    // Handle image uploads
-    const logoFile = document.getElementById('edit-logo-upload').files[0];
-    const heroFile = document.getElementById('edit-hero-upload').files[0];
+    // Close modal
+    closeEditAboutModal()
 
-    // Keep existing images if no new file is uploaded
-    let logoImage = AppState.aboutUsContent?.institutionLogo || '';
-    let heroImage = AppState.aboutUsContent?.heroImage || '';
+    // Reload page to show updated content
+    loadPageContent('about')
 
-    const processImages = () => {
-        // Save to AppState
-        AppState.aboutUsContent = {
-            heroTitle,
-            heroSubtitle,
-            mission,
-            vision,
-            institution,
-            email,
-            phone,
-            institutionLogo: logoImage,
-            heroImage: heroImage
-        };
+    showAlert('About Us content updated successfully!', 'success')
+  }
 
-        // Close modal
-        closeEditAboutModal();
+  // Process logo upload if exists
+  if (logoFile) {
+    const logoReader = new FileReader()
+    logoReader.onload = (e) => {
+      logoImage = e.target.result
 
-        // Reload page to show updated content
-        loadPageContent('about');
-
-        showAlert('About Us content updated successfully!', 'success');
-    };
-
-    // Process logo upload if exists
-    if (logoFile) {
-        const logoReader = new FileReader();
-        logoReader.onload = (e) => {
-            logoImage = e.target.result;
-
-            // Process hero image if exists, otherwise finish
-            if (heroFile) {
-                const heroReader = new FileReader();
-                heroReader.onload = (e) => {
-                    heroImage = e.target.result;
-                    processImages();
-                };
-                heroReader.readAsDataURL(heroFile);
-            } else {
-                processImages();
-            }
-        };
-        logoReader.readAsDataURL(logoFile);
-    } else if (heroFile) {
-        // No logo, but hero image exists
-        const heroReader = new FileReader();
+      // Process hero image if exists, otherwise finish
+      if (heroFile) {
+        const heroReader = new FileReader()
         heroReader.onload = (e) => {
-            heroImage = e.target.result;
-            processImages();
-        };
-        heroReader.readAsDataURL(heroFile);
-    } else {
-        // No new images
-        processImages();
+          heroImage = e.target.result
+          processImages()
+        }
+        heroReader.readAsDataURL(heroFile)
+      } else {
+        processImages()
+      }
     }
+    logoReader.readAsDataURL(logoFile)
+  } else if (heroFile) {
+    // No logo, but hero image exists
+    const heroReader = new FileReader()
+    heroReader.onload = (e) => {
+      heroImage = e.target.result
+      processImages()
+    }
+    heroReader.readAsDataURL(heroFile)
+  } else {
+    // No new images
+    processImages()
+  }
 }
 
 function removeAboutImage(type) {
-    if (type === 'logo') {
-        if (AppState.aboutUsContent) {
-            AppState.aboutUsContent.institutionLogo = '';
-        }
-    } else if (type === 'hero') {
-        if (AppState.aboutUsContent) {
-            AppState.aboutUsContent.heroImage = '';
-        }
+  if (type === 'logo') {
+    if (AppState.aboutUsContent) {
+      AppState.aboutUsContent.institutionLogo = ''
     }
+  } else if (type === 'hero') {
+    if (AppState.aboutUsContent) {
+      AppState.aboutUsContent.heroImage = ''
+    }
+  }
 
-    // Re-open modal to refresh display
-    editAboutUs();
-    showAlert('Image removed successfully!', 'success');
+  // Re-open modal to refresh display
+  editAboutUs()
+  showAlert('Image removed successfully!', 'success')
 }
 
 // -----------------------------//
@@ -6917,51 +8899,53 @@ function removeAboutImage(type) {
 // -----------------------------//
 
 function generateActivityPage() {
-    // Get all notifications with additional system activities
-    const allNotifications = AppState.notifications || [];
+  // Get all notifications with additional system activities
+  const allNotifications = AppState.notifications || []
 
-    // Add system activities (sample data - can be expanded)
-    const systemActivities = [
-        {
-            id: 'sys-1',
-            type: 'system',
-            icon: 'package',
-            color: '#3b82f6',
-            title: 'New Product Added',
-            message: 'Office Supplies category updated',
-            time: '2 hours ago',
-            read: true
-        },
-        {
-            id: 'sys-2',
-            type: 'system',
-            icon: 'users',
-            color: '#10b981',
-            title: 'User Account Created',
-            message: 'New user added to the system',
-            time: '5 hours ago',
-            read: true
-        },
-        {
-            id: 'sys-3',
-            type: 'system',
-            icon: 'trending-up',
-            color: '#f59e0b',
-            title: 'Stock Alert',
-            message: 'Low stock items detected',
-            time: '1 day ago',
-            read: true
-        }
-    ];
+  // Add system activities (sample data - can be expanded)
+  const systemActivities = [
+    {
+      id: 'sys-1',
+      type: 'system',
+      icon: 'package',
+      color: '#3b82f6',
+      title: 'New Product Added',
+      message: 'Office Supplies category updated',
+      time: '2 hours ago',
+      read: true,
+    },
+    {
+      id: 'sys-2',
+      type: 'system',
+      icon: 'users',
+      color: '#10b981',
+      title: 'User Account Created',
+      message: 'New user added to the system',
+      time: '5 hours ago',
+      read: true,
+    },
+    {
+      id: 'sys-3',
+      type: 'system',
+      icon: 'trending-up',
+      color: '#f59e0b',
+      title: 'Stock Alert',
+      message: 'Low stock items detected',
+      time: '1 day ago',
+      read: true,
+    },
+  ]
 
-    const combinedActivities = [...allNotifications, ...systemActivities].sort((a, b) => {
-        // Sort by time (newest first) - simplified sorting
-        return 0; // For demo, maintain current order
-    });
+  const combinedActivities = [...allNotifications, ...systemActivities].sort(
+    (a, b) => {
+      // Sort by time (newest first) - simplified sorting
+      return 0 // For demo, maintain current order
+    }
+  )
 
-    const unreadCount = combinedActivities.filter(n => !n.read).length;
+  const unreadCount = combinedActivities.filter((n) => !n.read).length
 
-    return `
+  return `
         <div class="page-header">
             <div class="page-header-content">
                 <div style="display:flex;align-items:center;gap:16px;">
@@ -6978,12 +8962,16 @@ function generateActivityPage() {
                     </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:12px;">
-                    ${unreadCount > 0 ? `
+                    ${
+                      unreadCount > 0
+                        ? `
                         <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:8px 16px;display:flex;align-items:center;gap:8px;">
                             <div style="width:8px;height:8px;background:#f59e0b;border-radius:50%;"></div>
                             <span style="font-size:14px;font-weight:600;color:#b45309;">${unreadCount} unread</span>
                         </div>
-                    ` : ''}
+                    `
+                        : ''
+                    }
                     <button class="btn btn-secondary" onclick="markAllNotificationsRead()" style="display:flex;align-items:center;gap:8px;">
                         <i data-lucide="check-check" style="width:16px;height:16px;"></i>
                         Mark all as read
@@ -6997,7 +8985,9 @@ function generateActivityPage() {
         </div>
 
         <div class="page-content">
-            ${combinedActivities.length === 0 ? `
+            ${
+              combinedActivities.length === 0
+                ? `
                 <div class="card" style="text-align:center;padding:64px 32px;">
                     <div style="width:80px;height:80px;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;">
                         <i data-lucide="bell-off" style="width:40px;height:40px;color:#9ca3af;"></i>
@@ -7005,19 +8995,25 @@ function generateActivityPage() {
                     <h3 style="margin:0 0 8px 0;color:#111827;font-size:20px;">No notifications yet</h3>
                     <p style="margin:0;color:#6b7280;font-size:14px;">When you receive notifications, they'll appear here</p>
                 </div>
-            ` : `
+            `
+                : `
                 <div class="card" style="padding:0;overflow:hidden;">
                     <div style="background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:16px 24px;">
                         <h3 style="margin:0;font-size:16px;font-weight:600;color:#111827;">All Activity</h3>
                     </div>
                     <div style="display:flex;flex-direction:column;">
-                        ${combinedActivities.map((activity, index) => {
-        const iconName = activity.icon || 'bell';
-        const iconColor = activity.color || '#667eea';
-        const bgColor = activity.read ? '#ffffff' : '#f0f9ff';
-        const borderLeft = activity.read ? 'transparent' : '#3b82f6';
+                        ${combinedActivities
+                          .map((activity, index) => {
+                            const iconName = activity.icon || 'bell'
+                            const iconColor = activity.color || '#667eea'
+                            const bgColor = activity.read
+                              ? '#ffffff'
+                              : '#f0f9ff'
+                            const borderLeft = activity.read
+                              ? 'transparent'
+                              : '#3b82f6'
 
-        return `
+                            return `
                                 <div style="display:flex;align-items:start;gap:16px;padding:20px 24px;background:${bgColor};border-left:3px solid ${borderLeft};border-bottom:1px solid #e5e7eb;transition:all 0.2s;cursor:pointer;" 
                                      onmouseover="this.style.background='#f9fafb'" 
                                      onmouseout="this.style.background='${bgColor}'">
@@ -7026,38 +9022,52 @@ function generateActivityPage() {
                                     </div>
                                     <div style="flex:1;min-width:0;">
                                         <div style="display:flex;align-items:start;justify-content:space-between;gap:12px;margin-bottom:4px;">
-                                            <h4 style="margin:0;font-size:15px;font-weight:600;color:#111827;">${activity.title}</h4>
-                                            <span style="font-size:13px;color:#6b7280;white-space:nowrap;">${activity.time}</span>
+                                            <h4 style="margin:0;font-size:15px;font-weight:600;color:#111827;">${
+                                              activity.title
+                                            }</h4>
+                                            <span style="font-size:13px;color:#6b7280;white-space:nowrap;">${
+                                              activity.time
+                                            }</span>
                                         </div>
-                                        <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.5;">${activity.message}</p>
-                                        ${!activity.read ? `
+                                        <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.5;">${
+                                          activity.message
+                                        }</p>
+                                        ${
+                                          !activity.read
+                                            ? `
                                             <button onclick="markNotificationAsRead('${activity.id}')" 
                                                     style="margin-top:12px;padding:6px 12px;background:#3b82f6;color:white;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.2s;"
                                                     onmouseover="this.style.background='#2563eb'"
                                                     onmouseout="this.style.background='#3b82f6'">
                                                 Mark as read
                                             </button>
-                                        ` : ''}
+                                        `
+                                            : ''
+                                        }
                                     </div>
                                 </div>
-                            `;
-    }).join('')}
+                            `
+                          })
+                          .join('')}
                     </div>
                 </div>
-            `}
+            `
+            }
         </div>
-    `;
+    `
 }
 
 function markNotificationAsRead(notificationId) {
-    if (AppState.notifications) {
-        const notification = AppState.notifications.find(n => n.id === notificationId);
-        if (notification) {
-            notification.read = true;
-            loadPageContent('activity'); // Refresh the page
-            updateNotificationBadge();
-        }
+  if (AppState.notifications) {
+    const notification = AppState.notifications.find(
+      (n) => n.id === notificationId
+    )
+    if (notification) {
+      notification.read = true
+      loadPageContent('activity') // Refresh the page
+      updateNotificationBadge()
     }
+  }
 }
 
 // -----------------------------//
@@ -7065,120 +9075,154 @@ function markNotificationAsRead(notificationId) {
 // -----------------------------//
 
 function openProductModal(mode = 'create', productId = null) {
-    const modal = document.getElementById('product-modal');
-    const modalContent = modal.querySelector('.modal-content');
+  const modal = document.getElementById('product-modal')
+  const modalContent = modal.querySelector('.modal-content')
 
-    AppState.currentModal = { mode, productId };
+  AppState.currentModal = { mode, productId }
 
-    // Load product data if editing or viewing
-    let productData = null;
-    if (productId) {
-        productData = MockData.products.find(p => p.id === productId);
-    }
+  // Load product data if editing or viewing
+  let productData = null
+  if (productId) {
+    productData = MockData.products.find((p) => p.id === productId)
+  }
 
-    modalContent.innerHTML = generateProductModal(mode, productData);
-    modal.classList.add('active');
+  modalContent.innerHTML = generateProductModal(mode, productData)
+  modal.classList.add('active')
 
-    lucide.createIcons();
+  lucide.createIcons()
 }
 
 function closeProductModal() {
-    const modal = document.getElementById('product-modal');
-    modal.classList.remove('active');
-    AppState.currentModal = null;
+  const modal = document.getElementById('product-modal')
+  modal.classList.remove('active')
+  AppState.currentModal = null
 }
 
 function saveProduct(productId) {
-    const modal = document.getElementById('product-modal');
-    const name = modal.querySelector('#productName').value.trim();
-    const category = modal.querySelector('#productCategory').value;
-    const description = modal.querySelector('#productDescription').value.trim();
-    const unitCost = parseFloat(modal.querySelector('#productUnitCost').value) || 0;
-    const quantity = parseInt(modal.querySelector('#productQuantity').value) || 0;
-    const unit = modal.querySelector('#productUnit') ? modal.querySelector('#productUnit').value.trim() : '';
-    const date = modal.querySelector('#productDate').value || new Date().toISOString().slice(0, 10);
+  const modal = document.getElementById('product-modal')
+  const name = modal.querySelector('#productName').value.trim()
+  const category = modal.querySelector('#productCategory').value
+  const description = modal.querySelector('#productDescription').value.trim()
+  const unitCost =
+    parseFloat(modal.querySelector('#productUnitCost').value) || 0
+  const quantity = parseInt(modal.querySelector('#productQuantity').value) || 0
+  const unit = modal.querySelector('#productUnit')
+    ? modal.querySelector('#productUnit').value.trim()
+    : ''
+  const date =
+    modal.querySelector('#productDate').value ||
+    new Date().toISOString().slice(0, 10)
 
-    if (!name) { showAlert('Product name is required', 'error'); return; }
+  if (!name) {
+    showAlert('Product name is required', 'error')
+    return
+  }
 
-    const totalValue = unitCost * quantity;
+  const totalValue = unitCost * quantity
 
-    if (!productId) {
-        // generate id based on category prefix
-        const prefix = category === 'expendable' ? 'E' : (category === 'semi-expendable' ? 'SE' : 'N');
-        const nextIndex = MockData.products.length + 1;
-        const padded = String(nextIndex).padStart(3, '0');
-        const newId = `${prefix}${padded}`;
+  if (!productId) {
+    // generate id based on category prefix
+    const prefix =
+      category === 'expendable'
+        ? 'E'
+        : category === 'semi-expendable'
+        ? 'SE'
+        : 'N'
+    const nextIndex = MockData.products.length + 1
+    const padded = String(nextIndex).padStart(3, '0')
+    const newId = `${prefix}${padded}`
 
-        const newProduct = { id: newId, name, description, quantity, unitCost, totalValue, date, type: category, unit };
-        MockData.products.push(newProduct);
-        persistProducts();
-        showAlert(`Product "${name}" (${newId}) added successfully!`, 'success');
-    } else {
-        const existing = MockData.products.find(p => p.id === productId);
-        if (existing) {
-            existing.name = name;
-            existing.description = description;
-            existing.unitCost = unitCost;
-            existing.quantity = quantity;
-            existing.totalValue = totalValue;
-            existing.date = date;
-            existing.type = category;
-            existing.unit = unit;
-            persistProducts();
-            showAlert(`Product "${name}" updated successfully!`, 'success');
-        }
+    const newProduct = {
+      id: newId,
+      name,
+      description,
+      quantity,
+      unitCost,
+      totalValue,
+      date,
+      type: category,
+      unit,
     }
+    MockData.products.push(newProduct)
+    persistProducts()
+    showAlert(`Product "${name}" (${newId}) added successfully!`, 'success')
+  } else {
+    const existing = MockData.products.find((p) => p.id === productId)
+    if (existing) {
+      existing.name = name
+      existing.description = description
+      existing.unitCost = unitCost
+      existing.quantity = quantity
+      existing.totalValue = totalValue
+      existing.date = date
+      existing.type = category
+      existing.unit = unit
+      persistProducts()
+      showAlert(`Product "${name}" updated successfully!`, 'success')
+    }
+  }
 
-    closeProductModal();
-    loadPageContent('products'); // refresh list
+  closeProductModal()
+  loadPageContent('products') // refresh list
 }
 
 async function deleteProduct(productId) {
-    const ok = await showConfirm('Delete this product?', 'Delete Product');
-    if (!ok) return;
+  const ok = await showConfirm('Delete this product?', 'Delete Product')
+  if (!ok) return
 
-    // Find the product name before deleting
-    const product = MockData.products.find(p => p.id === productId);
-    const productName = product ? product.name : 'Product';
+  // Find the product name before deleting
+  const product = MockData.products.find((p) => p.id === productId)
+  const productName = product ? product.name : 'Product'
 
-    // Delete the product
-    MockData.products = MockData.products.filter(p => p.id !== productId);
-    persistProducts();
+  // Delete the product
+  MockData.products = MockData.products.filter((p) => p.id !== productId)
+  persistProducts()
 
-    // Show success toast
-    showAlert(`${productName} has been successfully deleted`, 'success');
+  // Show success toast
+  showAlert(`${productName} has been successfully deleted`, 'success')
 
-    // Reload the page
-    loadPageContent('products');
+  // Reload the page
+  loadPageContent('products')
 }
 
 // Enhanced Product Modal with modern design
 function generateProductModal(mode = 'create', productData = null) {
-    const title = mode === 'create' ? 'Add New Product' :
-        mode === 'edit' ? 'Edit Product' : 'Product Details';
-    const subtitle = mode === 'create' ? 'Add a new product to inventory' :
-        mode === 'edit' ? 'Update product information' :
-            'View product details';
-    const isReadOnly = mode === 'view';
+  const title =
+    mode === 'create'
+      ? 'Add New Product'
+      : mode === 'edit'
+      ? 'Edit Product'
+      : 'Product Details'
+  const subtitle =
+    mode === 'create'
+      ? 'Add a new product to inventory'
+      : mode === 'edit'
+      ? 'Update product information'
+      : 'View product details'
+  const isReadOnly = mode === 'view'
 
-    // Product icon based on type
-    const getProductIcon = (type) => {
-        if (type === 'expendable') return 'package';
-        if (type === 'semi-expendable') return 'box';
-        if (type === 'non-expendable') return 'archive';
-        return 'package-plus';
-    };
+  // Product icon based on type
+  const getProductIcon = (type) => {
+    if (type === 'expendable') return 'package'
+    if (type === 'semi-expendable') return 'box'
+    if (type === 'non-expendable') return 'archive'
+    return 'package-plus'
+  }
 
-    const productIcon = getProductIcon(productData?.type);
+  const productIcon = getProductIcon(productData?.type)
 
-    return `
+  return `
         <div class="modal-header" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; border-bottom: none; padding: 32px 24px;">
             <div style="display: flex; align-items: center; gap: 16px;">
-                ${mode !== 'create' && productData ? `
+                ${
+                  mode !== 'create' && productData
+                    ? `
                     <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
                         <i data-lucide="${productIcon}" style="width: 32px; height: 32px; color: white;"></i>
                     </div>
-                ` : ''}
+                `
+                    : ''
+                }
                 <div style="flex: 1;">
                     <h2 class="modal-title" style="color: white; font-size: 24px; margin-bottom: 4px;">${title}</h2>
                     <p class="modal-subtitle" style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0;">${subtitle}</p>
@@ -7215,11 +9259,27 @@ function generateProductModal(mode = 'create', productData = null) {
                             <i data-lucide="layers" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             Category
                         </label>
-                        <select class="form-select" id="productCategory" ${isReadOnly ? 'disabled' : ''} style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; ${isReadOnly ? 'background: #f9fafb;' : ''}">
+                        <select class="form-select" id="productCategory" ${
+                          isReadOnly ? 'disabled' : ''
+                        } style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; ${
+    isReadOnly ? 'background: #f9fafb;' : ''
+  }">
                             <option value="">Select category</option>
-                            <option value="expendable" ${productData?.type === 'expendable' ? 'selected' : ''}>Expendable</option>
-                            <option value="semi-expendable" ${productData?.type === 'semi-expendable' ? 'selected' : ''}>Semi-Expendable</option>
-                            <option value="non-expendable" ${productData?.type === 'non-expendable' ? 'selected' : ''}>Non-Expendable</option>
+                            <option value="expendable" ${
+                              productData?.type === 'expendable'
+                                ? 'selected'
+                                : ''
+                            }>Expendable</option>
+                            <option value="semi-expendable" ${
+                              productData?.type === 'semi-expendable'
+                                ? 'selected'
+                                : ''
+                            }>Semi-Expendable</option>
+                            <option value="non-expendable" ${
+                              productData?.type === 'non-expendable'
+                                ? 'selected'
+                                : ''
+                            }>Non-Expendable</option>
                         </select>
                     </div>
                 </div>
@@ -7231,8 +9291,12 @@ function generateProductModal(mode = 'create', productData = null) {
                     </label>
                     <textarea class="form-textarea" id="productDescription"
                               placeholder="Provide detailed product description..."
-                              style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; min-height: 100px; transition: all 0.2s; ${isReadOnly ? 'background: #f9fafb;' : ''}"
-                              ${isReadOnly ? 'readonly' : ''}>${productData?.description || ''}</textarea>
+                              style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; min-height: 100px; transition: all 0.2s; ${
+                                isReadOnly ? 'background: #f9fafb;' : ''
+                              }"
+                              ${isReadOnly ? 'readonly' : ''}>${
+    productData?.description || ''
+  }</textarea>
                 </div>
             </div>
 
@@ -7295,9 +9359,14 @@ function generateProductModal(mode = 'create', productData = null) {
                             Date Added
                         </label>
                         <input type="date" class="form-input" id="productDate"
-                               value="${productData?.date || new Date().toISOString().split('T')[0]}"
+                               value="${
+                                 productData?.date ||
+                                 new Date().toISOString().split('T')[0]
+                               }"
                                min="${new Date().toISOString().split('T')[0]}"
-                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; ${isReadOnly ? 'background: #f9fafb;' : ''}"
+                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; ${
+                                 isReadOnly ? 'background: #f9fafb;' : ''
+                               }"
                                ${isReadOnly ? 'readonly' : ''}>
                     </div>
 
@@ -7307,7 +9376,11 @@ function generateProductModal(mode = 'create', productData = null) {
                             Total Value
                         </label>
                         <input type="text" class="form-input" id="productTotalValue"
-                               value="${productData ? formatCurrency(productData.totalValue || 0) : '₱0.00'}"
+                               value="${
+                                 productData
+                                   ? formatCurrency(productData.totalValue || 0)
+                                   : '₱0.00'
+                               }"
                                style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; background: #f9fafb; font-weight: 600; color: #059669;"
                                readonly>
                     </div>
@@ -7315,34 +9388,57 @@ function generateProductModal(mode = 'create', productData = null) {
             </div>
 
             <!-- Product Info Box -->
-            ${productData?.id ? `
+            ${
+              productData?.id
+                ? `
                 <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 12px; padding: 20px; border-left: 4px solid #2563eb;">
                     <div style="display: flex; align-items: start; gap: 12px;">
                         <i data-lucide="info" style="width: 20px; height: 20px; color: #1e40af; flex-shrink: 0; margin-top: 2px;"></i>
                         <div>
-                            <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #1e3a8a;">Product ID: ${productData.id}</h4>
+                            <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #1e3a8a;">Product ID: ${
+                              productData.id
+                            }</h4>
                             <p style="margin: 0; font-size: 13px; color: #1e40af; line-height: 1.5;">
-                                This product is categorized as <strong>${productData.type ? productData.type.charAt(0).toUpperCase() + productData.type.slice(1) : 'N/A'}</strong> and is currently ${productData.quantity > 0 ? 'in stock' : 'out of stock'}.
+                                This product is categorized as <strong>${
+                                  productData.type
+                                    ? productData.type.charAt(0).toUpperCase() +
+                                      productData.type.slice(1)
+                                    : 'N/A'
+                                }</strong> and is currently ${
+                    productData.quantity > 0 ? 'in stock' : 'out of stock'
+                  }.
                             </p>
                         </div>
                     </div>
                 </div>
-            ` : ''}
+            `
+                : ''
+            }
         </div>
 
         <div class="modal-footer" style="background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 20px 24px; display: flex; gap: 12px; justify-content: flex-end;">
             <button class="btn btn-secondary" onclick="closeProductModal()" style="padding: 10px 24px; font-weight: 500; border: 2px solid #d1d5db; transition: all 0.2s;">
-                <i data-lucide="${isReadOnly ? 'x' : 'arrow-left'}" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                <i data-lucide="${
+                  isReadOnly ? 'x' : 'arrow-left'
+                }" style="width: 16px; height: 16px; margin-right: 6px;"></i>
                 ${isReadOnly ? 'Close' : 'Cancel'}
             </button>
-            ${!isReadOnly ? `
-                <button class="btn btn-primary" onclick="saveProduct('${productData?.id || ''}')" style="padding: 10px 24px; font-weight: 500; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); box-shadow: 0 4px 6px rgba(220, 38, 38, 0.25); transition: all 0.2s;">
-                    <i data-lucide="${mode === 'create' ? 'plus-circle' : 'save'}" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+            ${
+              !isReadOnly
+                ? `
+                <button class="btn btn-primary" onclick="saveProduct('${
+                  productData?.id || ''
+                }')" style="padding: 10px 24px; font-weight: 500; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); box-shadow: 0 4px 6px rgba(220, 38, 38, 0.25); transition: all 0.2s;">
+                    <i data-lucide="${
+                      mode === 'create' ? 'plus-circle' : 'save'
+                    }" style="width: 16px; height: 16px; margin-right: 6px;"></i>
                     ${mode === 'create' ? 'Add Product' : 'Save Changes'}
                 </button>
-            ` : ''}
+            `
+                : ''
+            }
         </div>
-    `;
+    `
 }
 
 // -----------------------------//
@@ -7350,56 +9446,66 @@ function generateProductModal(mode = 'create', productData = null) {
 // -----------------------------//
 
 function openCategoryModal(mode = 'create', categoryId = null) {
-    const modal = document.getElementById('category-modal');
-    const modalContent = modal.querySelector('.modal-content');
+  const modal = document.getElementById('category-modal')
+  const modalContent = modal.querySelector('.modal-content')
 
-    let categoryData = null;
-    if (categoryId) {
-        categoryData = MockData.categories.find(c => c.id === categoryId);
-    }
+  let categoryData = null
+  if (categoryId) {
+    categoryData = MockData.categories.find((c) => c.id === categoryId)
+  }
 
-    modalContent.innerHTML = generateCategoryModal(mode, categoryData);
-    modal.classList.add('active');
+  modalContent.innerHTML = generateCategoryModal(mode, categoryData)
+  modal.classList.add('active')
 
-    lucide.createIcons();
+  lucide.createIcons()
 }
 
 function closeCategoryModal() {
-    const modal = document.getElementById('category-modal');
-    modal.classList.remove('active');
+  const modal = document.getElementById('category-modal')
+  modal.classList.remove('active')
 }
-
 
 // Open the Category Modal
 // Enhanced Category Modal with modern design
 function generateCategoryModal(mode = 'create', categoryData = null) {
-    const title = mode === 'create' ? 'Add New Category' :
-        mode === 'edit' ? 'Edit Category' : 'Category Details';
-    const subtitle = mode === 'create' ? 'Create a new inventory category' :
-        mode === 'edit' ? 'Update category information' :
-            'View category details';
-    const isReadOnly = mode === 'view';
+  const title =
+    mode === 'create'
+      ? 'Add New Category'
+      : mode === 'edit'
+      ? 'Edit Category'
+      : 'Category Details'
+  const subtitle =
+    mode === 'create'
+      ? 'Create a new inventory category'
+      : mode === 'edit'
+      ? 'Update category information'
+      : 'View category details'
+  const isReadOnly = mode === 'view'
 
-    // Category icon based on category name
-    const getCategoryIcon = (name) => {
-        if (!name) return 'folder-plus';
-        const lowerName = name.toLowerCase();
-        if (lowerName.includes('expendable')) return 'package';
-        if (lowerName.includes('semi')) return 'box';
-        if (lowerName.includes('non')) return 'archive';
-        return 'folder';
-    };
+  // Category icon based on category name
+  const getCategoryIcon = (name) => {
+    if (!name) return 'folder-plus'
+    const lowerName = name.toLowerCase()
+    if (lowerName.includes('expendable')) return 'package'
+    if (lowerName.includes('semi')) return 'box'
+    if (lowerName.includes('non')) return 'archive'
+    return 'folder'
+  }
 
-    const categoryIcon = getCategoryIcon(categoryData?.name);
+  const categoryIcon = getCategoryIcon(categoryData?.name)
 
-    return `
+  return `
         <div class="modal-header" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; border-bottom: none; padding: 32px 24px;">
             <div style="display: flex; align-items: center; gap: 16px;">
-                ${mode !== 'create' ? `
+                ${
+                  mode !== 'create'
+                    ? `
                     <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
                         <i data-lucide="${categoryIcon}" style="width: 32px; height: 32px; color: white;"></i>
                     </div>
-                ` : ''}
+                `
+                    : ''
+                }
                 <div style="flex: 1;">
                     <h2 class="modal-title" style="color: white; font-size: 24px; margin-bottom: 4px;">${title}</h2>
                     <p class="modal-subtitle" style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0;">${subtitle}</p>
@@ -7437,8 +9543,12 @@ function generateCategoryModal(mode = 'create', categoryData = null) {
                     </label>
                     <textarea class="form-textarea" id="categoryDescription"
                               placeholder="Describe the purpose and criteria for this category..."
-                              style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; min-height: 120px; transition: all 0.2s; ${isReadOnly ? 'background: #f9fafb;' : ''}"
-                              ${isReadOnly ? 'readonly' : ''}>${categoryData?.description || ''}</textarea>
+                              style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; min-height: 120px; transition: all 0.2s; ${
+                                isReadOnly ? 'background: #f9fafb;' : ''
+                              }"
+                              ${isReadOnly ? 'readonly' : ''}>${
+    categoryData?.description || ''
+  }</textarea>
                     <p style="margin: 6px 0 0 0; font-size: 12px; color: #6b7280; display: flex; align-items: center; gap: 4px;">
                         <i data-lucide="info" style="width: 12px; height: 12px;"></i>
                         Provide clear guidelines for items that belong to this category
@@ -7447,7 +9557,9 @@ function generateCategoryModal(mode = 'create', categoryData = null) {
             </div>
 
             <!-- Category Guidelines (shown in view/edit mode) -->
-            ${categoryData?.id ? `
+            ${
+              categoryData?.id
+                ? `
                 <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; padding: 20px; border-left: 4px solid #f59e0b;">
                     <div style="display: flex; align-items: start; gap: 12px;">
                         <i data-lucide="lightbulb" style="width: 20px; height: 20px; color: #d97706; flex-shrink: 0; margin-top: 2px;"></i>
@@ -7459,178 +9571,209 @@ function generateCategoryModal(mode = 'create', categoryData = null) {
                         </div>
                     </div>
                 </div>
-            ` : ''}
+            `
+                : ''
+            }
         </div>
 
         <div class="modal-footer" style="background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 20px 24px; display: flex; gap: 12px; justify-content: flex-end;">
             <button class="btn btn-secondary" onclick="closeCategoryModal()" style="padding: 10px 24px; font-weight: 500; border: 2px solid #d1d5db; transition: all 0.2s;">
-                <i data-lucide="${isReadOnly ? 'x' : 'arrow-left'}" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                <i data-lucide="${
+                  isReadOnly ? 'x' : 'arrow-left'
+                }" style="width: 16px; height: 16px; margin-right: 6px;"></i>
                 ${isReadOnly ? 'Close' : 'Cancel'}
             </button>
-            ${!isReadOnly ? `
-                <button class="btn btn-primary" onclick="saveCategory('${categoryData?.id || ''}')" style="padding: 10px 24px; font-weight: 500; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); box-shadow: 0 4px 6px rgba(220, 38, 38, 0.25); transition: all 0.2s;">
-                    <i data-lucide="${mode === 'create' ? 'plus-circle' : 'save'}" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+            ${
+              !isReadOnly
+                ? `
+                <button class="btn btn-primary" onclick="saveCategory('${
+                  categoryData?.id || ''
+                }')" style="padding: 10px 24px; font-weight: 500; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); box-shadow: 0 4px 6px rgba(220, 38, 38, 0.25); transition: all 0.2s;">
+                    <i data-lucide="${
+                      mode === 'create' ? 'plus-circle' : 'save'
+                    }" style="width: 16px; height: 16px; margin-right: 6px;"></i>
                     ${mode === 'create' ? 'Add Category' : 'Save Changes'}
                 </button>
-            ` : ''}
+            `
+                : ''
+            }
         </div>
-    `;
+    `
 }
 
 function saveCategory(categoryId) {
-    // Grab input values using the IDs
-    const modal = document.getElementById('category-modal');
-    const nameInput = modal.querySelector('#categoryName');
-    const descriptionInput = modal.querySelector('#categoryDescription');
+  // Grab input values using the IDs
+  const modal = document.getElementById('category-modal')
+  const nameInput = modal.querySelector('#categoryName')
+  const descriptionInput = modal.querySelector('#categoryDescription')
 
-    const name = nameInput ? nameInput.value : '';
-    const description = descriptionInput ? descriptionInput.value : '';
+  const name = nameInput ? nameInput.value : ''
+  const description = descriptionInput ? descriptionInput.value : ''
 
-    // Basic validation
-    if (!name || name.trim().length < 2) {
-        showAlert('Please enter a valid category name (at least 2 characters).', 'error');
-        return;
+  // Basic validation
+  if (!name || name.trim().length < 2) {
+    showAlert(
+      'Please enter a valid category name (at least 2 characters).',
+      'error'
+    )
+    return
+  }
+
+  if (!categoryId) {
+    // Create new: generate padded ID like C001
+    const nextIndex = MockData.categories.length + 1
+    const padded = String(nextIndex).padStart(3, '0')
+    const newCategory = {
+      id: `C${padded}`,
+      name: name.trim(),
+      description: description.trim(),
     }
-
-    if (!categoryId) {
-        // Create new: generate padded ID like C001
-        const nextIndex = MockData.categories.length + 1;
-        const padded = String(nextIndex).padStart(3, '0');
-        const newCategory = {
-            id: `C${padded}`,
-            name: name.trim(),
-            description: description.trim()
-        };
-        MockData.categories.push(newCategory);
-        showAlert(`Category "${name.trim()}" added successfully!`, 'success');
-    } else {
-        // Update existing
-        const existing = MockData.categories.find(c => c.id === categoryId);
-        if (existing) {
-            existing.name = name.trim();
-            existing.description = description.trim();
-            showAlert(`Category "${name.trim()}" updated successfully!`, 'success');
-        }
+    MockData.categories.push(newCategory)
+    showAlert(`Category "${name.trim()}" added successfully!`, 'success')
+  } else {
+    // Update existing
+    const existing = MockData.categories.find((c) => c.id === categoryId)
+    if (existing) {
+      existing.name = name.trim()
+      existing.description = description.trim()
+      showAlert(`Category "${name.trim()}" updated successfully!`, 'success')
     }
+  }
 
-    closeCategoryModal();
-    loadPageContent('categories'); // refresh table/page
+  closeCategoryModal()
+  loadPageContent('categories') // refresh table/page
 }
 
 async function deleteCategory(categoryId) {
-    const ok = await showConfirm('Delete this category? This action cannot be undone.', 'Delete Category');
-    if (!ok) return;
+  const ok = await showConfirm(
+    'Delete this category? This action cannot be undone.',
+    'Delete Category'
+  )
+  if (!ok) return
 
-    // Find the category name before deleting
-    const category = MockData.categories.find(c => c.id === categoryId);
-    const categoryName = category ? category.name : 'Category';
+  // Find the category name before deleting
+  const category = MockData.categories.find((c) => c.id === categoryId)
+  const categoryName = category ? category.name : 'Category'
 
-    // Delete the category
-    MockData.categories = MockData.categories.filter(c => c.id !== categoryId);
+  // Delete the category
+  MockData.categories = MockData.categories.filter((c) => c.id !== categoryId)
 
-    // Show success toast
-    showAlert(`${categoryName} has been successfully deleted`, 'success');
+  // Show success toast
+  showAlert(`${categoryName} has been successfully deleted`, 'success')
 
-    // Reload the page
-    loadPageContent('categories');
+  // Reload the page
+  loadPageContent('categories')
 }
-
-
 
 // -----------------------------//
 // Stock In Modal and Functions //
 // -----------------------------//
 
 function openStockInModal(mode = 'create', stockId = null) {
-    const modal = document.getElementById('stockin-modal');
-    const modalContent = modal.querySelector('.modal-content');
+  const modal = document.getElementById('stockin-modal')
+  const modalContent = modal.querySelector('.modal-content')
 
-    let stockData = null;
-    if (stockId && mode === 'edit') {
-        stockData = stockInData.find(r => r.id === stockId);
+  let stockData = null
+  if (stockId && mode === 'edit') {
+    stockData = stockInData.find((r) => r.id === stockId)
+  }
+
+  modalContent.innerHTML = generateStockInModal(mode, stockData)
+  modal.classList.add('active')
+  lucide.createIcons()
+
+  const isReadOnly = mode === 'view'
+  if (!isReadOnly) {
+    const qtyInput = document.getElementById('qty-input')
+    const ucInput = document.getElementById('uc-input')
+    const totalInput = document.getElementById('total-input')
+    const skuInput = document.getElementById('sku-input')
+    const productInput = document.getElementById('product-input')
+    const currentStockBadgeId = 'current-stock-badge'
+
+    // Insert a live current stock badge below product name if not exists
+    if (!document.getElementById(currentStockBadgeId)) {
+      const badge = document.createElement('div')
+      badge.id = currentStockBadgeId
+      badge.style.cssText =
+        'margin-top:6px;font-size:12px;color:#6b7280;font-weight:500;display:flex;align-items:center;gap:6px;'
+      productInput.parentElement.appendChild(badge)
+    }
+    const stockBadge = document.getElementById(currentStockBadgeId)
+
+    function updateTotal() {
+      const q = parseFloat(qtyInput.value) || 0
+      const u = parseFloat(ucInput.value) || 0
+      totalInput.value = formatCurrency(q * u)
     }
 
-    modalContent.innerHTML = generateStockInModal(mode, stockData);
-    modal.classList.add('active');
-    lucide.createIcons();
+    qtyInput.addEventListener('input', updateTotal)
+    ucInput.addEventListener('input', updateTotal)
+    updateTotal()
 
-    const isReadOnly = mode === 'view';
-    if (!isReadOnly) {
-        const qtyInput = document.getElementById('qty-input');
-        const ucInput = document.getElementById('uc-input');
-        const totalInput = document.getElementById('total-input');
-        const skuInput = document.getElementById('sku-input');
-        const productInput = document.getElementById('product-input');
-        const currentStockBadgeId = 'current-stock-badge';
-
-        // Insert a live current stock badge below product name if not exists
-        if (!document.getElementById(currentStockBadgeId)) {
-            const badge = document.createElement('div');
-            badge.id = currentStockBadgeId;
-            badge.style.cssText = 'margin-top:6px;font-size:12px;color:#6b7280;font-weight:500;display:flex;align-items:center;gap:6px;';
-            productInput.parentElement.appendChild(badge);
+    function autoFillFromSku() {
+      const raw = skuInput.value.trim()
+      if (!raw) {
+        productInput.removeAttribute('readonly')
+        stockBadge.textContent = ''
+        return
+      }
+      const prod = (MockData.products || []).find(
+        (p) => p.id.toLowerCase() === raw.toLowerCase()
+      )
+      if (prod) {
+        productInput.value = prod.name
+        // If existing product and unit cost empty or zero, default to product's unitCost (if present)
+        if (!ucInput.value || parseFloat(ucInput.value) === 0) {
+          if (typeof prod.unitCost === 'number')
+            ucInput.value = prod.unitCost.toFixed(2)
         }
-        const stockBadge = document.getElementById(currentStockBadgeId);
-
-        function updateTotal() {
-            const q = parseFloat(qtyInput.value) || 0;
-            const u = parseFloat(ucInput.value) || 0;
-            totalInput.value = formatCurrency(q * u);
-        }
-
-        qtyInput.addEventListener('input', updateTotal);
-        ucInput.addEventListener('input', updateTotal);
-        updateTotal();
-
-        function autoFillFromSku() {
-            const raw = skuInput.value.trim();
-            if (!raw) {
-                productInput.removeAttribute('readonly');
-                stockBadge.textContent = '';
-                return;
-            }
-            const prod = (MockData.products || []).find(p => p.id.toLowerCase() === raw.toLowerCase());
-            if (prod) {
-                productInput.value = prod.name;
-                // If existing product and unit cost empty or zero, default to product's unitCost (if present)
-                if (!ucInput.value || parseFloat(ucInput.value) === 0) {
-                    if (typeof prod.unitCost === 'number') ucInput.value = prod.unitCost.toFixed(2);
-                }
-                productInput.setAttribute('readonly', 'readonly');
-                stockBadge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;background:#f3f4f6;padding:4px 8px;border-radius:12px;">Current Stock: <strong>${prod.quantity}</strong></span>`;
-                updateTotal();
-            } else {
-                productInput.removeAttribute('readonly');
-                stockBadge.textContent = 'SKU not found in products list';
-            }
-        }
-        skuInput.addEventListener('blur', autoFillFromSku);
-        skuInput.addEventListener('input', function () {
-            // Only trigger when user typed a plausible code pattern (letters+digits length>=2)
-            if (skuInput.value.trim().length >= 2) autoFillFromSku();
-        });
-        autoFillFromSku();
+        productInput.setAttribute('readonly', 'readonly')
+        stockBadge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;background:#f3f4f6;padding:4px 8px;border-radius:12px;">Current Stock: <strong>${prod.quantity}</strong></span>`
+        updateTotal()
+      } else {
+        productInput.removeAttribute('readonly')
+        stockBadge.textContent = 'SKU not found in products list'
+      }
     }
+    skuInput.addEventListener('blur', autoFillFromSku)
+    skuInput.addEventListener('input', function () {
+      // Only trigger when user typed a plausible code pattern (letters+digits length>=2)
+      if (skuInput.value.trim().length >= 2) autoFillFromSku()
+    })
+    autoFillFromSku()
+  }
 }
 
 function closeStockInModal() {
-    const modal = document.getElementById('stockin-modal');
-    modal.classList.remove('active');
+  const modal = document.getElementById('stockin-modal')
+  modal.classList.remove('active')
 }
 
 // Enhanced Stock In Modal with modern design
 function generateStockInModal(mode = 'create', stockData = null) {
-    const title = mode === 'create' ? 'Stock In Entry' :
-        mode === 'edit' ? 'Edit Stock In' : 'Stock In Details';
-    const subtitle = mode === 'create' ? 'Record incoming inventory' :
-        mode === 'edit' ? 'Update stock in transaction' :
-            'View stock in details';
-    const isReadOnly = mode === 'view';
-    const dateValue = stockData?.date || (mode === 'create' ? new Date().toISOString().split('T')[0] : '');
-    const unitCostValue = (stockData?.unitCost || 0).toFixed(2);
-    const totalValue = stockData ? formatCurrency(stockData.totalCost || 0) : formatCurrency(0);
+  const title =
+    mode === 'create'
+      ? 'Stock In Entry'
+      : mode === 'edit'
+      ? 'Edit Stock In'
+      : 'Stock In Details'
+  const subtitle =
+    mode === 'create'
+      ? 'Record incoming inventory'
+      : mode === 'edit'
+      ? 'Update stock in transaction'
+      : 'View stock in details'
+  const isReadOnly = mode === 'view'
+  const dateValue =
+    stockData?.date ||
+    (mode === 'create' ? new Date().toISOString().split('T')[0] : '')
+  const unitCostValue = (stockData?.unitCost || 0).toFixed(2)
+  const totalValue = stockData
+    ? formatCurrency(stockData.totalCost || 0)
+    : formatCurrency(0)
 
-    return `
+  return `
         <div class="modal-header" style="background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); color: white; border-bottom: none; padding: 32px 24px;">
             <div style="display: flex; align-items: center; gap: 16px;">
                 <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
@@ -7775,128 +9918,158 @@ function generateStockInModal(mode = 'create', stockData = null) {
 
         <div class="modal-footer" style="background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 20px 24px; display: flex; gap: 12px; justify-content: flex-end;">
             <button class="btn btn-secondary" onclick="closeStockInModal()" style="padding: 10px 24px; font-weight: 500; border: 2px solid #d1d5db; transition: all 0.2s;">
-                <i data-lucide="${isReadOnly ? 'x' : 'arrow-left'}" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                <i data-lucide="${
+                  isReadOnly ? 'x' : 'arrow-left'
+                }" style="width: 16px; height: 16px; margin-right: 6px;"></i>
                 ${isReadOnly ? 'Close' : 'Cancel'}
             </button>
-            ${!isReadOnly ? `
-                <button class="btn btn-primary" onclick="saveStockIn('${stockData?.id || ''}')" style="padding: 10px 24px; font-weight: 500; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); box-shadow: 0 4px 6px rgba(22, 163, 74, 0.25); transition: all 0.2s;">
-                    <i data-lucide="${mode === 'create' ? 'plus-circle' : 'save'}" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+            ${
+              !isReadOnly
+                ? `
+                <button class="btn btn-primary" onclick="saveStockIn('${
+                  stockData?.id || ''
+                }')" style="padding: 10px 24px; font-weight: 500; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); box-shadow: 0 4px 6px rgba(22, 163, 74, 0.25); transition: all 0.2s;">
+                    <i data-lucide="${
+                      mode === 'create' ? 'plus-circle' : 'save'
+                    }" style="width: 16px; height: 16px; margin-right: 6px;"></i>
                     ${mode === 'create' ? 'Add Stock In' : 'Save Changes'}
                 </button>
-            ` : ''}
+            `
+                : ''
+            }
         </div>
-    `;
+    `
 }
 
 function generateUniqueId() {
-    return Date.now().toString(36) + Math.random().toString(36).substring(2);
+  return Date.now().toString(36) + Math.random().toString(36).substring(2)
 }
 
 function saveStockIn(stockId) {
-    const date = document.getElementById('date-input').value;
-    const sku = document.getElementById('sku-input').value;
-    const productName = document.getElementById('product-input').value;
-    const quantity = parseInt(document.getElementById('qty-input').value) || 0;
-    const unitCost = parseFloat(document.getElementById('uc-input').value) || 0;
-    const totalCost = quantity * unitCost;
-    const supplier = document.getElementById('supplier-input').value;
-    const receivedBy = document.getElementById('receivedby-input').value;
+  const date = document.getElementById('date-input').value
+  const sku = document.getElementById('sku-input').value
+  const productName = document.getElementById('product-input').value
+  const quantity = parseInt(document.getElementById('qty-input').value) || 0
+  const unitCost = parseFloat(document.getElementById('uc-input').value) || 0
+  const totalCost = quantity * unitCost
+  const supplier = document.getElementById('supplier-input').value
+  const receivedBy = document.getElementById('receivedby-input').value
 
-    const newRecord = {
-        id: stockId || generateUniqueId(),
-        date,
-        productName,
-        sku,
-        quantity,
-        unitCost,
-        totalCost,
-        supplier,
-        receivedBy
-    };
+  const newRecord = {
+    id: stockId || generateUniqueId(),
+    date,
+    productName,
+    sku,
+    quantity,
+    unitCost,
+    totalCost,
+    supplier,
+    receivedBy,
+  }
 
-    if (stockId) {
-        const index = stockInData.findIndex(r => r.id === stockId);
-        if (index !== -1) {
-            const oldRecord = { ...stockInData[index] };
-            newRecord.transactionId = stockInData[index].transactionId;
-            stockInData[index] = newRecord;
-            adjustInventoryOnStockIn(newRecord, oldRecord);
-            showAlert(`Stock In record ${newRecord.transactionId} updated & inventory adjusted`, 'success');
-        }
-    } else {
-        newRecord.transactionId = generateTransactionId();
-        stockInData.push(newRecord);
-        adjustInventoryOnStockIn(newRecord, null);
-        showAlert(`New Stock In record ${newRecord.transactionId} added & inventory updated`, 'success');
+  if (stockId) {
+    const index = stockInData.findIndex((r) => r.id === stockId)
+    if (index !== -1) {
+      const oldRecord = { ...stockInData[index] }
+      newRecord.transactionId = stockInData[index].transactionId
+      stockInData[index] = newRecord
+      adjustInventoryOnStockIn(newRecord, oldRecord)
+      showAlert(
+        `Stock In record ${newRecord.transactionId} updated & inventory adjusted`,
+        'success'
+      )
     }
+  } else {
+    newRecord.transactionId = generateTransactionId()
+    stockInData.push(newRecord)
+    adjustInventoryOnStockIn(newRecord, null)
+    showAlert(
+      `New Stock In record ${newRecord.transactionId} added & inventory updated`,
+      'success'
+    )
+  }
 
-    persistStockIn();
+  persistStockIn()
 
-    console.log("Saving stock-in record:", newRecord);
+  console.log('Saving stock-in record:', newRecord)
 
-    closeStockInModal();
-    loadPageContent('stock-in'); // refresh stock-in page
-    refreshProductsViewIfOpen();
+  closeStockInModal()
+  loadPageContent('stock-in') // refresh stock-in page
+  refreshProductsViewIfOpen()
 }
 
 async function deleteStockIn(id) {
-    const ok = await showConfirm('Are you sure you want to delete this stock in record?', 'Delete Stock In');
-    if (!ok) return;
+  const ok = await showConfirm(
+    'Are you sure you want to delete this stock in record?',
+    'Delete Stock In'
+  )
+  if (!ok) return
 
-    // Find the record before deleting
-    const record = stockInData.find(r => r.id === id);
-    const recordInfo = record ? `${record.productName} (${record.transactionId})` : 'Stock In record';
+  // Find the record before deleting
+  const record = stockInData.find((r) => r.id === id)
+  const recordInfo = record
+    ? `${record.productName} (${record.transactionId})`
+    : 'Stock In record'
 
-    // Delete the record & restore inventory (reverse addition)
-    if (record) restoreInventoryFromDeletedStockIn(record);
-    stockInData = stockInData.filter(r => r.id !== id);
-    persistStockIn();
+  // Delete the record & restore inventory (reverse addition)
+  if (record) restoreInventoryFromDeletedStockIn(record)
+  stockInData = stockInData.filter((r) => r.id !== id)
+  persistStockIn()
 
-    showAlert(`${recordInfo} deleted & inventory adjusted`, 'success');
+  showAlert(`${recordInfo} deleted & inventory adjusted`, 'success')
 
-    // Reload the page
-    loadPageContent('stock-in');
-    refreshProductsViewIfOpen();
+  // Reload the page
+  loadPageContent('stock-in')
+  refreshProductsViewIfOpen()
 }
 
 function renderStockInRows() {
-    if (!stockInData || stockInData.length === 0) return '<tr><td colspan="10" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No records found</td></tr>';
-    return stockInData.map((r, i) => renderStockInRow(r, i)).join('');
+  if (!stockInData || stockInData.length === 0)
+    return '<tr><td colspan="10" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No records found</td></tr>'
+  return stockInData.map((r, i) => renderStockInRow(r, i)).join('')
 }
 
 function renderStockInRow(r, index) {
-    return `
-        <tr data-id="${r.id}" style="${index % 2 === 0 ? 'background-color: white;' : 'background-color: #f9fafb;'}">
+  return `
+        <tr data-id="${r.id}" style="${
+    index % 2 === 0 ? 'background-color: white;' : 'background-color: #f9fafb;'
+  }">
             <td style="font-weight: 500;">${r.transactionId}</td>
             <td>${r.date}</td>
             <td style="font-weight: 500;">${r.productName}</td>
             <td style="color: #6b7280;">${r.sku}</td>
             <td>${r.quantity}</td>
             <td>${formatCurrency(Number(r.unitCost) || 0)}</td>
-            <td style="font-weight: 500;">${formatCurrency(Number(r.totalCost) || 0)}</td>
+            <td style="font-weight: 500;">${formatCurrency(
+              Number(r.totalCost) || 0
+            )}</td>
             <td style="color: #6b7280;">${r.supplier}</td>
             <td style="color: #6b7280;">${r.receivedBy}</td>
             <td>
                 <div class="table-actions">
-                    <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteStockIn('${r.id}')">
+                    <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteStockIn('${
+                      r.id
+                    }')">
                         <i data-lucide="trash-2"></i>
                     </button>
-                    <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openStockInModal('edit','${r.id}')">
+                    <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openStockInModal('edit','${
+                      r.id
+                    }')">
                         <i data-lucide="edit"></i>
                     </button>
                 </div>
             </td>
         </tr>
-    `;
+    `
 }
 
 function generateTransactionId() {
-    const year = new Date().getFullYear();
-    const existingNums = stockInData
-        .filter(r => r.transactionId.startsWith(`SI-${year}-`))
-        .map(r => parseInt(r.transactionId.split('-')[2]) || 0);
-    const nextNum = Math.max(...existingNums, 0) + 1;
-    return `SI-${year}-${nextNum.toString().padStart(3, '0')}`;
+  const year = new Date().getFullYear()
+  const existingNums = stockInData
+    .filter((r) => r.transactionId.startsWith(`SI-${year}-`))
+    .map((r) => parseInt(r.transactionId.split('-')[2]) || 0)
+  const nextNum = Math.max(...existingNums, 0) + 1
+  return `SI-${year}-${nextNum.toString().padStart(3, '0')}`
 }
 
 // -----------------------------//
@@ -7904,106 +10077,120 @@ function generateTransactionId() {
 // -----------------------------//
 
 function openStockOutModal(mode = 'create', stockId = null) {
-    const modal = document.getElementById('stockout-modal');
-    const modalContent = modal.querySelector('.modal-content');
+  const modal = document.getElementById('stockout-modal')
+  const modalContent = modal.querySelector('.modal-content')
 
-    let stockData = null;
-    if (stockId) {
-        // support passing either an id or the full record
-        stockData = stockOutData.find(r => r.id === stockId) || (typeof stockId === 'object' ? stockId : null);
+  let stockData = null
+  if (stockId) {
+    // support passing either an id or the full record
+    stockData =
+      stockOutData.find((r) => r.id === stockId) ||
+      (typeof stockId === 'object' ? stockId : null)
+  }
+
+  modalContent.innerHTML = generateStockOutModal(mode, stockData)
+  modal.classList.add('active')
+  lucide.createIcons()
+
+  const isReadOnly = mode === 'view'
+  if (!isReadOnly) {
+    const qty = modal.querySelector('#so-qty')
+    const uc = modal.querySelector('#so-uc')
+    const total = modal.querySelector('#so-total')
+    const skuInput = modal.querySelector('#so-sku')
+    const productInput = modal.querySelector('#so-product')
+
+    // Add a current stock badge under product input
+    const badgeId = 'so-current-stock-badge'
+    if (productInput && !document.getElementById(badgeId)) {
+      const badge = document.createElement('div')
+      badge.id = badgeId
+      badge.style.cssText =
+        'margin-top:6px;font-size:12px;color:#6b7280;font-weight:500;display:flex;align-items:center;gap:6px;'
+      productInput.parentElement.appendChild(badge)
+    }
+    const stockBadge = document.getElementById(badgeId)
+
+    function updateTotal() {
+      const q = parseFloat(qty.value) || 0
+      const u = parseFloat(uc.value) || 0
+      total.value = formatCurrency(q * u)
     }
 
-    modalContent.innerHTML = generateStockOutModal(mode, stockData);
-    modal.classList.add('active');
-    lucide.createIcons();
-
-    const isReadOnly = mode === 'view';
-    if (!isReadOnly) {
-        const qty = modal.querySelector('#so-qty');
-        const uc = modal.querySelector('#so-uc');
-        const total = modal.querySelector('#so-total');
-        const skuInput = modal.querySelector('#so-sku');
-        const productInput = modal.querySelector('#so-product');
-
-        // Add a current stock badge under product input
-        const badgeId = 'so-current-stock-badge';
-        if (productInput && !document.getElementById(badgeId)) {
-            const badge = document.createElement('div');
-            badge.id = badgeId;
-            badge.style.cssText = 'margin-top:6px;font-size:12px;color:#6b7280;font-weight:500;display:flex;align-items:center;gap:6px;';
-            productInput.parentElement.appendChild(badge);
-        }
-        const stockBadge = document.getElementById(badgeId);
-
-        function updateTotal() {
-            const q = parseFloat(qty.value) || 0;
-            const u = parseFloat(uc.value) || 0;
-            total.value = formatCurrency(q * u);
-        }
-
-        if (qty && uc && total) {
-            qty.addEventListener('input', updateTotal);
-            uc.addEventListener('input', updateTotal);
-            updateTotal();
-        }
-
-        function autoFillFromSku() {
-            if (!skuInput) return;
-            const raw = skuInput.value.trim();
-            if (!raw) {
-                productInput && productInput.removeAttribute('readonly');
-                if (stockBadge) stockBadge.textContent = '';
-                return;
-            }
-            const prod = (MockData.products || []).find(p => p.id.toLowerCase() === raw.toLowerCase());
-            if (prod) {
-                if (productInput) {
-                    productInput.value = prod.name;
-                    productInput.setAttribute('readonly', 'readonly');
-                }
-                if (uc && (!uc.value || parseFloat(uc.value) === 0)) {
-                    if (typeof prod.unitCost === 'number') uc.value = prod.unitCost.toFixed(2);
-                }
-                if (stockBadge) {
-                    stockBadge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;background:#eef2ff;padding:4px 8px;border-radius:12px;">Available: <strong>${prod.quantity}</strong></span>`;
-                }
-                // Prevent entering quantity greater than available
-                if (qty) {
-                    qty.setAttribute('max', prod.quantity);
-                    if (parseInt(qty.value) > prod.quantity) qty.value = prod.quantity;
-                }
-                updateTotal();
-            } else {
-                if (productInput) productInput.removeAttribute('readonly');
-                if (stockBadge) stockBadge.textContent = 'SKU not found in products list';
-                if (qty) qty.removeAttribute('max');
-            }
-        }
-        if (skuInput) {
-            skuInput.addEventListener('blur', autoFillFromSku);
-            skuInput.addEventListener('input', () => {
-                if (skuInput.value.trim().length >= 2) autoFillFromSku();
-            });
-            autoFillFromSku();
-        }
+    if (qty && uc && total) {
+      qty.addEventListener('input', updateTotal)
+      uc.addEventListener('input', updateTotal)
+      updateTotal()
     }
+
+    function autoFillFromSku() {
+      if (!skuInput) return
+      const raw = skuInput.value.trim()
+      if (!raw) {
+        productInput && productInput.removeAttribute('readonly')
+        if (stockBadge) stockBadge.textContent = ''
+        return
+      }
+      const prod = (MockData.products || []).find(
+        (p) => p.id.toLowerCase() === raw.toLowerCase()
+      )
+      if (prod) {
+        if (productInput) {
+          productInput.value = prod.name
+          productInput.setAttribute('readonly', 'readonly')
+        }
+        if (uc && (!uc.value || parseFloat(uc.value) === 0)) {
+          if (typeof prod.unitCost === 'number')
+            uc.value = prod.unitCost.toFixed(2)
+        }
+        if (stockBadge) {
+          stockBadge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;background:#eef2ff;padding:4px 8px;border-radius:12px;">Available: <strong>${prod.quantity}</strong></span>`
+        }
+        // Prevent entering quantity greater than available
+        if (qty) {
+          qty.setAttribute('max', prod.quantity)
+          if (parseInt(qty.value) > prod.quantity) qty.value = prod.quantity
+        }
+        updateTotal()
+      } else {
+        if (productInput) productInput.removeAttribute('readonly')
+        if (stockBadge)
+          stockBadge.textContent = 'SKU not found in products list'
+        if (qty) qty.removeAttribute('max')
+      }
+    }
+    if (skuInput) {
+      skuInput.addEventListener('blur', autoFillFromSku)
+      skuInput.addEventListener('input', () => {
+        if (skuInput.value.trim().length >= 2) autoFillFromSku()
+      })
+      autoFillFromSku()
+    }
+  }
 }
 
 function closeStockOutModal() {
-    const modal = document.getElementById('stockout-modal');
-    modal.classList.remove('active');
+  const modal = document.getElementById('stockout-modal')
+  modal.classList.remove('active')
 }
 
 // Enhanced Stock Out Modal with modern design
 function generateStockOutModal(mode = 'create', stockData = null) {
-    const title = mode === 'create' ? 'Stock Out Entry' :
-        mode === 'edit' ? 'Edit Stock Out' : 'Stock Out Details';
-    const subtitle = mode === 'create' ? 'Record outgoing inventory' :
-        mode === 'edit' ? 'Update stock out transaction' :
-            'View stock out details';
-    const isReadOnly = mode === 'view';
+  const title =
+    mode === 'create'
+      ? 'Stock Out Entry'
+      : mode === 'edit'
+      ? 'Edit Stock Out'
+      : 'Stock Out Details'
+  const subtitle =
+    mode === 'create'
+      ? 'Record outgoing inventory'
+      : mode === 'edit'
+      ? 'Update stock out transaction'
+      : 'View stock out details'
+  const isReadOnly = mode === 'view'
 
-    return `
+  return `
         <div class="modal-header" style="background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); color: white; border-bottom: none; padding: 32px 24px;">
             <div style="display: flex; align-items: center; gap: 16px;">
                 <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
@@ -8034,7 +10221,10 @@ function generateStockOutModal(mode = 'create', stockData = null) {
                             Date
                         </label>
                         <input id="so-date" type="date" class="form-input"
-                               value="${stockData?.date || new Date().toISOString().split('T')[0]}"
+                               value="${
+                                 stockData?.date ||
+                                 new Date().toISOString().split('T')[0]
+                               }"
                                min="${new Date().toISOString().split('T')[0]}"
                                style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                                ${isReadOnly ? 'readonly' : ''}>
@@ -8107,7 +10297,11 @@ function generateStockOutModal(mode = 'create', stockData = null) {
                         Total Cost
                     </label>
                     <input id="so-total" type="text" class="form-input"
-                           value="${stockData ? formatCurrency(stockData.totalCost || 0) : '₱0.00'}"
+                           value="${
+                             stockData
+                               ? formatCurrency(stockData.totalCost || 0)
+                               : '₱0.00'
+                           }"
                            style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; background: #fff7ed; font-weight: 600; color: #ea580c;"
                            readonly>
                 </div>
@@ -8163,11 +10357,21 @@ function generateStockOutModal(mode = 'create', stockData = null) {
                         <i data-lucide="activity" style="width: 14px; height: 14px; color: #6b7280;"></i>
                         Status
                     </label>
-                    <select id="so-status" class="form-select" ${isReadOnly ? 'disabled' : ''} style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; ${isReadOnly ? 'background: #f9fafb;' : ''}">
+                    <select id="so-status" class="form-select" ${
+                      isReadOnly ? 'disabled' : ''
+                    } style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; ${
+    isReadOnly ? 'background: #f9fafb;' : ''
+  }">
                         <option value="">Select status</option>
-                        <option value="Completed" ${stockData?.status === 'Completed' ? 'selected' : ''}>Completed</option>
-                        <option value="Pending" ${stockData?.status === 'Pending' ? 'selected' : ''}>Pending</option>
-                        <option value="Cancelled" ${stockData?.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                        <option value="Completed" ${
+                          stockData?.status === 'Completed' ? 'selected' : ''
+                        }>Completed</option>
+                        <option value="Pending" ${
+                          stockData?.status === 'Pending' ? 'selected' : ''
+                        }>Pending</option>
+                        <option value="Cancelled" ${
+                          stockData?.status === 'Cancelled' ? 'selected' : ''
+                        }>Cancelled</option>
                     </select>
                 </div>
             </div>
@@ -8175,121 +10379,156 @@ function generateStockOutModal(mode = 'create', stockData = null) {
 
         <div class="modal-footer" style="background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 20px 24px; display: flex; gap: 12px; justify-content: flex-end;">
             <button class="btn btn-secondary" onclick="closeStockOutModal()" style="padding: 10px 24px; font-weight: 500; border: 2px solid #d1d5db; transition: all 0.2s;">
-                <i data-lucide="${isReadOnly ? 'x' : 'arrow-left'}" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                <i data-lucide="${
+                  isReadOnly ? 'x' : 'arrow-left'
+                }" style="width: 16px; height: 16px; margin-right: 6px;"></i>
                 ${isReadOnly ? 'Close' : 'Cancel'}
             </button>
-            ${!isReadOnly ? `
-                <button class="btn btn-primary" onclick="saveStockOut('${stockData?.id || ''}')" style="padding: 10px 24px; font-weight: 500; background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); box-shadow: 0 4px 6px rgba(234, 88, 12, 0.25); transition: all 0.2s;">
-                    <i data-lucide="${mode === 'create' ? 'plus-circle' : 'save'}" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+            ${
+              !isReadOnly
+                ? `
+                <button class="btn btn-primary" onclick="saveStockOut('${
+                  stockData?.id || ''
+                }')" style="padding: 10px 24px; font-weight: 500; background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); box-shadow: 0 4px 6px rgba(234, 88, 12, 0.25); transition: all 0.2s;">
+                    <i data-lucide="${
+                      mode === 'create' ? 'plus-circle' : 'save'
+                    }" style="width: 16px; height: 16px; margin-right: 6px;"></i>
                     ${mode === 'create' ? 'Add Stock Out' : 'Save Changes'}
                 </button>
-            ` : ''}
+            `
+                : ''
+            }
         </div>
-    `;
+    `
 }
 
 function saveStockOut(stockId) {
-    // Read inputs by ID
-    const date = document.getElementById('so-date') ? document.getElementById('so-date').value : (document.querySelector('#stockout-modal input[type="date"]')?.value || '');
-    const sku = document.getElementById('so-sku') ? document.getElementById('so-sku').value : (document.querySelector('#stockout-modal input[placeholder="E002"]')?.value || '');
-    const productName = document.getElementById('so-product') ? document.getElementById('so-product').value : (document.querySelector('#stockout-modal input[placeholder="Enter product name"]')?.value || '');
-    const quantity = parseInt(document.getElementById('so-qty').value) || 0;
-    const unitCost = parseFloat(document.getElementById('so-uc').value) || 0;
-    const totalCost = quantity * unitCost;
-    const department = document.getElementById('so-dept').value || '';
-    const issuedTo = document.getElementById('so-issued-to').value || '';
-    const issuedBy = document.getElementById('so-issued-by').value || '';
-    const status = document.getElementById('so-status').value || '';
+  // Read inputs by ID
+  const date = document.getElementById('so-date')
+    ? document.getElementById('so-date').value
+    : document.querySelector('#stockout-modal input[type="date"]')?.value || ''
+  const sku = document.getElementById('so-sku')
+    ? document.getElementById('so-sku').value
+    : document.querySelector('#stockout-modal input[placeholder="E002"]')
+        ?.value || ''
+  const productName = document.getElementById('so-product')
+    ? document.getElementById('so-product').value
+    : document.querySelector(
+        '#stockout-modal input[placeholder="Enter product name"]'
+      )?.value || ''
+  const quantity = parseInt(document.getElementById('so-qty').value) || 0
+  const unitCost = parseFloat(document.getElementById('so-uc').value) || 0
+  const totalCost = quantity * unitCost
+  const department = document.getElementById('so-dept').value || ''
+  const issuedTo = document.getElementById('so-issued-to').value || ''
+  const issuedBy = document.getElementById('so-issued-by').value || ''
+  const status = document.getElementById('so-status').value || ''
 
-    const record = {
-        id: stockId || generateUniqueId(),
-        issueId: stockId ? (stockOutData.find(s => s.id === stockId)?.issueId || generateStockOutIssueId()) : generateStockOutIssueId(),
-        date,
-        productName,
-        sku,
-        quantity,
-        unitCost,
-        totalCost,
-        department,
-        issuedTo,
-        issuedBy,
-        status
-    };
+  const record = {
+    id: stockId || generateUniqueId(),
+    issueId: stockId
+      ? stockOutData.find((s) => s.id === stockId)?.issueId ||
+        generateStockOutIssueId()
+      : generateStockOutIssueId(),
+    date,
+    productName,
+    sku,
+    quantity,
+    unitCost,
+    totalCost,
+    department,
+    issuedTo,
+    issuedBy,
+    status,
+  }
 
-    // Inventory validation & adjustment
-    const product = findProductBySku(record.sku);
-    if (!product) {
-        showAlert('Product not found in inventory list for this SKU.', 'error');
-        return;
-    }
-    if (stockId) {
-        const idx = stockOutData.findIndex(s => s.id === stockId);
-        if (idx !== -1) {
-            const oldRecord = { ...stockOutData[idx] };
-            const prevIssued = Number(oldRecord.quantity) || 0;
-            const newIssued = Number(record.quantity) || 0;
-            const delta = newIssued - prevIssued; // additional quantity to subtract
-            if (delta > 0 && product.quantity < delta) {
-                showAlert('Insufficient stock for the additional quantity.', 'error');
-                return;
-            }
-            stockOutData[idx] = record;
-            adjustInventoryOnStockOut(record, oldRecord);
-            showAlert(`Stock Out record ${record.issueId} updated & inventory adjusted`, 'success');
-        } else {
-            if (product.quantity < record.quantity) {
-                showAlert('Insufficient stock for this issuance.', 'error');
-                return;
-            }
-            stockOutData.push(record);
-            adjustInventoryOnStockOut(record, null);
-            showAlert(`New Stock Out record ${record.issueId} added & inventory updated`, 'success');
-        }
+  // Inventory validation & adjustment
+  const product = findProductBySku(record.sku)
+  if (!product) {
+    showAlert('Product not found in inventory list for this SKU.', 'error')
+    return
+  }
+  if (stockId) {
+    const idx = stockOutData.findIndex((s) => s.id === stockId)
+    if (idx !== -1) {
+      const oldRecord = { ...stockOutData[idx] }
+      const prevIssued = Number(oldRecord.quantity) || 0
+      const newIssued = Number(record.quantity) || 0
+      const delta = newIssued - prevIssued // additional quantity to subtract
+      if (delta > 0 && product.quantity < delta) {
+        showAlert('Insufficient stock for the additional quantity.', 'error')
+        return
+      }
+      stockOutData[idx] = record
+      adjustInventoryOnStockOut(record, oldRecord)
+      showAlert(
+        `Stock Out record ${record.issueId} updated & inventory adjusted`,
+        'success'
+      )
     } else {
-        if (product.quantity < record.quantity) {
-            showAlert('Insufficient stock for this issuance.', 'error');
-            return;
-        }
-        stockOutData.push(record);
-        adjustInventoryOnStockOut(record, null);
-        showAlert(`New Stock Out record ${record.issueId} added & inventory updated`, 'success');
+      if (product.quantity < record.quantity) {
+        showAlert('Insufficient stock for this issuance.', 'error')
+        return
+      }
+      stockOutData.push(record)
+      adjustInventoryOnStockOut(record, null)
+      showAlert(
+        `New Stock Out record ${record.issueId} added & inventory updated`,
+        'success'
+      )
     }
+  } else {
+    if (product.quantity < record.quantity) {
+      showAlert('Insufficient stock for this issuance.', 'error')
+      return
+    }
+    stockOutData.push(record)
+    adjustInventoryOnStockOut(record, null)
+    showAlert(
+      `New Stock Out record ${record.issueId} added & inventory updated`,
+      'success'
+    )
+  }
 
-    persistStockOut();
+  persistStockOut()
 
-    // Update DOM if Stock Out table is present to avoid full page reload
-    const tbody = document.getElementById('stock-out-table-body');
-    if (tbody) {
-        const existingRow = tbody.querySelector(`tr[data-id="${record.id}"]`);
-        if (existingRow) {
-            // replace existing row
-            existingRow.outerHTML = renderStockOutRow(record);
-        } else {
-            // append new row
-            tbody.insertAdjacentHTML('beforeend', renderStockOutRow(record));
-        }
-        // re-render icons in new content
-        if (window.lucide) lucide.createIcons();
+  // Update DOM if Stock Out table is present to avoid full page reload
+  const tbody = document.getElementById('stock-out-table-body')
+  if (tbody) {
+    const existingRow = tbody.querySelector(`tr[data-id="${record.id}"]`)
+    if (existingRow) {
+      // replace existing row
+      existingRow.outerHTML = renderStockOutRow(record)
     } else {
-        // If tbody not present (different view), reload the Stock Out page to reflect changes
-        loadPageContent('stock-out');
+      // append new row
+      tbody.insertAdjacentHTML('beforeend', renderStockOutRow(record))
     }
-    closeStockOutModal();
-    refreshProductsViewIfOpen();
+    // re-render icons in new content
+    if (window.lucide) lucide.createIcons()
+  } else {
+    // If tbody not present (different view), reload the Stock Out page to reflect changes
+    loadPageContent('stock-out')
+  }
+  closeStockOutModal()
+  refreshProductsViewIfOpen()
 }
 
 // In-memory stock-out records (initialize from MockData if available)
 if (!Array.isArray(stockOutData) || stockOutData.length === 0) {
-    stockOutData = (window.MockData && Array.isArray(window.MockData.stockOut)) ? window.MockData.stockOut.slice() : [];
+  stockOutData =
+    window.MockData && Array.isArray(window.MockData.stockOut)
+      ? window.MockData.stockOut.slice()
+      : []
 }
 
 function renderStockOutRows() {
-    if (!stockOutData || stockOutData.length === 0) return '<tr><td colspan="12" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No records found</td></tr>';
-    return stockOutData.map(s => renderStockOutRow(s)).join('');
+  if (!stockOutData || stockOutData.length === 0)
+    return '<tr><td colspan="12" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No records found</td></tr>'
+  return stockOutData.map((s) => renderStockOutRow(s)).join('')
 }
 
 function renderStockOutRow(s) {
-    return `
+  return `
         <tr data-id="${s.id}">
             <td class="font-semibold">${s.issueId}</td>
             <td>${s.date}</td>
@@ -8297,77 +10536,106 @@ function renderStockOutRow(s) {
             <td class="text-sm text-gray-600">${s.sku}</td>
             <td>${s.quantity}</td>
             <td>${formatCurrency(Number(s.unitCost) || 0)}</td>
-            <td class="font-semibold">${formatCurrency(Number(s.totalCost) || 0)}</td>
+            <td class="font-semibold">${formatCurrency(
+              Number(s.totalCost) || 0
+            )}</td>
             <td><span class="badge">${s.department}</span></td>
             <td>${s.issuedTo}</td>
             <td>${s.issuedBy}</td>
-            <td><span class="badge ${s.status === 'Completed' ? 'green' : s.status === 'Pending' ? 'yellow' : s.status === 'Cancelled' ? 'red' : ''}">${s.status}</span></td>
+            <td><span class="badge ${
+              s.status === 'Completed'
+                ? 'green'
+                : s.status === 'Pending'
+                ? 'yellow'
+                : s.status === 'Cancelled'
+                ? 'red'
+                : ''
+            }">${s.status}</span></td>
             <td>
                 <div class="table-actions">
-                    <button class="icon-action-btn" title="View" onclick="viewStockOutDetails('${s.id}')">
+                    <button class="icon-action-btn" title="View" onclick="viewStockOutDetails('${
+                      s.id
+                    }')">
                         <i data-lucide="eye"></i>
                     </button>
-                    <button class="icon-action-btn icon-action-warning" title="Edit" onclick="editStockOut('${s.id}')">
+                    <button class="icon-action-btn icon-action-warning" title="Edit" onclick="editStockOut('${
+                      s.id
+                    }')">
                         <i data-lucide="edit"></i>
                     </button>
-                    <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteStockOut('${s.id}')">
+                    <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteStockOut('${
+                      s.id
+                    }')">
                         <i data-lucide="trash-2"></i>
                     </button>
                 </div>
             </td>
         </tr>
-    `;
+    `
 }
 
 async function deleteStockOut(id) {
-    const ok = await showConfirm('Delete this stock-out record?', 'Delete Stock Out');
-    if (!ok) return;
+  const ok = await showConfirm(
+    'Delete this stock-out record?',
+    'Delete Stock Out'
+  )
+  if (!ok) return
 
-    // Find the record before deleting
-    const record = stockOutData.find(s => s.id === id);
-    const recordInfo = record ? `${record.productName} (${record.transactionId})` : 'Stock Out record';
+  // Find the record before deleting
+  const record = stockOutData.find((s) => s.id === id)
+  const recordInfo = record
+    ? `${record.productName} (${record.transactionId})`
+    : 'Stock Out record'
 
-    // Delete the record
-    stockOutData = stockOutData.filter(s => s.id !== id);
-    persistStockOut();
+  // Delete the record
+  stockOutData = stockOutData.filter((s) => s.id !== id)
+  persistStockOut()
 
-    // Show success toast
-    showAlert(`${recordInfo} has been successfully deleted`, 'success');
+  // Show success toast
+  showAlert(`${recordInfo} has been successfully deleted`, 'success')
 
-    // Reload the page
-    loadPageContent('stock-out');
+  // Reload the page
+  loadPageContent('stock-out')
 }
 
 function viewStockOutDetails(id) {
-    const rec = stockOutData.find(s => s.id === id);
-    if (!rec) { showAlert('Record not found', 'error'); return; }
-    openStockOutModal('view', rec);
+  const rec = stockOutData.find((s) => s.id === id)
+  if (!rec) {
+    showAlert('Record not found', 'error')
+    return
+  }
+  openStockOutModal('view', rec)
 }
 
 function editStockOut(id) {
-    const rec = stockOutData.find(s => s.id === id);
-    if (!rec) { showAlert('Record not found', 'error'); return; }
-    openStockOutModal('edit', rec);
+  const rec = stockOutData.find((s) => s.id === id)
+  if (!rec) {
+    showAlert('Record not found', 'error')
+    return
+  }
+  openStockOutModal('edit', rec)
 }
 
 function generateStockOutIssueId() {
-    const year = new Date().getFullYear();
-    const existing = stockOutData.filter(r => r.issueId && r.issueId.startsWith(`SO-${year}-`)).map(r => parseInt(r.issueId.split('-')[2]) || 0);
-    const next = Math.max(...existing, 0) + 1;
-    return `SO-${year}-${String(next).padStart(3, '0')}`;
+  const year = new Date().getFullYear()
+  const existing = stockOutData
+    .filter((r) => r.issueId && r.issueId.startsWith(`SO-${year}-`))
+    .map((r) => parseInt(r.issueId.split('-')[2]) || 0)
+  const next = Math.max(...existing, 0) + 1
+  return `SO-${year}-${String(next).padStart(3, '0')}`
 }
 
 // ===== STATUS MANAGEMENT =====
-function initStatusManagement(filter = "all") {
-    const mainContent = document.getElementById("main-content");
-    if (!mainContent) return;
-    AppState.currentStatusFilter = filter;
+function initStatusManagement(filter = 'all') {
+  const mainContent = document.getElementById('main-content')
+  if (!mainContent) return
+  AppState.currentStatusFilter = filter
 
-    // Load latest user requests from localStorage
-    loadUserRequests();
+  // Load latest user requests from localStorage
+  loadUserRequests()
 
-    // ✅ Render UI
-    mainContent.innerHTML = `
+  // ✅ Render UI
+  mainContent.innerHTML = `
         <div class="page-header">
             <div class="page-header-content">
                 <div>
@@ -8463,130 +10731,193 @@ function initStatusManagement(filter = "all") {
             </table>
             </div>
         </div>
-    `;
+    `
 
-    // ===== Attach Filter Events =====
-    document.getElementById("searchInput").addEventListener("input", applyFilters);
-    document.getElementById("deptInput").addEventListener("input", applyFilters);
-    document.getElementById("deptSelect").addEventListener("change", applyFilters);
-    document.getElementById("prioritySelect").addEventListener("change", applyFilters);
-    // Export handler (same behavior as Reports export)
-    document.getElementById('export-status-btn')?.addEventListener('click', exportStatusCSV);
+  // ===== Attach Filter Events =====
+  document.getElementById('searchInput').addEventListener('input', applyFilters)
+  document.getElementById('deptInput').addEventListener('input', applyFilters)
+  document.getElementById('deptSelect').addEventListener('change', applyFilters)
+  document
+    .getElementById('prioritySelect')
+    .addEventListener('change', applyFilters)
+  // Export handler (same behavior as Reports export)
+  document
+    .getElementById('export-status-btn')
+    ?.addEventListener('click', exportStatusCSV)
 
-    refreshStatusCards();
+  refreshStatusCards()
 }
 
 function refreshStatusCards() {
-    const counts = (AppState.statusRequests || []).reduce((acc, r) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, {});
-    ['incoming', 'received', 'finished', 'cancelled', 'rejected', 'returned'].forEach(s => {
-        const el = document.querySelector(`.status-card .count[data-count="${s}"]`);
-        if (el) el.textContent = counts[s] || 0;
-    });
+  const counts = (AppState.statusRequests || []).reduce((acc, r) => {
+    acc[r.status] = (acc[r.status] || 0) + 1
+    return acc
+  }, {})
+  ;[
+    'incoming',
+    'received',
+    'finished',
+    'cancelled',
+    'rejected',
+    'returned',
+  ].forEach((s) => {
+    const el = document.querySelector(`.status-card .count[data-count="${s}"]`)
+    if (el) el.textContent = counts[s] || 0
+  })
 }
 
 // ===== Dummy Rows =====
 function renderStatusRows(status) {
-    const list = (AppState.statusRequests || []).filter(r => status === 'all' ? true : r.status === status);
-    if (!list.length) return `<tr><td colspan="9" style="text-align:center;padding:16px;color:#6b7280;">No records</td></tr>`;
-    const html = list.map(r => {
-        const priorityColor = r.priority === 'high' ? 'red' : r.priority === 'medium' ? 'orange' : 'green';
-        const showActions = r.status === 'incoming' || r.status === 'received';
-        const actionsHtml = showActions ? `
+  const list = (AppState.statusRequests || []).filter((r) =>
+    status === 'all' ? true : r.status === status
+  )
+  if (!list.length)
+    return `<tr><td colspan="9" style="text-align:center;padding:16px;color:#6b7280;">No records</td></tr>`
+  const html = list
+    .map((r) => {
+      const priorityColor =
+        r.priority === 'high'
+          ? 'red'
+          : r.priority === 'medium'
+          ? 'orange'
+          : 'green'
+      const showActions = r.status === 'incoming' || r.status === 'received'
+      const actionsHtml = showActions
+        ? `
             <div class="table-actions" style="flex-wrap:wrap;">
-                <button class="icon-action-btn" title="View Details" onclick="viewStatusRequest('${r.id}')">
+                <button class="icon-action-btn" title="View Details" onclick="viewStatusRequest('${
+                  r.id
+                }')">
                     <i data-lucide="eye"></i>
                 </button>
-                ${r.status === 'incoming' ? `
+                ${
+                  r.status === 'incoming'
+                    ? `
                     <button class="icon-action-btn icon-action-primary" title="Mark as Received" onclick="updateStatusRow('${r.id}','received')">
                         <i data-lucide="inbox"></i>
                     </button>
-                ` : ''}
-                <button class="icon-action-btn icon-action-danger" title="Reject" onclick="updateStatusRow('${r.id}','rejected')">
+                `
+                    : ''
+                }
+                <button class="icon-action-btn icon-action-danger" title="Reject" onclick="updateStatusRow('${
+                  r.id
+                }','rejected')">
                     <i data-lucide="x-circle"></i>
                 </button>
-                <button class="icon-action-btn icon-action-warning" title="Cancel" onclick="updateStatusRow('${r.id}','cancelled')">
+                <button class="icon-action-btn icon-action-warning" title="Cancel" onclick="updateStatusRow('${
+                  r.id
+                }','cancelled')">
                     <i data-lucide="ban"></i>
                 </button>
-                <button class="icon-action-btn icon-action-info" title="Return" onclick="showReturnModal('${r.id}')">
+                <button class="icon-action-btn icon-action-info" title="Return" onclick="showReturnModal('${
+                  r.id
+                }')">
                     <i data-lucide="undo-2"></i>
                 </button>
-                ${r.status !== 'incoming' ? `
+                ${
+                  r.status !== 'incoming'
+                    ? `
                     <button class="icon-action-btn icon-action-success" title="Complete" onclick="updateStatusRow('${r.id}','finished')">
                         <i data-lucide="check-circle"></i>
                     </button>
-                ` : ''}
-            </div>` : `<span class="${getBadgeClass(r.status)}"><i data-lucide="badge-check" style="width:14px;height:14px;"></i>${r.status.charAt(0).toUpperCase() + r.status.slice(1)}</span>`;
+                `
+                    : ''
+                }
+            </div>`
+        : `<span class="${getBadgeClass(
+            r.status
+          )}"><i data-lucide="badge-check" style="width:14px;height:14px;"></i>${
+            r.status.charAt(0).toUpperCase() + r.status.slice(1)
+          }</span>`
 
-        // Generate remarks HTML
-        let remarksHtml = '-';
-        if (r.returnRemarks && r.returnRemarks.length > 0) {
-            const remarksList = r.returnRemarks.map(remark => `<li style="margin: 2px 0;">${remark}</li>`).join('');
-            remarksHtml = `
+      // Generate remarks HTML
+      let remarksHtml = '-'
+      if (r.returnRemarks && r.returnRemarks.length > 0) {
+        const remarksList = r.returnRemarks
+          .map((remark) => `<li style="margin: 2px 0;">${remark}</li>`)
+          .join('')
+        remarksHtml = `
                 <div style="max-width: 250px;">
                     <ul style="margin: 0; padding-left: 16px; font-size: 12px; color: #374151; line-height: 1.5;">
                         ${remarksList}
                     </ul>
-                </div>`;
-        }
+                </div>`
+      }
 
-        return `
+      return `
             <tr data-request-id="${r.id}">
                 <td>
                     ${r.id}
-                    ${r.source === 'user-form' ? '<span class="badge blue" style="font-size:10px;margin-left:4px;" title="Submitted via User Request Form"><i data-lucide="user" style="width:10px;height:10px;"></i>User</span>' : ''}
+                    ${
+                      r.source === 'user-form'
+                        ? '<span class="badge blue" style="font-size:10px;margin-left:4px;" title="Submitted via User Request Form"><i data-lucide="user" style="width:10px;height:10px;"></i>User</span>'
+                        : ''
+                    }
                 </td>
                 <td>${r.requester}</td>
                 <td>${r.department}</td>
                 <td>${r.item}</td>
-                <td><span style="color:${priorityColor};font-weight:bold;">${r.priority.charAt(0).toUpperCase() + r.priority.slice(1)}</span></td>
+                <td><span style="color:${priorityColor};font-weight:bold;">${
+        r.priority.charAt(0).toUpperCase() + r.priority.slice(1)
+      }</span></td>
                 <td>${r.updatedAt}</td>
                 <td>${actionsHtml}</td>
                 <td>${formatCurrency(r.cost || 0)}</td>
                 <td>${remarksHtml}</td>
-        </tr>`;
-    }).join('');
-    // Defer icon init until injected into DOM (caller will set innerHTML, then we init here with a microtask)
-    queueMicrotask(() => { try { lucide.createIcons(); } catch (e) { } });
-    return html;
+        </tr>`
+    })
+    .join('')
+  // Defer icon init until injected into DOM (caller will set innerHTML, then we init here with a microtask)
+  queueMicrotask(() => {
+    try {
+      lucide.createIcons()
+    } catch (e) {}
+  })
+  return html
 }
 
 // ===== Apply Filters =====
 function applyFilters() {
-    const search = document.getElementById("searchInput").value.toLowerCase();
-    const deptText = document.getElementById("deptInput").value.toLowerCase();
-    const deptSelect = document.getElementById("deptSelect").value.toLowerCase();
-    const priority = document.getElementById("prioritySelect").value.toLowerCase();
+  const search = document.getElementById('searchInput').value.toLowerCase()
+  const deptText = document.getElementById('deptInput').value.toLowerCase()
+  const deptSelect = document.getElementById('deptSelect').value.toLowerCase()
+  const priority = document.getElementById('prioritySelect').value.toLowerCase()
 
-    const rows = document.querySelectorAll("#status-table-body tr");
-    rows.forEach(row => {
-        const text = row.innerText.toLowerCase();
-        const department = row.cells[2].innerText.toLowerCase();
-        const rowPriority = row.cells[4].innerText.toLowerCase();
+  const rows = document.querySelectorAll('#status-table-body tr')
+  rows.forEach((row) => {
+    const text = row.innerText.toLowerCase()
+    const department = row.cells[2].innerText.toLowerCase()
+    const rowPriority = row.cells[4].innerText.toLowerCase()
 
-        let match = true;
-        if (search && !text.includes(search)) match = false;
-        if (deptText && !department.includes(deptText)) match = false;
-        if (deptSelect !== "all department" && !department.includes(deptSelect)) match = false;
-        if (priority !== "filter by priority" && !rowPriority.includes(priority)) match = false;
+    let match = true
+    if (search && !text.includes(search)) match = false
+    if (deptText && !department.includes(deptText)) match = false
+    if (deptSelect !== 'all department' && !department.includes(deptSelect))
+      match = false
+    if (priority !== 'filter by priority' && !rowPriority.includes(priority))
+      match = false
 
-        row.style.display = match ? "" : "none";
-    });
+    row.style.display = match ? '' : 'none'
+  })
 }
 
 // ===== Return Modal with Remarks =====
 function showReturnModal(requestId) {
-    const rec = (AppState.statusRequests || []).find(r => r.id === requestId);
-    if (!rec) { showAlert('Request not found', 'error'); return; }
+  const rec = (AppState.statusRequests || []).find((r) => r.id === requestId)
+  if (!rec) {
+    showAlert('Request not found', 'error')
+    return
+  }
 
-    let modal = document.getElementById('return-remarks-modal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'return-remarks-modal';
-        document.body.appendChild(modal);
-    }
+  let modal = document.getElementById('return-remarks-modal')
+  if (!modal) {
+    modal = document.createElement('div')
+    modal.id = 'return-remarks-modal'
+    document.body.appendChild(modal)
+  }
 
-    modal.className = 'modal-overlay active';
-    modal.innerHTML = `
+  modal.className = 'modal-overlay active'
+  modal.innerHTML = `
         <div class="modal-content" style="max-width: 500px; padding: 0; border-radius: 12px; overflow: hidden;">
             <!-- Header -->
             <div style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); padding: 24px; color: white;">
@@ -8700,120 +11031,136 @@ function showReturnModal(requestId) {
                 </button>
             </div>
         </div>
-    `;
+    `
 
-    // Initialize icons
-    try { lucide.createIcons(); } catch (e) { }
+  // Initialize icons
+  try {
+    lucide.createIcons()
+  } catch (e) {}
 }
 
 function toggleOtherReasonsInput() {
-    const checkbox = document.getElementById('other-reasons-checkbox');
-    const inputContainer = document.getElementById('other-reasons-input-container');
-    const textInput = document.getElementById('other-reasons-text');
+  const checkbox = document.getElementById('other-reasons-checkbox')
+  const inputContainer = document.getElementById(
+    'other-reasons-input-container'
+  )
+  const textInput = document.getElementById('other-reasons-text')
 
-    if (checkbox && inputContainer) {
-        if (checkbox.checked) {
-            inputContainer.style.display = 'block';
-            // Focus on the textarea
-            setTimeout(() => textInput?.focus(), 100);
-        } else {
-            inputContainer.style.display = 'none';
-            // Clear the text when unchecked
-            if (textInput) textInput.value = '';
-        }
+  if (checkbox && inputContainer) {
+    if (checkbox.checked) {
+      inputContainer.style.display = 'block'
+      // Focus on the textarea
+      setTimeout(() => textInput?.focus(), 100)
+    } else {
+      inputContainer.style.display = 'none'
+      // Clear the text when unchecked
+      if (textInput) textInput.value = ''
     }
+  }
 }
 
 function closeReturnModal() {
-    const modal = document.getElementById('return-remarks-modal');
-    if (modal) {
-        modal.className = 'modal-overlay';
-        setTimeout(() => modal.remove(), 300);
-    }
+  const modal = document.getElementById('return-remarks-modal')
+  if (modal) {
+    modal.className = 'modal-overlay'
+    setTimeout(() => modal.remove(), 300)
+  }
 }
 
 function confirmReturn(requestId) {
-    // Get selected reasons
-    const checkboxes = document.querySelectorAll('.return-reason:checked');
-    const reasons = Array.from(checkboxes).map(cb => cb.value);
+  // Get selected reasons
+  const checkboxes = document.querySelectorAll('.return-reason:checked')
+  const reasons = Array.from(checkboxes).map((cb) => cb.value)
 
-    if (reasons.length === 0) {
-        showAlert('Please select at least one reason for returning', 'error');
-        return;
+  if (reasons.length === 0) {
+    showAlert('Please select at least one reason for returning', 'error')
+    return
+  }
+
+  // Check if "Other Reasons" is selected and get the specific text
+  const otherCheckbox = document.getElementById('other-reasons-checkbox')
+  const otherText = document.getElementById('other-reasons-text')
+
+  if (otherCheckbox && otherCheckbox.checked) {
+    const specificReason = otherText?.value.trim()
+    if (!specificReason) {
+      showAlert('Please specify the reason for "Other Reasons"', 'error')
+      return
     }
-
-    // Check if "Other Reasons" is selected and get the specific text
-    const otherCheckbox = document.getElementById('other-reasons-checkbox');
-    const otherText = document.getElementById('other-reasons-text');
-
-    if (otherCheckbox && otherCheckbox.checked) {
-        const specificReason = otherText?.value.trim();
-        if (!specificReason) {
-            showAlert('Please specify the reason for "Other Reasons"', 'error');
-            return;
-        }
-        // Replace "Other Reasons" with the specific text
-        const index = reasons.indexOf('Other Reasons');
-        if (index !== -1) {
-            reasons[index] = `Other: ${specificReason}`;
-        }
+    // Replace "Other Reasons" with the specific text
+    const index = reasons.indexOf('Other Reasons')
+    if (index !== -1) {
+      reasons[index] = `Other: ${specificReason}`
     }
+  }
 
-    // Update the request with return status and remarks
-    const rec = (AppState.statusRequests || []).find(r => r.id === requestId);
-    if (rec) {
-        rec.status = 'returned';
-        rec.returnRemarks = reasons;
-        rec.updatedAt = new Date().toISOString().split('T')[0];
-    }
+  // Update the request with return status and remarks
+  const rec = (AppState.statusRequests || []).find((r) => r.id === requestId)
+  if (rec) {
+    rec.status = 'returned'
+    rec.returnRemarks = reasons
+    rec.updatedAt = new Date().toISOString().split('T')[0]
+  }
 
-    // Close modal
-    closeReturnModal();
+  // Close modal
+  closeReturnModal()
 
-    // Re-render table
-    const body = document.getElementById('status-table-body');
-    if (body) body.innerHTML = renderStatusRows(AppState.currentStatusFilter || 'all');
-    try { lucide.createIcons(); } catch (e) { }
+  // Re-render table
+  const body = document.getElementById('status-table-body')
+  if (body)
+    body.innerHTML = renderStatusRows(AppState.currentStatusFilter || 'all')
+  try {
+    lucide.createIcons()
+  } catch (e) {}
 
-    // Update counts
-    refreshStatusCards();
+  // Update counts
+  refreshStatusCards()
 
-    // Show success message
-    const remarksText = reasons.join(', ');
-    showAlert(`Request ${requestId} returned. Reasons: ${remarksText}`, 'success');
+  // Show success message
+  const remarksText = reasons.join(', ')
+  showAlert(`Request ${requestId} returned. Reasons: ${remarksText}`, 'success')
 }
 
 // ===== Update Row Status (for Received actions) =====
 function updateStatusRow(requestId, newStatus) {
-    try {
-        const rec = (AppState.statusRequests || []).find(r => r.id === requestId);
-        if (!rec) { showAlert('Row not found', 'error'); return; }
-        rec.status = newStatus;
-        rec.updatedAt = new Date().toISOString().split('T')[0];
-        // Re-render current filter view
-        const body = document.getElementById('status-table-body');
-        if (body) body.innerHTML = renderStatusRows(AppState.currentStatusFilter || 'all');
-        // icons already re-init inside renderStatusRows; safeguard:
-        try { lucide.createIcons(); } catch (e) { }
-        // Update counts on cards
-        refreshStatusCards();
-        const statusLabel = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
-        showAlert(`Request ${requestId} marked as ${statusLabel}`, 'success');
-    } catch (e) {
-        console.error(e);
+  try {
+    const rec = (AppState.statusRequests || []).find((r) => r.id === requestId)
+    if (!rec) {
+      showAlert('Row not found', 'error')
+      return
     }
+    rec.status = newStatus
+    rec.updatedAt = new Date().toISOString().split('T')[0]
+    // Re-render current filter view
+    const body = document.getElementById('status-table-body')
+    if (body)
+      body.innerHTML = renderStatusRows(AppState.currentStatusFilter || 'all')
+    // icons already re-init inside renderStatusRows; safeguard:
+    try {
+      lucide.createIcons()
+    } catch (e) {}
+    // Update counts on cards
+    refreshStatusCards()
+    const statusLabel = newStatus.charAt(0).toUpperCase() + newStatus.slice(1)
+    showAlert(`Request ${requestId} marked as ${statusLabel}`, 'success')
+  } catch (e) {
+    console.error(e)
+  }
 }
 
 // Lightweight viewer for status management entries
 function viewStatusRequest(id) {
-    const rec = (AppState.statusRequests || []).find(r => r.id === id);
-    if (!rec) { showAlert('Request not found', 'error'); return; }
-    let overlay = document.getElementById('status-view-modal');
-    if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.id = 'status-view-modal';
-        overlay.className = 'modal-overlay active';
-        overlay.innerHTML = `
+  const rec = (AppState.statusRequests || []).find((r) => r.id === id)
+  if (!rec) {
+    showAlert('Request not found', 'error')
+    return
+  }
+  let overlay = document.getElementById('status-view-modal')
+  if (!overlay) {
+    overlay = document.createElement('div')
+    overlay.id = 'status-view-modal'
+    overlay.className = 'modal-overlay active'
+    overlay.innerHTML = `
             <div class="modal-content compact" role="dialog" aria-modal="true" aria-labelledby="status-view-title">
                 <div class="modal-header" style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; border-bottom: none; padding: 32px 24px;">
                     <div style="display: flex; align-items: center; gap: 16px;">
@@ -8844,18 +11191,20 @@ function viewStatusRequest(id) {
                         Close
                     </button>
                 </div>
-            </div>`;
-        document.body.appendChild(overlay);
-        // Close on backdrop click
-        overlay.addEventListener('click', e => { if (e.target === overlay) closeStatusView(); });
-        // Esc key handler
-        document.addEventListener('keydown', escHandler);
-    } else {
-        overlay.classList.add('active');
-    }
-    const grid = overlay.querySelector('#status-view-body');
-    if (grid) {
-        grid.innerHTML = `
+            </div>`
+    document.body.appendChild(overlay)
+    // Close on backdrop click
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeStatusView()
+    })
+    // Esc key handler
+    document.addEventListener('keydown', escHandler)
+  } else {
+    overlay.classList.add('active')
+  }
+  const grid = overlay.querySelector('#status-view-body')
+  if (grid) {
+    grid.innerHTML = `
             <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
                 <i data-lucide="package" style="width: 14px; height: 14px; color: #6b7280;"></i>
                 Item
@@ -8868,13 +11217,17 @@ function viewStatusRequest(id) {
             </dt>
             <dd style="margin: 0; color: #111827;">${rec.requester}</dd>
             
-            ${rec.email ? `
+            ${
+              rec.email
+                ? `
                 <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
                     <i data-lucide="mail" style="width: 14px; height: 14px; color: #6b7280;"></i>
                     Email
                 </dt>
                 <dd style="margin: 0; color: #111827;">${rec.email}</dd>
-            ` : ''}
+            `
+                : ''
+            }
             
             <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
                 <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #6b7280;"></i>
@@ -8882,33 +11235,54 @@ function viewStatusRequest(id) {
             </dt>
             <dd style="margin: 0; color: #111827;">${rec.department}</dd>
             
-            ${rec.unit ? `
+            ${
+              rec.unit
+                ? `
                 <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
                     <i data-lucide="building" style="width: 14px; height: 14px; color: #6b7280;"></i>
                     Unit
                 </dt>
                 <dd style="margin: 0; color: #111827;">${rec.unit}</dd>
-            ` : ''}
+            `
+                : ''
+            }
             
             <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
                 <i data-lucide="flag" style="width: 14px; height: 14px; color: #6b7280;"></i>
                 Priority
             </dt>
-            <dd style="margin: 0;"><span class="badge ${getBadgeClass(rec.priority, 'priority').split(' ').slice(-1)} inline" style="padding: 4px 12px; border-radius: 6px; font-size: 13px; font-weight: 500;">${rec.priority}</span></dd>
+            <dd style="margin: 0;"><span class="badge ${getBadgeClass(
+              rec.priority,
+              'priority'
+            )
+              .split(' ')
+              .slice(
+                -1
+              )} inline" style="padding: 4px 12px; border-radius: 6px; font-size: 13px; font-weight: 500;">${
+      rec.priority
+    }</span></dd>
             
             <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
                 <i data-lucide="activity" style="width: 14px; height: 14px; color: #6b7280;"></i>
                 Status
             </dt>
-            <dd style="margin: 0;"><span class="${getBadgeClass(rec.status)} inline" style="padding: 4px 12px; border-radius: 6px; font-size: 13px; font-weight: 500;">${rec.status}</span></dd>
+            <dd style="margin: 0;"><span class="${getBadgeClass(
+              rec.status
+            )} inline" style="padding: 4px 12px; border-radius: 6px; font-size: 13px; font-weight: 500;">${
+      rec.status
+    }</span></dd>
             
-            ${rec.neededDate ? `
+            ${
+              rec.neededDate
+                ? `
                 <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
                     <i data-lucide="clock" style="width: 14px; height: 14px; color: #6b7280;"></i>
                     Needed By
                 </dt>
                 <dd style="margin: 0; color: #111827;">${rec.neededDate}</dd>
-            ` : ''}
+            `
+                : ''
+            }
             
             <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
                 <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
@@ -8920,42 +11294,56 @@ function viewStatusRequest(id) {
                 <i data-lucide="dollar-sign" style="width: 14px; height: 14px; color: #6b7280;"></i>
                 Est. Cost
             </dt>
-            <dd style="margin: 0; color: #16a34a; font-weight: 600; font-size: 15px;">${formatCurrency(rec.cost || 0)}</dd>
+            <dd style="margin: 0; color: #16a34a; font-weight: 600; font-size: 15px;">${formatCurrency(
+              rec.cost || 0
+            )}</dd>
             
-            ${rec.source === 'user-form' ? `
+            ${
+              rec.source === 'user-form'
+                ? `
                 <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
                     <i data-lucide="info" style="width: 14px; height: 14px; color: #6b7280;"></i>
                     Source
                 </dt>
                 <dd style="margin: 0;"><span class="badge blue inline" style="padding: 4px 12px; border-radius: 6px; font-size: 13px; font-weight: 500;">User Request Form</span></dd>
-            ` : ''}
-        `;
+            `
+                : ''
+            }
+        `
+  }
+  // Icon refresh
+  try {
+    lucide.createIcons()
+  } catch (e) {}
+  overlay.querySelector('#status-view-close').onclick = closeStatusView
+  overlay.querySelector('#status-view-dismiss').onclick = closeStatusView
+  function escHandler(ev) {
+    if (ev.key === 'Escape') {
+      closeStatusView()
     }
-    // Icon refresh
-    try { lucide.createIcons(); } catch (e) { }
-    overlay.querySelector('#status-view-close').onclick = closeStatusView;
-    overlay.querySelector('#status-view-dismiss').onclick = closeStatusView;
-    function escHandler(ev) { if (ev.key === 'Escape') { closeStatusView(); } }
-    function closeStatusView() {
-        overlay.classList.remove('active');
-        setTimeout(() => { if (overlay) overlay.remove(); }, 150);
-        document.removeEventListener('keydown', escHandler);
-    }
+  }
+  function closeStatusView() {
+    overlay.classList.remove('active')
+    setTimeout(() => {
+      if (overlay) overlay.remove()
+    }, 150)
+    document.removeEventListener('keydown', escHandler)
+  }
 }
-window.viewStatusRequest = viewStatusRequest;
+window.viewStatusRequest = viewStatusRequest
 
 // View status request details (for status reports)
 function viewStatusRequestDetails(requestId) {
-    const rec = (AppState.statusRequests || []).find(r => r.id === requestId);
-    if (!rec) {
-        showAlert('Request not found', 'error');
-        return;
-    }
+  const rec = (AppState.statusRequests || []).find((r) => r.id === requestId)
+  if (!rec) {
+    showAlert('Request not found', 'error')
+    return
+  }
 
-    const modal = document.getElementById('purchase-order-modal');
-    const modalContent = modal.querySelector('.modal-content');
+  const modal = document.getElementById('purchase-order-modal')
+  const modalContent = modal.querySelector('.modal-content')
 
-    modalContent.innerHTML = `
+  modalContent.innerHTML = `
         <div class="modal-header">
             <h2 class="modal-title">Request Details: ${rec.id}</h2>
             <button class="modal-close" onclick="closePurchaseOrderModal()">
@@ -8966,79 +11354,100 @@ function viewStatusRequestDetails(requestId) {
             <div class="grid-2" style="gap: 20px;">
                 <div class="form-group">
                     <label class="form-label">Request ID</label>
-                    <input type="text" class="form-input" value="${rec.id}" readonly>
+                    <input type="text" class="form-input" value="${
+                      rec.id
+                    }" readonly>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Status</label>
-                    <span class="${getBadgeClass(rec.status)}" style="display: inline-block; margin-top: 8px;">${capitalize(rec.status)}</span>
+                    <span class="${getBadgeClass(
+                      rec.status
+                    )}" style="display: inline-block; margin-top: 8px;">${capitalize(
+    rec.status
+  )}</span>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Requester</label>
-                    <input type="text" class="form-input" value="${rec.requester || ''}" readonly>
+                    <input type="text" class="form-input" value="${
+                      rec.requester || ''
+                    }" readonly>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Department</label>
-                    <input type="text" class="form-input" value="${rec.department || ''}" readonly>
+                    <input type="text" class="form-input" value="${
+                      rec.department || ''
+                    }" readonly>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Item</label>
-                    <input type="text" class="form-input" value="${rec.item || ''}" readonly>
+                    <input type="text" class="form-input" value="${
+                      rec.item || ''
+                    }" readonly>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Priority</label>
-                    <span class="${getBadgeClass(rec.priority || 'low', 'priority')}" style="display: inline-block; margin-top: 8px;">${capitalize(rec.priority || 'low')}</span>
+                    <span class="${getBadgeClass(
+                      rec.priority || 'low',
+                      'priority'
+                    )}" style="display: inline-block; margin-top: 8px;">${capitalize(
+    rec.priority || 'low'
+  )}</span>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Cost</label>
-                    <input type="text" class="form-input" value="${rec.cost ? formatCurrency(rec.cost) : 'N/A'}" readonly>
+                    <input type="text" class="form-input" value="${
+                      rec.cost ? formatCurrency(rec.cost) : 'N/A'
+                    }" readonly>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Updated At</label>
-                    <input type="text" class="form-input" value="${rec.updatedAt || 'N/A'}" readonly>
+                    <input type="text" class="form-input" value="${
+                      rec.updatedAt || 'N/A'
+                    }" readonly>
                 </div>
             </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closePurchaseOrderModal()">Close</button>
         </div>
-    `;
+    `
 
-    modal.classList.add('active');
-    setTimeout(() => lucide.createIcons(), 100);
+  modal.classList.add('active')
+  setTimeout(() => lucide.createIcons(), 100)
 }
 
 // Make functions globally accessible
-window.viewStatusRequestDetails = viewStatusRequestDetails;
+window.viewStatusRequestDetails = viewStatusRequestDetails
 
 // Toggle function for Date of Delivery "Others" option in wizard
 function toggleDeliveryDateOther(selectElement) {
-    const otherInput = document.getElementById('po-delivery-date-other');
-    if (otherInput) {
-        if (selectElement.value === 'others') {
-            otherInput.style.display = 'block';
-            otherInput.focus();
-        } else {
-            otherInput.style.display = 'none';
-            otherInput.value = '';
-        }
+  const otherInput = document.getElementById('po-delivery-date-other')
+  if (otherInput) {
+    if (selectElement.value === 'others') {
+      otherInput.style.display = 'block'
+      otherInput.focus()
+    } else {
+      otherInput.style.display = 'none'
+      otherInput.value = ''
     }
+  }
 }
-window.toggleDeliveryDateOther = toggleDeliveryDateOther;
+window.toggleDeliveryDateOther = toggleDeliveryDateOther
 
 // Toggle function for Date of Delivery "Others" option in regular modal
 function toggleDeliveryDateOtherModal(selectElement) {
-    const otherInput = document.getElementById('deliveryDateOther');
-    if (otherInput) {
-        if (selectElement.value === 'others') {
-            otherInput.style.display = 'block';
-            otherInput.focus();
-        } else {
-            otherInput.style.display = 'none';
-            otherInput.value = '';
-        }
+  const otherInput = document.getElementById('deliveryDateOther')
+  if (otherInput) {
+    if (selectElement.value === 'others') {
+      otherInput.style.display = 'block'
+      otherInput.focus()
+    } else {
+      otherInput.style.display = 'none'
+      otherInput.value = ''
     }
+  }
 }
-window.toggleDeliveryDateOtherModal = toggleDeliveryDateOtherModal;
+window.toggleDeliveryDateOtherModal = toggleDeliveryDateOtherModal
 
 // Sidebar and status behavior is handled centrally by the navigation initialization
 // (initializeNavigation, toggleNavGroup, navigateToPage and loadPageContent).
@@ -9046,72 +11455,72 @@ window.toggleDeliveryDateOtherModal = toggleDeliveryDateOtherModal;
 
 // Expose frequently used actions for inline handlers and legacy markup
 const exposedFunctions = {
-    toggleSidebar,
-    toggleNotifications,
-    closeNotifications,
-    viewAllNotifications,
-    markAllNotificationsRead,
-    clearAllNotifications,
-    toggleNotificationRead,
-    markNotificationAsRead,
-    toggleUserMenu,
-    closeUserMenu,
-    navigateToPage,
-    switchProductTab,
-    updateProductsTable,
-    openPurchaseOrderModal,
-    closePurchaseOrderModal,
-    addPOItem,
-    removePOItem,
-    updatePOItem,
-    updatePOItemForm,
-    savePurchaseOrder,
-    approveRequest,
-    rejectRequest,
-    downloadPO,
-    archiveRequest,
-    openModal,
-    openUserModal,
-    closeUserModal,
-    saveUser,
-    deleteMember,
-    logout,
-    openCategoryModal,
-    closeCategoryModal,
-    saveCategory,
-    deleteCategory,
-    openProductModal,
-    closeProductModal,
-    saveProduct,
-    deleteProduct,
-    openStockInModal,
-    closeStockInModal,
-    saveStockIn,
-    deleteStockIn,
-    openStockOutModal,
-    closeStockOutModal,
-    saveStockOut,
-    viewStockOutDetails,
-    editStockOut,
-    deleteStockOut,
-    updateStatusRow,
-    showReturnModal,
-    closeReturnModal,
-    confirmReturn,
-    viewStatusRequest,
-    viewStatusRequestDetails,
-    toggleDeliveryDateOther,
-    toggleDeliveryDateOtherModal,
-    deleteRequest,
-    prevPurchaseOrderStep,
-    nextPurchaseOrderStep,
-    finalizePurchaseOrderCreation,
-    setLoginActivityPage,
-    editAboutUs,
-    refreshSupportTickets,
-    removeAboutImage,
-    closeEditAboutModal,
-    saveAboutUs
-};
+  toggleSidebar,
+  toggleNotifications,
+  closeNotifications,
+  viewAllNotifications,
+  markAllNotificationsRead,
+  clearAllNotifications,
+  toggleNotificationRead,
+  markNotificationAsRead,
+  toggleUserMenu,
+  closeUserMenu,
+  navigateToPage,
+  switchProductTab,
+  updateProductsTable,
+  openPurchaseOrderModal,
+  closePurchaseOrderModal,
+  addPOItem,
+  removePOItem,
+  updatePOItem,
+  updatePOItemForm,
+  savePurchaseOrder,
+  approveRequest,
+  rejectRequest,
+  downloadPO,
+  archiveRequest,
+  openModal,
+  openUserModal,
+  closeUserModal,
+  saveUser,
+  deleteMember,
+  logout,
+  openCategoryModal,
+  closeCategoryModal,
+  saveCategory,
+  deleteCategory,
+  openProductModal,
+  closeProductModal,
+  saveProduct,
+  deleteProduct,
+  openStockInModal,
+  closeStockInModal,
+  saveStockIn,
+  deleteStockIn,
+  openStockOutModal,
+  closeStockOutModal,
+  saveStockOut,
+  viewStockOutDetails,
+  editStockOut,
+  deleteStockOut,
+  updateStatusRow,
+  showReturnModal,
+  closeReturnModal,
+  confirmReturn,
+  viewStatusRequest,
+  viewStatusRequestDetails,
+  toggleDeliveryDateOther,
+  toggleDeliveryDateOtherModal,
+  deleteRequest,
+  prevPurchaseOrderStep,
+  nextPurchaseOrderStep,
+  finalizePurchaseOrderCreation,
+  setLoginActivityPage,
+  editAboutUs,
+  refreshSupportTickets,
+  removeAboutImage,
+  closeEditAboutModal,
+  saveAboutUs,
+}
 
-Object.assign(window, exposedFunctions);
+Object.assign(window, exposedFunctions)

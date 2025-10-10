@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Purchase Order - {{ $po_number ?? 'PO' }}</title>
+    <title>Purchase Order - <?php echo e($po_number ?? 'PO'); ?></title>
     <style>
         @page { size: A4 portrait; margin: 16mm 14mm 18mm 14mm; }
         html, body { height:100%; }
@@ -29,8 +29,8 @@
             <div style="text-align:center;margin-bottom:16px;">
                 <div class="annex-label">Appendix 6.1</div>
                 <h1 style="font-size:14px;font-weight:700;margin:0 0 6px;">PURCHASE ORDER</h1>
-                <p style="font-size:12px;text-decoration:underline;margin:0 0 3px;">{{ $entity_name ?? 'Camarines Norte State College' }}</p>
-                <p style="font-size:10px;font-style:italic;margin:0;color:#444">{{ $entity_address ?? 'lot 8, F. Pimentel' }}</p>
+                <p style="font-size:12px;text-decoration:underline;margin:0 0 3px;"><?php echo e($entity_name ?? 'Camarines Norte State College'); ?></p>
+                <p style="font-size:10px;font-style:italic;margin:0;color:#444"><?php echo e($entity_address ?? 'lot 8, F. Pimentel'); ?></p>
             </div>
 
             <div class="table-border-2" style="border:2px solid #000;">
@@ -38,27 +38,27 @@
                     <tbody>
                         <tr>
                             <td class="table-cell-border-right font-semibold" style="width:15%">Supplier:</td>
-                            <td colspan="3" class="table-cell-border-right" style="width:45%">{{ $supplier ?? '' }}</td>
+                            <td colspan="3" class="table-cell-border-right" style="width:45%"><?php echo e($supplier ?? ''); ?></td>
                             <td class="table-cell-border-right font-semibold" style="width:15%">P.O. No.:</td>
-                            <td style="width:25%">{{ $po_number ?? '' }}</td>
+                            <td style="width:25%"><?php echo e($po_number ?? ''); ?></td>
                         </tr>
 
                         <tr>
                             <td class="table-cell-border font-semibold">Address:</td>
-                            <td colspan="3" class="table-cell-border-right table-cell-border-top">{{ $supplier_address ?? '' }}</td>
+                            <td colspan="3" class="table-cell-border-right table-cell-border-top"><?php echo e($supplier_address ?? ''); ?></td>
                             <td class="table-cell-border-right table-cell-border-top font-semibold">Date:</td>
-                            <td class="table-cell-border-top">{{ isset($date_of_purchase) ? 
+                            <td class="table-cell-border-top"><?php echo e(isset($date_of_purchase) ? 
                                 
                                 
                                 
-                                \Carbon\Carbon::parse($date_of_purchase)->format('F d, Y') : '' }}</td>
+                                \Carbon\Carbon::parse($date_of_purchase)->format('F d, Y') : ''); ?></td>
                         </tr>
 
                         <tr>
                             <td class="table-cell-border font-semibold">TIN:</td>
-                            <td colspan="3" class="table-cell-border-right table-cell-border-top">{{ $tin_number ?? '' }}</td>
+                            <td colspan="3" class="table-cell-border-right table-cell-border-top"><?php echo e($tin_number ?? ''); ?></td>
                             <td class="table-cell-border-right table-cell-border-top font-semibold">Mode of Procurement:</td>
-                            <td class="table-cell-border-top">{{ $mode_of_procurement ?? $mode_of_payment ?? '' }}</td>
+                            <td class="table-cell-border-top"><?php echo e($mode_of_procurement ?? $mode_of_payment ?? ''); ?></td>
                         </tr>
 
                         <tr>
@@ -67,16 +67,16 @@
 
                         <tr>
                             <td class="table-cell-border font-semibold">Place of Delivery:</td>
-                            <td colspan="2" class="table-cell-border-right table-cell-border-top">{{ $place_of_delivery ?? '' }}</td>
+                            <td colspan="2" class="table-cell-border-right table-cell-border-top"><?php echo e($place_of_delivery ?? ''); ?></td>
                             <td class="table-cell-border-right table-cell-border-top font-semibold">Delivery Term:</td>
-                            <td colspan="2" class="table-cell-border-top">{{ $delivery_term ?? '' }}</td>
+                            <td colspan="2" class="table-cell-border-top"><?php echo e($delivery_term ?? ''); ?></td>
                         </tr>
 
                         <tr>
                             <td class="table-cell-border font-semibold">Date of Delivery:</td>
-                            <td colspan="2" class="table-cell-border-right table-cell-border-top">{{ isset($date_of_delivery) ? \Carbon\Carbon::parse($date_of_delivery)->format('F d, Y') : '' }}</td>
+                            <td colspan="2" class="table-cell-border-right table-cell-border-top"><?php echo e(isset($date_of_delivery) ? \Carbon\Carbon::parse($date_of_delivery)->format('F d, Y') : ''); ?></td>
                             <td class="table-cell-border-right table-cell-border-top font-semibold">Payment Term:</td>
-                            <td colspan="2" class="table-cell-border-top">{{ $payment_term ?? '' }}</td>
+                            <td colspan="2" class="table-cell-border-top"><?php echo e($payment_term ?? ''); ?></td>
                         </tr>
 
                         <tr>
@@ -88,24 +88,24 @@
                             <td class="table-cell-border-top text-center font-semibold" style="width:15%">Amount</td>
                         </tr>
 
-                        @forelse($items as $item)
+                        <?php $__empty_1 = true; $__currentLoopData = $items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                             <tr>
-                                <td class="table-cell-border">{{ $item['stock_number'] ?? '' }}</td>
-                                <td class="table-cell-border">{{ $item['unit'] ?? '' }}</td>
-                                <td class="table-cell-border">{{ $item['description'] ?? '' }}</td>
-                                <td class="table-cell-border text-center">{{ number_format($item['quantity'] ?? 0, 2) }}</td>
-                                <td class="table-cell-border text-right">{{ number_format($item['unit_cost'] ?? 0, 2) }}</td>
-                                <td class="table-cell-border text-right">{{ number_format($item['amount'] ?? 0, 2) }}</td>
+                                <td class="table-cell-border"><?php echo e($item['stock_number'] ?? ''); ?></td>
+                                <td class="table-cell-border"><?php echo e($item['unit'] ?? ''); ?></td>
+                                <td class="table-cell-border"><?php echo e($item['description'] ?? ''); ?></td>
+                                <td class="table-cell-border text-center"><?php echo e(number_format($item['quantity'] ?? 0, 2)); ?></td>
+                                <td class="table-cell-border text-right"><?php echo e(number_format($item['unit_cost'] ?? 0, 2)); ?></td>
+                                <td class="table-cell-border text-right"><?php echo e(number_format($item['amount'] ?? 0, 2)); ?></td>
                             </tr>
-                        @empty
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                             <tr>
                                 <td colspan="6" class="table-cell-border text-center">No items</td>
                             </tr>
-                        @endforelse
+                        <?php endif; ?>
 
                         <tr>
                             <td colspan="5" class="table-cell-border text-right font-semibold">Grand Total:</td>
-                            <td class="table-cell-border-top text-right font-bold">{{ number_format($grand_total ?? 0, 2) }}</td>
+                            <td class="table-cell-border-top text-right font-bold"><?php echo e(number_format($grand_total ?? 0, 2)); ?></td>
                         </tr>
 
 
@@ -129,23 +129,23 @@
 
                         <tr>
                             <td class="table-cell-border font-semibold" style="width:15%">Fund Cluster:</td>
-                            <td class="table-cell-border-right table-cell-border-top" style="width:35%">{{ $fund_cluster ?? '' }}</td>
+                            <td class="table-cell-border-right table-cell-border-top" style="width:35%"><?php echo e($fund_cluster ?? ''); ?></td>
                             <td class="table-cell-border font-semibold" style="width:15%">ORS/BURS No.:</td>
-                            <td colspan="3" class="table-cell-border-top">{{ $ors_burs_no ?? '' }}</td>
+                            <td colspan="3" class="table-cell-border-top"><?php echo e($ors_burs_no ?? ''); ?></td>
                         </tr>
 
                         <tr>
                             <td class="table-cell-border font-semibold">Funds Available:</td>
-                            <td class="table-cell-border-right table-cell-border-top">{{ $funds_available ?? '' }}</td>
+                            <td class="table-cell-border-right table-cell-border-top"><?php echo e($funds_available ?? ''); ?></td>
                             <td class="table-cell-border font-semibold text-left">Date of ORS/BURS:</td>
-                            <td class="table-cell-border">{{ isset($ors_burs_date) ? \Carbon\Carbon::parse($ors_burs_date)->format('F d, Y') : '' }}</td>
+                            <td class="table-cell-border"><?php echo e(isset($ors_burs_date) ? \Carbon\Carbon::parse($ors_burs_date)->format('F d, Y') : ''); ?></td>
                             <td class="table-cell-border font-semibold text-center">Amount:</td>
-                            <td class="table-cell-border-top">{{ $ors_burs_amount ?? '' }}</td>
+                            <td class="table-cell-border-top"><?php echo e($ors_burs_amount ?? ''); ?></td>
                         </tr>
 
                         <tr>
                             <td colspan="6" class="table-cell-border-top text-center" style="padding:16px;height:80px;vertical-align:bottom;">
-                                <div style="height:48px;border-bottom:2px solid #000;margin:0 auto 4px;width:192px;display:flex;align-items:flex-end;justify-content:center;font-size:10px;">{{ $accountant_signature ?? '' }}</div>
+                                <div style="height:48px;border-bottom:2px solid #000;margin:0 auto 4px;width:192px;display:flex;align-items:flex-end;justify-content:center;font-size:10px;"><?php echo e($accountant_signature ?? ''); ?></div>
                                 <p style="font-size:10px;font-weight:700;margin:4px 0 0;">Accountant's Signature</p>
                             </td>
                         </tr>
@@ -155,4 +155,4 @@
         </div>
     </div>
 </body>
-</html>
+</html><?php /**PATH C:\xampp\htdocs\SupplySystem\resources\views/pdf/purchase_order_pdf.blade.php ENDPATH**/ ?>

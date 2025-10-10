@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+
 
 class PurchaseRequestController extends Controller
 {
@@ -51,5 +53,29 @@ class PurchaseRequestController extends Controller
         $pdf = Pdf::loadView('pdf.purchase_request_pdf', $data);
 
         return $pdf->download('purchase_request.pdf');
+    }
+
+    /**
+     * Stream a blank A4 preview of the purchase request PDF.
+     */
+    public function preview()
+    {
+        $sample = [
+            'entity_name' => '',
+            // PR specific fields expected by the blade
+            'pr_no' => '',
+            'date' => Carbon::now()->toDateString(),
+            'purpose' => '',
+            'requested_by' => '',
+            'designation' => '',
+            'approved_by' => '',
+            'approved_position' => '',
+            // items should be an array of item arrays with keys used in the view
+            'items' => [],
+        ];
+
+        $pdf = Pdf::loadView('pdf.purchase_request_pdf', $sample)->setPaper('a4', 'portrait');
+
+        return $pdf->stream('purchase_request_preview.pdf');
     }
 }

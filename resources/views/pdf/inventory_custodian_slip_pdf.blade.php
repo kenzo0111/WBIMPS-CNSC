@@ -2,222 +2,242 @@
 <html>
 <head>
     <meta charset="utf-8">
+    <title>Inventory Custodian Slip</title>
     <style>
-        html, body {
-            margin: 0;
-            padding: 0;
+        @page { size: A4; margin: 30px 25px 35px 25px; }
+        body {
             font-family: 'Times New Roman', serif;
             font-size: 11px;
-            line-height: 1.2;
             color: #000;
         }
-        .sheet {
-            max-width: 870px;
-            margin: 0 auto;
-            border: 2px solid #000;
-            padding: 32px 30px 26px;
-            position: relative;
-        }
+
+
         .annex {
             position: absolute;
-            top: 18px;
-            right: 30px;
-            font-weight: 700;
-            font-size: 14px;
+            top: 1px;
+            right: 22px;
+            font-weight: bold;
+            font-size: 12px;
         }
+
         .title {
             text-align: center;
-            font-weight: 700;
-            font-size: 18px;
-            letter-spacing: .12em;
-            margin-bottom: 22px;
+            font-weight: bold;
+            font-size: 16px;
+            letter-spacing: 0.04em;
+            margin-bottom: 30px;
         }
-        .entity-details {
-            margin-bottom: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+
+        .meta {
             font-size: 11px;
+            margin-bottom: 8px;
         }
-        .entity-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
+
+        .meta-row {
+            margin-bottom: 6px;
+            line-height: 1.4;
         }
-        .entity-label {
-            font-weight: 700;
-            white-space: nowrap;
-        }
-        .entity-value {
-            flex: 1;
-            border-bottom: 1px solid #000;
-            min-height: 16px;
-            padding: 0 6px 2px;
-        }
-        .entity-meta {
+
+        .meta-row.flex {
             display: flex;
             justify-content: space-between;
-            gap: 16px;
+            align-items: baseline;
         }
-        .entity-meta-item {
+
+        .meta-row.flex > div {
             display: flex;
-            align-items: center;
-            gap: 6px;
+            align-items: baseline;
         }
-        .entity-meta-value {
+
+        .meta-row.flex .right-column {
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .meta .label {
+            font-weight: bold;
+            margin-right: 3px;
+        }
+
+        .value-line {
             border-bottom: 1px solid #000;
-            padding: 0 8px 2px;
-            min-width: 160px;
+            display: inline-block;
+            min-width: 220px;
+            padding-bottom: 2px;
         }
-        .inventory-table {
+
+        .value-line.short {
+            min-width: 140px;
+        }
+
+        table {
             width: 100%;
             border-collapse: collapse;
-            table-layout: fixed;
-        }
-        .inventory-table th,
-        .inventory-table td {
-            border: 1px solid #000;
-            padding: 5px 6px;
-            text-align: center;
-            vertical-align: middle;
-        }
-        .inventory-table th {
-            font-weight: 700;
-        }
-        .inventory-table .description {
-            text-align: left;
-        }
-        .inventory-table .qty { width: 9%; }
-        .inventory-table .unit { width: 9%; }
-        .inventory-table .unit-cost { width: 12%; }
-        .inventory-table .total-cost { width: 13%; }
-        .inventory-table .item-no { width: 14%; }
-        .inventory-table .useful-life { width: 14%; }
-        .total-row {
             margin-top: 10px;
-            display: flex;
-            justify-content: flex-end;
-            font-weight: 700;
-            font-size: 12px;
-            letter-spacing: .06em;
         }
-        .signatures {
-            display: table;
-            width: 100%;
-            border-top: 1px solid #000;
-            border-bottom: 1px solid #000;
-            margin-top: 16px;
+
+        th,
+        td {
+            border: 1px solid #000;
+            padding: 4px 6px;
+            vertical-align: top;
+            word-break: break-word;
         }
-        .signature-block {
-            display: table-cell;
-            width: 50%;
-            padding: 18px 22px 58px;
-            position: relative;
-            border-right: 1px solid #000;
-        }
-        .signature-block:last-child {
-            border-right: none;
-        }
-        .signature-title {
-            font-weight: 700;
-            margin-bottom: 12px;
-            letter-spacing: .06em;
-        }
-        .signature-line {
-            position: absolute;
-            left: 22px;
-            right: 22px;
-            bottom: 70px;
-            border-bottom: 1px solid #000;
-            height: 1px;
-        }
-        .signature-name,
-        .signature-subtitle,
-        .signature-position,
-        .signature-date {
-            position: absolute;
-            left: 0;
-            right: 0;
+
+        th {
             text-align: center;
-            font-size: 10px;
+            font-weight: bold;
         }
-        .signature-name { bottom: 50px; font-weight: 700; font-size: 11px; }
-        .signature-subtitle { bottom: 38px; }
-        .signature-position { bottom: 24px; }
-        .signature-date { bottom: 8px; }
-        .reference {
-            margin-top: 18px;
-            display: table;
-            width: 100%;
+
+        td {
+            text-align: center;
+            height: 24px;
             font-size: 11px;
         }
-        .reference-row {
-            display: table-row;
+
+        td.description {
+            text-align: left;
+            padding-left: 8px;
+            line-height: 1.35;
         }
-        .reference-cell {
-            display: table-cell;
-            padding: 4px 6px 0;
-        }
-        .reference-label {
-            font-weight: 700;
+
+        .qty { width: 6%; }
+        .unit { width: 8%; }
+        .unit-cost { width: 11%; }
+        .total-cost { width: 11%; }
+        .description { width: 38%; }
+        .item-no { width: 13%; }
+        .useful-life { width: 13%; }
+
+        .total {
+            font-weight: bold;
+            text-align: right;
+            padding-top: 8px;
             margin-right: 4px;
-            white-space: nowrap;
+            width: 100%;
+        }
+
+        .total-row {
+            display: table;
+            width: 100%;
+            table-layout: fixed;
+            margin-top: 8px;
+            border-spacing: 0;
+        }
+
+        .total-cell {
+            display: table-cell;
+            text-align: center;
+            vertical-align: middle;
+            padding: 4px 6px;
+        }
+
+        .total-cell:nth-child(1) { width: 6%; border-right: 1px solid transparent; }
+        .total-cell:nth-child(2) { width: 8%; border-right: 1px solid transparent; }
+        .total-cell:nth-child(3) { 
+            width: 11%;
+            font-weight: bold;
+            border-right: 1px solid transparent;
+        }
+        .total-cell:nth-child(4) { 
+            width: 11%; 
+            font-weight: bold;
+            border-right: 1px solid transparent;
+        }
+        .total-cell:nth-child(5) { width: 38%; border-right: 1px solid transparent; }
+        .total-cell:nth-child(6) { width: 13%; border-right: 1px solid transparent; }
+        .total-cell:nth-child(7) { width: 13%; }
+
+        .signatures {
+            width: 100%;
+            border-top: 1px solid #000;
+            margin-top: 16px;
+            padding-top: 12px;
+            display: table;
+        }
+
+        .sig-block {
+            display: table-cell;
+            width: 50%;
+            padding: 0 10px;
+            vertical-align: top;
+        }
+
+        .sig-label {
+            text-align: left;
+            font-weight: bold;
+            margin-bottom: 35px;
+            font-size: 11px;
+        }
+
+        .sig-line {
+            width: 100%;
+            border-bottom: 1px solid #000;
+            margin-bottom: 3px;
+        }
+
+        .sig-name {
+            font-weight: bold;
+            font-size: 11px;
+            text-align: center;
+            margin-bottom: 2px;
+        }
+
+        .sig-subtext {
+            font-size: 10px;
+            line-height: 1.4;
+            text-align: center;
+            color: #c00;
+        }
+        
+        .sig-subtext.position {
+            color: #000;
         }
     </style>
 </head>
 <body>
-    @php
-        $items = collect($items ?? [])->values();
-        $displayRows = $items->map(function ($item) {
-            return [
-                'quantity' => $item['quantity'] ?? '',
-                'unit' => $item['unit'] ?? '',
-                'unit_cost' => $item['unit_cost'] ?? '',
-                'total_cost' => $item['total_cost'] ?? '',
-                'description' => $item['description'] ?? '',
-                'item_no' => $item['item_no'] ?? '',
-                'useful_life' => $item['useful_life'] ?? '',
-            ];
-        });
-
-        $minimumRows = 7;
-        while ($displayRows->count() < $minimumRows) {
-            $displayRows->push([
-                'quantity' => '',
-                'unit' => '',
-                'unit_cost' => '',
-                'total_cost' => '',
-                'description' => '',
-                'item_no' => '',
-                'useful_life' => '',
-            ]);
-        }
-
-        $grandTotal = $grand_total ?? $items->sum('total_cost');
-    @endphp
-
-    <div class="sheet">
+    <div class="wrapper">
         <div class="annex">Annex A.3</div>
+
         <div class="title">INVENTORY CUSTODIAN SLIP</div>
 
-        <div class="entity-details">
-            <div class="entity-row">
-                <span class="entity-label">Entity Name :</span>
-                <span class="entity-value">{{ $entity_name ?? 'Camarines Norte State College' }}</span>
-            </div>
-            <div class="entity-meta">
-                <div class="entity-meta-item">
-                    <span class="entity-label">Fund Cluster :</span>
-                    <span class="entity-meta-value">{{ $fund_cluster }}</span>
+        <div class="meta">
+            <div class="meta-row flex">
+                <div>
+                    <span class="label">Entity Name :</span>
+                    <span class="value-line">{{ $entity_name ?? '' }}</span>
                 </div>
-                <div class="entity-meta-item">
-                    <span class="entity-label">ICS No. :</span>
-                    <span class="entity-meta-value">{{ $ics_number }}</span>
+            </div>
+            <div class="meta-row flex">
+                <div>
+                    <span class="label">Fund Cluster :</span>
+                    <span class="value-line">{{ $fund_cluster ?? '' }}</span>
+                </div>
+                <div class="right-column">
+                    <span class="label">ICS No. :</span>
+                    <span class="value-line short">{{ $ics_number ?? '' }}</span>
                 </div>
             </div>
         </div>
 
-        <table class="inventory-table">
+        @php
+            $renderItems = $items;
+            $minimumRows = 10;
+            $currentCount = count($renderItems);
+            for ($i = $currentCount; $i < $minimumRows; $i++) {
+                $renderItems[] = [
+                    'quantity' => '',
+                    'unit' => '',
+                    'unit_cost' => '',
+                    'total_cost' => '',
+                    'description' => '',
+                    'item_no' => '',
+                    'useful_life' => '',
+                ];
+            }
+        @endphp
+
+        <table>
             <thead>
                 <tr>
                     <th rowspan="2" class="qty">Quantity</th>
@@ -233,43 +253,53 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($displayRows as $row)
-                    <tr>
-                        <td>{{ $row['quantity'] !== '' ? number_format((float) $row['quantity'], 2) : '' }}</td>
-                        <td>{{ $row['unit'] }}</td>
-                        <td>{{ $row['unit_cost'] !== '' ? number_format((float) $row['unit_cost'], 2) : '' }}</td>
-                        <td>{{ $row['total_cost'] !== '' ? number_format((float) $row['total_cost'], 2) : '' }}</td>
-                        <td class="description">{{ $row['description'] }}</td>
-                        <td>{{ $row['item_no'] }}</td>
-                        <td>{{ $row['useful_life'] }}</td>
-                    </tr>
+                @foreach($renderItems as $entry)
+                <tr>
+                    <td>{{ $entry['quantity'] }}</td>
+                    <td>{{ $entry['unit'] }}</td>
+                    <td>{{ $entry['unit_cost'] === '' ? '' : number_format((float) $entry['unit_cost'], 2) }}</td>
+                    <td>{{ $entry['total_cost'] === '' ? '' : number_format((float) $entry['total_cost'], 2) }}</td>
+                    <td class="description">{!! $entry['description'] === '' ? '&nbsp;' : nl2br(e($entry['description'])) !!}</td>
+                    <td>{{ $entry['item_no'] }}</td>
+                    <td>{{ $entry['useful_life'] }}</td>
+                </tr>
                 @endforeach
+                <tr class="total-row-table">
+                    <td></td>
+                    <td></td>
+                    <td style="font-weight: bold;">TOTAL</td>
+                    <td style="font-weight: bold;">{{ number_format($grand_total, 2) }}</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
             </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="7" style="border-left: none; border-right: none; border-bottom: none; border-top: 1px solid #000; padding: 12px 0;">
+                        <div class="signatures" style="border-top: none; margin-top: 0;">
+                            <div class="sig-block">
+                                <div class="sig-label">Received from :</div>
+                                <div class="sig-line"></div>
+                                <div class="sig-name">{{ $received_from ?? 'ARSENIO GEM A. GARCILLANOSA' }}</div>
+                                <div class="sig-subtext">Signature Over Printed Name</div>
+                                <div class="sig-subtext position">{{ $received_from_position ?? 'Supply Officer III/Admin Officer V' }}</div>
+                                <div class="sig-subtext position">{{ $received_from_date ?? '' }}</div>
+                            </div>
+
+                            <div class="sig-block">
+                                <div class="sig-label">Received by:</div>
+                                <div class="sig-line"></div>
+                                <div class="sig-name">{{ $received_by ?? '' }}</div>
+                                <div class="sig-subtext">Signature Over Printed Name</div>
+                                <div class="sig-subtext position">{{ $received_by_position ?? '' }}</div>
+                                <div class="sig-subtext position">{{ $received_by_date ?? '' }}</div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </tfoot>
         </table>
-
-        <div class="total-row">
-            <span style="margin-right: 12px;">TOTAL</span>
-            <span>{{ number_format((float) $grandTotal, 2) }}</span>
-        </div>
-
-        <div class="signatures">
-            <div class="signature-block">
-                <div class="signature-title">Received from :</div>
-                <div class="signature-line"></div>
-                <div class="signature-name">{{ $received_from }}</div>
-                <div class="signature-subtitle">Signature Over Printed Name</div>
-                <div class="signature-position">{{ $received_from_position }}</div>
-                <div class="signature-date">Date: {{ $received_from_date ? \Carbon\Carbon::parse($received_from_date)->format('F d, Y') : '' }}</div>
-            </div>
-            <div class="signature-block">
-                <div class="signature-title">Received by:</div>
-                <div class="signature-line"></div>
-                <div class="signature-name">{{ $received_by }}</div>
-                <div class="signature-subtitle">Signature Over Printed Name</div>
-                <div class="signature-position">{{ $received_by_position }}</div>
-                <div class="signature-date">Date: {{ $received_by_date ? \Carbon\Carbon::parse($received_by_date)->format('F d, Y') : '' }}</div>
-            </div>
-        </div>
     </div>
 </body>
 </html>
