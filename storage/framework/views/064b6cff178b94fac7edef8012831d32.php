@@ -41,11 +41,11 @@
 
 	<table class="meta-row" style="margin-bottom:6px;">
 		<tr>
-			<td class="meta-left"><strong>Entity Name :</strong> {{ $entityName ?? '____________________________________' }}</td>
+			<td class="meta-left"><strong>Entity Name :</strong> <?php echo e($entityName ?? '____________________________________'); ?></td>
 		</tr>
 		<tr>
-			<td class="meta-left"><strong>Fund Cluster:</strong> {{ $fundCluster ?? '____________________________________' }}</td>
-            <td class="meta-right"><strong>PAR No.:</strong> {{ $parNo ?? '_______________' }}</td>
+			<td class="meta-left"><strong>Fund Cluster:</strong> <?php echo e($fundCluster ?? '____________________________________'); ?></td>
+            <td class="meta-right"><strong>PAR No.:</strong> <?php echo e($parNo ?? '_______________'); ?></td>
 		</tr>
 	</table>
 
@@ -61,8 +61,8 @@
 			</tr>
 		</thead>
 		<tbody>
-			{{-- Provide a number of empty rows to fill out the receipt when printed --}}
-			@for ($i = 0; $i < ($rows ?? 20); $i++)
+			
+			<?php for($i = 0; $i < ($rows ?? 20); $i++): ?>
 			<tr>
 				<td>&nbsp;</td>
 				<td>&nbsp;</td>
@@ -71,7 +71,7 @@
 				<td>&nbsp;</td>
 				<td>&nbsp;</td>
 			</tr>
-			@endfor
+			<?php endfor; ?>
 		</tbody>
 		<tfoot>
 			<tr>
@@ -79,26 +79,26 @@
 					<div><strong>Received by:</strong></div>
 					<div style="height:60px;"></div>
 					<div class="sign-line"></div>
-					<div style="margin-top:4px;">{{ $receivedByName ?? '_______________________________________' }}</div>
+					<div style="margin-top:4px;"><?php echo e($receivedByName ?? '_______________________________________'); ?></div>
 					<div class="small">Signature over Printed Name of End User</div>
 					<div style="height:6px;"></div>
-					<div>{{ $receivedByPosition ?? '__________________________________' }}</div>
+					<div><?php echo e($receivedByPosition ?? '__________________________________'); ?></div>
 					<div class="small">Position/Office</div>
 					<div style="height:6px;"></div>
-					<div>{{ $receivedDate ?? '_________________' }}</div>
+					<div><?php echo e($receivedDate ?? '_________________'); ?></div>
 					<div class="small">Date</div>
 				</td>
 				<td colspan="3" style="vertical-align: top; padding: 12px 6px;">
 					<div><strong>Issued by:</strong></div>
 					<div style="height:60px;"></div>
 					<div class="sign-line"></div>
-					<div style="margin-top:4px;">{{ $issuedByName ?? '________________________________________' }}</div>
+					<div style="margin-top:4px;"><?php echo e($issuedByName ?? '________________________________________'); ?></div>
 					<div class="small">Signature over Printed Name of Supply and/or Property Custodian</div>
 					<div style="height:6px;"></div>
-					<div>{{ $issuedByPosition ?? '_______________________________' }}</div>
+					<div><?php echo e($issuedByPosition ?? '_______________________________'); ?></div>
 					<div class="small">Position/Office</div>
 					<div style="height:6px;"></div>
-					<div>{{ $issuedDate ?? '_________________' }}</div>
+					<div><?php echo e($issuedDate ?? '_________________'); ?></div>
 					<div class="small">Date</div>
 				</td>
 			</tr>
@@ -108,3 +108,4 @@
 </body>
 </html>
 
+<?php /**PATH C:\xampp\htdocs\SupplySystem\resources\views/pdf/property_acknowledge_report_pdf.blade.php ENDPATH**/ ?>

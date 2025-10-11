@@ -23,34 +23,45 @@
 
     /* Info table */
     .info-table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
-    .info-table.compact { margin-bottom: 2px; }
+    /* Increased compact margin to create more vertical space before the items table */
+    .info-table.compact { margin-bottom: 12px; }
     .info-table td { padding: 2px 6px; font-size: 9.5pt; vertical-align: bottom; }
     .info-table .label { width: 14%; font-weight: normal; padding-right:4px; }
     .info-table .field { border-bottom: 1px solid #000; padding-bottom:2px; }
 
         /* Items table */
-        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; table-layout: fixed; }
+    /* Add top margin so the items table is visually separated from the info table above */
+    .items-table { width: 100%; border-collapse: collapse; margin: 8px 0 6px 0; table-layout: fixed; }
         .items-table thead td { border: none; padding: 4px 6px; font-size: 9pt; }
         .items-table thead tr + tr td { border-top: none; }
         .items-table, .items-table th, .items-table td { border: 1px solid #000; }
         .items-table th, .items-table td { padding: 6px; font-size: 10pt; }
-    .items-table th { background: transparent; font-weight: bold; text-align: center; }
+    .items-table th { background: #f2f2f2; font-weight: bold; text-align: center; }
 
     /* Column widths (percentage-based for consistency) */
         .stock-col { width: 12%; text-align: center; }
-    .description-col { width: 52%; text-align: left; padding-left: 8px; }
+    /* Center description cells horizontally and vertically for clearer PDF layout */
+    .description-col { width: 52%; text-align: center; padding-left: 0; vertical-align: middle; }
         .unit-col { width: 12%; text-align: right; }
         .quantity-col { width: 12%; text-align: right; }
 
-    /* Keep the description header left-aligned while other headers are centered */
-    .items-table th.description-col { text-align: left; padding-left: 8px; }
+    /* Description header centered to match cell alignment */
+    .items-table th.description-col { text-align: center; padding-left: 0; vertical-align: middle; }
+
+    /* Vertically center all table cells to improve appearance in PDF */
+    .items-table th, .items-table td { vertical-align: middle; }
 
         /* Ensure rows have consistent height for better PDF rendering */
         .items-table tbody td { height: 26px; }
 
-        /* Footer (inspection / acceptance) inside items table */
-        .items-table tfoot { border-collapse: collapse; margin-top: 6px; }
-        .items-table tfoot td { border: 1px solid #000; padding: 10px 12px; vertical-align: top; min-height: 140px; }
+    /* Footer (inspection / acceptance) inside items table */
+    .items-table tfoot { border-collapse: collapse; margin-top: 6px; }
+    /* tfoot header cells (label row) */
+    .items-table tfoot th { text-align: center; font-weight: bold; padding: 6px 8px; border: none; }
+    /* Vertical divider between Inspection and Acceptance in tfoot */
+    .items-table tfoot th:first-child { border-right: 1px solid #000; }
+    .items-table tfoot td { border: 1px solid #000; padding: 10px 12px; vertical-align: top; min-height: 140px; }
+    .items-table tfoot td:first-child { border-right: 1px solid #000; }
         .inspection-section, .acceptance-section { /* kept for inner structure, no extra borders */ padding: 0; margin: 0; border: 0; display:flex; flex-direction:column; justify-content:space-between; }
         .signature-block { text-align:center; margin-top:8px; }
         .section-title { font-weight: bold; text-align: center; margin-bottom: 6px; }
@@ -150,9 +161,12 @@
 
         <tfoot>
             <tr>
+                <th colspan="2">INSPECTION</th>
+                <th colspan="2">ACCEPTANCE</th>
+            </tr>
+            <tr>
                 <td colspan="2" style="vertical-align: top;">
                     <div class="inspection-section">
-                        <div class="section-title">INSPECTION</div>
                         <div class="date-field">
                             <strong>Date Inspected :</strong> {{ $dateInspected ?? '' }}
                         </div>
@@ -161,13 +175,12 @@
                             <span>Inspected, verified and found in order as to quantity and specifications</span>
                         </div>
                         <div class="signature-block">
-                            <div class="signature-line">{{ $inspectionOfficerLabel ?? '' }}</div>
+                            <div class="signature-line">{{ $inspectionOfficerLabel ?? 'Inspection Officer / Inspection Committee' }}</div>
                         </div>
                     </div>
                 </td>
                 <td colspan="2" style="vertical-align: top;">
                     <div class="acceptance-section">
-                        <div class="section-title">ACCEPTANCE</div>
                         <div class="date-field">
                             <strong>Date Received :</strong> {{ $dateReceived ?? '' }}
                         </div>
@@ -180,7 +193,7 @@
                             <span>Partial (pls. specify quantity)</span>
                         </div>
                         <div class="signature-block">
-                            <div class="signature-line">{{ $custodianLabel ?? '' }}</div>
+                            <div class="signature-line">{{ $custodianLabel ?? 'Supply and/or Property Custodian' }}</div>
                         </div>
                     </div>
                 </td>

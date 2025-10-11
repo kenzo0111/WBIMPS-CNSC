@@ -4308,6 +4308,26 @@ function openViewForms(triggerEl, requestId) {
       .chooser-close-btn:active {
         transform: translateY(1px);
       }
+
+      /* Global chooser link style used by request forms chooser */
+      .chooser-link {
+        display: block;
+        padding: 8px 10px;
+        border-radius: 6px;
+        color: #0f172a;
+        text-decoration: none;
+        border: 1px solid rgba(15,23,42,0.06);
+        transition: background 120ms ease, transform 60ms ease, box-shadow 120ms ease;
+        background: #ffffff;
+      }
+      .chooser-link:hover {
+        background: #f3f4f6;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 18px rgba(2,6,23,0.06);
+      }
+      .chooser-link:active {
+        transform: translateY(1px);
+      }
     `
     document.head.appendChild(css)
   }
@@ -4349,12 +4369,12 @@ function openViewForms(triggerEl, requestId) {
     <div style="display:flex;flex-direction:column;gap:10px;min-width:220px;">
       <div id="${headingId}" style="font-weight:700;font-size:14px;color:#0f172a;">View / Open</div>
       <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px;">
-        <a href="${poHref}" target="_blank" rel="noopener" style="padding:8px 10px;border-radius:6px;color:#0f172a;text-decoration:none;border:1px solid rgba(15,23,42,0.06);">Purchase Order (PO)</a>
-        <a href="${prHref}" target="_blank" rel="noopener" style="padding:8px 10px;border-radius:6px;color:#0f172a;text-decoration:none;border:1px solid rgba(15,23,42,0.06);">Purchase Request (PR)</a>
-  <a href="${icsHref}" target="_blank" rel="noopener" style="padding:8px 10px;border-radius:6px;color:#0f172a;text-decoration:none;border:1px solid rgba(15,23,42,0.06);">Inventory Custodian Slip (ICS)</a>
-  <a href="${risHref}" target="_blank" rel="noopener" style="padding:8px 10px;border-radius:6px;color:#0f172a;text-decoration:none;border:1px solid rgba(15,23,42,0.06);">Requisition &amp; Issue Slip (RIS)</a>
-  <a href="${parHref}" target="_blank" rel="noopener" style="padding:8px 10px;border-radius:6px;color:#0f172a;text-decoration:none;border:1px solid rgba(15,23,42,0.06);">Property Acknowledgement Receipt (PAR)</a>
-  <a href="${iarHref}" target="_blank" rel="noopener" style="padding:8px 10px;border-radius:6px;color:#0f172a;text-decoration:none;border:1px solid rgba(15,23,42,0.06);">Inspection &amp; Acceptance Report (IAR)</a>
+    <a class="chooser-link" href="${poHref}" target="_blank" rel="noopener">Purchase Order (PO)</a>
+    <a class="chooser-link" href="${prHref}" target="_blank" rel="noopener">Purchase Request (PR)</a>
+  <a class="chooser-link" href="${icsHref}" target="_blank" rel="noopener">Inventory Custodian Slip (ICS)</a>
+  <a class="chooser-link" href="${risHref}" target="_blank" rel="noopener">Requisition &amp; Issue Slip (RIS)</a>
+  <a class="chooser-link" href="${parHref}" target="_blank" rel="noopener">Property Acknowledgement Receipt (PAR)</a>
+  <a class="chooser-link" href="${iarHref}" target="_blank" rel="noopener">Inspection &amp; Acceptance Report (IAR)</a>
       </div>
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;">
         <button type="button" class="chooser-close-btn" id="chooser-close">Close</button>

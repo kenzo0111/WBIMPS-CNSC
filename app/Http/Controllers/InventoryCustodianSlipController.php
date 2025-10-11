@@ -68,8 +68,8 @@ class InventoryCustodianSlipController extends Controller
 
         $payload['items'] = $items;
         $payload['grand_total'] = collect($items)->sum('total_cost');
-        $payload['entity_name'] = $payload['entity_name'] ?? 'Camarines Norte State College';
-        $payload['fund_cluster'] = $payload['fund_cluster'] ?? '05-Internally Generated Fund';
+        $payload['entity_name'] = $payload['entity_name'] ?? '';
+        $payload['fund_cluster'] = $payload['fund_cluster'] ?? '';
 
         return $payload;
     }

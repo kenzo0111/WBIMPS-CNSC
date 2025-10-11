@@ -8,6 +8,8 @@ use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\InspectionAcceptanceReportController;
 use App\Http\Controllers\InventoryCustodianSlipController;
 use App\Http\Controllers\RequisitionIssueSlipController;
+use App\Http\Controllers\PropertyAcknowledgementReceiptController;
+use App\Http\Controllers\PdfPreviewController;
 
 Route::get('/', function () {
     return auth()->check()
@@ -28,6 +30,9 @@ Route::post('/inventory-custodian-slip/generate', [InventoryCustodianSlipControl
 Route::get('/inventory-custodian-slip/preview', [InventoryCustodianSlipController::class, 'preview'])->name('inventory-custodian-slip.preview');
 Route::post('/requisition-issue-slip/generate', [RequisitionIssueSlipController::class, 'generatePDF'])->name('requisition-issue-slip.generate');
 Route::get('/requisition-issue-slip/preview', [RequisitionIssueSlipController::class, 'preview'])->name('requisition-issue-slip.preview');
+
+// PDF preview routes (development/testing)
+Route::get('/pdf/preview/appendix71', [PdfPreviewController::class, 'previewAppendix71'])->name('pdf.preview.appendix71');
 
 Route::middleware('auth')->group(function () {
     Route::get('/contact-support', function () { return view('contact-support'); })->name('contact.support');
