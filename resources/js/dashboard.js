@@ -1,5 +1,7 @@
 // Dashboard JavaScript Application
 
+import { jsPDF } from 'jspdf'
+
 // Safety fallbacks: if some edits were reverted or partial bundles loaded,
 // define minimal fallbacks to prevent ReferenceErrors at runtime.
 // Use safe checks against the window object to avoid referencing
@@ -2404,12 +2406,7 @@ function generateNewRequestPage() {
                         <tr>
                             <td>${request.id}</td>
                             <td>
-                                <button class="link" onclick="openPurchaseOrderModal('view', '${
-                                  request.id
-                                }')"
-                                    style="background: none; border: none; color: #dc2626; text-decoration: underline; cursor: pointer;">
-                                    ${request.poNumber}
-                                </button>
+                                ${request.poNumber}
                             </td>
                             <td>${request.supplier}</td>
                             <td>${request.requestDate}</td>
@@ -2424,16 +2421,16 @@ function generateNewRequestPage() {
                             <td>${request.department}</td>
                             <td>
                                 <div class="table-actions">
-                                    <button class="icon-action-btn" title="View" onclick="openPurchaseOrderModal('view', '${
-                                      request.id
-                                    }')">
-                                        <i data-lucide="eye"></i>
-                                    </button>
-                                    <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openPurchaseOrderModal('edit', '${
-                                      request.id
-                                    }')">
-                                        <i data-lucide="edit"></i>
-                                    </button>
+                  <button class="icon-action-btn" title="View" onclick="openViewForms(this, '${
+                    request.id
+                  }')">
+                    <i data-lucide="eye"></i>
+                  </button>
+                  <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openPurchaseOrderModal('edit', '${
+                    request.id
+                  }')">
+                    <i data-lucide="edit"></i>
+                  </button>
                                     <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteRequest('${
                                       request.id
                                     }')">
@@ -2569,12 +2566,7 @@ function generatePendingApprovalPage() {
                                 <tr>
                                     <td>${request.id}</td>
                                     <td>
-                                        <button class="link" onclick="openPurchaseOrderModal('view', '${
-                                          request.id
-                                        }')"
-                                            style="background: none; border: none; color: #dc2626; text-decoration: underline; cursor: pointer;">
-                                            ${request.poNumber || '-'}
-                                        </button>
+                                        ${request.poNumber || '-'}
                                     </td>
                                     <td>${request.supplier || '-'}</td>
                                     <td>${request.deliveryDate || '-'}</td>
@@ -2613,16 +2605,16 @@ function generatePendingApprovalPage() {
                                     }</td>
                                     <td>
                                         <div class="table-actions">
-                                            <button class="icon-action-btn" title="View" onclick="openPurchaseOrderModal('view', '${
-                                              request.id
-                                            }')">
-                                                <i data-lucide="eye"></i>
-                                            </button>
-                                            <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openPurchaseOrderModal('edit', '${
-                                              request.id
-                                            }')">
-                                                <i data-lucide="edit"></i>
-                                            </button>
+                      <button class="icon-action-btn" title="View" onclick="openViewForms(this, '${
+                        request.id
+                      }')">
+                        <i data-lucide="eye"></i>
+                      </button>
+                      <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openPurchaseOrderModal('edit', '${
+                        request.id
+                      }')">
+                        <i data-lucide="edit"></i>
+                      </button>
                                             <button class="icon-action-btn icon-action-success" title="Approve" onclick="approveRequest('${
                                               request.id
                                             }')">
@@ -2744,12 +2736,7 @@ function generateCompletedRequestPage() {
                                 <tr>
                                     <td>${request.id}</td>
                                     <td>
-                                        <button class="link" onclick="openPurchaseOrderModal('view', '${
-                                          request.id
-                                        }')"
-                                            style="background: none; border: none; color: #dc2626; text-decoration: underline; cursor: pointer;">
-                                            ${request.poNumber}
-                                        </button>
+                                        ${request.poNumber}
                                     </td>
                                     <td>${request.supplier}</td>
                                     <td>${formatCurrency(
@@ -2768,14 +2755,12 @@ function generateCompletedRequestPage() {
                                     <td>${request.deliveredDate || '-'}</td>
                                     <td>
                                         <div class="table-actions">
-                                            <button class="icon-action-btn" title="View" onclick="openPurchaseOrderModal('view', '${
-                                              request.id
-                                            }')">
-                                                <i data-lucide="eye"></i>
-                                            </button>
-                                            <button class="icon-action-btn icon-action-success" title="Download PO" onclick="showPODownloadChooser(event, '${
-                                              request.id
-                                            }')">
+                      <button class="icon-action-btn" title="View" onclick="openViewForms(this, '${
+                        request.id
+                      }')">
+                        <i data-lucide="eye"></i>
+                      </button>
+                                            <button class="icon-action-btn" title="Download">
                                                 <i data-lucide="download"></i>
                                             </button>
                                             <button class="icon-action-btn icon-action-warning" title="Archive" onclick="archiveRequest('${
@@ -4132,6 +4117,364 @@ function closePurchaseOrderModal() {
   modal.classList.remove('active')
   AppState.currentModal = null
 }
+
+// New: render a compact "View Forms" UI into the existing purchase-order-modal
+function openRequestViewForms(requestId) {
+  const modal = document.getElementById('purchase-order-modal')
+  const modalContent = modal.querySelector('.modal-content')
+
+  const request =
+    AppState.newRequests.find((r) => r.id === requestId) ||
+    AppState.pendingRequests.find((r) => r.id === requestId) ||
+    AppState.completedRequests.find((r) => r.id === requestId) ||
+    null
+
+  // Build a forms table similar to the screenshot provided by user
+  modalContent.innerHTML = `
+    <div class="modal-header">
+      <h2 class="modal-title">Request Forms - ${requestId}</h2>
+      <button class="modal-close" onclick="closePurchaseOrderModal()">
+        <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="table-responsive">
+        <table class="table view-forms-table" style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="width:10%;">STOCK #</th>
+              <th style="width:8%;">UNIT</th>
+              <th style="width:24%;">DESCRIPTION</th>
+              <th style="width:24%;">DETAILED DESCRIPTION</th>
+              <th style="width:8%;">QTY</th>
+              <th style="width:8%;">UNIT COST</th>
+              <th style="width:8%;">AMOUNT</th>
+              <th style="width:8%;">FORMS</th>
+              <th style="width:6%;">ACTION</th>
+            </tr>
+          </thead>
+          <tbody id="viewforms-rows">
+            <!-- If request exists and has items, render them; otherwise show an empty row for display -->
+            ${
+              request && request.items && request.items.length
+                ? request.items
+                    .map(
+                      (it, idx) => `
+            <tr>
+              <td><input class="form-input" value="${it.stock || ''}" /></td>
+              <td><input class="form-input" value="${it.unit || ''}" /></td>
+              <td><input class="form-input" value="${it.name || ''}" /></td>
+              <td><input class="form-input" value="${
+                it.description || ''
+              }" /></td>
+              <td><input class="form-input" value="${it.quantity || ''}" /></td>
+              <td><input class="form-input" value="${
+                it.unitCost || '0.00'
+              }" /></td>
+              <td><strong>${formatCurrency(
+                (it.quantity || 0) * (it.unitCost || 0)
+              )}</strong></td>
+              <td>
+                <label class="form-checkbox"><input type="checkbox" ${
+                  it.forms?.includes('ICS') ? 'checked' : ''
+                }/> ICS</label>
+                <label class="form-checkbox"><input type="checkbox" ${
+                  it.forms?.includes('RIS') ? 'checked' : ''
+                }/> RIS</label>
+                <label class="form-checkbox"><input type="checkbox" ${
+                  it.forms?.includes('PAR') ? 'checked' : ''
+                }/> PAR</label>
+                <label class="form-checkbox"><input type="checkbox" ${
+                  it.forms?.includes('IAR') ? 'checked' : ''
+                }/> IAR</label>
+              </td>
+              <td><button class="icon-action-btn icon-action-danger" onclick="(function(){ const tr=this.closest('tr'); tr.remove(); })()"><i data-lucide="trash-2"></i></button></td>
+            </tr>
+            `
+                    )
+                    .join('')
+                : `
+            <tr>
+              <td><input class="form-input" placeholder="e.g., 1"/></td>
+              <td><input class="form-input" placeholder="Unit"/></td>
+              <td><input class="form-input" placeholder="Item name"/></td>
+              <td><input class="form-input" placeholder="Detailed description"/></td>
+              <td><input class="form-input" placeholder="Qty"/></td>
+              <td><input class="form-input" placeholder="0.00"/></td>
+              <td><strong>₱0.00</strong></td>
+              <td>
+                <label class="form-checkbox"><input type="checkbox"/> ICS</label>
+                <label class="form-checkbox"><input type="checkbox"/> RIS</label>
+                <label class="form-checkbox"><input type="checkbox"/> PAR</label>
+                <label class="form-checkbox"><input type="checkbox"/> IAR</label>
+              </td>
+              <td><button class="icon-action-btn icon-action-danger" onclick="(function(){ const tr=this.closest('tr'); tr.remove(); })()"><i data-lucide="trash-2"></i></button></td>
+            </tr>
+            `
+            }
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+        <div style="padding:12px 20px;background:#f1f8ff;border-radius:6px;">Grand Total: <strong id="viewforms-grandtotal">₱0.00</strong></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closePurchaseOrderModal()">Close</button>
+    </div>
+  `
+
+  // Re-render icons and compute grand total
+  lucide.createIcons()
+  computeViewformsGrandTotal()
+  modal.classList.add('active')
+}
+
+function computeViewformsGrandTotal() {
+  const tbody = document.getElementById('viewforms-rows')
+  if (!tbody) return
+  let total = 0
+  tbody.querySelectorAll('tr').forEach((tr) => {
+    const qty =
+      parseFloat(tr.querySelectorAll('input.form-input')[4]?.value || 0) || 0
+    const unitCost =
+      parseFloat(tr.querySelectorAll('input.form-input')[5]?.value || 0) || 0
+    total += qty * unitCost
+  })
+  const el = document.getElementById('viewforms-grandtotal')
+  if (el) el.textContent = formatCurrency(total)
+}
+
+window.openRequestViewForms = openRequestViewForms
+
+// New: small chooser popover to select forms (ICS, RIS, PAR, IAR) instead of opening modal
+function openViewForms(triggerEl, requestId) {
+  // Improved chooser: viewport-aware positioning, focus management, keyboard handling, ARIA
+  // Save previously focused element so we can restore focus on close
+  const previousActive = document.activeElement
+
+  // Remove any existing chooser first
+  const existing = document.getElementById('request-forms-chooser')
+  if (existing) existing.remove()
+
+  // Find request data
+  const request =
+    AppState.newRequests.find((r) => r.id === requestId) ||
+    AppState.pendingRequests.find((r) => r.id === requestId) ||
+    AppState.completedRequests.find((r) => r.id === requestId) ||
+    null
+
+  const container = document.createElement('div')
+  container.id = 'request-forms-chooser'
+  container.setAttribute('role', 'dialog')
+  container.setAttribute('aria-modal', 'false')
+  const headingId = `request-forms-chooser-title-${Date.now()}`
+  container.setAttribute('aria-labelledby', headingId)
+  container.tabIndex = -1
+
+  // Basic styles + animation-ready
+  container.style.position = 'absolute'
+  container.style.zIndex = 1200
+  container.style.minWidth = '240px'
+  container.style.maxWidth = '320px'
+  container.style.background = 'white'
+  container.style.border = '1px solid rgba(0,0,0,0.08)'
+  container.style.boxShadow = '0 8px 24px rgba(2,6,23,0.12)'
+  container.style.borderRadius = '8px'
+  container.style.padding = '10px'
+  container.style.opacity = '0'
+  container.style.transform = 'translateY(6px)'
+  container.style.transition = 'opacity 160ms ease, transform 160ms ease'
+
+  // Ensure a global, reusable style for chooser close buttons exists
+  if (!document.getElementById('global-chooser-close-style')) {
+    const css = document.createElement('style')
+    css.id = 'global-chooser-close-style'
+    css.textContent = `
+      /* Global chooser close button */
+      .chooser-close-btn {
+        padding: 8px 10px;
+        border-radius: 6px;
+        border: 1px solid rgba(15,23,42,0.06);
+        background: #ffffff;
+        color: #0f172a;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background 120ms ease, transform 60ms ease;
+      }
+      .chooser-close-btn:hover {
+        background: #f3f4f6;
+      }
+      .chooser-close-btn:active {
+        transform: translateY(1px);
+      }
+    `
+    document.head.appendChild(css)
+  }
+
+  // Build helper to resolve route URLs from window.APP_ROUTES if provided, else use sensible fallbacks
+  const baseUrl = (window.APP_ROUTES && window.APP_ROUTES.base) || ''
+  function buildHref(routeKey, fallbackPath) {
+    const r = window.APP_ROUTES && window.APP_ROUTES[routeKey]
+    if (r && typeof r === 'string')
+      return r.replace('{id}', requestId).replace(':id', requestId)
+    // Fallback: replace {id} in fallbackPath and ensure baseUrl prefix
+    return `${baseUrl}${fallbackPath.replace('{id}', requestId)}`
+  }
+
+  const poHref = buildHref('purchaseOrderView', '/purchase-order/view/{id}')
+  const prHref = buildHref('purchaseRequestView', '/purchase-request/view/{id}')
+  const icsHref = buildHref(
+    'inventoryCustodianSlipView',
+    '/inventory-custodian-slip/view/{id}'
+  )
+
+  const iarHref = buildHref(
+    'inspectionAcceptanceReportView',
+    '/inspection-acceptance-report/view/{id}'
+  )
+
+  // New: PAR (Property Acknowledgement Receipt) and RIS (Requisition and Issue Slip) links
+  const parHref = buildHref(
+    'propertyAcknowledgementReceiptView',
+    '/property-acknowledgement-receipt/view/{id}'
+  )
+
+  const risHref = buildHref(
+    'requisitionIssueSlipView',
+    '/requisition-issue-slip/view/{id}'
+  )
+
+  container.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px;min-width:220px;">
+      <div id="${headingId}" style="font-weight:700;font-size:14px;color:#0f172a;">View / Open</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px;">
+        <a href="${poHref}" target="_blank" rel="noopener" style="padding:8px 10px;border-radius:6px;color:#0f172a;text-decoration:none;border:1px solid rgba(15,23,42,0.06);">Purchase Order (PO)</a>
+        <a href="${prHref}" target="_blank" rel="noopener" style="padding:8px 10px;border-radius:6px;color:#0f172a;text-decoration:none;border:1px solid rgba(15,23,42,0.06);">Purchase Request (PR)</a>
+  <a href="${icsHref}" target="_blank" rel="noopener" style="padding:8px 10px;border-radius:6px;color:#0f172a;text-decoration:none;border:1px solid rgba(15,23,42,0.06);">Inventory Custodian Slip (ICS)</a>
+  <a href="${risHref}" target="_blank" rel="noopener" style="padding:8px 10px;border-radius:6px;color:#0f172a;text-decoration:none;border:1px solid rgba(15,23,42,0.06);">Requisition &amp; Issue Slip (RIS)</a>
+  <a href="${parHref}" target="_blank" rel="noopener" style="padding:8px 10px;border-radius:6px;color:#0f172a;text-decoration:none;border:1px solid rgba(15,23,42,0.06);">Property Acknowledgement Receipt (PAR)</a>
+  <a href="${iarHref}" target="_blank" rel="noopener" style="padding:8px 10px;border-radius:6px;color:#0f172a;text-decoration:none;border:1px solid rgba(15,23,42,0.06);">Inspection &amp; Acceptance Report (IAR)</a>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;">
+        <button type="button" class="chooser-close-btn" id="chooser-close">Close</button>
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(container)
+
+  // Positioning: compute and place container within viewport (flip/fit)
+  const triggerRect = triggerEl.getBoundingClientRect()
+  const containerRect = container.getBoundingClientRect()
+  const viewportTop = window.scrollY
+  const viewportBottom = window.scrollY + window.innerHeight
+  const spaceBelow = viewportBottom - (triggerRect.bottom + window.scrollY)
+  const spaceAbove = triggerRect.top + window.scrollY - viewportTop
+
+  // Decide vertical placement
+  let top = triggerRect.bottom + window.scrollY + 8 // default below
+  if (
+    spaceBelow < containerRect.height + 8 &&
+    spaceAbove > containerRect.height + 8
+  ) {
+    // place above
+    top = triggerRect.top + window.scrollY - containerRect.height - 8
+  } else if (spaceBelow < containerRect.height + 8) {
+    // fit in viewport by clamping
+    top = Math.max(viewportTop + 8, viewportBottom - containerRect.height - 8)
+  }
+
+  // Horizontal placement: align to left of trigger but keep inside viewport
+  let left = triggerRect.left + window.scrollX
+  if (left + containerRect.width > window.scrollX + window.innerWidth - 8) {
+    left = window.scrollX + window.innerWidth - containerRect.width - 8
+  }
+  if (left < window.scrollX + 8) left = window.scrollX + 8
+
+  container.style.top = top + 'px'
+  container.style.left = left + 'px'
+
+  // After placement, animate in
+  requestAnimationFrame(() => {
+    container.style.opacity = '1'
+    container.style.transform = 'translateY(0)'
+  })
+
+  // Focus management: focusable are links and buttons inside the chooser
+  const focusableSelector = 'a[href], button'
+  const focusable = Array.from(
+    container.querySelectorAll(focusableSelector)
+  ).filter((el) => !el.disabled)
+  const firstFocusable = focusable[0]
+  const lastFocusable = focusable[focusable.length - 1]
+  if (firstFocusable) firstFocusable.focus()
+
+  // Handlers
+  function closeChooser(returnFocus = true) {
+    // animate out
+    container.style.opacity = '0'
+    container.style.transform = 'translateY(6px)'
+    setTimeout(() => {
+      if (container && container.parentNode)
+        container.parentNode.removeChild(container)
+    }, 160)
+    document.removeEventListener('click', onDocClick)
+    container.removeEventListener('keydown', onKeyDown)
+    if (
+      returnFocus &&
+      previousActive &&
+      typeof previousActive.focus === 'function'
+    )
+      previousActive.focus()
+  }
+
+  function onDocClick(e) {
+    if (!container.contains(e.target) && e.target !== triggerEl) {
+      closeChooser(true)
+    }
+  }
+
+  function onKeyDown(e) {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      closeChooser(true)
+      return
+    }
+    if (e.key === 'Tab') {
+      // Focus trap
+      if (focusable.length === 0) {
+        e.preventDefault()
+        return
+      }
+      const cur = document.activeElement
+      const idx = focusable.indexOf(cur)
+      if (e.shiftKey) {
+        if (idx === 0 || cur === container) {
+          e.preventDefault()
+          lastFocusable.focus()
+        }
+      } else {
+        if (idx === focusable.length - 1) {
+          e.preventDefault()
+          firstFocusable.focus()
+        }
+      }
+    }
+    // Enter on a focused link/button activates normally; no special handling required
+  }
+
+  container.addEventListener('keydown', onKeyDown)
+  // Defer adding doc click so the opening click doesn't trigger close
+  setTimeout(() => document.addEventListener('click', onDocClick), 0)
+
+  // Close button wiring
+  container
+    .querySelector('#chooser-close')
+    ?.addEventListener('click', () => closeChooser(true))
+}
+
+window.openViewForms = openViewForms
 
 // ---------------------- //
 // Purchase Order Wizard  //
@@ -6218,439 +6561,6 @@ async function rejectRequest(requestId) {
   loadPageContent('pending-approval')
 }
 
-// Enhanced: added optional second parameter for clean print (removes toolbar & page title)
-// Usage: downloadPO('PO-123'); // clean by default
-//        downloadPO('PO-123', { clean: false }); // old behaviour with toolbar
-function downloadPO(requestId, opts = {}) {
-  const clean = opts.clean !== undefined ? !!opts.clean : true // default to clean output
-  // Locate request in any collection
-  const request = (AppState.newRequests || [])
-    .concat(AppState.pendingRequests || [], AppState.completedRequests || [])
-    .find((r) => r.id === requestId)
-  if (!request) {
-    showAlert(`Purchase Order ${requestId} not found.`, 'error')
-    return
-  }
-
-  const currentUser = AppState.currentUser || {}
-  const poNumber = request.poNumber || 'PO-UNKNOWN'
-
-  const poData = {
-    supplier: request.supplier || '',
-    poNumber: request.poNumber || '',
-    address: request.supplierAddress || '',
-    dateOfPurchase: request.purchaseDate || request.requestDate || '',
-    tinNumber: request.supplierTIN || '',
-    modeOfPayment: request.procurementMode || '',
-    placeOfDelivery: request.placeOfDelivery || '',
-    deliveryTerm: request.deliveryTerm || '',
-    dateOfDelivery: request.deliveryDate || '',
-    paymentTerm: request.paymentTerm || '',
-    fundCluster: request.fundCluster || '',
-    orsBursNo: request.orsNo || '',
-    fundsAvailable: request.fundsAvailable || '',
-    orsBursDate: request.orsDate || '',
-    orsBursAmount: request.orsAmount || '',
-    notes: request.notes || '',
-    items: (request.items || []).map((it) => ({
-      stockPropertyNumber: it.stockPropertyNumber || '',
-      unit: it.unit || '',
-      description: it.description || it.detailedDescription || '',
-      quantity: it.quantity || 0,
-      unitCost: it.unitCost || 0,
-      amount: it.amount || (it.quantity || 0) * (it.unitCost || 0),
-    })),
-  }
-
-  const signatures = {
-    authorization:
-      currentUser.role && /president/i.test(currentUser.role)
-        ? currentUser.name
-        : '________________________',
-    accountant:
-      currentUser.role && /accountant/i.test(currentUser.role)
-        ? currentUser.name
-        : '________________________',
-    supplier: '________________________',
-  }
-
-  function esc(str) {
-    return String(str || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-  }
-  function fmtMoney(v) {
-    if (v === undefined || v === null || v === '') return ''
-    return (
-      '₱' +
-      Number(v).toLocaleString('en-PH', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })
-    )
-  }
-  function fmtDate(d) {
-    if (!d) return ''
-    const dt = new Date(d)
-    if (isNaN(dt)) return esc(d)
-    return dt.toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    })
-  }
-
-  function buildItems(poData) {
-    const rows = poData.items
-      .map(
-        (it) => `
-            <tr>
-                <td class=\"table-cell-border text-center h-8\">${esc(
-                  it.stockPropertyNumber
-                )}</td>
-                <td class=\"table-cell-border text-center h-8\">${esc(
-                  it.unit
-                )}</td>
-                <td class=\"table-cell-border h-8\">${esc(it.description)}</td>
-                <td class=\"table-cell-border text-center h-8\">${esc(
-                  it.quantity
-                )}</td>
-                <td class=\"table-cell-border text-right h-8\">${
-                  it.unitCost ? fmtMoney(it.unitCost) : ''
-                }</td>
-                <td class=\"table-cell-border-top text-right h-8\">${
-                  it.amount ? fmtMoney(it.amount) : ''
-                }</td>
-            </tr>`
-      )
-      .join('')
-    const min = 8 - poData.items.length
-    const fillers =
-      min > 0
-        ? Array.from({ length: min })
-            .map(
-              () =>
-                '<tr><td class="table-cell-border h-8">&nbsp;</td><td class="table-cell-border h-8">&nbsp;</td><td class="table-cell-border h-8">&nbsp;</td><td class="table-cell-border h-8">&nbsp;</td><td class="table-cell-border h-8">&nbsp;</td><td class="table-cell-border-top h-8">&nbsp;</td></tr>'
-            )
-            .join('')
-        : ''
-    return rows + fillers
-  }
-
-  const grandTotal = poData.items.reduce((s, it) => s + (it.amount || 0), 0)
-
-  function buildHTML(filename) {
-    const titleText = clean ? '' : esc(filename)
-    const toolbarHTML = clean
-      ? ''
-      : `
-                <div class=\"toolbar\">
-                    <span style=\"font-weight:600;\">Purchase Order Export</span>
-                    <label>Filename: <input id=\"po-filename-input\" value='${esc(
-                      filename
-                    )}' style='width:180px'></label>
-                    <button class=\"secondary\" onclick=\"window.print()\">Print / PDF</button>
-                </div>`
-    return `<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><title>${titleText}</title><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><style>
-                @page { size: A4 portrait; margin: 16mm 14mm 18mm 14mm; }
-                html, body { height:100%; }
-                body{margin:0;font-family:'Times New Roman',Times,serif;font-size:10px;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-                .page-wrapper{max-width:210mm;margin:0 auto;}
-                .purchase-order-doc{background:#fff;padding:14px 16px;box-sizing:border-box;}
-                table{border-collapse:collapse;width:100%;}
-                td{vertical-align:top;}
-                .table-cell-border{border-right:1px solid #000;border-top:1px solid #000;padding:4px;}
-                .table-cell-border-right{border-right:1px solid #000;padding:4px;}
-                .table-cell-border-top{border-top:1px solid #000;padding:4px;}
-                .table-border-2{border:2px solid #000;}
-                .text-center{text-align:center;}
-                .font-semibold{font-weight:600;}
-                .font-bold{font-weight:700;}
-                .h-8{height:1.5rem;}
-                .toolbar{position:sticky;top:0;background:#f3f4f6;border-bottom:1px solid #d1d5db;padding:8px 12px;display:flex;gap:8px;align-items:center;font-family:system-ui,Arial,sans-serif;font-size:12px;}
-                .toolbar button{background:#dc2626;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:4px;}
-                .toolbar button.secondary{background:#374151;}
-                .toolbar input{padding:4px 6px;font-size:12px;border:1px solid #d1d5db;border-radius:4px;}
-                @media print{.toolbar{display:none!important}.purchase-order-doc{border:none;padding:0;}.purchase-order-container{padding:0;margin:0;} body{margin:0;} }
-                /* Attempt to neutralize default print headers (user must still disable in dialog for full removal) */
-                </style></head><body>
-                ${toolbarHTML}
-                <div class=\"purchase-order-container page-wrapper\" style=\"padding:0 2mm;\">
-                    <div class=\"purchase-order-doc table-border-2\" style=\"border:1px solid #ccc;font-size:12px;\">
-                        <div style=\"text-align:center;margin-bottom:16px;\"><h1 style=\"font-size:14px;font-weight:700;margin:0 0 6px;\">PURCHASE ORDER</h1><p style=\"font-size:12px;text-decoration:underline;margin:0 0 3px;\">Camarines Norte State College</p><p style=\"font-size:10px;font-style:italic;margin:0;color:#444\">Entity Name</p></div>
-                        <div class=\"table-border-2\" style=\"border:2px solid #000;\"><table style=\"font-size:11px;\"><tbody>
-              <tr><td class=\"table-cell-border-right\" style=\"width:15%;font-weight:700;\">Supplier:</td><td colspan=\"3\" class=\"table-cell-border-right\" style=\"width:45%;\">${esc(
-                poData.supplier
-              )}</td><td class=\"table-cell-border-right\" style=\"width:15%;font-weight:700;\">P.O. No.:</td><td style=\"width:25%;padding:4px;\">${esc(
-      poData.poNumber
-    )}</td></tr>
-              <tr><td class=\"table-cell-border\" style=\"font-weight:700;\">Address:</td><td colspan=\"3\" class=\"table-cell-border-right table-cell-border-top\">${esc(
-                poData.address
-              )}</td><td class=\"table-cell-border-right table-cell-border-top\" style=\"font-weight:700;\">Date:</td><td class=\"table-cell-border-top\">${fmtDate(
-      poData.dateOfPurchase
-    )}</td></tr>
-              <tr><td class=\"table-cell-border\" style=\"font-weight:700;\">TIN:</td><td colspan=\"3\" class=\"table-cell-border-right table-cell-border-top\">${esc(
-                poData.tinNumber
-              )}</td><td class=\"table-cell-border-right table-cell-border-top\" style=\"font-weight:700;\">Mode of Procurement:</td><td class=\"table-cell-border-top\">${esc(
-      poData.modeOfPayment
-    )}</td></tr>
-              <tr><td colspan=\"6\" class=\"table-cell-border-top\" style=\"padding:12px;\"><strong style=\"font-size:12px;\">Gentlemen:</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Please furnish this Office the following articles subject to the terms and conditions contained herein:</td></tr>
-              <tr><td class=\"table-cell-border\" style=\"font-weight:700;\">Place of Delivery:</td><td colspan=\"2\" class=\"table-cell-border-right table-cell-border-top\">${esc(
-                poData.placeOfDelivery
-              )}</td><td class=\"table-cell-border-right table-cell-border-top\" style=\"font-weight:700;\">Delivery Term:</td><td colspan=\"2\" class=\"table-cell-border-top\">${esc(
-      poData.deliveryTerm
-    )}</td></tr>
-              <tr><td class=\"table-cell-border\" style=\"font-weight:700;\">Date of Delivery:</td><td colspan=\"2\" class=\"table-cell-border-right table-cell-border-top\">${fmtDate(
-                poData.dateOfDelivery
-              )}</td><td class=\"table-cell-border-right table-cell-border-top\" style=\"font-weight:700;\">Payment Term:</td><td colspan=\"2\" class=\"table-cell-border-top\">${esc(
-      poData.paymentTerm
-    )}</td></tr>
-              <tr><td class=\"table-cell-border text-center font-semibold\" style=\"width:13%;\">Stock/Property Number</td><td class=\"table-cell-border text-center font-semibold\" style=\"width:8%;\">Unit</td><td class=\"table-cell-border text-center font-semibold\" style=\"width:39%;\">Description</td><td class=\"table-cell-border text-center font-semibold\" style=\"width:10%;\">Quantity</td><td class=\"table-cell-border text-center font-semibold\" style=\"width:15%;\">Unit Cost</td><td class=\"table-cell-border-top text-center font-semibold\" style=\"width:15%;\">Amount</td></tr>
-              ${buildItems(poData)}
-              <tr><td colspan=\"5\" class=\"table-cell-border text-right font-semibold\">Grand Total:</td><td class=\"table-cell-border-top text-right font-bold\">${
-                grandTotal ? fmtMoney(grandTotal) : ''
-              }</td></tr>
-              ${
-                poData.notes
-                  ? `<tr><td class='table-cell-border font-semibold'>Note:</td><td colspan='5' class='table-cell-border-top'>${esc(
-                      poData.notes
-                    )}</td></tr>`
-                  : ''
-              }
-                            <tr>
-                                <td colspan=\"3\" class=\"table-cell-border text-center\" style=\"padding:16px;height:160px;vertical-align:top;\">
-                                    <p style=\"margin-bottom:8px;font-style:italic;font-size:10px;\">In case of failure to make the total delivery within the time specified above, a penalty of one percent (1%) of the total contract price shall be imposed for each day of delay, until the obligation is fully complied with.</p>
-                                    <p style=\"margin-bottom:8px;font-style:italic;font-size:10px;\">Conforme:</p>
-                                    <div style=\"width:192px;margin:0 auto 8px;height:48px;border-bottom:2px solid #dc2626;\"></div>
-                                    <p style=\"font-size:10px;font-style:italic;\">signature over printed name of supplier</p>
-                                    <div style=\"margin-top:12px;display:flex;align-items:center;justify-content:center;\"><span style=\"font-size:10px;margin-right:8px;\">Date:</span><span style=\"border-bottom:1px solid black;display:inline-block;width:80px;padding-bottom:2px;\"></span></div>
-                                </td>
-                                <td colspan=\"3\" class=\"table-cell-border-top text-center\" style=\"padding:16px;height:160px;vertical-align:top;\">
-                                    <div style=\"text-align:center;margin-top:48px;\">
-                                        <p style=\"margin-bottom:8px;font-style:italic;font-size:10px;\">Very truly yours,</p>
-                                        <div style=\"width:192px;margin:0 auto 8px;height:48px;border-bottom:2px solid #dc2626;\"></div>
-                                        <p style=\"font-size:10px;font-style:italic;\">signature over printed name of authorization</p>
-                                        <p style=\"font-size:10px;font-style:italic;\">College President</p>
-                                    </div>
-                                </td>
-                            </tr>
-              <tr><td class=\"table-cell-border font-semibold\" style=\"width:15%;\">Fund Cluster:</td><td class=\"table-cell-border-right table-cell-border-top\" style=\"width:35%;\">${esc(
-                poData.fundCluster
-              )}</td><td class=\"table-cell-border font-semibold\" style=\"width:15%;\">ORS/BURS No.:</td><td colspan=\"3\" class=\"table-cell-border-top\">${esc(
-      poData.orsBursNo
-    )}</td></tr>
-              <tr><td class=\"table-cell-border font-semibold\">Funds Available:</td><td class=\"table-cell-border-right table-cell-border-top\">${esc(
-                poData.fundsAvailable
-              )}</td><td class=\"table-cell-border font-semibold text-center\">Date of ORS/BURS:</td><td class=\"table-cell-border\">${fmtDate(
-      poData.orsBursDate
-    )}</td><td class=\"table-cell-border font-semibold text-center\">Amount:</td><td class=\"table-cell-border-top\">${esc(
-      poData.orsBursAmount
-    )}</td></tr>
-              <tr><td colspan=\"6\" class=\"table-cell-border-top text-center\" style=\"padding:16px;height:80px;vertical-align:bottom;\"><div style=\"height:48px;border-bottom:2px solid #dc2626;margin:0 auto 4px;width:192px;display:flex;align-items:flex-end;justify-content:center;font-size:10px;\">${esc(
-                signatures.accountant
-              )}</div><p style=\"font-size:10px;font-weight:700;margin:4px 0 0;\">Accountant's Signature</p></td></tr>
-            </tbody></table></div>
-          </div>
-        </div>
-        </body></html>`
-  }
-
-  try {
-    const filenameBase = poNumber || 'purchase-order'
-    const html = buildHTML(filenameBase)
-    const w = window.open('', '_blank')
-    if (!w) {
-      showAlert('Popup blocked. Please allow popups for preview.', 'warning')
-      return
-    }
-    w.document.open()
-    w.document.write(html)
-    w.document.close()
-    if (clean) {
-      try {
-        w.document.title = ''
-      } catch (e) {
-        /* ignore */
-      }
-      // Optionally auto-trigger print for clean mode
-      setTimeout(() => {
-        w.print()
-      }, 300)
-    }
-    showAlert('PO preview opened. Use Print / PDF.', 'success')
-  } catch (e) {
-    console.error('PO preview failed', e)
-    showAlert('Failed to open PO preview.', 'error')
-  }
-}
-
-// Server-side PDF download for Purchase Order using `purchase_order_pdf` view
-async function downloadPOServer(requestId) {
-  // Find request data
-  const request = (AppState.newRequests || [])
-    .concat(AppState.pendingRequests || [], AppState.completedRequests || [])
-    .find((r) => r.id === requestId)
-  if (!request) {
-    showAlert(`Purchase Order ${requestId} not found.`, 'error')
-    return
-  }
-
-  // Prepare payload matching Blade view variable names exactly
-  const payload = {
-    supplier: request.supplier || '',
-    supplier_address: request.supplierAddress || request.supplier_address || '',
-    po_number: request.poNumber || request.po_number || requestId,
-    // Normalize date fields: ensure we send ISO date strings or null.
-    date_of_purchase: normalizeDateForServer(
-      request.purchaseDate || request.requestDate || null
-    ),
-    tin_number: request.supplierTIN || request.tin_number || '',
-    mode_of_procurement:
-      request.procurementMode ||
-      request.mode_of_procurement ||
-      request.modeOfPayment ||
-      '',
-    place_of_delivery:
-      request.placeOfDelivery || request.place_of_delivery || '',
-    delivery_term: request.deliveryTerm || request.delivery_term || '',
-    date_of_delivery: normalizeDateForServer(
-      request.deliveryDate || request.date_of_delivery || null
-    ),
-    payment_term: request.paymentTerm || request.payment_term || '',
-    items: (request.items || []).map((it) => ({
-      stock_number:
-        it.stockPropertyNumber || it.stock_number || it.stock_number || '',
-      unit: it.unit || '',
-      description:
-        it.description ||
-        it.detailedDescription ||
-        it.detailed_description ||
-        '',
-      quantity: it.quantity || 0,
-      unit_cost: it.unitCost || it.unit_cost || 0,
-      amount:
-        it.amount !== undefined
-          ? it.amount
-          : (it.quantity || 0) * (it.unitCost || 0),
-    })),
-    fund_cluster: request.fundCluster || request.fund_cluster || '',
-    ors_burs_no: request.orsNo || request.ors_burs_no || '',
-    funds_available: request.fundsAvailable || request.funds_available || '',
-    ors_burs_date: normalizeDateForServer(
-      request.orsDate || request.ors_burs_date || null
-    ),
-    ors_burs_amount: request.orsAmount || request.ors_burs_amount || '',
-    accountant_signature:
-      request.accountantSignature || request.accountant_signature || '',
-    entity_name:
-      (AppState.currentUser && AppState.currentUser.entity_name) ||
-      'Camarines Norte State College',
-    entity_address: request.entityAddress || request.entity_address || '',
-  }
-
-  try {
-    showLoadingModal('Preparing Purchase Order PDF...')
-
-    const response = await fetch('/purchase-order/generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-        'X-CSRF-TOKEN': getCsrfToken(),
-      },
-      body: JSON.stringify(payload),
-    })
-
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}))
-      throw new Error(err.message || 'Failed to generate PDF')
-    }
-
-    // Get blob and trigger download
-    const blob = await response.blob()
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    const filename = `${payload.po_number || 'purchase-order'}.pdf`
-    a.href = url
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    window.URL.revokeObjectURL(url)
-
-    showAlert('Purchase Order PDF downloaded.', 'success')
-  } catch (error) {
-    console.error('downloadPOServer error', error)
-    showAlert(
-      error.message || 'Failed to download Purchase Order PDF.',
-      'error'
-    )
-  } finally {
-    hideLoadingModal()
-  }
-}
-
-// Small chooser UI to let user pick Preview (client) or Download (server PDF)
-function showPODownloadChooser(event, requestId) {
-  event = event || window.event
-  const existing = document.getElementById('po-download-chooser')
-  if (existing) existing.remove()
-
-  const menu = document.createElement('div')
-  menu.id = 'po-download-chooser'
-  menu.style.position = 'absolute'
-  menu.style.zIndex = 9999
-  menu.style.background = '#fff'
-  menu.style.border = '1px solid #ddd'
-  menu.style.padding = '6px'
-  menu.style.borderRadius = '6px'
-  menu.style.boxShadow = '0 6px 18px rgba(0,0,0,0.08)'
-
-  const previewBtn = document.createElement('button')
-  previewBtn.className = 'btn btn-sm'
-  previewBtn.textContent = 'Preview (client)'
-  previewBtn.style.marginRight = '6px'
-  previewBtn.onclick = function (e) {
-    e.stopPropagation()
-    downloadPO(requestId, { clean: true })
-    menu.remove()
-  }
-
-  const downloadBtn = document.createElement('button')
-  downloadBtn.className = 'btn btn-sm btn-primary'
-  downloadBtn.textContent = 'Download PDF (server)'
-  downloadBtn.onclick = function (e) {
-    e.stopPropagation()
-    downloadPOServer(requestId)
-    menu.remove()
-  }
-
-  menu.appendChild(previewBtn)
-  menu.appendChild(downloadBtn)
-
-  document.body.appendChild(menu)
-
-  // position near the clicked element
-  const rect =
-    event.target && event.target.getBoundingClientRect
-      ? event.target.getBoundingClientRect()
-      : event.srcElement && event.srcElement.getBoundingClientRect
-      ? event.srcElement.getBoundingClientRect()
-      : { left: event.clientX, top: event.clientY, width: 0, height: 0 }
-  menu.style.left = rect.left + window.scrollX + 'px'
-  menu.style.top = rect.bottom + window.scrollY + 6 + 'px'
-
-  // Close on outside click
-  function onDocClick(ev) {
-    if (!menu.contains(ev.target)) {
-      menu.remove()
-      document.removeEventListener('click', onDocClick)
-    }
-  }
-  setTimeout(() => document.addEventListener('click', onDocClick), 10)
-}
-
 async function archiveRequest(requestId) {
   console.log('Archiving request:', requestId)
   const ok = await showConfirm(
@@ -6689,9 +6599,6 @@ window.updatePOItemForm = updatePOItemForm
 window.savePurchaseOrder = savePurchaseOrder
 window.approveRequest = approveRequest
 window.rejectRequest = rejectRequest
-window.downloadPO = downloadPO
-window.downloadPOServer = downloadPOServer
-window.showPODownloadChooser = showPODownloadChooser
 window.archiveRequest = archiveRequest
 window.openModal = openModal
 
@@ -11477,7 +11384,6 @@ const exposedFunctions = {
   savePurchaseOrder,
   approveRequest,
   rejectRequest,
-  downloadPO,
   archiveRequest,
   openModal,
   openUserModal,

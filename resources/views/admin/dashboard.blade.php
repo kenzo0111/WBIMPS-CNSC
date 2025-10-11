@@ -17,6 +17,11 @@
         window.APP_ROUTES.login = "{{ route('login') }}";
         window.APP_ROUTES.logout = "{{ route('logout') }}";
         window.APP_ROUTES.dashboard = "{{ route('admin.dashboard') }}";
+    // Patterns for client-side route generation (placeholders: {id} or :id)
+    window.APP_ROUTES.purchaseOrderView = "{{ url('/purchase-order/view/{id}') }}";
+    window.APP_ROUTES.purchaseRequestView = "{{ url('/purchase-request/view/{id}') }}";
+    window.APP_ROUTES.inventoryCustodianSlipView = "{{ url('/inventory-custodian-slip/view/{id}') }}";
+    window.APP_ROUTES.inspectionAcceptanceReportView = "{{ url('/inspection-acceptance-report/view/{id}') }}";
     </script>
     <script>
         window.CURRENT_USER = @json($currentUserData);

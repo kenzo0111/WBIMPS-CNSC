@@ -1,11 +1,19 @@
-@import 'tailwindcss';
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
-@source '../**/*.blade.php';
-@source '../**/*.js';
 
-@theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+/* Global chooser close button */
+.chooser-close-btn {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 120ms ease, transform 60ms ease;
+}
+.chooser-close-btn:hover {
+  background: #f3f4f6;
+}
+.chooser-close-btn:active {
+  transform: translateY(1px);
 }

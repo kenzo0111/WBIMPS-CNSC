@@ -17,6 +17,11 @@
         window.APP_ROUTES.login = "<?php echo e(route('login')); ?>";
         window.APP_ROUTES.logout = "<?php echo e(route('logout')); ?>";
         window.APP_ROUTES.dashboard = "<?php echo e(route('admin.dashboard')); ?>";
+    // Patterns for client-side route generation (placeholders: {id} or :id)
+    window.APP_ROUTES.purchaseOrderView = "<?php echo e(url('/purchase-order/view/{id}')); ?>";
+    window.APP_ROUTES.purchaseRequestView = "<?php echo e(url('/purchase-request/view/{id}')); ?>";
+    window.APP_ROUTES.inventoryCustodianSlipView = "<?php echo e(url('/inventory-custodian-slip/view/{id}')); ?>";
+    window.APP_ROUTES.inspectionAcceptanceReportView = "<?php echo e(url('/inspection-acceptance-report/view/{id}')); ?>";
     </script>
     <script>
         window.CURRENT_USER = <?php echo json_encode($currentUserData, 15, 512) ?>;

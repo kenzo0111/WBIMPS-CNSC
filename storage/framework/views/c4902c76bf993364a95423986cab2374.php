@@ -4,19 +4,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="csrf-token" content="{{ csrf_token() }}" />
+  <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>" />
   <title>SPMO Access System</title>
-  @vite('resources/css/AccessSystem.css')
+  <?php echo app('Illuminate\Foundation\Vite')('resources/css/AccessSystem.css'); ?>
   <script>
     window.APP_ROUTES = window.APP_ROUTES || {};
-    window.APP_ROUTES.login = "{{ route('login') }}";
-    window.APP_ROUTES.loginSubmit = "{{ route('login.perform') }}";
-    window.APP_ROUTES.dashboard = "{{ route('admin.dashboard') }}";
+    window.APP_ROUTES.login = "<?php echo e(route('login')); ?>";
+    window.APP_ROUTES.loginSubmit = "<?php echo e(route('login.perform')); ?>";
+    window.APP_ROUTES.dashboard = "<?php echo e(route('admin.dashboard')); ?>";
   // Patterns for client-side route generation
-  window.APP_ROUTES.purchaseOrderView = "{{ url('/purchase-order/view/{id}') }}";
-  window.APP_ROUTES.purchaseRequestView = "{{ url('/purchase-request/view/{id}') }}";
-  window.APP_ROUTES.inventoryCustodianSlipView = "{{ url('/inventory-custodian-slip/view/{id}') }}";
-  window.APP_ROUTES.inspectionAcceptanceReportView = "{{ url('/inspection-acceptance-report/view/{id}') }}";
+  window.APP_ROUTES.purchaseOrderView = "<?php echo e(url('/purchase-order/view/{id}')); ?>";
+  window.APP_ROUTES.purchaseRequestView = "<?php echo e(url('/purchase-request/view/{id}')); ?>";
+  window.APP_ROUTES.inventoryCustodianSlipView = "<?php echo e(url('/inventory-custodian-slip/view/{id}')); ?>";
   </script>
   <style>
     /* Inline styles for dialogs (centered) */
@@ -147,7 +146,7 @@
   <header>
     <div class="header-container">
       <div class="logo">
-  <img src="{{ $imagesPath }}/cnscrefine.png" alt="CNSC Logo" />
+  <img src="<?php echo e($imagesPath); ?>/cnscrefine.png" alt="CNSC Logo" />
         <div class="logo-text">
           <h1>Supply and Property Management</h1>
           <hr />
@@ -611,4 +610,4 @@
   </script>
 </body>
 
-</html>
+</html><?php /**PATH C:\xampp\htdocs\SupplySystem\resources\views/access-system.blade.php ENDPATH**/ ?>
