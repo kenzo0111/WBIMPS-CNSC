@@ -9,7 +9,6 @@ use App\Http\Controllers\InspectionAcceptanceReportController;
 use App\Http\Controllers\InventoryCustodianSlipController;
 use App\Http\Controllers\RequisitionIssueSlipController;
 use App\Http\Controllers\PropertyAcknowledgementReceiptController;
-use App\Http\Controllers\PdfPreviewController;
 
 Route::get('/', function () {
     return auth()->check()
@@ -31,8 +30,21 @@ Route::get('/inventory-custodian-slip/preview', [InventoryCustodianSlipControlle
 Route::post('/requisition-issue-slip/generate', [RequisitionIssueSlipController::class, 'generatePDF'])->name('requisition-issue-slip.generate');
 Route::get('/requisition-issue-slip/preview', [RequisitionIssueSlipController::class, 'preview'])->name('requisition-issue-slip.preview');
 
+// Human-friendly 'view' endpoints used by the dashboard chooser/popover.
+// These accept an {id} parameter so client-side code can open a specific
+// document preview page. They map to the existing preview actions when
+// available or to dedicated preview controllers.
+Route::get('/purchase-order/view/{id}', [PurchaseOrderController::class, 'preview'])->name('purchaseOrderView');
+Route::get('/purchase-request/view/{id}', [PurchaseRequestController::class, 'preview'])->name('purchaseRequestView');
+Route::get('/inventory-custodian-slip/view/{id}', [InventoryCustodianSlipController::class, 'preview'])->name('inventoryCustodianSlipView');
+Route::get('/requisition-issue-slip/view/{id}', [RequisitionIssueSlipController::class, 'preview'])->name('requisitionIssueSlipView');
+Route::get('/inspection-acceptance-report/view/{id}', [InspectionAcceptanceReportController::class, 'preview'])->name('inspectionAcceptanceReportView');
+// PAR (Property Acknowledgement Receipt) preview handled by a dedicated controller.
+Route::get('/property-acknowledgement-receipt/view/{id}', [\App\Http\Controllers\PropertyAcknowledgementReceiptController::class, 'preview'])->name('propertyAcknowledgementReceiptView');
+
 // PDF preview routes (development/testing)
-Route::get('/pdf/preview/appendix71', [PdfPreviewController::class, 'previewAppendix71'])->name('pdf.preview.appendix71');
+// Appendix 71 preview now handled by the dedicated PropertyAcknowledgementReceiptController
+Route::get('/pdf/preview/appendix71', [PropertyAcknowledgementReceiptController::class, 'preview'])->name('pdf.preview.appendix71');
 
 Route::middleware('auth')->group(function () {
     Route::get('/contact-support', function () { return view('contact-support'); })->name('contact.support');
