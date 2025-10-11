@@ -23,6 +23,7 @@ Route::get('/purchase-request/preview', [PurchaseRequestController::class, 'prev
 Route::post('/purchase-order/generate', [PurchaseOrderController::class, 'generatePDF'])->name('purchase-order.generate');
 Route::get('/purchase-order/preview', [PurchaseOrderController::class, 'preview'])->name('purchase-order.preview');
 Route::post('/inspection-acceptance-report/generate', [InspectionAcceptanceReportController::class, 'generatePDF'])->name('inspection-acceptance-report.generate');
+Route::get('/inspection-acceptance-report/preview', [InspectionAcceptanceReportController::class, 'preview'])->name('inspection-acceptance-report.preview');
 Route::post('/inventory-custodian-slip/generate', [InventoryCustodianSlipController::class, 'generatePDF'])->name('inventory-custodian-slip.generate');
 Route::get('/inventory-custodian-slip/preview', [InventoryCustodianSlipController::class, 'preview'])->name('inventory-custodian-slip.preview');
 Route::post('/requisition-issue-slip/generate', [RequisitionIssueSlipController::class, 'generatePDF'])->name('requisition-issue-slip.generate');
