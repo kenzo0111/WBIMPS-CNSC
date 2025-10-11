@@ -140,7 +140,7 @@
             </tr>
         </thead>
         <tbody>
-            @for($i = 0; $i < 20; $i++)
+            <?php for($i = 0; $i < 20; $i++): ?>
             <tr>
                 <td>&nbsp;</td>
                 <td>&nbsp;</td>
@@ -151,7 +151,7 @@
                 <td>&nbsp;</td>
                 <td>&nbsp;</td>
             </tr>
-            @endfor
+            <?php endfor; ?>
             <tr>
                 <td colspan="8" style="text-align: left; padding: 5px; height: 50px; vertical-align: top;">
                     Purpose: _______________________________________________________________________________
@@ -198,3 +198,4 @@
     </table>
 </body>
 </html>
+<?php /**PATH C:\xampp\htdocs\SupplySystem\resources\views/pdf/requisition_issue_slips_pdf.blade.php ENDPATH**/ ?>
