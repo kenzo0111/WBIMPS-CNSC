@@ -8164,6 +8164,7 @@ function generateAboutPage() {
     phone: '(054) 440-1134',
     heroImage: '',
     institutionLogo: '',
+    gallery: [],
   }
 
   return `
@@ -8187,24 +8188,16 @@ function generateAboutPage() {
         </div>
 
         <div class="page-content">
-            <!-- Hero Section -->
-            <div class="card" style="background: ${
-              aboutContent.heroImage
-                ? `linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%), url('${aboutContent.heroImage}') center/cover`
-                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-            }; color: white; padding: 48px 32px; text-align: center; border: none;">
+            <!-- Hero Section (carousel/gallery removed) -->
+            <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 48px 32px; text-align: center; border: none;">
                 <div style="max-width: 800px; margin: 0 auto;">
                     ${
                       aboutContent.institutionLogo
                         ? `<img src="${aboutContent.institutionLogo}" alt="Institution Logo" style="width: 100px; height: 100px; object-fit: contain; margin: 0 auto 20px; display: block; background: white; border-radius: 12px; padding: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">`
                         : ''
                     }
-                    <h2 id="hero-title" style="margin: 0 0 16px 0; font-size: 32px; font-weight: 700; color: white;">${
-                      aboutContent.heroTitle
-                    }</h2>
-                    <p id="hero-subtitle" style="font-size: 18px; line-height: 1.8; margin: 0; opacity: 0.95;">
-                        ${aboutContent.heroSubtitle}
-                    </p>
+                    <h2 id="hero-title" style="margin: 0 0 16px 0; font-size: 32px; font-weight: 700; color: white;">${aboutContent.heroTitle}</h2>
+                    <p id="hero-subtitle" style="font-size: 18px; line-height: 1.8; margin: 0; opacity: 0.95;">${aboutContent.heroSubtitle}</p>
                 </div>
             </div>
 
@@ -8588,30 +8581,7 @@ function editAboutUs() {
                 <!-- Images Section -->
                 <div style="padding: 16px; background: #f9fafb; border-radius: 8px; border: 2px solid #e5e7eb;">
                     <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #111827; font-weight: 600;">Images</h3>
-                    <div style="display: flex; flex-direction: column; gap: 12px;">
-                        <div>
-                            <label style="display: block; margin-bottom: 6px; font-weight: 500; font-size: 14px; color: #374151;">Institution Logo</label>
-                            <input type="file" id="edit-logo-upload" accept="image/*" 
-                                   style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
-                            <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Upload institution logo (recommended: 200x200px)</p>
-                            ${
-                              currentContent.institutionLogo
-                                ? `<div style="margin-top: 8px;"><img src="${currentContent.institutionLogo}" style="width: 80px; height: 80px; object-fit: contain; border: 1px solid #e5e7eb; border-radius: 8px; padding: 4px;"><button onclick="removeAboutImage('logo')" class="btn btn-secondary" style="margin-left: 8px; padding: 4px 8px; font-size: 12px;">Remove</button></div>`
-                                : ''
-                            }
-                        </div>
-                        <div>
-                            <label style="display: block; margin-bottom: 6px; font-weight: 500; font-size: 14px; color: #374151;">Hero Background Image</label>
-                            <input type="file" id="edit-hero-upload" accept="image/*" 
-                                   style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
-                            <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Upload hero background image (recommended: 1920x600px)</p>
-                            ${
-                              currentContent.heroImage
-                                ? `<div style="margin-top: 8px;"><img src="${currentContent.heroImage}" style="width: 120px; height: 40px; object-fit: cover; border: 1px solid #e5e7eb; border-radius: 4px;"><button onclick="removeAboutImage('hero')" class="btn btn-secondary" style="margin-left: 8px; padding: 4px 8px; font-size: 12px;">Remove</button></div>`
-                                : ''
-                            }
-                        </div>
-                    </div>
+  
                 </div>
                 
                 <!-- Hero Section -->
@@ -8741,68 +8711,23 @@ function saveAboutUs() {
     return
   }
 
-  // Handle image uploads
-  const logoFile = document.getElementById('edit-logo-upload').files[0]
-  const heroFile = document.getElementById('edit-hero-upload').files[0]
-
-  // Keep existing images if no new file is uploaded
-  let logoImage = AppState.aboutUsContent?.institutionLogo || ''
-  let heroImage = AppState.aboutUsContent?.heroImage || ''
-
-  const processImages = () => {
-    // Save to AppState
-    AppState.aboutUsContent = {
-      heroTitle,
-      heroSubtitle,
-      mission,
-      vision,
-      institution,
-      email,
-      phone,
-      institutionLogo: logoImage,
-      heroImage: heroImage,
-    }
-
-    // Close modal
-    closeEditAboutModal()
-
-    // Reload page to show updated content
-    loadPageContent('about')
-
-    showAlert('About Us content updated successfully!', 'success')
+  // Image uploads are disabled in this editor. Preserve existing images (if any).
+  AppState.aboutUsContent = {
+    heroTitle,
+    heroSubtitle,
+    mission,
+    vision,
+    institution,
+    email,
+    phone,
+    institutionLogo: AppState.aboutUsContent?.institutionLogo || '',
+    heroImage: AppState.aboutUsContent?.heroImage || '',
   }
 
-  // Process logo upload if exists
-  if (logoFile) {
-    const logoReader = new FileReader()
-    logoReader.onload = (e) => {
-      logoImage = e.target.result
-
-      // Process hero image if exists, otherwise finish
-      if (heroFile) {
-        const heroReader = new FileReader()
-        heroReader.onload = (e) => {
-          heroImage = e.target.result
-          processImages()
-        }
-        heroReader.readAsDataURL(heroFile)
-      } else {
-        processImages()
-      }
-    }
-    logoReader.readAsDataURL(logoFile)
-  } else if (heroFile) {
-    // No logo, but hero image exists
-    const heroReader = new FileReader()
-    heroReader.onload = (e) => {
-      heroImage = e.target.result
-      processImages()
-    }
-    heroReader.readAsDataURL(heroFile)
-  } else {
-    // No new images
-    processImages()
-  }
+  // Close modal and refresh
+  closeEditAboutModal()
+  loadPageContent('about')
+  showAlert('About Us content updated successfully!', 'success')
 }
 
 function removeAboutImage(type) {
@@ -10967,7 +10892,9 @@ function showReturnModal(requestId) {
   // Ensure the checkbox uses a proper listener (avoid depending on inline/global handlers)
   // Use a microtask so the injected HTML is parsed and elements are available
   queueMicrotask(() => {
-    const otherCheckbox = document.getElementById('other-reasons-checkbox') || document.querySelector('#return-remarks-modal #other-reasons-checkbox')
+    const otherCheckbox =
+      document.getElementById('other-reasons-checkbox') ||
+      document.querySelector('#return-remarks-modal #other-reasons-checkbox')
     if (otherCheckbox) {
       // Make sure we don't attach duplicate listeners
       otherCheckbox.removeEventListener('change', toggleOtherReasonsInput)
