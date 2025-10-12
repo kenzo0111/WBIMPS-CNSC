@@ -10964,6 +10964,16 @@ function showReturnModal(requestId) {
   try {
     lucide.createIcons()
   } catch (e) {}
+  // Ensure the checkbox uses a proper listener (avoid depending on inline/global handlers)
+  // Use a microtask so the injected HTML is parsed and elements are available
+  queueMicrotask(() => {
+    const otherCheckbox = document.getElementById('other-reasons-checkbox') || document.querySelector('#return-remarks-modal #other-reasons-checkbox')
+    if (otherCheckbox) {
+      // Make sure we don't attach duplicate listeners
+      otherCheckbox.removeEventListener('change', toggleOtherReasonsInput)
+      otherCheckbox.addEventListener('change', toggleOtherReasonsInput)
+    }
+  })
 }
 
 function toggleOtherReasonsInput() {
@@ -10985,6 +10995,9 @@ function toggleOtherReasonsInput() {
     }
   }
 }
+
+// Ensure inline onchange handlers can call this even if the script is loaded as a module
+window.toggleOtherReasonsInput = toggleOtherReasonsInput
 
 function closeReturnModal() {
   const modal = document.getElementById('return-remarks-modal')
