@@ -8187,23 +8187,28 @@ function generateAboutPage() {
             </div>
         </div>
 
-        <div class="page-content">
-            <!-- Hero Section (carousel/gallery removed) -->
-            <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 48px 32px; text-align: center; border: none;">
-                <div style="max-width: 800px; margin: 0 auto;">
+    <div class="page-content" style="padding:24px 16px;">
+      <div style="max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:24px;">
+      <!-- Hero Section (carousel/gallery removed) -->
+      <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 36px 16px; text-align: center; border: none;">
+        <div style="max-width: 820px; margin: 0 auto;">
                     ${
                       aboutContent.institutionLogo
                         ? `<img src="${aboutContent.institutionLogo}" alt="Institution Logo" style="width: 100px; height: 100px; object-fit: contain; margin: 0 auto 20px; display: block; background: white; border-radius: 12px; padding: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">`
                         : ''
                     }
-                    <h2 id="hero-title" style="margin: 0 0 16px 0; font-size: 32px; font-weight: 700; color: white;">${aboutContent.heroTitle}</h2>
-                    <p id="hero-subtitle" style="font-size: 18px; line-height: 1.8; margin: 0; opacity: 0.95;">${aboutContent.heroSubtitle}</p>
-                </div>
-            </div>
+          <h2 id="hero-title" style="margin: 0 0 12px 0; font-size: 28px; font-weight: 700; color: white;">${
+            aboutContent.heroTitle
+          }</h2>
+          <p id="hero-subtitle" style="font-size: 17px; line-height: 1.8; margin: 0; opacity: 0.95;">${
+            aboutContent.heroSubtitle
+          }</p>
+        </div>
+      </div>
 
-            <!-- Mission & Vision Cards -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 24px;">
-                <div class="card" style="border-left: 4px solid #667eea;">
+      <!-- Mission & Vision Cards -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+        <div class="card" style="border-left: 4px solid #667eea; padding:18px;">
                     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
                         <div style="width: 48px; height: 48px; background: #ede9fe; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
                             <i data-lucide="target" style="width: 24px; height: 24px; color: #667eea;"></i>
@@ -8214,8 +8219,7 @@ function generateAboutPage() {
                         ${aboutContent.mission}
                     </p>
                 </div>
-
-                <div class="card" style="border-left: 4px solid #10b981;">
+        <div class="card" style="border-left: 4px solid #10b981; padding:18px;">
                     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
                         <div style="width: 48px; height: 48px; background: #d1fae5; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
                             <i data-lucide="eye" style="width: 24px; height: 24px; color: #10b981;"></i>
@@ -8227,11 +8231,10 @@ function generateAboutPage() {
                     </p>
                 </div>
             </div>
-
-            <!-- Key Features -->
-            <div class="card" style="margin-top: 24px;">
-                <h3 style="margin: 0 0 24px 0; font-size: 24px; color: #111827; text-align: center;">What We Offer</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px;">
+      <!-- Key Features -->
+      <div class="card" style="padding:18px;">
+        <h3 style="margin: 0 0 20px 0; font-size: 22px; color: #111827; text-align: center;">What We Offer</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;">
                     <div style="text-align: center; padding: 20px;">
                         <div style="width: 64px; height: 64px; background: #fef3c7; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
                             <i data-lucide="package" style="width: 32px; height: 32px; color: #f59e0b;"></i>
@@ -8274,12 +8277,12 @@ function generateAboutPage() {
                 </div>
             </div>
 
-            <!-- Team Section -->
-            <div class="card" style="margin-top: 24px;">
-                <h3 style="margin: 0 0 8px 0; font-size: 24px; color: #111827; text-align: center;">Meet the Coordinators</h3>
-                <p style="text-align: center; color: #6b7280; margin: 0 0 32px 0;">The dedicated coordinators behind SPMO System</p>
-                
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
+      <!-- Team Section -->
+      <div class="card" style="padding:18px;">
+        <h3 style="margin: 0 0 8px 0; font-size: 22px; color: #111827; text-align: center;">Meet the Coordinators</h3>
+        <p style="text-align: center; color: #6b7280; margin: 0 0 24px 0;">The dedicated coordinators behind SPMO System</p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px;">
                     <div style="text-align: center; padding: 24px; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb; transition: all 0.3s;">
                         <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 32px; font-weight: 700; color: white;">
                             CQ
@@ -8315,9 +8318,9 @@ function generateAboutPage() {
                 </div>
             </div>
 
-            <!-- Headed by Section -->
-            <div class="card" style="margin-top: 24px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 2px solid #bae6fd;">
-                <div style="text-align: center; max-width: 700px; margin: 0 auto;">
+      <!-- Headed by Section -->
+      <div class="card" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 2px solid #bae6fd; padding:18px;">
+        <div style="text-align: center; max-width: 700px; margin: 0 auto;">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 20px;">
                         <div style="width: 48px; height: 48px; background: #0284c7; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
                             <i data-lucide="shield-check" style="width: 24px; height: 24px; color: white;"></i>
@@ -8342,9 +8345,9 @@ function generateAboutPage() {
                 </div>
             </div>
 
-            <!-- Contact Section -->
-            <div class="card" style="margin-top: 24px; background: #f9fafb; border: 2px solid #e5e7eb;">
-                <div style="text-align: center; max-width: 600px; margin: 0 auto;">
+      <!-- Contact Section -->
+      <div class="card" style="background: #f9fafb; border: 2px solid #e5e7eb; padding:18px;">
+        <div style="text-align: center; max-width: 600px; margin: 0 auto;">
                     <div style="width: 64px; height: 64px; background: #667eea; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
                         <i data-lucide="mail" style="width: 32px; height: 32px; color: white;"></i>
                     </div>
@@ -8393,13 +8396,14 @@ function generateAboutPage() {
                 </div>
             </div>
 
-            <!-- Footer Note -->
-            <div style="margin-top: 32px; padding: 24px; text-align: center; background: linear-gradient(to right, #f9fafb, #f3f4f6, #f9fafb); border-radius: 12px;">
+      <!-- Footer Note -->
+      <div style="padding: 18px; text-align: center; background: linear-gradient(to right, #f9fafb, #f3f4f6, #f9fafb); border-radius: 12px;">
                 <p style="margin: 0; color: #6b7280; font-size: 14px;">
                     © ${currentYear} SPMO System - Camarines Norte State College. All rights reserved.
                 </p>
             </div>
-        </div>
+      </div>
+    </div>
     `
 }
 
@@ -8578,12 +8582,6 @@ function editAboutUs() {
             </div>
             
             <div style="flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px;">
-                <!-- Images Section -->
-                <div style="padding: 16px; background: #f9fafb; border-radius: 8px; border: 2px solid #e5e7eb;">
-                    <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #111827; font-weight: 600;">Images</h3>
-  
-                </div>
-                
                 <!-- Hero Section -->
                 <div style="padding: 16px; background: #f9fafb; border-radius: 8px; border: 2px solid #e5e7eb;">
                     <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #111827; font-weight: 600;">Hero Section</h3>
