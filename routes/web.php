@@ -40,7 +40,7 @@ Route::get('/inventory-custodian-slip/view/{id}', [InventoryCustodianSlipControl
 Route::get('/requisition-issue-slip/view/{id}', [RequisitionIssueSlipController::class, 'preview'])->name('requisitionIssueSlipView');
 Route::get('/inspection-acceptance-report/view/{id}', [InspectionAcceptanceReportController::class, 'preview'])->name('inspectionAcceptanceReportView');
 // PAR (Property Acknowledgement Receipt) preview handled by a dedicated controller.
-Route::get('/property-acknowledgement-receipt/view/{id}', [\App\Http\Controllers\PropertyAcknowledgementReceiptController::class, 'preview'])->name('propertyAcknowledgementReceiptView');
+Route::get('/property-acknowledgement-receipt/view/{id}', [PropertyAcknowledgementReceiptController::class, 'preview'])->name('propertyAcknowledgementReceiptView');
 
 // PDF preview routes (development/testing)
 // Appendix 71 preview now handled by the dedicated PropertyAcknowledgementReceiptController
