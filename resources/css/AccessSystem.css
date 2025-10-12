@@ -260,31 +260,6 @@ header {
   transform: scale(1.05);
 }
 
-/* Hide native browser "reveal password" UI that may appear on some engines
-   Target vendor pseudo-elements and force no native appearance for OTP inputs */
-.otp-container input {
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-/* Edge / IE */
-.otp-container input::-ms-reveal,
-.otp-container input::-ms-clear {
-  display: none;
-}
-
-/* WebKit/Blink: try to suppress native decoration */
-.otp-container input::-webkit-textfield-decoration-container,
-.otp-container input::-webkit-textfield-decoration {
-  display: none !important;
-}
-
-/* Specifically ensure last digit doesn't show any default reveal */
-.otp-container input:last-child {
-  -webkit-appearance: none;
-  appearance: none;
-}
-
 /* Responsive OTP inputs */
 @media (max-width: 640px) {
   .otp-container input {
