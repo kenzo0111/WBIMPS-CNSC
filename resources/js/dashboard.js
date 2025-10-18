@@ -1541,9 +1541,9 @@ function generateDashboardPage() {
           </div>
 
           <!-- Notifications -->
-          <button id="notifications-btn" class="btn-secondary notifications-btn" onclick="toggleNotifications(event)" aria-haspopup="true" aria-expanded="false" title="Notifications" style="margin-left:4px;padding:6px 8px;border-radius:8px;display:flex;align-items:center;justify-content:center;position:relative;">
-            <i data-lucide="bell" class="icon"></i>
-            <span id="notifications-badge" style="position:absolute;top:-6px;right:-6px;min-width:22px;height:22px;padding:0 6px;border-radius:999px;display:none;align-items:center;justify-content:center;background:#ef4444;color:white;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,0.12);">&nbsp;</span>
+          <button id="notifications-btn" class="btn-secondary notifications-btn" onclick="toggleNotifications(event)" aria-haspopup="true" aria-expanded="false" title="Notifications" style="margin-left:4px;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;position:relative;border-radius:50%;">
+            <i data-lucide="bell" class="icon" style="width:18px;height:18px;"></i>
+            <span id="notifications-badge" aria-hidden="true"></span>
           </button>
 
           <!-- Notifications popup (absolute inside header-actions) -->
@@ -1613,10 +1613,6 @@ function generateDashboardPage() {
                                     <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: #ede9fe; color: #6b21a8; border-radius: 12px; font-size: 11px; font-weight: 600;">
                                         <i data-lucide="shield" style="width: 10px; height: 10px;"></i>
                                         ${AppState.currentUser.role}
-                                    </span>
-                                    <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: #dbeafe; color: #1e40af; border-radius: 12px; font-size: 11px; font-weight: 600;">
-                                        <i data-lucide="building" style="width: 10px; height: 10px;"></i>
-                                        ${AppState.currentUser.department}
                                     </span>
                                 </div>
                             </div>
