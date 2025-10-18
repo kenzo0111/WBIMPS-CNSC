@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Category extends Model
 {
-    protected $fillable = ['name', 'description'];
+    // Keep numeric auto-incrementing primary key; add 'code' for display (C001)
+    protected $fillable = ['code', 'name', 'description'];
 
     public function products(): HasMany
     {

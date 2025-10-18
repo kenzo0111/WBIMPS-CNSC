@@ -25,6 +25,19 @@ class CategoryController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
         ]);
+        // Generate a new category code like C001 if not provided
+        if (empty($request->input('code'))) {
+            $last = Category::whereNotNull('code')
+                ->orderByRaw("CAST(SUBSTRING(code, 2) AS UNSIGNED) DESC")
+                ->first();
+
+            $next = 1;
+            if ($last && preg_match('/C(\d+)/', $last->code, $m)) {
+                $next = intval($m[1]) + 1;
+            }
+
+            $validated['code'] = sprintf('C%03d', $next);
+        }
 
         $category = Category::create($validated);
         return response()->json(['data' => $category], 201);

@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class StockIn extends Model
 {
+    protected $table = 'stock_in';
+
     protected $fillable = [
         'transaction_id',
         'sku',

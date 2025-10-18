@@ -18,8 +18,10 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->foreignId('category_id')->nullable()->constrained('categories')->onDelete('set null');
             $table->integer('quantity')->default(0);
+            $table->string('unit')->nullable();
             $table->decimal('unit_cost', 10, 2)->default(0);
             $table->decimal('total_value', 15, 2)->default(0);
+            $table->date('date')->nullable();
             $table->timestamps();
         });
     }

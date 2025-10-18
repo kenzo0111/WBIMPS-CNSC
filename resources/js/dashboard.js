@@ -205,7 +205,8 @@ function normalizeDateForServer(value) {
       'n/a',
       'na',
     ]
-    if (blacklist.includes(s.toLowerCase())) return null
+    if (s && typeof s === 'string' && blacklist.includes(s.toLowerCase()))
+      return null
 
     // If value looks like a number (unix timestamp)
     if (/^\d+$/.test(s)) {
@@ -272,7 +273,113 @@ function lsAvailable() {
 }
 
 function persistProducts() {
-  // no-op (persistence disabled)
+  // Save products to database via API
+  // This function is called when inventory changes, but since we use API for CRUD,
+  // individual product saves are handled in the modal functions
+  // Here we can optionally sync all products if needed
+}
+
+async function saveProductToAPI(product) {
+  try {
+    // For updates, we need to use the database ID, not the SKU
+    // Check if this is an existing product by looking for a database ID
+    // Determine update by presence of explicit databaseId (numeric or string PK)
+    const isUpdate = Boolean(product.databaseId)
+    const databaseId = product.databaseId || null
+
+    const method = isUpdate ? 'PUT' : 'POST'
+    const url = isUpdate ? `/api/products/${databaseId}` : '/api/products'
+
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        sku: product.sku || product.id,
+        name: product.name,
+        description: product.description,
+        // backend expects an existing category ID (numeric or UUID);
+        // if frontend only provides a category "type" (expendable/semi-expendable/etc.),
+        // send null so Laravel's nullable|exists validation passes.
+        // category_id is now a string PK like 'C001' after migration; send string or null
+        category_id: product.category_id ? String(product.category_id) : null,
+        quantity: product.quantity || 0,
+        unit_cost: product.unitCost || product.unit_cost || 0,
+        unit: product.unit || product.unit_name || null,
+        date: product.date || null,
+      }),
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      // Adjust the returned data to match frontend structure and normalize fields
+      const resp = data.data || {}
+      const unitCost = Number(resp.unit_cost ?? resp.unitCost ?? 0)
+      const totalValue = Number(
+        resp.total_value ?? resp.totalValue ?? (resp.quantity || 0) * unitCost
+      )
+      const adjustedProduct = {
+        ...resp,
+        databaseId: resp.id, // Store database ID
+        id: resp.sku, // Use SKU as frontend ID
+        unit_cost: unitCost,
+        unitCost: unitCost,
+        total_value: totalValue,
+        totalValue: totalValue,
+        unit: resp.unit ?? resp.unit_name ?? '',
+        date: resp.date ?? resp.date_received ?? resp.created_at ?? '',
+      }
+
+      // Update local data
+      if (method === 'POST') {
+        MockData.products.push(adjustedProduct)
+      } else {
+        const index = MockData.products.findIndex(
+          (p) => p.databaseId === databaseId || p.id === product.sku
+        )
+        if (index !== -1) {
+          MockData.products[index] = adjustedProduct
+        }
+      }
+      return adjustedProduct
+    } else {
+      const error = await response.json()
+      throw new Error(error.message || 'Failed to save product')
+    }
+  } catch (error) {
+    console.error('Error saving product:', error)
+    throw error
+  }
+}
+
+async function deleteProductFromAPI(productId) {
+  try {
+    const response = await fetch(`/api/products/${productId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      credentials: 'same-origin',
+    })
+
+    if (response.ok) {
+      // Remove from local data
+      MockData.products = MockData.products.filter((p) => p.id !== productId)
+      return true
+    } else {
+      const error = await response.json()
+      throw new Error(error.message || 'Failed to delete product')
+    }
+  } catch (error) {
+    console.error('Error deleting product:', error)
+    throw error
+  }
 }
 function persistStockIn() {
   // no-op (persistence disabled)
@@ -281,16 +388,284 @@ function persistStockOut() {
   // no-op (persistence disabled)
 }
 
-function loadPersistedInventoryData() {
-  // no-op: persistence disabled, start with clean in-memory sets
-  MockData.products = MockData.products || []
-  stockInData = []
-  stockOutData = []
+async function saveStockInToAPI(stockInRecord) {
+  try {
+    const method = stockInRecord.id ? 'PUT' : 'POST'
+    const url = stockInRecord.id
+      ? `/api/stock-in/${stockInRecord.id}`
+      : '/api/stock-in'
+
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        transaction_id: stockInRecord.transactionId || stockInRecord.id,
+        sku: stockInRecord.sku,
+        product_name: stockInRecord.productName,
+        quantity: stockInRecord.quantity,
+        unit_cost: stockInRecord.unitCost,
+        supplier: stockInRecord.supplier,
+        date_received: stockInRecord.dateReceived,
+      }),
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      // Update local data
+      if (method === 'POST') {
+        stockInData.push(data.data)
+      } else {
+        const index = stockInData.findIndex((s) => s.id === stockInRecord.id)
+        if (index !== -1) {
+          stockInData[index] = data.data
+        }
+      }
+      return data.data
+    } else {
+      const error = await response.json()
+      throw new Error(error.message || 'Failed to save stock in')
+    }
+  } catch (error) {
+    console.error('Error saving stock in:', error)
+    throw error
+  }
+}
+
+async function saveStockOutToAPI(stockOutRecord) {
+  try {
+    const method = stockOutRecord.id ? 'PUT' : 'POST'
+    const url = stockOutRecord.id
+      ? `/api/stock-out/${stockOutRecord.id}`
+      : '/api/stock-out'
+
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        transaction_id: stockOutRecord.transactionId || stockOutRecord.id,
+        sku: stockOutRecord.sku,
+        product_name: stockOutRecord.productName,
+        quantity: stockOutRecord.quantity,
+        recipient: stockOutRecord.recipient,
+        purpose: stockOutRecord.purpose,
+        date_issued: stockOutRecord.dateIssued,
+      }),
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      // Update local data
+      if (method === 'POST') {
+        stockOutData.push(data.data)
+      } else {
+        const index = stockOutData.findIndex((s) => s.id === stockOutRecord.id)
+        if (index !== -1) {
+          stockOutData[index] = data.data
+        }
+      }
+      return data.data
+    } else {
+      const error = await response.json()
+      throw new Error(error.message || 'Failed to save stock out')
+    }
+  } catch (error) {
+    console.error('Error saving stock out:', error)
+    throw error
+  }
+}
+
+async function deleteStockInFromAPI(recordId) {
+  try {
+    const response = await fetch(`/api/stock-in/${recordId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      credentials: 'same-origin',
+    })
+
+    if (response.ok) {
+      // Remove from local data
+      stockInData = stockInData.filter((s) => s.id !== recordId)
+      return true
+    } else {
+      const error = await response.json()
+      throw new Error(error.message || 'Failed to delete stock in')
+    }
+  } catch (error) {
+    console.error('Error deleting stock in:', error)
+    throw error
+  }
+}
+
+async function deleteStockOutFromAPI(recordId) {
+  try {
+    const response = await fetch(`/api/stock-out/${recordId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      credentials: 'same-origin',
+    })
+
+    if (response.ok) {
+      // Remove from local data
+      stockOutData = stockOutData.filter((s) => s.id !== recordId)
+      return true
+    } else {
+      const error = await response.json()
+      throw new Error(error.message || 'Failed to delete stock out')
+    }
+  } catch (error) {
+    console.error('Error deleting stock out:', error)
+    throw error
+  }
+}
+
+// API-based data loading functions
+async function loadProductsFromAPI() {
+  try {
+    const response = await fetch('/api/products', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      credentials: 'same-origin',
+    })
+    if (response.ok) {
+      const data = await response.json()
+      MockData.products = data.data || []
+      // Store database ID separately and use SKU as id for frontend logic
+      MockData.products.forEach((product) => {
+        // Preserve DB id and use SKU as frontend id
+        product.databaseId = product.id
+        product.id = product.sku
+
+        // Normalize cost fields: API uses snake_case 'unit_cost', UI sometimes expects 'unitCost'
+        const unitCost = Number(product.unit_cost ?? product.unitCost ?? 0)
+        product.unit_cost = unitCost
+        product.unitCost = unitCost
+
+        // Normalize total value from server or compute it
+        const totalValue = Number(
+          product.total_value ??
+            product.totalValue ??
+            (product.quantity || 0) * unitCost
+        )
+        product.total_value = totalValue
+        product.totalValue = totalValue
+
+        // Ensure unit and date are available (API should provide these, but alias defensively)
+        product.unit = product.unit ?? product.unit_name ?? ''
+        product.date =
+          product.date ?? product.date_received ?? product.created_at ?? ''
+      })
+      return MockData.products
+    }
+  } catch (error) {
+    console.error('Error loading products from API:', error)
+  }
+  return []
+}
+
+async function loadStockInFromAPI() {
+  try {
+    const response = await fetch('/api/stock-in', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      credentials: 'same-origin',
+    })
+    if (response.ok) {
+      const data = await response.json()
+      stockInData = data.data || []
+      return stockInData
+    }
+  } catch (error) {
+    console.error('Error loading stock in from API:', error)
+  }
+  return []
+}
+
+async function loadStockOutFromAPI() {
+  try {
+    const response = await fetch('/api/stock-out', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      credentials: 'same-origin',
+    })
+    if (response.ok) {
+      const data = await response.json()
+      stockOutData = data.data || []
+      return stockOutData
+    }
+  } catch (error) {
+    console.error('Error loading stock out from API:', error)
+  }
+  return []
+}
+
+async function loadPersistedInventoryData() {
+  // Load data from API instead of localStorage
+  await Promise.all([
+    loadProductsFromAPI(),
+    loadCategoriesFromAPI(),
+    loadStockInFromAPI(),
+    loadStockOutFromAPI(),
+  ])
   return
 }
 
 // Initialize with no persisted data
 loadPersistedInventoryData()
+
+// Load categories from API and populate MockData.categories
+async function loadCategoriesFromAPI() {
+  try {
+    const response = await fetch('/api/categories', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      credentials: 'same-origin',
+    })
+    if (response.ok) {
+      const data = await response.json()
+      MockData.categories = data.data || []
+      return MockData.categories
+    }
+  } catch (e) {
+    console.error('Failed loading categories from API', e)
+  }
+  // fallback to in-memory categories
+  MockData.categories = MockData.categories || []
+  return MockData.categories
+}
 
 // ==============
 // Status Requests Persistence
@@ -366,7 +741,7 @@ function findProductBySku(sku) {
 function recalcProductValue(product) {
   if (!product) return
   const qty = Number(product.quantity) || 0
-  const uc = Number(product.unitCost) || 0
+  const uc = Number(product.unit_cost) || 0
   product.totalValue = qty * uc
 }
 
@@ -378,12 +753,11 @@ function adjustInventoryOnStockIn(newRecord, oldRecord) {
   if (delta !== 0) {
     product.quantity = (Number(product.quantity) || 0) + delta
     // Optionally update unitCost if changed (keep the latest cost as reference)
-    if (newRecord.unitCost && newRecord.unitCost !== product.unitCost) {
-      product.unitCost = newRecord.unitCost
+    if (newRecord.unit_cost && newRecord.unit_cost !== product.unit_cost) {
+      product.unit_cost = newRecord.unit_cost
     }
     recalcProductValue(product)
     maybeNotifyLowStock(product)
-    persistProducts()
     // Notify stock in updated
     try {
       const title = `Stock In Updated: ${newRecord.transactionId}`
@@ -448,7 +822,6 @@ function adjustInventoryOnStockOut(newRecord, oldRecord) {
     product.quantity = Math.max(0, (Number(product.quantity) || 0) - delta)
     recalcProductValue(product)
     maybeNotifyLowStock(product)
-    persistProducts()
     // create server-side activity (best-effort)
     try {
       postActivity(
@@ -474,7 +847,6 @@ function restoreInventoryFromDeletedStockIn(record) {
   ) // removal of an addition => subtract quantity
   recalcProductValue(product)
   maybeNotifyLowStock(product)
-  persistProducts()
   try {
     postActivity(
       `Stock In deleted: ${
@@ -497,7 +869,6 @@ function restoreInventoryFromDeletedStockOut(record) {
     (Number(product.quantity) || 0) + (Number(record.quantity) || 0)
   recalcProductValue(product)
   maybeNotifyLowStock(product)
-  persistProducts()
   try {
     postActivity(
       `Stock Out deleted: ${
@@ -1983,12 +2354,12 @@ function generateCategoriesPage() {
             <div class="table-container">
                 <table class="table">
                     <thead>
-                        <tr>
-                            <th style="padding: 16px 24px;">Category ID</th>
-                            <th style="padding: 16px 24px;">Category Name</th>
-                            <th style="padding: 16px 24px;">Description</th>
-                            <th style="padding: 16px 24px;">Action</th>
-                        </tr>
+            <tr>
+              <th style="padding: 16px 24px;">Category Code</th>
+              <th style="padding: 16px 24px;">Category Name</th>
+              <th style="padding: 16px 24px;">Description</th>
+              <th style="padding: 16px 24px;">Action</th>
+            </tr>
                     </thead>
                     <tbody>
                         ${
@@ -2002,7 +2373,7 @@ function generateCategoriesPage() {
                                 : 'background-color: #f9fafb;'
                             }">
                                 <td style="padding: 16px 24px; font-weight: 500;">${
-                                  category.id
+                                  category.code
                                 }</td>
                                 <td style="padding: 16px 24px; font-weight: 500;">${
                                   category.name
@@ -2039,9 +2410,9 @@ function generateCategoriesPage() {
 
 function generateProductsPage() {
   const currentTab = AppState.currentProductTab || 'expendable'
-  const filteredProducts = MockData.products.filter(
-    (product) => product.type === currentTab.toLowerCase()
-  )
+  // For now, show all products regardless of type since products don't have type field
+  // TODO: Add type field to products model and update accordingly
+  const filteredProducts = MockData.products || []
 
   return `
         <div class="page-header">
@@ -2146,7 +2517,7 @@ function generateProductsPage() {
                                 <td>${product.quantity ?? 0}</td>
                                 <td>${product.unit || '-'}</td>
                                 <td>${formatCurrency(
-                                  product.unitCost || 0
+                                  product.unit_cost || 0
                                 )}</td>
                                 <td style="font-weight: 500;">${formatCurrency(
                                   product.totalValue || 0
@@ -3201,7 +3572,9 @@ function generateStatusReportsPage() {
                               .map(
                                 (s) =>
                                   `<option value="${s}">${
-                                    s.charAt(0).toUpperCase() + s.slice(1)
+                                    s && typeof s === 'string'
+                                      ? s.charAt(0).toUpperCase() + s.slice(1)
+                                      : s || ''
                                   }</option>`
                               )
                               .join('')}
@@ -3296,11 +3669,11 @@ function exportInventoryCSV() {
       i.name || '',
       typeof i.quantity === 'number' ? i.quantity : i.currentStock || 0,
       i.unit || i.unitMeasure || '',
-      typeof i.unitCost === 'number' ? i.unitCost : i.unitPrice || 0,
+      typeof i.unit_cost === 'number' ? i.unit_cost : i.unitPrice || 0,
       typeof i.totalValue === 'number'
         ? i.totalValue
         : (typeof i.quantity === 'number' ? i.quantity : i.currentStock || 0) *
-          (i.unitCost || i.unitPrice || 0),
+          (i.unit_cost || i.unitPrice || 0),
     ])
   )
   downloadCSV('inventory-report.csv', rows)
@@ -3389,7 +3762,7 @@ function renderInventoryReport() {
         typeof p.quantity === 'number' ? p.quantity : p.currentStock || 0
       const unit = p.unit || p.unitMeasure || ''
       const unitCost =
-        typeof p.unitCost === 'number' ? p.unitCost : p.unitPrice || 0
+        typeof p.unit_cost === 'number' ? p.unit_cost : p.unitPrice || 0
       const totalValue =
         typeof p.totalValue === 'number' ? p.totalValue : qty * unitCost
       return `
@@ -4230,7 +4603,7 @@ function openRequestViewForms(requestId) {
               }" /></td>
               <td><input class="form-input" value="${it.quantity || ''}" /></td>
               <td><input class="form-input" value="${
-                it.unitCost || '0.00'
+                it.unit_cost || '0.00'
               }" /></td>
               <td><strong>${formatCurrency(
                 (it.quantity || 0) * (it.unitCost || 0)
@@ -6207,7 +6580,13 @@ function generateNextRequestId() {
   const highestNum = AppState.newRequests
     .map((r) => r.id)
     // 2. Filter for valid REQ-### format and parse the number
-    .filter((id) => id.startsWith(prefix) && id.length > prefix.length)
+    .filter(
+      (id) =>
+        id &&
+        typeof id === 'string' &&
+        id.startsWith(prefix) &&
+        id.length > prefix.length
+    )
     .map((id) => parseInt(id.substring(prefix.length)))
     .filter((num) => !isNaN(num))
     // 3. Find the maximum number, defaulting to 0 if none exist
@@ -6233,7 +6612,10 @@ function generateNewPONumber() {
 
   // Count how many requests already exist for the current year/month
   const count = AppState.newRequests.filter(
-    (r) => r.poNumber && r.poNumber.startsWith(datePrefix)
+    (r) =>
+      r.poNumber &&
+      typeof r.poNumber === 'string' &&
+      r.poNumber.startsWith(datePrefix)
   ).length
 
   const nextCount = count + 1
@@ -7835,8 +8217,11 @@ function generateLoginActivityPage() {
 
   // Get today's date
   const today = new Date().toISOString().split('T')[0]
-  const todayLogins = userLogs.filter((log) =>
-    log.timestamp.startsWith(today)
+  const todayLogins = userLogs.filter(
+    (log) =>
+      log.timestamp &&
+      typeof log.timestamp === 'string' &&
+      log.timestamp.startsWith(today)
   ).length
 
   return `
@@ -9086,7 +9471,7 @@ function closeProductModal() {
   AppState.currentModal = null
 }
 
-function saveProduct(productId) {
+async function saveProduct(productId) {
   const modal = document.getElementById('product-modal')
   const name = modal.querySelector('#productName').value.trim()
   const category = modal.querySelector('#productCategory').value
@@ -9108,20 +9493,42 @@ function saveProduct(productId) {
 
   const totalValue = unitCost * quantity
 
+  // Generate SKU for new products
+  let sku = productId
+  let databaseId = null
   if (!productId) {
-    // generate id based on category prefix
-    const prefix =
-      category === 'expendable'
-        ? 'E'
-        : category === 'semi-expendable'
-        ? 'SE'
-        : 'N'
-    const nextIndex = MockData.products.length + 1
-    const padded = String(nextIndex).padStart(3, '0')
-    const newId = `${prefix}${padded}`
+    // Create new product: generate SKU based on category
+    const categoryPrefix =
+      {
+        expendable: 'E',
+        'semi-expendable': 'SE',
+        'non-expendable': 'N',
+      }[category] || 'E'
 
-    const newProduct = {
-      id: newId,
+    // Find the next available number for this category
+    const existingSkus = (MockData.products || [])
+      .map((p) => p.id || p.sku)
+      .filter((s) => s && typeof s === 'string' && s.startsWith(categoryPrefix))
+      .map((s) => parseInt(s.replace(categoryPrefix, '')) || 0)
+      .sort((a, b) => b - a)
+
+    const nextNumber = existingSkus.length > 0 ? existingSkus[0] + 1 : 1
+    sku = `${categoryPrefix}${String(nextNumber).padStart(3, '0')}`
+  } else {
+    // Edit existing product: productId is the SKU, find the database ID
+    const existingProduct = (MockData.products || []).find(
+      (p) => p.id === productId || p.sku === productId
+    )
+    if (existingProduct && existingProduct.databaseId) {
+      databaseId = existingProduct.databaseId
+    }
+    // Keep the existing SKU
+    sku = productId
+  }
+
+  try {
+    const productData = {
+      id: sku,
       name,
       description,
       quantity,
@@ -9130,27 +9537,24 @@ function saveProduct(productId) {
       date,
       type: category,
       unit,
+      databaseId: databaseId, // Include database ID for updates
     }
-    MockData.products.push(newProduct)
-    persistProducts()
-    showAlert(`Product "${name}" (${newId}) added successfully!`, 'success')
-  } else {
-    const existing = MockData.products.find((p) => p.id === productId)
-    if (existing) {
-      existing.name = name
-      existing.description = description
-      existing.unitCost = unitCost
-      existing.quantity = quantity
-      existing.totalValue = totalValue
-      existing.date = date
-      existing.type = category
-      existing.unit = unit
-      persistProducts()
-      showAlert(`Product "${name}" updated successfully!`, 'success')
-    }
+
+    await saveProductToAPI(productData)
+    showAlert(
+      `Product "${name}" ${productId ? 'updated' : 'added'} successfully!`,
+      'success'
+    )
+  } catch (error) {
+    showAlert(
+      `Failed to ${productId ? 'update' : 'add'} product: ${error.message}`,
+      'error'
+    )
+    return
   }
 
   closeProductModal()
+  await loadProductsFromAPI()
   loadPageContent('products') // refresh list
 }
 
@@ -9158,18 +9562,21 @@ async function deleteProduct(productId) {
   const ok = await showConfirm('Delete this product?', 'Delete Product')
   if (!ok) return
 
-  // Find the product name before deleting
+  // Find the product name and database ID before deleting
   const product = MockData.products.find((p) => p.id === productId)
   const productName = product ? product.name : 'Product'
+  const databaseId = product ? product.databaseId : productId
 
-  // Delete the product
-  MockData.products = MockData.products.filter((p) => p.id !== productId)
-  persistProducts()
-
-  // Show success toast
-  showAlert(`${productName} has been successfully deleted`, 'success')
+  try {
+    await deleteProductFromAPI(databaseId)
+    showAlert(`${productName} has been successfully deleted`, 'success')
+  } catch (error) {
+    showAlert(`Failed to delete product: ${error.message}`, 'error')
+    return
+  }
 
   // Reload the page
+  await loadProductsFromAPI()
   loadPageContent('products')
 }
 
@@ -9253,21 +9660,17 @@ function generateProductModal(mode = 'create', productData = null) {
     isReadOnly ? 'background: #f9fafb;' : ''
   }">
                             <option value="">Select category</option>
-                            <option value="expendable" ${
-                              productData?.type === 'expendable'
-                                ? 'selected'
-                                : ''
-                            }>Expendable</option>
-                            <option value="semi-expendable" ${
-                              productData?.type === 'semi-expendable'
-                                ? 'selected'
-                                : ''
-                            }>Semi-Expendable</option>
-                            <option value="non-expendable" ${
-                              productData?.type === 'non-expendable'
-                                ? 'selected'
-                                : ''
-                            }>Non-Expendable</option>
+                            ${(MockData.categories || [])
+                              .map((c) => {
+                                const label = `${c.code || c.id} - ${c.name}`
+                                const selected =
+                                  String(productData?.category_id || '') ===
+                                  String(c.id)
+                                return `<option value="${c.id}" ${
+                                  selected ? 'selected' : ''
+                                }>${escapeHtml(label)}</option>`
+                              })
+                              .join('')}
                         </select>
                     </div>
                 </div>
@@ -9549,10 +9952,12 @@ function generateCategoryModal(mode = 'create', categoryData = null) {
               categoryData?.id
                 ? `
                 <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; padding: 20px; border-left: 4px solid #f59e0b;">
-                    <div style="display: flex; align-items: start; gap: 12px;">
-                        <i data-lucide="lightbulb" style="width: 20px; height: 20px; color: #d97706; flex-shrink: 0; margin-top: 2px;"></i>
-                        <div>
-                            <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #92400e;">Category ID: ${categoryData.id}</h4>
+          <div style="display: flex; align-items: start; gap: 12px;">
+            <i data-lucide="lightbulb" style="width: 20px; height: 20px; color: #d97706; flex-shrink: 0; margin-top: 2px;"></i>
+            <div>
+              <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #92400e;">Category ID: ${
+                categoryData.code || categoryData.id
+              }</h4>
                             <p style="margin: 0; font-size: 13px; color: #78350f; line-height: 1.5;">
                                 This category helps organize inventory items based on their type, value, and lifecycle management requirements.
                             </p>
@@ -9607,29 +10012,84 @@ function saveCategory(categoryId) {
     return
   }
 
-  if (!categoryId) {
-    // Create new: generate padded ID like C001
-    const nextIndex = MockData.categories.length + 1
-    const padded = String(nextIndex).padStart(3, '0')
-    const newCategory = {
-      id: `C${padded}`,
-      name: name.trim(),
-      description: description.trim(),
+  ;(async () => {
+    try {
+      const payload = { name: name.trim(), description: description.trim() }
+      let resp
+      if (!categoryId) {
+        // Create on server
+        const response = await fetch('/api/categories', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': getCsrfToken(),
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify(payload),
+        })
+        if (!response.ok) throw await response.json()
+        resp = await response.json()
+        // push returned category
+        const cat = resp.data
+        MockData.categories = MockData.categories || []
+        MockData.categories.push(cat)
+        showAlert(`Category "${cat.name}" added successfully!`, 'success')
+      } else {
+        // Update on server
+        const response = await fetch(
+          `/api/categories/${encodeURIComponent(categoryId)}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRF-TOKEN': getCsrfToken(),
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload),
+          }
+        )
+        if (!response.ok) throw await response.json()
+        resp = await response.json()
+        const updated = resp.data
+        MockData.categories = MockData.categories || []
+        const idx = MockData.categories.findIndex(
+          (c) => String(c.id) === String(categoryId)
+        )
+        if (idx !== -1) MockData.categories[idx] = updated
+        showAlert(`Category "${updated.name}" updated successfully!`, 'success')
+      }
+    } catch (err) {
+      console.error('Error saving category to API', err)
+      showAlert(
+        'Failed to save category (server error). Falling back to local.',
+        'warning'
+      )
+      // fallback local behavior
+      if (!categoryId) {
+        const nextIndex = MockData.categories.length + 1
+        const padded = String(nextIndex).padStart(3, '0')
+        const newCategory = {
+          // temporary client-only id to avoid colliding with numeric server IDs
+          id: `temp-${Date.now()}`,
+          code: `C${padded}`,
+          name: name.trim(),
+          description: description.trim(),
+        }
+        MockData.categories.push(newCategory)
+      } else {
+        const existing = MockData.categories.find((c) => c.id === categoryId)
+        if (existing) {
+          existing.name = name.trim()
+          existing.description = description.trim()
+        }
+      }
+    } finally {
+      closeCategoryModal()
+      loadPageContent('categories') // refresh table/page
     }
-    MockData.categories.push(newCategory)
-    showAlert(`Category "${name.trim()}" added successfully!`, 'success')
-  } else {
-    // Update existing
-    const existing = MockData.categories.find((c) => c.id === categoryId)
-    if (existing) {
-      existing.name = name.trim()
-      existing.description = description.trim()
-      showAlert(`Category "${name.trim()}" updated successfully!`, 'success')
-    }
-  }
-
-  closeCategoryModal()
-  loadPageContent('categories') // refresh table/page
+  })()
 }
 
 async function deleteCategory(categoryId) {
@@ -9643,14 +10103,39 @@ async function deleteCategory(categoryId) {
   const category = MockData.categories.find((c) => c.id === categoryId)
   const categoryName = category ? category.name : 'Category'
 
-  // Delete the category
-  MockData.categories = MockData.categories.filter((c) => c.id !== categoryId)
-
-  // Show success toast
-  showAlert(`${categoryName} has been successfully deleted`, 'success')
-
-  // Reload the page
-  loadPageContent('categories')
+  ;(async () => {
+    try {
+      const response = await fetch(
+        `/api/categories/${encodeURIComponent(categoryId)}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': getCsrfToken(),
+          },
+          credentials: 'same-origin',
+        }
+      )
+      if (!response.ok) throw await response.json()
+      // remove locally
+      MockData.categories = MockData.categories.filter(
+        (c) => c.id !== categoryId
+      )
+      showAlert(`${categoryName} has been successfully deleted`, 'success')
+    } catch (err) {
+      console.error('Error deleting category via API', err)
+      showAlert(
+        'Failed to delete category on server. Falling back to local delete.',
+        'warning'
+      )
+      MockData.categories = MockData.categories.filter(
+        (c) => c.id !== categoryId
+      )
+    } finally {
+      loadPageContent('categories')
+    }
+  })()
 }
 
 // -----------------------------//
@@ -9933,7 +10418,7 @@ function generateUniqueId() {
   return Date.now().toString(36) + Math.random().toString(36).substring(2)
 }
 
-function saveStockIn(stockId) {
+async function saveStockIn(stockId) {
   const date = document.getElementById('date-input').value
   const sku = document.getElementById('sku-input').value
   const productName = document.getElementById('product-input').value
@@ -9944,7 +10429,7 @@ function saveStockIn(stockId) {
   const receivedBy = document.getElementById('receivedby-input').value
 
   const newRecord = {
-    id: stockId || generateUniqueId(),
+    id: stockId,
     date,
     productName,
     sku,
@@ -9955,29 +10440,19 @@ function saveStockIn(stockId) {
     receivedBy,
   }
 
-  if (stockId) {
-    const index = stockInData.findIndex((r) => r.id === stockId)
-    if (index !== -1) {
-      const oldRecord = { ...stockInData[index] }
-      newRecord.transactionId = stockInData[index].transactionId
-      stockInData[index] = newRecord
-      adjustInventoryOnStockIn(newRecord, oldRecord)
-      showAlert(
-        `Stock In record ${newRecord.transactionId} updated & inventory adjusted`,
-        'success'
-      )
-    }
-  } else {
-    newRecord.transactionId = generateTransactionId()
-    stockInData.push(newRecord)
-    adjustInventoryOnStockIn(newRecord, null)
+  try {
+    await saveStockInToAPI(newRecord)
     showAlert(
-      `New Stock In record ${newRecord.transactionId} added & inventory updated`,
+      `Stock In record ${stockId ? 'updated' : 'added'} & inventory updated`,
       'success'
     )
+  } catch (error) {
+    showAlert(
+      `Failed to ${stockId ? 'update' : 'save'} stock in: ${error.message}`,
+      'error'
+    )
+    return
   }
-
-  persistStockIn()
 
   console.log('Saving stock-in record:', newRecord)
 
@@ -9999,12 +10474,15 @@ async function deleteStockIn(id) {
     ? `${record.productName} (${record.transactionId})`
     : 'Stock In record'
 
-  // Delete the record & restore inventory (reverse addition)
-  if (record) restoreInventoryFromDeletedStockIn(record)
-  stockInData = stockInData.filter((r) => r.id !== id)
-  persistStockIn()
-
-  showAlert(`${recordInfo} deleted & inventory adjusted`, 'success')
+  try {
+    await deleteStockInFromAPI(id)
+    // Restore inventory (reverse addition)
+    if (record) restoreInventoryFromDeletedStockIn(record)
+    showAlert(`${recordInfo} deleted & inventory adjusted`, 'success')
+  } catch (error) {
+    showAlert(`Failed to delete stock in: ${error.message}`, 'error')
+    return
+  }
 
   // Reload the page
   loadPageContent('stock-in')
@@ -10054,7 +10532,12 @@ function renderStockInRow(r, index) {
 function generateTransactionId() {
   const year = new Date().getFullYear()
   const existingNums = stockInData
-    .filter((r) => r.transactionId.startsWith(`SI-${year}-`))
+    .filter(
+      (r) =>
+        r.transactionId &&
+        typeof r.transactionId === 'string' &&
+        r.transactionId.startsWith(`SI-${year}-`)
+    )
     .map((r) => parseInt(r.transactionId.split('-')[2]) || 0)
   const nextNum = Math.max(...existingNums, 0) + 1
   return `SI-${year}-${nextNum.toString().padStart(3, '0')}`
@@ -10390,8 +10873,7 @@ function generateStockOutModal(mode = 'create', stockData = null) {
     `
 }
 
-function saveStockOut(stockId) {
-  // Read inputs by ID
+async function saveStockOut(stockId) {
   const date = document.getElementById('so-date')
     ? document.getElementById('so-date').value
     : document.querySelector('#stockout-modal input[type="date"]')?.value || ''
@@ -10430,70 +10912,19 @@ function saveStockOut(stockId) {
     status,
   }
 
-  // Inventory validation & adjustment
-  const product = findProductBySku(record.sku)
-  if (!product) {
-    showAlert('Product not found in inventory list for this SKU.', 'error')
-    return
-  }
-  if (stockId) {
-    const idx = stockOutData.findIndex((s) => s.id === stockId)
-    if (idx !== -1) {
-      const oldRecord = { ...stockOutData[idx] }
-      const prevIssued = Number(oldRecord.quantity) || 0
-      const newIssued = Number(record.quantity) || 0
-      const delta = newIssued - prevIssued // additional quantity to subtract
-      if (delta > 0 && product.quantity < delta) {
-        showAlert('Insufficient stock for the additional quantity.', 'error')
-        // Notify new stock in
-        try {
-          const title = `Stock In: ${newRecord.transactionId}`
-          const msg = `Received ${newRecord.quantity} ${newRecord.productName}`
-          if (typeof createNotification === 'function') {
-            createNotification({
-              title,
-              message: msg,
-              type: 'success',
-              icon: 'package-check',
-            })
-          } else {
-            addNotification(title, msg, 'success', 'package-check')
-          }
-        } catch (e) {}
-        return
-      }
-      stockOutData[idx] = record
-      adjustInventoryOnStockOut(record, oldRecord)
-      showAlert(
-        `Stock Out record ${record.issueId} updated & inventory adjusted`,
-        'success'
-      )
-    } else {
-      if (product.quantity < record.quantity) {
-        showAlert('Insufficient stock for this issuance.', 'error')
-        return
-      }
-      stockOutData.push(record)
-      adjustInventoryOnStockOut(record, null)
-      showAlert(
-        `New Stock Out record ${record.issueId} added & inventory updated`,
-        'success'
-      )
-    }
-  } else {
-    if (product.quantity < record.quantity) {
-      showAlert('Insufficient stock for this issuance.', 'error')
-      return
-    }
-    stockOutData.push(record)
-    adjustInventoryOnStockOut(record, null)
+  try {
+    await saveStockOutToAPI(record)
     showAlert(
-      `New Stock Out record ${record.issueId} added & inventory updated`,
+      `Stock Out record ${stockId ? 'updated' : 'added'} & inventory updated`,
       'success'
     )
+  } catch (error) {
+    showAlert(
+      `Failed to ${stockId ? 'update' : 'save'} stock out: ${error.message}`,
+      'error'
+    )
+    return
   }
-
-  persistStockOut()
 
   // Update DOM if Stock Out table is present to avoid full page reload
   const tbody = document.getElementById('stock-out-table-body')
@@ -10590,15 +11021,19 @@ async function deleteStockOut(id) {
     ? `${record.productName} (${record.transactionId})`
     : 'Stock Out record'
 
-  // Delete the record
-  stockOutData = stockOutData.filter((s) => s.id !== id)
-  persistStockOut()
-
-  // Show success toast
-  showAlert(`${recordInfo} has been successfully deleted`, 'success')
+  try {
+    await deleteStockOutFromAPI(id)
+    // Restore inventory (reverse addition)
+    if (record) restoreInventoryFromDeletedStockOut(record)
+    showAlert(`${recordInfo} deleted & inventory adjusted`, 'success')
+  } catch (error) {
+    showAlert(`Failed to delete stock out: ${error.message}`, 'error')
+    return
+  }
 
   // Reload the page
   loadPageContent('stock-out')
+  refreshProductsViewIfOpen()
 }
 
 function viewStockOutDetails(id) {
@@ -10622,7 +11057,12 @@ function editStockOut(id) {
 function generateStockOutIssueId() {
   const year = new Date().getFullYear()
   const existing = stockOutData
-    .filter((r) => r.issueId && r.issueId.startsWith(`SO-${year}-`))
+    .filter(
+      (r) =>
+        r.issueId &&
+        typeof r.issueId === 'string' &&
+        r.issueId.startsWith(`SO-${year}-`)
+    )
     .map((r) => parseInt(r.issueId.split('-')[2]) || 0)
   const next = Math.max(...existing, 0) + 1
   return `SO-${year}-${String(next).padStart(3, '0')}`

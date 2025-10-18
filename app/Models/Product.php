@@ -13,8 +13,10 @@ class Product extends Model
         'description',
         'category_id',
         'quantity',
+        'unit',
         'unit_cost',
-        'total_value'
+        'total_value',
+        'date'
     ];
 
     protected $casts = [

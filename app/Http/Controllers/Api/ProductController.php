@@ -45,7 +45,9 @@ class ProductController extends Controller
             'description' => 'nullable|string',
             'category_id' => 'nullable|exists:categories,id',
             'quantity' => 'integer|min:0',
+            'unit' => 'nullable|string|max:50',
             'unit_cost' => 'numeric|min:0',
+            'date' => 'nullable|date',
         ]);
 
         $product = Product::create($validated);
@@ -71,7 +73,9 @@ class ProductController extends Controller
             'description' => 'nullable|string',
             'category_id' => 'nullable|exists:categories,id',
             'quantity' => 'integer|min:0',
+            'unit' => 'nullable|string|max:50',
             'unit_cost' => 'numeric|min:0',
+            'date' => 'nullable|date',
         ]);
 
         $product->update($validated);
