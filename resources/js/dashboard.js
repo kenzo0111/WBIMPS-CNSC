@@ -9653,6 +9653,15 @@ function openProductModal(mode = 'create', productId = null) {
   modal.classList.add('active')
 
   lucide.createIcons()
+  // Ensure Product Date cannot be backdated: set min and clamp to today if necessary
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    const dateInput = modal.querySelector('#productDate')
+    if (dateInput) {
+      dateInput.min = today
+      if (!dateInput.value || dateInput.value < today) dateInput.value = today
+    }
+  } catch (e) {}
   // Attach dynamic SKU handling: update hidden SKU and preview when category changes
   try {
     const categorySelect = modal.querySelector('#productCategory')
@@ -9728,6 +9737,9 @@ async function saveProduct(productId) {
     modal.querySelector('#productDate').value ||
     new Date().toISOString().slice(0, 10)
 
+  // Prevent backdating the product date
+  const clampedProductDate = clampDateToToday(date)
+
   if (!name) {
     showAlert('Product name is required', 'error')
     return
@@ -9799,7 +9811,7 @@ async function saveProduct(productId) {
       quantity,
       unitCost,
       totalValue,
-      date,
+      date: clampedProductDate,
       // store both the category id and a derived type for backward compatibility
       category_id: selectedCategoryId || null,
       category_code: selectedCategory ? selectedCategory.code || null : null,
@@ -10438,6 +10450,15 @@ function openStockInModal(mode = 'create', stockId = null) {
   modalContent.innerHTML = generateStockInModal(mode, stockData)
   modal.classList.add('active')
   lucide.createIcons()
+  // Prevent backdating: ensure date input min is today and value is not before today
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    const dateInput = modal.querySelector('#date-input')
+    if (dateInput) {
+      dateInput.min = today
+      if (!dateInput.value || dateInput.value < today) dateInput.value = today
+    }
+  } catch (e) {}
 
   // Populate inline recent records table inside modal
   ;(async () => {
@@ -10777,6 +10798,14 @@ function generateUniqueId() {
   return Date.now().toString(36) + Math.random().toString(36).substring(2)
 }
 
+// Helper: clamp a yyyy-mm-dd string to today (return input if empty -> today)
+function clampDateToToday(dateStr) {
+  const today = new Date().toISOString().split('T')[0]
+  if (!dateStr) return today
+  return dateStr < today ? today : dateStr
+}
+window.clampDateToToday = clampDateToToday
+
 async function saveStockIn(stockId) {
   const date = document.getElementById('date-input').value
   const sku = document.getElementById('sku-input').value
@@ -10797,14 +10826,17 @@ async function saveStockIn(stockId) {
   }
   if (!transactionId) transactionId = generateTransactionId()
 
+  // Prevent backdating: clamp date to today
+  const clampedDate = clampDateToToday(date)
+
   // Build payload: include `id` only when editing so saveStockInToAPI chooses PUT for edits and POST for creates
   const newRecord = {
     ...(isEdit ? { id: stockId } : {}),
     transactionId,
-    date,
+    date: clampedDate,
     // API expects date_received; include both camelCase and snake_case aliases
-    dateReceived: date,
-    date_received: date,
+    dateReceived: clampedDate,
+    date_received: clampedDate,
     productName,
     sku,
     quantity,
@@ -11020,6 +11052,15 @@ function openStockOutModal(mode = 'create', stockId = null) {
       })
       autoFillFromSku()
     }
+    // Prevent backdating: ensure so-date min is today and value is not before today
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const soDate = modal.querySelector('#so-date')
+      if (soDate) {
+        soDate.min = today
+        if (!soDate.value || soDate.value < today) soDate.value = today
+      }
+    } catch (e) {}
   }
 }
 
@@ -11279,6 +11320,9 @@ async function saveStockOut(stockId) {
 
   const isEdit = stockId && stockId !== ''
 
+  // Prevent backdating: clamp date to today
+  const clampedSoDate = clampDateToToday(date)
+
   const record = Object.assign(
     {},
     // only include id when editing so saveStockOutToAPI chooses PUT for edits
@@ -11288,10 +11332,10 @@ async function saveStockOut(stockId) {
         ? stockOutData.find((s) => s && s.id == stockId)?.issueId ||
           generateStockOutIssueId()
         : generateStockOutIssueId(),
-      date,
+      date: clampedSoDate,
       // include both aliases so server accepts 'date_issued'
-      dateIssued: date,
-      date_issued: date,
+      dateIssued: clampedSoDate,
+      date_issued: clampedSoDate,
       productName,
       sku,
       quantity,
