@@ -1531,12 +1531,7 @@ function generateDashboardPage() {
                     <h1 class="page-title">
                         <i data-lucide="layout-dashboard" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>
                         Dashboard Overview
-                    </h1>
-                    <p class="page-subtitle">Last updated: ${currentTime}</p>
-                </div>
-                <div id="header-actions" class="header-actions">
-                    <!-- Search -->
-                    <div style="position: relative;">
+              <!-- Department column removed -->
                         <i data-lucide="search" style="width: 16px; height: 16px; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af;"></i>
                         <input type="text" placeholder="Search..." style="padding: 8px 12px 8px 36px; border: 1px solid #d1d5db; border-radius: 6px; width: 256px; font-size: 14px;">
                     </div>
@@ -7103,12 +7098,7 @@ function generateRolesManagementPage() {
                                     Role
                                 </div>
                             </th>
-                            <th>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <i data-lucide="building" style="width:14px;height:14px;"></i>
-                                    Department
-                                </div>
-                            </th>
+              <!-- Department column removed -->
                             <th>
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <i data-lucide="circle-dot" style="width:14px;height:14px;"></i>
@@ -7177,9 +7167,7 @@ function generateRolesManagementPage() {
                                         ${member.role}
                                     </span>
                                 </td>
-                                <td style="color: #6b7280; font-size: 14px;">${
-                                  member.department
-                                }</td>
+                                <!-- Department cell removed -->
                                 <td>
                                     <span class="badge ${
                                       member.status === 'Active'
@@ -7230,7 +7218,6 @@ function saveUser(userId) {
   const nameInput = document.getElementById('userName')
   const emailInput = document.getElementById('userEmail')
   const roleInput = document.getElementById('userRole')
-  const departmentInput = document.getElementById('userDepartment')
   const statusInput = document.getElementById('userStatus')
   const createdInput = document.getElementById('userCreated')
 
@@ -7239,7 +7226,6 @@ function saveUser(userId) {
     name: nameInput ? nameInput.value : '',
     email: emailInput ? emailInput.value : '',
     role: roleInput ? roleInput.value : '',
-    department: departmentInput ? departmentInput.value : '',
     status: statusInput ? statusInput.value : 'Active',
     created: createdInput
       ? createdInput.value || new Date().toISOString().split('T')[0]
@@ -7462,7 +7448,7 @@ function generateUserModal(mode = 'view', userData = null) {
             <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                 <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 8px;">
                     <i data-lucide="briefcase" style="width: 18px; height: 18px; color: #dc2626;"></i>
-                    Role & Department
+                    Role
                 </h3>
                 
                 <div class="grid-2">
@@ -7503,55 +7489,7 @@ function generateUserModal(mode = 'view', userData = null) {
                         }
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                            <i data-lucide="building" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                            Department
-                        </label>
-                        ${
-                          isReadOnly
-                            ? `
-                            <input type="text" class="form-input" value="${
-                              userData?.department || ''
-                            }" readonly style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; background: #f9fafb;">
-                        `
-                            : `
-                            <select class="form-select" id="userDepartment" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
-                                <option value="">Select department</option>
-                                <option ${
-                                  userData?.department === 'IT'
-                                    ? 'selected'
-                                    : ''
-                                }>IT</option>
-                                <option ${
-                                  userData?.department === 'Procurement'
-                                    ? 'selected'
-                                    : ''
-                                }>Procurement</option>
-                                <option ${
-                                  userData?.department === 'Finance'
-                                    ? 'selected'
-                                    : ''
-                                }>Finance</option>
-                                <option ${
-                                  userData?.department === 'HR'
-                                    ? 'selected'
-                                    : ''
-                                }>HR</option>
-                                <option ${
-                                  userData?.department === 'Admin'
-                                    ? 'selected'
-                                    : ''
-                                }>Admin</option>
-                                <option ${
-                                  userData?.department === 'Operations'
-                                    ? 'selected'
-                                    : ''
-                                }>Operations</option>
-                            </select>
-                        `
-                        }
-                    </div>
+                    <!-- Department field removed per request -->
                 </div>
             </div>
 
@@ -7780,12 +7718,6 @@ function generateUsersManagementPage() {
                             </th>
                             <th>
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <i data-lucide="building" style="width:14px;height:14px;"></i>
-                                    Department
-                                </div>
-                            </th>
-                            <th>
-                                <div style="display: flex; align-items: center; gap: 8px;">
                                     <i data-lucide="circle-dot" style="width:14px;height:14px;"></i>
                                     Status
                                 </div>
@@ -7841,9 +7773,7 @@ function generateUsersManagementPage() {
                                         ${user.role}
                                     </span>
                                 </td>
-                                <td style="color: #6b7280; font-size: 14px;">${
-                                  user.department
-                                }</td>
+                                <!-- Department cell removed -->
                                 <td>
                                     <span class="badge ${
                                       user.status.toLowerCase() === 'active'
