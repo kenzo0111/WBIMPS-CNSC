@@ -10,16 +10,25 @@ class StockOut extends Model
 
     protected $fillable = [
         'transaction_id',
+        'issue_id',
         'sku',
         'product_name',
         'quantity',
-        'recipient',
+        'unit_cost',
+        'total_cost',
+        'department',
+        // 'recipient' removed: standardize on 'issued_to'
+        'issued_to',
+        'issued_by',
         'purpose',
+        'status',
         'date_issued'
     ];
 
     protected $casts = [
-        'quantity' => 'integer',
+        'unit_cost' => 'decimal:2',
+        'total_cost' => 'decimal:2',
         'date_issued' => 'date',
+        'quantity' => 'integer',
     ];
 }

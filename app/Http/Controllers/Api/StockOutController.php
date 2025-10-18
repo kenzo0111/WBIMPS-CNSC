@@ -40,12 +40,18 @@ class StockOutController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'transaction_id' => 'required|string|unique:stock_out',
+            'issue_id' => 'required|string|unique:stock_out,issue_id',
+            'transaction_id' => 'nullable|string|unique:stock_out',
             'sku' => 'required|string|exists:products,sku',
             'product_name' => 'required|string',
             'quantity' => 'required|integer|min:1',
-            'recipient' => 'nullable|string',
+            'unit_cost' => 'nullable|numeric|min:0',
+            'total_cost' => 'nullable|numeric|min:0',
+            'department' => 'nullable|string',
+            'issued_to' => 'nullable|string',
+            'issued_by' => 'nullable|string',
             'purpose' => 'nullable|string',
+            'status' => 'nullable|string',
             'date_issued' => 'required|date',
         ]);
 
@@ -55,17 +61,18 @@ class StockOutController extends Controller
             return response()->json(['error' => 'Insufficient stock'], 400);
         }
 
-        DB::transaction(function () use ($validated) {
-            $stockOut = StockOut::create($validated);
+        $created = null;
+        DB::transaction(function () use ($validated, &$created) {
+            $created = StockOut::create($validated);
 
             // Update product inventory
             $product = Product::where('sku', $validated['sku'])->first();
             $product->decrement('quantity', $validated['quantity']);
 
-            return $stockOut;
+            return $created;
         });
 
-        return response()->json(['data' => StockOut::find($validated['transaction_id'])], 201);
+        return response()->json(['data' => $created], 201);
     }
 
     /**
@@ -82,12 +89,18 @@ class StockOutController extends Controller
     public function update(Request $request, StockOut $stockOut)
     {
         $validated = $request->validate([
-            'transaction_id' => 'required|string|unique:stock_out,transaction_id,' . $stockOut->id,
+            'issue_id' => 'required|string|unique:stock_out,issue_id,' . $stockOut->id,
+            'transaction_id' => 'nullable|string|unique:stock_out,transaction_id,' . $stockOut->id,
             'sku' => 'required|string|exists:products,sku',
             'product_name' => 'required|string',
             'quantity' => 'required|integer|min:1',
-            'recipient' => 'nullable|string',
+            'unit_cost' => 'nullable|numeric|min:0',
+            'total_cost' => 'nullable|numeric|min:0',
+            'department' => 'nullable|string',
+            'issued_to' => 'nullable|string',
+            'issued_by' => 'nullable|string',
             'purpose' => 'nullable|string',
+            'status' => 'nullable|string',
             'date_issued' => 'required|date',
         ]);
 

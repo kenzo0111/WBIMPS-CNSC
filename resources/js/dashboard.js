@@ -487,15 +487,22 @@ async function saveStockOutToAPI(stockOutRecord) {
       },
       credentials: 'same-origin',
       body: JSON.stringify({
-        // Prefer explicit transactionId, then legacy issueId, then fallback id
-        transaction_id:
-          stockOutRecord.transactionId ||
+        // Primary identifier for stock-out is issue_id (issued id). Keep transaction_id as optional fallback.
+        issue_id:
           stockOutRecord.issueId ||
+          stockOutRecord.transactionId ||
           stockOutRecord.id,
+        transaction_id: stockOutRecord.transactionId || null,
         sku: stockOutRecord.sku,
         product_name: stockOutRecord.productName,
         quantity: stockOutRecord.quantity,
-        recipient: stockOutRecord.recipient,
+        unit_cost: stockOutRecord.unitCost || stockOutRecord.unit_cost || 0,
+        total_cost: stockOutRecord.totalCost || stockOutRecord.total_cost || 0,
+        department: stockOutRecord.department || null,
+        // recipient removed; use issued_to consistently
+        issued_to: stockOutRecord.issuedTo || stockOutRecord.issued_to || null,
+        issued_by: stockOutRecord.issuedBy || stockOutRecord.issued_by || null,
+        status: stockOutRecord.status || null,
         purpose: stockOutRecord.purpose,
         date_issued: stockOutRecord.dateIssued,
       }),
@@ -503,16 +510,49 @@ async function saveStockOutToAPI(stockOutRecord) {
 
     if (response.ok) {
       const data = await response.json()
-      // Update local data
+      const serverRecord = data.data || {}
+      // Normalize to UI fields
+      const normalized = Object.assign({}, serverRecord)
+      normalized.issueId = serverRecord.issue_id || serverRecord.issueId || ''
+      normalized.transactionId =
+        serverRecord.transaction_id || serverRecord.transactionId || ''
+      normalized.productName =
+        serverRecord.product_name || serverRecord.productName || ''
+      normalized.date = formatDate(
+        serverRecord.date_issued ||
+          serverRecord.date ||
+          serverRecord.created_at ||
+          ''
+      )
+      normalized.dateIssued = normalized.date
+      normalized.quantity = Number(serverRecord.quantity || 0)
+      const uc = Number(serverRecord.unit_cost ?? serverRecord.unitCost ?? 0)
+      normalized.unitCost = uc
+      normalized.totalCost = Number(
+        (serverRecord.total_cost ??
+          serverRecord.totalCost ??
+          normalized.quantity * uc) ||
+          0
+      )
+      normalized.sku = serverRecord.sku || ''
+      normalized.department = serverRecord.department || ''
+      // server may provide issued_to or recipient for the target user
+      normalized.issuedTo =
+        serverRecord.issued_to || serverRecord.issuedTo || ''
+      normalized.issuedBy =
+        serverRecord.issued_by || serverRecord.issuedBy || ''
+      normalized.status = serverRecord.status || ''
+
       if (method === 'POST') {
-        stockOutData.push(data.data)
+        stockOutData.push(normalized)
       } else {
-        const index = stockOutData.findIndex((s) => s.id === stockOutRecord.id)
+        // Use loose equality to match numeric/string id differences
+        const index = stockOutData.findIndex((s) => s.id == stockOutRecord.id)
         if (index !== -1) {
-          stockOutData[index] = data.data
+          stockOutData[index] = normalized
         }
       }
-      return data.data
+      return normalized
     } else {
       const error = await response.json()
       throw new Error(error.message || 'Failed to save stock out')
@@ -684,7 +724,30 @@ async function loadStockOutFromAPI() {
     })
     if (response.ok) {
       const data = await response.json()
-      stockOutData = data.data || []
+      stockOutData = (data.data || []).map((r) => {
+        const rec = Object.assign({}, r)
+        rec.id = rec.id || rec.id
+        rec.issueId = rec.issue_id || rec.issueId || ''
+        rec.transactionId = rec.transaction_id || rec.transactionId || ''
+        rec.productName = rec.product_name || rec.productName || ''
+        rec.date = formatDate(
+          rec.date_issued || rec.date || rec.created_at || ''
+        )
+        rec.dateIssued = rec.date
+        rec.quantity = Number(rec.quantity || 0)
+        const uc = Number(rec.unit_cost ?? rec.unitCost ?? 0)
+        rec.unit_cost = uc
+        rec.unitCost = uc
+        rec.totalCost = Number(
+          (rec.total_cost ?? rec.totalCost ?? rec.quantity * uc) || 0
+        )
+        rec.sku = rec.sku || ''
+        rec.department = rec.department || ''
+        rec.issuedTo = rec.issued_to || rec.issuedTo || ''
+        rec.issuedBy = rec.issued_by || rec.issuedBy || ''
+        rec.status = rec.status || ''
+        return rec
+      })
       return stockOutData
     }
   } catch (error) {
@@ -894,7 +957,11 @@ function adjustInventoryOnStockOut(newRecord, oldRecord) {
           newRecord.productName || newRecord.product_name || newRecord.sku || ''
         }`,
         {
-          transactionId: newRecord.transactionId || newRecord.id || null,
+          issueId:
+            newRecord.issueId ||
+            newRecord.transactionId ||
+            newRecord.id ||
+            null,
           sku: newRecord.sku,
           quantity: newRecord.quantity,
         }
@@ -940,7 +1007,7 @@ function restoreInventoryFromDeletedStockOut(record) {
         record.productName || record.product_name || record.sku || ''
       }`,
       {
-        transactionId: record.transactionId || record.id || null,
+        issueId: record.issueId || record.transactionId || record.id || null,
         sku: record.sku,
         quantity: record.quantity,
       }
@@ -11210,26 +11277,36 @@ async function saveStockOut(stockId) {
   const issuedBy = document.getElementById('so-issued-by').value || ''
   const status = document.getElementById('so-status').value || ''
 
-  const record = {
-    id: stockId || generateUniqueId(),
-    issueId: stockId
-      ? stockOutData.find((s) => s.id === stockId)?.issueId ||
-        generateStockOutIssueId()
-      : generateStockOutIssueId(),
-    date,
-    productName,
-    sku,
-    quantity,
-    unitCost,
-    totalCost,
-    department,
-    issuedTo,
-    issuedBy,
-    status,
-  }
+  const isEdit = stockId && stockId !== ''
 
+  const record = Object.assign(
+    {},
+    // only include id when editing so saveStockOutToAPI chooses PUT for edits
+    isEdit ? { id: stockId } : {},
+    {
+      issueId: isEdit
+        ? stockOutData.find((s) => s && s.id == stockId)?.issueId ||
+          generateStockOutIssueId()
+        : generateStockOutIssueId(),
+      date,
+      // include both aliases so server accepts 'date_issued'
+      dateIssued: date,
+      date_issued: date,
+      productName,
+      sku,
+      quantity,
+      unitCost,
+      totalCost,
+      department,
+      issuedTo,
+      issuedBy,
+      status,
+    }
+  )
+
+  let saved = null
   try {
-    await saveStockOutToAPI(record)
+    saved = await saveStockOutToAPI(record)
     showAlert(
       `Stock Out record ${stockId ? 'updated' : 'added'} & inventory updated`,
       'success'
@@ -11245,13 +11322,13 @@ async function saveStockOut(stockId) {
   // Update DOM if Stock Out table is present to avoid full page reload
   const tbody = document.getElementById('stock-out-table-body')
   if (tbody) {
-    const existingRow = tbody.querySelector(`tr[data-id="${record.id}"]`)
+    const existingRow = tbody.querySelector(`tr[data-id="${saved.id}"]`)
     if (existingRow) {
-      // replace existing row
-      existingRow.outerHTML = renderStockOutRow(record)
+      // replace existing row with authoritative server response
+      existingRow.outerHTML = renderStockOutRow(saved)
     } else {
       // append new row
-      tbody.insertAdjacentHTML('beforeend', renderStockOutRow(record))
+      tbody.insertAdjacentHTML('beforeend', renderStockOutRow(saved))
     }
     // re-render icons in new content
     if (window.lucide) lucide.createIcons()
@@ -11340,7 +11417,7 @@ async function deleteStockOut(id) {
   if (!ok) return
 
   // Find the record before deleting
-  const record = stockOutData.find((s) => s.id === id)
+  const record = stockOutData.find((s) => s.id == id)
   const recordInfo = record
     ? `${record.productName} (${record.transactionId})`
     : 'Stock Out record'
@@ -11361,7 +11438,7 @@ async function deleteStockOut(id) {
 }
 
 function viewStockOutDetails(id) {
-  const rec = stockOutData.find((s) => s.id === id)
+  const rec = stockOutData.find((s) => s.id == id)
   if (!rec) {
     showAlert('Record not found', 'error')
     return
@@ -11370,7 +11447,7 @@ function viewStockOutDetails(id) {
 }
 
 function editStockOut(id) {
-  const rec = stockOutData.find((s) => s.id === id)
+  const rec = stockOutData.find((s) => s.id == id)
   if (!rec) {
     showAlert('Record not found', 'error')
     return
