@@ -1525,25 +1525,29 @@ function generateDashboardPage() {
     : 0
 
   return `
-        <div class="page-header">
-            <div class="page-header-content">
-                <div>
-                    <h1 class="page-title">
-                        <i data-lucide="layout-dashboard" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>
-                        Dashboard Overview
-              <!-- Department column removed -->
-                        <i data-lucide="search" style="width: 16px; height: 16px; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af;"></i>
-                        <input type="text" placeholder="Search..." style="padding: 8px 12px 8px 36px; border: 1px solid #d1d5db; border-radius: 6px; width: 256px; font-size: 14px;">
-                    </div>
-                    
-                    <!-- Notifications -->
-                    <button id="notifications-btn" class="btn-secondary notifications-btn" onclick="toggleNotifications(event)" aria-haspopup="true" aria-expanded="false" title="Notifications">
-                        <i data-lucide="bell" class="icon"></i>
-                        <span id="notifications-badge"></span>
-                    </button>
+    <div class="page-header">
+      <div class="page-header-content" style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <h1 class="page-title" style="margin:0;display:flex;align-items:center;gap:8px;">
+            <i data-lucide="layout-dashboard" style="width:28px;height:28px;vertical-align:middle;"></i>
+            Dashboard Overview
+          </h1>
+        </div>
 
-                    <!-- Notifications popup (absolute inside header-actions) -->
-                    <div id="notifications-menu">
+        <div style="display:flex;align-items:center;gap:10px;position:relative;">
+          <div style="position:relative;">
+            <i data-lucide="search" style="width:16px;height:16px;position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9ca3af;"></i>
+            <input id="header-search" type="text" placeholder="Search..." style="padding:8px 12px 8px 34px;border:1px solid #d1d5db;border-radius:6px;width:220px;font-size:14px;">
+          </div>
+
+          <!-- Notifications -->
+          <button id="notifications-btn" class="btn-secondary notifications-btn" onclick="toggleNotifications(event)" aria-haspopup="true" aria-expanded="false" title="Notifications" style="margin-left:4px;padding:6px 8px;border-radius:8px;display:flex;align-items:center;justify-content:center;position:relative;">
+            <i data-lucide="bell" class="icon"></i>
+            <span id="notifications-badge" style="position:absolute;top:-6px;right:-6px;min-width:22px;height:22px;padding:0 6px;border-radius:999px;display:none;align-items:center;justify-content:center;background:#ef4444;color:white;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,0.12);">&nbsp;</span>
+          </button>
+
+          <!-- Notifications popup (absolute inside header-actions) -->
+          <div id="notifications-menu" style="position:absolute;top:calc(100% + 8px);right:56px;width:340px;display:none;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,0.08);z-index:1000;">
                         <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #e5e7eb;">
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <i data-lucide="bell" style="width: 18px; height: 18px; color: #111827;"></i>
@@ -1576,7 +1580,7 @@ function generateDashboardPage() {
                     </div>
                     
                     <!-- Compact User Menu Button (avatar only) -->
-                    <div id="header-user-block" class="header-user-block" onclick="toggleUserMenu(event)" title="Profile menu">
+                    <div id="header-user-block" class="header-user-block" onclick="toggleUserMenu(event)" title="Profile menu" style="margin-left:6px;">
                         <div id="header-user-avatar">${AppState.currentUser.name
                           .split(' ')
                           .map((n) => n[0])
@@ -10711,7 +10715,7 @@ function initStatusManagement(filter = 'all') {
                     <option>Medium</option>
                     <option>Low</option>
                 </select>
-\            </div>
+      </div>
 
             <!-- Table -->
             <table class="request-table">

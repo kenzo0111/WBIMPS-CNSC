@@ -20,7 +20,6 @@ class DashboardController extends Controller
             'name' => $currentUser->name,
             'email' => $currentUser->email,
             'role' => data_get($currentUser, 'role', 'Administrator'),
-            'department' => data_get($currentUser, 'department', 'N/A'),
             'is_admin' => (bool) data_get($currentUser, 'is_admin', false),
         ] : null;
 
