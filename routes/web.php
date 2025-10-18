@@ -54,5 +54,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/user/request', function () { return view('user.user-request'); })->name('user.request');
 });
 
+// API-style route for recent activities (uses web middleware so it shows in route:list)
+// This provides a simple endpoint consumed by the dashboard client at /api/activities
+use App\Http\Controllers\Api\ActivityController;
+Route::get('/api/activities', [ActivityController::class, 'index']);
+Route::post('/api/activities', [ActivityController::class, 'store']);
+
 
 ?>

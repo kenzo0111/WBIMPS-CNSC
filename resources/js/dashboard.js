@@ -399,6 +399,42 @@ function adjustInventoryOnStockIn(newRecord, oldRecord) {
         addNotification(title, msg, 'info', 'package')
       }
     } catch (e) {}
+    // create server-side activity (best-effort)
+    try {
+      postActivity(
+        `Stock In: ${
+          newRecord.productName || newRecord.product_name || newRecord.sku || ''
+        }`,
+        {
+          transactionId: newRecord.transactionId || newRecord.id || null,
+          sku: newRecord.sku,
+          quantity: newRecord.quantity,
+        }
+      )
+    } catch (e) {}
+  }
+}
+
+// Post activity to server for client-side events (non-blocking)
+async function postActivity(action, meta = {}) {
+  try {
+    const url =
+      (window.APP_ROUTES && window.APP_ROUTES.activities) || '/api/activities'
+    await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': (function () {
+          const m = document.querySelector('meta[name="csrf-token"]')
+          return m ? m.getAttribute('content') : ''
+        })(),
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({ action, meta }),
+    })
+  } catch (e) {
+    console.warn('postActivity failed', e)
   }
 }
 
@@ -413,6 +449,19 @@ function adjustInventoryOnStockOut(newRecord, oldRecord) {
     recalcProductValue(product)
     maybeNotifyLowStock(product)
     persistProducts()
+    // create server-side activity (best-effort)
+    try {
+      postActivity(
+        `Stock Out: ${
+          newRecord.productName || newRecord.product_name || newRecord.sku || ''
+        }`,
+        {
+          transactionId: newRecord.transactionId || newRecord.id || null,
+          sku: newRecord.sku,
+          quantity: newRecord.quantity,
+        }
+      )
+    } catch (e) {}
   }
 }
 
@@ -426,6 +475,18 @@ function restoreInventoryFromDeletedStockIn(record) {
   recalcProductValue(product)
   maybeNotifyLowStock(product)
   persistProducts()
+  try {
+    postActivity(
+      `Stock In deleted: ${
+        record.productName || record.product_name || record.sku || ''
+      }`,
+      {
+        transactionId: record.transactionId || record.id || null,
+        sku: record.sku,
+        quantity: record.quantity,
+      }
+    )
+  } catch (e) {}
 }
 
 function restoreInventoryFromDeletedStockOut(record) {
@@ -437,6 +498,18 @@ function restoreInventoryFromDeletedStockOut(record) {
   recalcProductValue(product)
   maybeNotifyLowStock(product)
   persistProducts()
+  try {
+    postActivity(
+      `Stock Out deleted: ${
+        record.productName || record.product_name || record.sku || ''
+      }`,
+      {
+        transactionId: record.transactionId || record.id || null,
+        sku: record.sku,
+        quantity: record.quantity,
+      }
+    )
+  } catch (e) {}
 }
 
 function refreshProductsViewIfOpen() {
@@ -1655,53 +1728,10 @@ function generateDashboardPage() {
                     <div class="card-header">
                         <h3 class="card-title">Recent Activity</h3>
                     </div>
-                    <div class="activity-list">
-                        <div class="activity-item">
-                            <div class="activity-icon green">
-                                <i data-lucide="check" class="icon"></i>
-                            </div>
-                            <div class="activity-content">
-                                <p>Purchase Order PO-2025-008 approved</p>
-                                <span class="time">2 hours ago</span>
-                            </div>
-                        </div>
-                        <div class="activity-item">
-                            <div class="activity-icon blue">
-                                <i data-lucide="package" class="icon"></i>
-                            </div>
-                            <div class="activity-content">
-                                <p>Stock updated for Bond Paper A4</p>
-                                <span class="time">4 hours ago</span>
-                            </div>
-                        </div>
-                        <div class="activity-item">
-                            <div class="activity-icon orange">
-                                <i data-lucide="alert-triangle" class="icon"></i>
-                            </div>
-                            <div class="activity-content">
-                                <p>Low stock alert: Printer Ink Cartridge</p>
-                                <span class="time">1 day ago</span>
-                            </div>
-                        </div>
-                        <div class="activity-item">
-                            <div class="activity-icon purple">
-                                <i data-lucide="user-plus" class="icon"></i>
-                            </div>
-                            <div class="activity-content">
-                                <p>New user Sarah Wilson added</p>
-                                <span class="time">2 days ago</span>
-                            </div>
-                        </div>
-                        <div class="activity-item">
-                            <div class="activity-icon red">
-                                <i data-lucide="file-text" class="icon"></i>
-                            </div>
-                            <div class="activity-content">
-                                <p>New request submitted: Office Supplies</p>
-                                <span class="time">3 days ago</span>
-                            </div>
-                        </div>
-                    </div>
+              <div class="activity-list" id="recent-activity-list">
+                <!-- Recent activities will be injected here by dashboard script -->
+                <div class="activity-loading" style="padding:16px;color:#6b7280;font-size:14px;">Loading recent activity…</div>
+              </div>
                     <div class="activity-footer">
                         <a href="#" class="link">View all activity →</a>
                     </div>
@@ -1754,6 +1784,186 @@ function generateDashboardPage() {
             </div>
         </div>
     `
+}
+
+// Fetch recent activities from server API (robust: accepts several payload shapes)
+async function fetchActivities(limit = 8) {
+  try {
+    const url =
+      (window.APP_ROUTES && window.APP_ROUTES.activities) || '/api/activities'
+    const res = await fetch(`${url}?limit=${limit}`, {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      credentials: 'same-origin',
+    })
+
+    // If server returns a successful response, try to normalize it into
+    // an array of { action, created_at } items which `renderActivityList` expects.
+    if (res.ok) {
+      const payload = await res.json()
+
+      // Determine candidate arrays from common shapes
+      let data = []
+      if (Array.isArray(payload)) data = payload
+      else if (Array.isArray(payload.data)) data = payload.data
+      else if (Array.isArray(payload.activities)) data = payload.activities
+      else if (Array.isArray(payload.results)) data = payload.results
+      else if (payload && payload.items && Array.isArray(payload.items))
+        data = payload.items
+
+      // Normalise each entry to { action, created_at }
+      data = data.map((item) => {
+        return {
+          action:
+            item.action ||
+            item.message ||
+            item.description ||
+            item.title ||
+            item.activity ||
+            '',
+          created_at:
+            item.created_at ||
+            item.createdAt ||
+            item.timestamp ||
+            item.time ||
+            item.date ||
+            new Date().toISOString(),
+        }
+      })
+
+      // Sort newest-first and limit
+      data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      return data.slice(0, limit)
+    }
+  } catch (e) {
+    console.warn('fetchActivities error', e)
+  }
+
+  // Fallback: if server fails or no payload, synthesize activities from in-memory
+  // MockData.userLogs and AppState.statusRequests so the dashboard still shows activity.
+  try {
+    const logs = (window.MockData && window.MockData.userLogs) || []
+    const statuses = (AppState && AppState.statusRequests) || []
+
+    const mappedLogs = logs.map((l) => ({
+      action:
+        l.action ||
+        l.message ||
+        l.note ||
+        `User ${l.email || l.user || ''} activity`,
+      created_at:
+        l.created_at ||
+        l.createdAt ||
+        l.timestamp ||
+        l.time ||
+        new Date().toISOString(),
+    }))
+
+    const mappedStatuses = statuses.map((s) => ({
+      action:
+        s.title ||
+        s.action ||
+        `${s.id || s.requestId || 'REQ'} ${s.status || ''}`.trim(),
+      created_at:
+        s.updatedAt ||
+        s.updated_at ||
+        s.createdAt ||
+        s.created_at ||
+        s.timestamp ||
+        new Date().toISOString(),
+    }))
+
+    const combined = [...mappedLogs, ...mappedStatuses]
+    combined.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    return combined.slice(0, limit)
+  } catch (e) {
+    console.warn('fetchActivities fallback error', e)
+    return []
+  }
+}
+
+function timeAgo(iso) {
+  try {
+    const then = new Date(iso)
+    const diff = Date.now() - then.getTime()
+    const sec = Math.floor(diff / 1000)
+    if (sec < 60) return `${sec}s ago`
+    const min = Math.floor(sec / 60)
+    if (min < 60) return `${min}m ago`
+    const hr = Math.floor(min / 60)
+    if (hr < 24) return `${hr}h ago`
+    const days = Math.floor(hr / 24)
+    return `${days}d ago`
+  } catch (e) {
+    return ''
+  }
+}
+
+function renderActivityList(activities) {
+  const container = document.getElementById('recent-activity-list')
+  if (!container) return
+  if (!activities || activities.length === 0) {
+    container.innerHTML = `<div style="padding:16px;color:#6b7280;">No recent activity</div>`
+    return
+  }
+  container.innerHTML = activities
+    .map((a) => {
+      // choose icon by simple heuristics
+      let icon = 'activity'
+      let color = 'gray'
+      const text = (a.action || '').toLowerCase()
+      if (text.includes('approve') || text.includes('approved')) {
+        icon = 'check'
+        color = 'green'
+      } else if (text.includes('stock') || text.includes('received')) {
+        icon = 'package'
+        color = 'blue'
+      } else if (text.includes('low stock') || text.includes('alert')) {
+        icon = 'alert-triangle'
+        color = 'orange'
+      } else if (text.includes('user') || text.includes('added')) {
+        icon = 'user-plus'
+        color = 'purple'
+      } else if (text.includes('request') || text.includes('submitted')) {
+        icon = 'file-text'
+        color = 'red'
+      }
+
+      return `
+            <div class="activity-item">
+                <div class="activity-icon ${color}">
+                    <i data-lucide="${icon}" class="icon"></i>
+                </div>
+                <div class="activity-content">
+                    <p>${escapeHtml(a.action || '')}</p>
+                    <span class="time">${timeAgo(a.created_at)}</span>
+                </div>
+            </div>
+        `
+    })
+    .join('')
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 10)
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+// Ensure dashboard calls fetchActivities after page render
+const _origLoadPageContent = loadPageContent
+loadPageContent = function (pageId) {
+  _origLoadPageContent(pageId)
+  if (pageId === 'dashboard') {
+    // small delay to allow DOM insertion
+    setTimeout(async () => {
+      const acts = await fetchActivities(8)
+      renderActivityList(acts)
+    }, 120)
+  }
 }
 
 function generateCategoriesPage() {
@@ -8382,16 +8592,8 @@ function generateSupportPage() {
     `
 }
 
-// Escape helper
-function escapeHtml(str) {
-  return (str || '').replace(
-    /[&<>"']/g,
-    (c) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[
-        c
-      ] || c)
-  )
-}
+// Note: escapeHtml is already defined earlier in this file. Do not redeclare it here
+// to avoid duplicate identifier errors during bundling. Use the existing escapeHtml.
 
 // Refresh tickets list (re-render only tickets table body without full page reload)
 function refreshSupportTickets() {

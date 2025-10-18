@@ -46,6 +46,11 @@ class InspectionAcceptanceReportController extends Controller
         ];
 
         $pdf = Pdf::loadView('pdf.inspection_acceptance_report_pdf', $viewData);
+        try {
+            \App\Models\Activity::create(['action' => 'Generated Inspection Acceptance Report PDF', 'meta' => json_encode(['info' => null])]);
+        } catch (\Throwable $e) {
+            logger()->warning('Failed to record activity for IAR PDF', ['error' => $e->getMessage()]);
+        }
 
         return $pdf->download('inspection_acceptance_report.pdf');
     }

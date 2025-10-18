@@ -13,6 +13,12 @@ class RequisitionIssueSlipController extends Controller
 
         $pdf = Pdf::loadView('pdf.requisition_issue_slips_pdf', $data);
 
+        try {
+            \App\Models\Activity::create(['action' => 'Generated Requisition Issue Slip PDF', 'meta' => json_encode(['ris_no' => $data['ris_no'] ?? null])]);
+        } catch (\Throwable $e) {
+            logger()->warning('Failed to record activity for RIS PDF', ['error' => $e->getMessage()]);
+        }
+
         return $pdf->download('requisition_issue_slip.pdf');
     }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Activity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -41,6 +42,16 @@ class AccessController extends Controller
         Auth::login($user, true);
         $request->session()->regenerate();
 
+        // Record login activity
+        try {
+            Activity::create([
+                'action' => 'User logged in: ' . ($user->email ?? $user->name ?? 'Unknown'),
+                'meta' => json_encode(['user_id' => $user->id ?? null]),
+            ]);
+        } catch (\Throwable $e) {
+            logger()->warning('Failed to record login activity', ['error' => $e->getMessage()]);
+        }
+
         $profile = [
             'id' => $user->id,
             'name' => $user->name,
@@ -61,10 +72,21 @@ class AccessController extends Controller
      */
     public function logout(Request $request): JsonResponse
     {
+        $user = Auth::user();
         Auth::logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        // Record logout activity
+        try {
+            Activity::create([
+                'action' => 'User logged out: ' . ($user?->email ?? $user?->name ?? 'Unknown'),
+                'meta' => json_encode(['user_id' => $user->id ?? null]),
+            ]);
+        } catch (\Throwable $e) {
+            logger()->warning('Failed to record logout activity', ['error' => $e->getMessage()]);
+        }
 
         return response()->json([
             'message' => 'You have been signed out successfully.',

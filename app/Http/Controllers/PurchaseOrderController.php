@@ -49,6 +49,13 @@ class PurchaseOrderController extends Controller
 
         $pdf = Pdf::loadView('pdf.purchase_order_pdf', $data)->setPaper('a4', 'portrait');
 
+        // Record activity
+        try {
+            \App\Models\Activity::create(['action' => 'Generated Purchase Order PDF', 'meta' => json_encode(['po' => $data['po_number'] ?? null])]);
+        } catch (\Throwable $e) {
+            logger()->warning('Failed to record activity for PurchaseOrder PDF', ['error' => $e->getMessage()]);
+        }
+
         return $pdf->download('purchase_order.pdf');
     }
 

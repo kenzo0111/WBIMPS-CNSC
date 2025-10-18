@@ -51,6 +51,11 @@ class PurchaseRequestController extends Controller
         $data['entity_name'] = $data['entity_name'] ?? 'Camarines Norte State College';
 
         $pdf = Pdf::loadView('pdf.purchase_request_pdf', $data);
+        try {
+            \App\Models\Activity::create(['action' => 'Generated Purchase Request PDF', 'meta' => json_encode(['pr_no' => $data['pr_no'] ?? null])]);
+        } catch (\Throwable $e) {
+            logger()->warning('Failed to record activity for PurchaseRequest PDF', ['error' => $e->getMessage()]);
+        }
 
         return $pdf->download('purchase_request.pdf');
     }

@@ -13,6 +13,12 @@ class InventoryCustodianSlipController extends Controller
 
         $pdf = Pdf::loadView('pdf.inventory_custodian_slip_pdf', $data);
 
+        try {
+            \App\Models\Activity::create(['action' => 'Generated Inventory Custodian Slip PDF', 'meta' => json_encode(['info' => null])]);
+        } catch (\Throwable $e) {
+            logger()->warning('Failed to record activity for ICS PDF', ['error' => $e->getMessage()]);
+        }
+
         return $pdf->download('inventory_custodian_slip.pdf');
     }
 
