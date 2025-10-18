@@ -58,6 +58,7 @@ class AccessController extends Controller
             'email' => $user->email,
             'role' => data_get($user, 'role', 'Administrator'),
             'department' => data_get($user, 'department', 'N/A'),
+            'is_admin' => (bool) data_get($user, 'is_admin', false),
         ];
 
         return response()->json([
