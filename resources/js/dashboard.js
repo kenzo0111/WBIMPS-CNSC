@@ -19,17 +19,9 @@ if (typeof window !== 'undefined') {
   if (typeof window.stockOutData === 'undefined') window.stockOutData = []
 
   if (typeof window.lsAvailable === 'undefined') {
-    // gentle check for localStorage availability
+    // Persistence disabled: localStorage should not be used by the dashboard
     window.lsAvailable = function () {
-      try {
-        if (typeof window === 'undefined' || !window.localStorage) return false
-        const key = '__spmo_test__'
-        window.localStorage.setItem(key, key)
-        window.localStorage.removeItem(key)
-        return true
-      } catch (e) {
-        return false
-      }
+      return false
     }
   }
 
@@ -73,9 +65,19 @@ if (typeof window !== 'undefined') {
 // Initialize Lucide icons and load user logs
 document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons()
-  loadUserSession() // Load user session from localStorage
-  loadUserLogs() // Load user logs from localStorage
-  loadUsers() // Load users from localStorage
+  // Load session/logs/users from in-memory state (persistence disabled)
+  loadUserSession()
+  loadUserLogs()
+  loadUsers()
+  // Load persisted notifications (if any) and update badge
+  try {
+    if (typeof loadNotifications === 'function') loadNotifications()
+    if (typeof updateNotificationBadge === 'function') updateNotificationBadge()
+  } catch (e) {}
+  // Load persisted status requests
+  try {
+    if (typeof loadStatusRequests === 'function') loadStatusRequests()
+  } catch (e) {}
 })
 
 // Application State
@@ -239,114 +241,16 @@ function normalizeDateForServer(value) {
 AppState.loginActivityPage = 1
 AppState.loginActivityPageSize = 10 // show 10 records per page by default
 
-// Mock Data
+// Minimal Mock Data container (clean slate)
 const MockData = {
-  inventory: [
-    {
-      stockNumber: 'E001',
-      name: 'Bond Paper A4',
-      currentStock: 45,
-      unit: 'Ream',
-    },
-    {
-      stockNumber: 'E002',
-      name: 'Ballpoint Pen',
-      currentStock: 120,
-      unit: 'Pc',
-    },
-    {
-      stockNumber: 'E003',
-      name: 'Sticky Notes',
-      currentStock: 25,
-      unit: 'Pack',
-    },
-    {
-      stockNumber: 'SE01',
-      name: 'Wireless Mouse',
-      currentStock: 8,
-      unit: 'Pc',
-    },
-    {
-      stockNumber: 'SE02',
-      name: 'HDMI Cable 3m',
-      currentStock: 12,
-      unit: 'Pc',
-    },
-    {
-      stockNumber: 'N001',
-      name: 'Laptop Computer',
-      currentStock: 2,
-      unit: 'Unit',
-    },
-  ],
-
-  categories: [
-    {
-      id: 'C001',
-      name: 'Expendable',
-      description:
-        'Items that are used up quickly, have a short lifespan, and are not intended to be reused or tracked long-term. These are typically low-cost supplies.',
-    },
-    {
-      id: 'C002',
-      name: 'Semi-Expendable(Low)',
-      description:
-        'Items that are not consumed immediately and have a longer useful life, but cost ₱5,000 or less per unit. These are not capitalized as fixed assets, but they are still monitored or assigned to users or departments due to their usefulness and potential for loss.',
-    },
-    {
-      id: 'C003',
-      name: 'Semi-Expendable(High)',
-      description:
-        'Items with a unit cost more than ₱5,000 but less than ₱50,000. These are not capitalized as PPE, but are considered valuable enough to be tagged, tracked, and documented in the inventory system.',
-    },
-    {
-      id: 'C004',
-      name: 'Non-Expendable',
-      description:
-        "Assets that are high-cost (₱50,000 and above) and used in operations over multiple years. These are capitalized and recorded in the organization's asset registry.",
-    },
-  ],
-
+  inventory: [],
+  categories: [],
   products: [],
-
   newRequests: [],
-
   pendingRequests: [],
-
   completedRequests: [],
-
-  userLogs: [
-    {
-      id: 'LOG001',
-      email: 'cherry@cnsc.edu.ph',
-      name: 'Cherry Ann Quila',
-      action: 'Login',
-      timestamp: '2025-01-15 08:30:15',
-      ipAddress: '192.168.1.100',
-      device: 'Windows PC',
-      status: 'Success',
-    },
-    {
-      id: 'LOG002',
-      email: 'vince@cnsc.edu.ph',
-      name: 'Vince Balce',
-      action: 'Login',
-      timestamp: '2025-01-15 09:15:42',
-      ipAddress: '192.168.1.101',
-      device: 'MacBook',
-      status: 'Success',
-    },
-    {
-      id: 'LOG003',
-      email: 'marinel@cnsc.edu.ph',
-      name: 'Marinel Ledesma',
-      action: 'Login',
-      timestamp: '2025-01-15 10:20:33',
-      ipAddress: '192.168.1.102',
-      device: 'Windows PC',
-      status: 'Success',
-    },
-  ],
+  userLogs: [],
+  users: [],
 }
 
 // ==============================
@@ -362,64 +266,50 @@ const LS_KEYS = {
 let stockInData = []
 let stockOutData = []
 
+// Disable localStorage usage for a clean dashboard (no client-side persistence)
 function lsAvailable() {
-  try {
-    if (typeof localStorage === 'undefined') return false
-    const k = '__spmo_test__'
-    localStorage.setItem(k, '1')
-    localStorage.removeItem(k)
-    return true
-  } catch (e) {
-    return false
-  }
+  return false
 }
 
 function persistProducts() {
-  if (!lsAvailable()) return
-  try {
-    localStorage.setItem(
-      LS_KEYS.PRODUCTS,
-      JSON.stringify(MockData.products || [])
-    )
-  } catch (e) {}
+  // no-op (persistence disabled)
 }
 function persistStockIn() {
-  if (!lsAvailable()) return
-  try {
-    localStorage.setItem(LS_KEYS.STOCK_IN, JSON.stringify(stockInData || []))
-  } catch (e) {}
+  // no-op (persistence disabled)
 }
 function persistStockOut() {
-  if (!lsAvailable()) return
-  try {
-    localStorage.setItem(LS_KEYS.STOCK_OUT, JSON.stringify(stockOutData || []))
-  } catch (e) {}
+  // no-op (persistence disabled)
 }
 
 function loadPersistedInventoryData() {
-  if (!lsAvailable()) return
-  try {
-    const pr = localStorage.getItem(LS_KEYS.PRODUCTS)
-    if (pr) {
-      const arr = JSON.parse(pr)
-      if (Array.isArray(arr)) MockData.products = arr
-    }
-    const si = localStorage.getItem(LS_KEYS.STOCK_IN)
-    if (si) {
-      const arr = JSON.parse(si)
-      if (Array.isArray(arr)) stockInData = arr
-    }
-    const so = localStorage.getItem(LS_KEYS.STOCK_OUT)
-    if (so) {
-      const arr = JSON.parse(so)
-      if (Array.isArray(arr)) stockOutData = arr
-    }
-  } catch (e) {
-    console.warn('Persisted inventory load failed', e)
-  }
+  // no-op: persistence disabled, start with clean in-memory sets
+  MockData.products = MockData.products || []
+  stockInData = []
+  stockOutData = []
+  return
 }
 
+// Initialize with no persisted data
 loadPersistedInventoryData()
+
+// ==============
+// Status Requests Persistence
+// ==============
+// Status requests are kept in-memory only (do not persist to localStorage).
+// This removes reliance on browser storage for Status Management and keeps
+// data in the running AppState. If persistence is needed later, replace
+// these helpers with a server-side save/load or another persistence strategy.
+function loadStatusRequests() {
+  // Ensure the property exists and is an array
+  if (!Array.isArray(AppState.statusRequests)) AppState.statusRequests = []
+  return AppState.statusRequests
+}
+
+function saveStatusRequests() {
+  // No-op: intentionally avoid localStorage. Keep AppState.statusRequests in-memory.
+  if (!Array.isArray(AppState.statusRequests)) AppState.statusRequests = []
+  return AppState.statusRequests
+}
 
 // --- Inventory Synchronization Helpers ---
 // Low stock notification tracking
@@ -431,13 +321,34 @@ function maybeNotifyLowStock(product) {
   const currentQty = Number(product.quantity) || 0
   const already = AppState.lowStockAlertedIds.includes(product.id)
   if (currentQty < threshold && !already) {
-    // push notification
-    addNotification(
-      'Low stock: ' + product.name,
-      `${product.name} has only ${currentQty} left (Threshold: ${threshold})`,
-      'warning',
-      'alert-triangle'
-    )
+    // push notification (use persistent API when available)
+    try {
+      if (typeof createNotification === 'function') {
+        createNotification({
+          title: 'Low stock: ' + product.name,
+          message: `${product.name} has only ${currentQty} left (Threshold: ${threshold})`,
+          type: 'warning',
+          icon: 'alert-triangle',
+        })
+      } else {
+        addNotification(
+          'Low stock: ' + product.name,
+          `${product.name} has only ${currentQty} left (Threshold: ${threshold})`,
+          'warning',
+          'alert-triangle'
+        )
+      }
+    } catch (e) {
+      // fallback to non-persistent addNotification
+      try {
+        addNotification(
+          'Low stock: ' + product.name,
+          `${product.name} has only ${currentQty} left (Threshold: ${threshold})`,
+          'warning',
+          'alert-triangle'
+        )
+      } catch (err) {}
+    }
     AppState.lowStockAlertedIds.push(product.id)
   } else if (currentQty >= threshold && already) {
     // remove from alerted so future drops will alert again
@@ -473,6 +384,21 @@ function adjustInventoryOnStockIn(newRecord, oldRecord) {
     recalcProductValue(product)
     maybeNotifyLowStock(product)
     persistProducts()
+    // Notify stock in updated
+    try {
+      const title = `Stock In Updated: ${newRecord.transactionId}`
+      const msg = `Updated ${newRecord.quantity} of ${newRecord.productName}`
+      if (typeof createNotification === 'function') {
+        createNotification({
+          title,
+          message: msg,
+          type: 'info',
+          icon: 'package',
+        })
+      } else {
+        addNotification(title, msg, 'info', 'package')
+      }
+    } catch (e) {}
   }
 }
 
@@ -685,15 +611,7 @@ function logUserLogin(email, name, status = 'Success') {
       window.MockData.userLogs = window.MockData.userLogs.slice(0, 100)
     }
 
-    // Also save to localStorage for persistence
-    try {
-      localStorage.setItem(
-        'spmo_userLogs',
-        JSON.stringify(window.MockData.userLogs)
-      )
-    } catch (e) {
-      console.warn('Could not save user logs to localStorage:', e)
-    }
+    // Persistence disabled: keep logs in-memory only
 
     console.log('User login logged:', logEntry)
     return logEntry
@@ -715,15 +633,7 @@ function updateUserStatus(email, status) {
       user.status = status
       console.log(`User ${email} status updated to ${status}`)
 
-      // Save updated users to localStorage
-      try {
-        localStorage.setItem(
-          'mockDataUsers',
-          JSON.stringify(window.MockData.users)
-        )
-      } catch (e) {
-        console.warn('Could not save users to localStorage:', e)
-      }
+      // Persistence disabled: keep user status in-memory only
     }
   } catch (error) {
     console.error('Error updating user status:', error)
@@ -780,15 +690,7 @@ function logUserLogout(email, name) {
       window.MockData.userLogs = window.MockData.userLogs.slice(0, 100)
     }
 
-    // Save to localStorage
-    try {
-      localStorage.setItem(
-        'spmo_userLogs',
-        JSON.stringify(window.MockData.userLogs)
-      )
-    } catch (e) {
-      console.warn('Could not save user logs to localStorage:', e)
-    }
+    // Persistence disabled: keep logs in-memory only
 
     console.log('User logout logged:', logEntry)
     return logEntry
@@ -798,38 +700,18 @@ function logUserLogout(email, name) {
   }
 }
 
-// Load user logs from localStorage on page load
+// Load user logs (no persistence) - keep existing in-memory MockData.userLogs
 function loadUserLogs() {
-  try {
-    const stored = localStorage.getItem('spmo_userLogs')
-    if (stored) {
-      const logs = JSON.parse(stored)
-      if (Array.isArray(logs) && logs.length > 0) {
-        if (!window.MockData) window.MockData = {}
-        window.MockData.userLogs = logs
-        console.log('Loaded', logs.length, 'user logs from localStorage')
-      }
-    }
-  } catch (error) {
-    console.error('Error loading user logs:', error)
-  }
+  if (!window.MockData) window.MockData = {}
+  window.MockData.userLogs = window.MockData.userLogs || []
+  return window.MockData.userLogs
 }
 
-// Load users from localStorage on page load
+// Load users (no persistence) - keep users in-memory only
 function loadUsers() {
-  try {
-    const stored = localStorage.getItem('mockDataUsers')
-    if (stored) {
-      const users = JSON.parse(stored)
-      if (Array.isArray(users) && users.length > 0) {
-        if (!window.MockData) window.MockData = {}
-        window.MockData.users = users
-        console.log('Loaded', users.length, 'users from localStorage')
-      }
-    }
-  } catch (error) {
-    console.error('Error loading users:', error)
-  }
+  if (!window.MockData) window.MockData = {}
+  window.MockData.users = window.MockData.users || []
+  return window.MockData.users
 }
 
 // Load user session from localStorage and update AppState
@@ -855,41 +737,13 @@ function loadUserSession() {
         created: session.loginTime.split('T')[0],
       }
 
-      // Persist to localStorage for SPA interactions
-      try {
-        localStorage.setItem('userSession', JSON.stringify(session))
-      } catch (storageError) {
-        console.warn('Unable to persist user session locally:', storageError)
-      }
+      // Persistence disabled: session kept in AppState only
 
       updateUserDisplay()
       return
     }
 
-    const stored = localStorage.getItem('userSession')
-    if (stored) {
-      const session = JSON.parse(stored)
-
-      // Update AppState.currentUser with session data
-      AppState.currentUser = {
-        id: session.id || 'GUEST',
-        name: session.name || 'Guest User',
-        email: session.email || '',
-        role: session.role || 'User',
-        department: session.department || 'N/A',
-        status: 'Active',
-        created: session.loginTime
-          ? session.loginTime.split('T')[0]
-          : new Date().toISOString().split('T')[0],
-      }
-
-      console.log('User session loaded:', AppState.currentUser)
-
-      // Update the UI with current user info
-      updateUserDisplay()
-    } else {
-      console.warn('No user session found. Using default user.')
-    }
+    // Persistence disabled: keep default AppState.currentUser (or window.CURRENT_USER handled above)
   } catch (error) {
     console.error('Error loading user session:', error)
   }
@@ -989,75 +843,9 @@ function capitalize(s) {
 
 // Load user requests from localStorage and merge with AppState.statusRequests
 function loadUserRequests() {
-  try {
-    const userRequests = JSON.parse(
-      localStorage.getItem('userPurchaseRequests') || '[]'
-    )
-
-    console.log(`Found ${userRequests.length} user requests in localStorage`)
-
-    if (userRequests.length > 0) {
-      // Convert user requests to match the statusRequests format
-      const formattedRequests = userRequests.map((req) => {
-        // Parse the date properly
-        const submittedDate = req.submittedDate
-          ? new Date(req.submittedDate)
-          : new Date()
-        const year = submittedDate.getFullYear()
-        const month = String(submittedDate.getMonth() + 1).padStart(2, '0')
-        const day = String(submittedDate.getDate()).padStart(2, '0')
-        const formattedDate = `${year}-${month}-${day}`
-
-        return {
-          id: req.requestId,
-          requester: req.requester || req.email,
-          department: req.department || 'Unknown',
-          item: Array.isArray(req.items)
-            ? req.items.map((i) => i.description || i.item || '').join(', ')
-            : req.items || 'N/A',
-          priority: (req.priority || 'medium').toLowerCase(),
-          updatedAt: formattedDate,
-          status: (req.status || 'incoming').toLowerCase(),
-          cost: req.totalCost || 0,
-          source: 'user-form', // Mark as coming from user form
-          email: req.email,
-          unit: req.unit,
-          neededDate: req.neededDate,
-          rawData: req, // Store original request data
-        }
-      })
-
-      console.log('Formatted requests:', formattedRequests)
-
-      // Get existing IDs to avoid duplicates
-      const existingIds = new Set(
-        (AppState.statusRequests || []).map((r) => r.id)
-      )
-
-      // Only add requests that don't already exist
-      const newRequests = formattedRequests.filter(
-        (r) => !existingIds.has(r.id)
-      )
-
-      if (newRequests.length > 0) {
-        // Add new requests at the beginning (most recent first)
-        AppState.statusRequests = [
-          ...newRequests,
-          ...(AppState.statusRequests || []),
-        ]
-        console.log(
-          `✅ Loaded ${newRequests.length} new user requests from localStorage`
-        )
-        console.log('Total requests now:', AppState.statusRequests.length)
-      } else {
-        console.log('No new requests to add (all already exist)')
-      }
-    } else {
-      console.log('No user requests in localStorage yet')
-    }
-  } catch (error) {
-    console.error('❌ Error loading user requests from localStorage:', error)
-  }
+  // Persistence disabled: do not read user requests from localStorage.
+  // AppState.statusRequests should be managed by server-side data or other in-memory flows.
+  return []
 }
 
 function renderNotifications() {
@@ -1250,11 +1038,17 @@ function toggleNotificationRead(id) {
   if (!n) return
   n.read = !n.read // Toggle instead of always setting to true
   renderNotifications()
+  try {
+    if (typeof saveNotifications === 'function') saveNotifications()
+  } catch (e) {}
 }
 
 function markAllNotificationsRead() {
   ;(AppState.notifications || []).forEach((n) => (n.read = true))
   renderNotifications()
+  try {
+    if (typeof saveNotifications === 'function') saveNotifications()
+  } catch (e) {}
 }
 
 function deleteNotification(id) {
@@ -1262,15 +1056,74 @@ function deleteNotification(id) {
     (n) => n.id !== id
   )
   renderNotifications()
+  try {
+    if (typeof saveNotifications === 'function') saveNotifications()
+  } catch (e) {}
 }
 
 function clearAllNotifications() {
   if ((AppState.notifications || []).length === 0) return
   if (confirm('Are you sure you want to clear all notifications?')) {
     AppState.notifications = []
+    try {
+      // Remove persisted notifications key
+      if (lsAvailable()) localStorage.removeItem('AppNotifications')
+    } catch (e) {}
     renderNotifications()
   }
 }
+
+// Clear mock/localStorage data used by the demo app (products, stock, logs, users, notifications)
+async function clearMockLocalData() {
+  const ok = await showConfirm(
+    'This will remove demo/mock in-memory data (products, stock in/out, users, logs, notifications). Continue?',
+    'Clear Mock Data'
+  )
+  if (!ok) return
+  try {
+    const keys = [
+      LS_KEYS.PRODUCTS,
+      LS_KEYS.STOCK_IN,
+      LS_KEYS.STOCK_OUT,
+      'spmo_userLogs',
+      'mockDataUsers',
+      'userSession',
+      'AppNotifications',
+      'spmo_status_requests',
+    ]
+    keys.forEach((k) => {
+      try {
+        if (lsAvailable()) localStorage.removeItem(k)
+      } catch (e) {}
+    })
+
+    // Reset in-memory mock data
+    MockData.products = []
+    stockInData = []
+    stockOutData = []
+    if (window.MockData) {
+      window.MockData.userLogs = []
+      window.MockData.users = []
+    }
+
+    // Reset AppState notifications
+    AppState.notifications = []
+    AppState.statusRequests = []
+    AppState.newRequests = []
+    AppState.lowStockAlertedIds = []
+    renderNotifications()
+    try {
+      if (typeof saveNotifications === 'function') saveNotifications()
+    } catch (e) {}
+
+    showAlert('Mock localStorage data cleared', 'success')
+  } catch (e) {
+    showAlert('Failed to clear mock data', 'error')
+    console.error(e)
+  }
+}
+
+window.clearMockLocalData = clearMockLocalData
 
 // Add new notification (for demo/testing purposes)
 function addNotification(title, message, type = 'info', icon = 'bell') {
@@ -1304,7 +1157,11 @@ function toggleSidebar() {
   const isCollapsed = sidebar.classList.toggle('collapsed')
 
   // Store the collapsed state in localStorage
-  localStorage.setItem('sidebarCollapsed', isCollapsed)
+  if (lsAvailable()) {
+    try {
+      localStorage.setItem('sidebarCollapsed', isCollapsed)
+    } catch (e) {}
+  }
 
   // Add/remove tooltips for navigation items
   updateNavTooltips(isCollapsed)
@@ -1336,9 +1193,8 @@ function updateNavTooltips(isCollapsed) {
 // Initialize sidebar state from localStorage
 function initializeSidebarState() {
   const sidebar = document.getElementById('sidebar')
-  const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true'
-
-  if (isCollapsed) {
+  // Persistence disabled: keep default sidebar state (expanded) unless server or AppState changes it
+  if (AppState.sidebarCollapsed) {
     sidebar.classList.add('collapsed')
     updateNavTooltips(true)
   }
@@ -5226,6 +5082,9 @@ function finalizePurchaseOrderCreation() {
     items: [...AppState.purchaseOrderItems],
   }
   AppState.newRequests.push(newRequest)
+  try {
+    if (typeof saveStatusRequests === 'function') saveStatusRequests()
+  } catch (e) {}
   showAlert(`New purchase order ${poNumber} created successfully!`, 'success')
   loadPageContent('new-request')
   closePurchaseOrderModal()
@@ -6302,6 +6161,9 @@ function savePurchaseOrder(existingId = null) {
       items: [...AppState.purchaseOrderItems],
     }
     AppState.newRequests.push(newRequest)
+    try {
+      if (typeof saveStatusRequests === 'function') saveStatusRequests()
+    } catch (e) {}
   }
 
   // Show success alert
@@ -6532,6 +6394,31 @@ function approveRequest(requestId) {
 
   if (request) {
     showAlert(`Request ${requestId} approved successfully!`, 'success')
+    // Create persistent notification for approval
+    try {
+      if (typeof createNotification === 'function') {
+        createNotification({
+          title: `Request ${requestId} approved`,
+          message: `Request ${requestId} was approved by ${
+            request.approvedBy || 'Approver'
+          }`,
+          type: 'success',
+          icon: 'check-circle',
+        })
+      } else {
+        addNotification(
+          `Request ${requestId} approved`,
+          `Request ${requestId} was approved by ${
+            request.approvedBy || 'Approver'
+          }`,
+          'success',
+          'check-circle'
+        )
+      }
+    } catch (e) {}
+    try {
+      if (typeof saveStatusRequests === 'function') saveStatusRequests()
+    } catch (e) {}
   } else {
     showAlert(`Request ${requestId} not found.`, 'error')
   }
@@ -6574,6 +6461,9 @@ async function rejectRequest(requestId) {
 
   if (request) {
     showAlert(`Request ${requestId} rejected.`, 'warning')
+    try {
+      if (typeof saveStatusRequests === 'function') saveStatusRequests()
+    } catch (e) {}
   } else {
     showAlert(`Request ${requestId} not found.`, 'error')
   }
@@ -6711,9 +6601,13 @@ async function logout() {
     }
 
     try {
-      localStorage.removeItem('userSession')
-      localStorage.removeItem('authToken')
-      sessionStorage.clear()
+      if (lsAvailable()) {
+        localStorage.removeItem('userSession')
+        localStorage.removeItem('authToken')
+      }
+      try {
+        sessionStorage.clear()
+      } catch (e) {}
     } catch (storageError) {
       console.warn('Unable to clear local session storage:', storageError)
     }
@@ -8919,6 +8813,118 @@ function markNotificationAsRead(notificationId) {
     }
   }
 }
+// ===== System-wide Notifications (persistence helpers) =====
+const NOTIFICATIONS_KEY = 'AppNotifications'
+
+function loadNotifications() {
+  try {
+    const raw = localStorage.getItem(NOTIFICATIONS_KEY)
+    const parsed = raw ? JSON.parse(raw) : null
+    if (Array.isArray(parsed)) {
+      AppState.notifications = parsed.map((n) => ({
+        id: n.id,
+        title: n.title || n.type || 'Notification',
+        message: n.message || '',
+        time:
+          n.time ||
+          (n.createdAt ? new Date(n.createdAt).toLocaleString() : 'Just now'),
+        timestamp: n.timestamp || n.createdAt || new Date().toISOString(),
+        read: !!n.read,
+        type: n.type || 'info',
+        icon: n.icon || 'bell',
+        meta: n.meta || {},
+      }))
+    }
+  } catch (e) {
+    AppState.notifications = AppState.notifications || []
+  }
+  updateNotificationBadge()
+  return AppState.notifications
+}
+
+function saveNotifications() {
+  try {
+    const toStore = (AppState.notifications || []).map((n) => ({
+      id: n.id,
+      title: n.title,
+      message: n.message,
+      type: n.type,
+      icon: n.icon,
+      read: !!n.read,
+      timestamp: n.timestamp || new Date().toISOString(),
+      createdAt: n.createdAt || n.timestamp || new Date().toISOString(),
+      meta: n.meta || {},
+    }))
+    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(toStore))
+  } catch (e) {
+    console.error('Failed to persist notifications', e)
+  }
+  updateNotificationBadge()
+}
+
+function generateNotificationId() {
+  return `n_${Date.now()}_${Math.floor(Math.random() * 1000)}`
+}
+
+function createNotification({
+  title = '',
+  message = '',
+  type = 'info',
+  icon = 'bell',
+  meta = {},
+  silent = false,
+} = {}) {
+  loadNotifications()
+  const n = {
+    id: generateNotificationId(),
+    title: title || (type ? String(type) : 'Notification'),
+    message: message || '',
+    type,
+    icon,
+    read: false,
+    time: 'Just now',
+    timestamp: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    meta,
+  }
+  AppState.notifications = AppState.notifications || []
+  AppState.notifications.unshift(n)
+  if (AppState.notifications.length > 500)
+    AppState.notifications = AppState.notifications.slice(0, 500)
+  saveNotifications()
+  try {
+    renderNotifications()
+  } catch (e) {}
+
+  if (!silent && 'Notification' in window) {
+    if (Notification.permission === 'granted') {
+      try {
+        new Notification(n.title, { body: n.message || '', tag: n.id })
+      } catch (e) {}
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then((perm) => {
+        if (perm === 'granted') {
+          try {
+            new Notification(n.title, { body: n.message || '', tag: n.id })
+          } catch (e) {}
+        }
+      })
+    }
+  }
+
+  return n
+}
+
+function updateNotificationBadge() {
+  const unread = (AppState.notifications || []).filter((n) => !n.read).length
+  const badge =
+    document.getElementById('notifications-badge') ||
+    document.querySelector('#notifications-badge')
+  if (badge) {
+    badge.textContent = unread > 9 ? '9+' : unread > 0 ? String(unread) : ''
+    badge.style.display = unread > 0 ? 'flex' : 'none'
+  }
+}
 
 // -----------------------------//
 // Add Product Modal and Functions //
@@ -10307,6 +10313,21 @@ function saveStockOut(stockId) {
       const delta = newIssued - prevIssued // additional quantity to subtract
       if (delta > 0 && product.quantity < delta) {
         showAlert('Insufficient stock for the additional quantity.', 'error')
+        // Notify new stock in
+        try {
+          const title = `Stock In: ${newRecord.transactionId}`
+          const msg = `Received ${newRecord.quantity} ${newRecord.productName}`
+          if (typeof createNotification === 'function') {
+            createNotification({
+              title,
+              message: msg,
+              type: 'success',
+              icon: 'package-check',
+            })
+          } else {
+            addNotification(title, msg, 'success', 'package-check')
+          }
+        } catch (e) {}
         return
       }
       stockOutData[idx] = record
@@ -10984,6 +11005,9 @@ function confirmReturn(requestId) {
   // Show success message
   const remarksText = reasons.join(', ')
   showAlert(`Request ${requestId} returned. Reasons: ${remarksText}`, 'success')
+  try {
+    if (typeof saveStatusRequests === 'function') saveStatusRequests()
+  } catch (e) {}
 }
 
 // ===== Update Row Status (for Received actions) =====
@@ -11008,6 +11032,19 @@ function updateStatusRow(requestId, newStatus) {
     refreshStatusCards()
     const statusLabel = newStatus.charAt(0).toUpperCase() + newStatus.slice(1)
     showAlert(`Request ${requestId} marked as ${statusLabel}`, 'success')
+    // Notify status change
+    try {
+      const title = `Request ${requestId} ${statusLabel}`
+      const message = `Status changed to ${statusLabel} for request ${requestId}`
+      if (typeof createNotification === 'function') {
+        createNotification({ title, message, type: 'info', icon: 'clock' })
+      } else {
+        addNotification(title, message, 'info', 'clock')
+      }
+    } catch (e) {}
+    try {
+      if (typeof saveStatusRequests === 'function') saveStatusRequests()
+    } catch (err) {}
   } catch (e) {
     console.error(e)
   }
@@ -11328,6 +11365,13 @@ const exposedFunctions = {
   clearAllNotifications,
   toggleNotificationRead,
   markNotificationAsRead,
+  // New notification APIs (ensure backward compatibility if redefined)
+  createNotification,
+  loadNotifications,
+  saveNotifications,
+  updateNotificationBadge,
+  loadStatusRequests,
+  saveStatusRequests,
   toggleUserMenu,
   closeUserMenu,
   navigateToPage,
@@ -11388,3 +11432,6 @@ const exposedFunctions = {
 }
 
 Object.assign(window, exposedFunctions)
+// Ensure status persistence helpers are available globally
+window.loadStatusRequests = loadStatusRequests
+window.saveStatusRequests = saveStatusRequests
