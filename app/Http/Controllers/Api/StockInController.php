@@ -47,10 +47,12 @@ class StockInController extends Controller
             'unit_cost' => 'numeric|min:0',
             'supplier' => 'nullable|string',
             'date_received' => 'required|date',
+            'received_by' => 'nullable|string',
         ]);
 
-        DB::transaction(function () use ($validated) {
-            $stockIn = StockIn::create($validated);
+        $created = null;
+        DB::transaction(function () use ($validated, &$created) {
+            $created = StockIn::create($validated);
 
             // Update product inventory
             $product = Product::where('sku', $validated['sku'])->first();
@@ -60,10 +62,10 @@ class StockInController extends Controller
                 $product->save();
             }
 
-            return $stockIn;
+            return $created;
         });
 
-        return response()->json(['data' => StockIn::find($validated['transaction_id'])], 201);
+        return response()->json(['data' => $created], 201);
     }
 
     /**
@@ -87,6 +89,7 @@ class StockInController extends Controller
             'unit_cost' => 'numeric|min:0',
             'supplier' => 'nullable|string',
             'date_received' => 'required|date',
+            'received_by' => 'nullable|string',
         ]);
 
         DB::transaction(function () use ($validated, $stockIn) {

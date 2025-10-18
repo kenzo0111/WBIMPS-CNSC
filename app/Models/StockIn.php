@@ -15,12 +15,14 @@ class StockIn extends Model
         'quantity',
         'unit_cost',
         'supplier',
-        'date_received'
+        'date_received',
+        'received_by',
     ];
 
     protected $casts = [
         'quantity' => 'integer',
         'unit_cost' => 'decimal:2',
         'date_received' => 'date',
+        'received_by' => 'string',
     ];
 }

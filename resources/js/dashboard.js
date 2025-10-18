@@ -287,8 +287,14 @@ async function saveProductToAPI(product) {
     const isUpdate = Boolean(product.databaseId)
     const databaseId = product.databaseId || null
 
+    // The backend exposes a single products resource. Always use `/api/products`
+    // for create/update. We still include `type` and `category_id` so the server
+    // can route or store items appropriately if it needs to split them later.
+    const collection = 'products'
     const method = isUpdate ? 'PUT' : 'POST'
-    const url = isUpdate ? `/api/products/${databaseId}` : '/api/products'
+    const url = isUpdate
+      ? `/api/${collection}/${databaseId}`
+      : `/api/${collection}`
 
     const response = await fetch(url, {
       method: method,
@@ -411,21 +417,50 @@ async function saveStockInToAPI(stockInRecord) {
         unit_cost: stockInRecord.unitCost,
         supplier: stockInRecord.supplier,
         date_received: stockInRecord.dateReceived,
+        received_by:
+          stockInRecord.receivedBy || stockInRecord.received_by || null,
       }),
     })
 
     if (response.ok) {
       const data = await response.json()
       // Update local data
+      const serverRecord = data.data || {}
+      // Normalize server record to UI fields (same normalization as loadStockInFromAPI)
+      const uc = Number(serverRecord.unit_cost ?? serverRecord.unitCost ?? 0)
+      const normalized = Object.assign({}, serverRecord)
+      normalized.transactionId =
+        serverRecord.transaction_id || serverRecord.transactionId || ''
+      normalized.productName =
+        serverRecord.product_name || serverRecord.productName || ''
+      normalized.date =
+        serverRecord.date_received ||
+        serverRecord.date ||
+        serverRecord.created_at ||
+        ''
+      normalized.unit_cost = uc
+      normalized.unitCost = uc
+      normalized.quantity = Number(serverRecord.quantity || 0)
+      normalized.totalCost = Number(
+        (serverRecord.total_cost ??
+          serverRecord.totalCost ??
+          normalized.quantity * uc) ||
+          0
+      )
+      normalized.sku = serverRecord.sku || serverRecord.sku
+      normalized.supplier = serverRecord.supplier || ''
+      normalized.receivedBy =
+        serverRecord.received_by || serverRecord.receivedBy || ''
+
       if (method === 'POST') {
-        stockInData.push(data.data)
+        stockInData.push(normalized)
       } else {
         const index = stockInData.findIndex((s) => s.id === stockInRecord.id)
         if (index !== -1) {
-          stockInData[index] = data.data
+          stockInData[index] = normalized
         }
       }
-      return data.data
+      return normalized
     } else {
       const error = await response.json()
       throw new Error(error.message || 'Failed to save stock in')
@@ -452,7 +487,11 @@ async function saveStockOutToAPI(stockOutRecord) {
       },
       credentials: 'same-origin',
       body: JSON.stringify({
-        transaction_id: stockOutRecord.transactionId || stockOutRecord.id,
+        // Prefer explicit transactionId, then legacy issueId, then fallback id
+        transaction_id:
+          stockOutRecord.transactionId ||
+          stockOutRecord.issueId ||
+          stockOutRecord.id,
         sku: stockOutRecord.sku,
         product_name: stockOutRecord.productName,
         quantity: stockOutRecord.quantity,
@@ -597,7 +636,33 @@ async function loadStockInFromAPI() {
     })
     if (response.ok) {
       const data = await response.json()
-      stockInData = data.data || []
+      // Normalize each record to UI-friendly camelCase fields and safe aliases
+      stockInData = (data.data || []).map((r) => {
+        const record = Object.assign({}, r)
+        // server uses snake_case: transaction_id, product_name, date_received, unit_cost
+        record.id = record.id || record.id
+        record.transactionId =
+          record.transaction_id || record.transactionId || ''
+        record.productName = record.product_name || record.productName || ''
+        record.date = formatDate(
+          record.date_received || record.date || record.created_at || ''
+        )
+        // unit cost aliasing
+        const uc = Number(record.unit_cost ?? record.unitCost ?? 0)
+        record.unit_cost = uc
+        record.unitCost = uc
+        // quantity / total cost
+        record.quantity = Number(record.quantity || 0)
+        record.totalCost = Number(
+          (record.total_cost ?? record.totalCost ?? record.quantity * uc) || 0
+        )
+        // SKU and supplier
+        record.sku = record.sku || record.sku
+        record.supplier = record.supplier || ''
+        // ReceivedBy is not currently in DB; accept server alias 'received_by' if present
+        record.receivedBy = record.received_by || record.receivedBy || ''
+        return record
+      })
       return stockInData
     }
   } catch (error) {
@@ -899,6 +964,32 @@ function refreshProductsViewIfOpen() {
 // Utility Functions
 function formatCurrency(amount) {
   return `₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
+}
+
+// Format date-like values into YYYY-MM-DD. Accepts ISO strings and Date objects.
+function formatDate(d) {
+  if (!d && d !== 0) return ''
+  if (typeof d === 'string') {
+    // If already an ISO or YYYY-MM-DD string, take first 10 chars
+    if (d.length >= 10 && (d.includes('T') || d[4] === '-'))
+      return d.slice(0, 10)
+    // Fallback: try to parse
+    const parsed = new Date(d)
+    if (!isNaN(parsed)) {
+      const y = parsed.getFullYear()
+      const m = String(parsed.getMonth() + 1).padStart(2, '0')
+      const day = String(parsed.getDate()).padStart(2, '0')
+      return `${y}-${m}-${day}`
+    }
+    return ''
+  }
+  if (d instanceof Date) {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+  return ''
 }
 
 function getBadgeClass(status, type = 'status') {
@@ -2319,9 +2410,29 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;')
 }
 
-// Ensure dashboard calls fetchActivities after page render
+// Ensure certain pages load remote data before rendering
 const _origLoadPageContent = loadPageContent
 loadPageContent = function (pageId) {
+  // For pages that must show server data, load remote data first
+  if (pageId === 'stock-in') {
+    ;(async () => {
+      await loadStockInFromAPI()
+      _origLoadPageContent(pageId)
+      if (window.lucide) setTimeout(() => lucide.createIcons(), 10)
+    })()
+    return
+  }
+
+  if (pageId === 'stock-out') {
+    ;(async () => {
+      await loadStockOutFromAPI()
+      _origLoadPageContent(pageId)
+      if (window.lucide) setTimeout(() => lucide.createIcons(), 10)
+    })()
+    return
+  }
+
+  // Default: call original loader
   _origLoadPageContent(pageId)
   if (pageId === 'dashboard') {
     // small delay to allow DOM insertion
@@ -2410,9 +2521,21 @@ function generateCategoriesPage() {
 
 function generateProductsPage() {
   const currentTab = AppState.currentProductTab || 'expendable'
-  // For now, show all products regardless of type since products don't have type field
-  // TODO: Add type field to products model and update accordingly
-  const filteredProducts = MockData.products || []
+  // Filter products according to current tab. Prefer explicit `product.type` when present;
+  // otherwise derive type from SKU prefix as a safe fallback (SE -> semi-expendable, N -> non-expendable, else expendable).
+  const allProducts = MockData.products || []
+  const deriveType = (product) => {
+    if (!product) return 'expendable'
+    if (product.type) return product.type
+    const sku = (product.id || '').toString().toUpperCase()
+    if (sku.startsWith('SE')) return 'semi-expendable'
+    if (sku.startsWith('N')) return 'non-expendable'
+    return 'expendable'
+  }
+
+  const filteredProducts = allProducts.filter(
+    (p) => deriveType(p) === currentTab
+  )
 
   return `
         <div class="page-header">
@@ -9463,6 +9586,56 @@ function openProductModal(mode = 'create', productId = null) {
   modal.classList.add('active')
 
   lucide.createIcons()
+  // Attach dynamic SKU handling: update hidden SKU and preview when category changes
+  try {
+    const categorySelect = modal.querySelector('#productCategory')
+    const skuHidden = modal.querySelector('#productSku')
+    const skuPreview = modal.querySelector('#product-id-badge')
+
+    function deriveProductTypeFromCategoryId(catId) {
+      const sel = (MockData.categories || []).find(
+        (c) => String(c.id) === String(catId)
+      )
+      if (!sel) return 'expendable'
+      const name = String(sel.name || '').toLowerCase()
+      if (name.includes('semi')) return 'semi-expendable'
+      if (name.includes('non')) return 'non-expendable'
+      if (name.includes('expendable')) return 'expendable'
+      const code = String(sel.code || '').toLowerCase()
+      if (code.startsWith('se')) return 'semi-expendable'
+      if (code.startsWith('n')) return 'non-expendable'
+      if (code.startsWith('e')) return 'expendable'
+      return 'expendable'
+    }
+
+    function generateSkuForType(type) {
+      const prefix =
+        { expendable: 'E', 'semi-expendable': 'SE', 'non-expendable': 'N' }[
+          type
+        ] || 'E'
+      const existingSkus = (MockData.products || [])
+        .map((p) => p.id || p.sku)
+        .filter((s) => s && typeof s === 'string' && s.startsWith(prefix))
+        .map((s) => parseInt(s.replace(prefix, '')) || 0)
+        .sort((a, b) => b - a)
+      const nextNumber = existingSkus.length > 0 ? existingSkus[0] + 1 : 1
+      return `${prefix}${String(nextNumber).padStart(3, '0')}`
+    }
+
+    if (categorySelect) {
+      categorySelect.addEventListener('change', () => {
+        const selectedId = categorySelect.value
+        const derivedType = deriveProductTypeFromCategoryId(selectedId)
+        // If there is already an SKU assigned and user is editing, allow regeneration
+        const newSku = generateSkuForType(derivedType)
+        if (skuHidden) skuHidden.value = newSku
+        if (skuPreview) skuPreview.textContent = newSku
+      })
+    }
+  } catch (e) {
+    // non-fatal
+    console.error('Error attaching SKU updater:', e)
+  }
 }
 
 function closeProductModal() {
@@ -9474,7 +9647,9 @@ function closeProductModal() {
 async function saveProduct(productId) {
   const modal = document.getElementById('product-modal')
   const name = modal.querySelector('#productName').value.trim()
-  const category = modal.querySelector('#productCategory').value
+  const selectedCategoryId = modal
+    .querySelector('#productCategory')
+    .value.trim()
   const description = modal.querySelector('#productDescription').value.trim()
   const unitCost =
     parseFloat(modal.querySelector('#productUnitCost').value) || 0
@@ -9494,18 +9669,41 @@ async function saveProduct(productId) {
   const totalValue = unitCost * quantity
 
   // Generate SKU for new products
-  let sku = productId
+  // Prefer SKU value supplied by modal (updated when category changes)
+  const modalSkuInput = modal.querySelector('#productSku')
+  let sku = (modalSkuInput && modalSkuInput.value) || productId
   let databaseId = null
+  // Determine selected category object and derive a product "type" from it
+  const selectedCategory = (MockData.categories || []).find(
+    (c) => String(c.id) === String(selectedCategoryId)
+  )
+
+  // Derive product type string used for display and SKU prefix detection.
+  // Fall back to 'expendable' when unknown.
+  const productTypeFromCategory = (() => {
+    if (!selectedCategory) return 'expendable'
+    const name = String(selectedCategory.name || '').toLowerCase()
+    if (name.includes('semi')) return 'semi-expendable'
+    if (name.includes('non')) return 'non-expendable'
+    if (name.includes('expendable')) return 'expendable'
+    // Also check code if name is not descriptive
+    const code = String(selectedCategory.code || '').toLowerCase()
+    if (code.startsWith('se')) return 'semi-expendable'
+    if (code.startsWith('n')) return 'non-expendable'
+    if (code.startsWith('e')) return 'expendable'
+    return 'expendable'
+  })()
+
   if (!productId) {
-    // Create new product: generate SKU based on category
+    // Create new product: generate SKU based on derived product type
     const categoryPrefix =
       {
         expendable: 'E',
         'semi-expendable': 'SE',
         'non-expendable': 'N',
-      }[category] || 'E'
+      }[productTypeFromCategory] || 'E'
 
-    // Find the next available number for this category
+    // Find the next available number for this category prefix
     const existingSkus = (MockData.products || [])
       .map((p) => p.id || p.sku)
       .filter((s) => s && typeof s === 'string' && s.startsWith(categoryPrefix))
@@ -9535,7 +9733,12 @@ async function saveProduct(productId) {
       unitCost,
       totalValue,
       date,
-      type: category,
+      // store both the category id and a derived type for backward compatibility
+      category_id: selectedCategoryId || null,
+      category_code: selectedCategory ? selectedCategory.code || null : null,
+      type:
+        productTypeFromCategory ||
+        (selectedCategory ? selectedCategory.name : null),
       unit,
       databaseId: databaseId, // Include database ID for updates
     }
@@ -9672,6 +9875,15 @@ function generateProductModal(mode = 'create', productData = null) {
                               })
                               .join('')}
                         </select>
+                        <!-- SKU preview and hidden SKU field -->
+                        <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+                            <div id="product-id-badge" style="font-weight:700;color:#111827;background:#eef2ff;padding:6px 10px;border-radius:8px;">${
+                              productData?.id || ''
+                            }</div>
+                            <input type="hidden" id="productSku" value="${
+                              productData?.id || ''
+                            }">
+                        </div>
                     </div>
                 </div>
 
@@ -10148,12 +10360,50 @@ function openStockInModal(mode = 'create', stockId = null) {
 
   let stockData = null
   if (stockId && mode === 'edit') {
-    stockData = stockInData.find((r) => r.id === stockId)
+    // support passing either an id (string/number) or the full record object
+    if (typeof stockId === 'object') {
+      stockData = stockId
+    } else {
+      stockData = stockInData.find((r) => r && r.id == stockId) || null
+    }
   }
 
   modalContent.innerHTML = generateStockInModal(mode, stockData)
   modal.classList.add('active')
   lucide.createIcons()
+
+  // Populate inline recent records table inside modal
+  ;(async () => {
+    const tbody = document.getElementById('modal-stockin-recent-body')
+    if (!tbody) return
+    try {
+      // Ensure we have fresh data
+      const rows = await loadStockInFromAPI()
+      if (!rows || rows.length === 0) {
+        tbody.innerHTML =
+          '<tr><td colspan="4" style="text-align:center;color:#6b7280;padding:12px;">No recent records</td></tr>'
+        return
+      }
+      // Show up to 10 most recent
+      tbody.innerHTML = rows
+        .filter(Boolean)
+        .slice(0, 10)
+        .map((r) => {
+          const tx = r.transactionId || r.transaction_id || r.id || ''
+          const date = formatDate(
+            r.date || r.date_received || r.created_at || ''
+          )
+          const prod = r.productName || r.product_name || ''
+          const qty = r.quantity ?? r.qty ?? 0
+          return `<tr><td style="font-weight:500;">${tx}</td><td>${date}</td><td style="font-weight:500;">${prod}</td><td>${qty}</td></tr>`
+        })
+        .join('')
+    } catch (e) {
+      tbody.innerHTML =
+        '<tr><td colspan="4" style="text-align:center;color:#ef4444;padding:12px;">Failed loading</td></tr>'
+      console.error('Failed loading recent stock in for modal', e)
+    }
+  })()
 
   const isReadOnly = mode === 'view'
   if (!isReadOnly) {
@@ -10238,13 +10488,37 @@ function generateStockInModal(mode = 'create', stockData = null) {
       ? 'Update stock in transaction'
       : 'View stock in details'
   const isReadOnly = mode === 'view'
+
+  // Normalize incoming stockData (accept snake_case from API or camelCase used in UI)
+  const _sd = stockData || {}
+  const normalizedStock = {
+    id: _sd.id || _sd.id || '',
+    transactionId: _sd.transactionId || _sd.transaction_id || _sd.id || '',
+    sku: _sd.sku || _sd.sku || '',
+    productName: _sd.productName || _sd.product_name || '',
+    quantity: Number(_sd.quantity ?? _sd.qty ?? 0),
+    unitCost: Number(_sd.unitCost ?? _sd.unit_cost ?? 0),
+    totalCost: Number(
+      _sd.totalCost ??
+        _sd.total_cost ??
+        (_sd.quantity ?? 0) * Number(_sd.unit_cost ?? _sd.unitCost ?? 0)
+    ),
+    supplier: _sd.supplier || '',
+    receivedBy: _sd.receivedBy || _sd.received_by || '',
+    date: formatDate(_sd.date || _sd.date_received || _sd.created_at || ''),
+  }
+
   const dateValue =
-    stockData?.date ||
+    normalizedStock.date ||
     (mode === 'create' ? new Date().toISOString().split('T')[0] : '')
-  const unitCostValue = (stockData?.unitCost || 0).toFixed(2)
-  const totalValue = stockData
-    ? formatCurrency(stockData.totalCost || 0)
-    : formatCurrency(0)
+  const unitCostValue = (normalizedStock.unitCost || 0).toFixed(2)
+  const totalValue = formatCurrency(normalizedStock.totalCost || 0)
+  const skuValue = normalizedStock.sku
+  const productNameValue = normalizedStock.productName
+  const quantityValue = normalizedStock.quantity || ''
+  const supplierValue = normalizedStock.supplier
+  const receivedByValue = normalizedStock.receivedBy
+  const stockIdValue = normalizedStock.id || ''
 
   return `
         <div class="modal-header" style="background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); color: white; border-bottom: none; padding: 32px 24px;">
@@ -10276,8 +10550,8 @@ function generateStockInModal(mode = 'create', stockData = null) {
                             <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             Date
                         </label>
-                        <input type="date" class="form-input" id="date-input"
-                               value="${dateValue}"
+         <input type="date" class="form-input" id="date-input"
+           value="${dateValue}"
                                min="${new Date().toISOString().split('T')[0]}"
                                style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                                ${isReadOnly ? 'readonly' : ''}>
@@ -10288,8 +10562,8 @@ function generateStockInModal(mode = 'create', stockData = null) {
                             <i data-lucide="barcode" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             SKU
                         </label>
-                        <input type="text" class="form-input" id="sku-input"
-                               value="${stockData?.sku || ''}"
+         <input type="text" class="form-input" id="sku-input"
+           value="${skuValue || ''}"
                                placeholder="e.g., E001, SE01, N001"
                                style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                                ${isReadOnly ? 'readonly' : ''}>
@@ -10301,8 +10575,8 @@ function generateStockInModal(mode = 'create', stockData = null) {
                         <i data-lucide="package" style="width: 14px; height: 14px; color: #6b7280;"></i>
                         Product Name
                     </label>
-                    <input type="text" class="form-input" id="product-input"
-                           value="${stockData?.productName || ''}"
+          <input type="text" class="form-input" id="product-input"
+            value="${productNameValue || ''}"
                            placeholder="Enter product name"
                            style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                            ${isReadOnly ? 'readonly' : ''}>
@@ -10322,9 +10596,9 @@ function generateStockInModal(mode = 'create', stockData = null) {
                             <i data-lucide="hash" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             Quantity
                         </label>
-                        <input type="number" class="form-input" id="qty-input"
-                               min="1"
-                               value="${stockData?.quantity || ''}"
+         <input type="number" class="form-input" id="qty-input"
+           min="1"
+           value="${quantityValue}"
                                placeholder="1"
                                style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                                ${isReadOnly ? 'readonly' : ''}>
@@ -10335,9 +10609,9 @@ function generateStockInModal(mode = 'create', stockData = null) {
                             <i data-lucide="tag" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             Unit Cost
                         </label>
-                        <input type="number" class="form-input" id="uc-input"
+         <input type="number" class="form-input" id="uc-input"
                                step="0.01" min="0"
-                               value="${unitCostValue}"
+           value="${unitCostValue}"
                                placeholder="0.00"
                                style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                                ${isReadOnly ? 'readonly' : ''}>
@@ -10349,8 +10623,8 @@ function generateStockInModal(mode = 'create', stockData = null) {
                         <i data-lucide="dollar-sign" style="width: 14px; height: 14px; color: #6b7280;"></i>
                         Total Cost
                     </label>
-                    <input type="text" class="form-input" id="total-input"
-                           value="${totalValue}"
+          <input type="text" class="form-input" id="total-input"
+            value="${totalValue}"
                            style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; background: #f0fdf4; font-weight: 600; color: #16a34a;"
                            readonly>
                 </div>
@@ -10368,8 +10642,8 @@ function generateStockInModal(mode = 'create', stockData = null) {
                         <i data-lucide="truck" style="width: 14px; height: 14px; color: #6b7280;"></i>
                         Supplier
                     </label>
-                    <input type="text" class="form-input" id="supplier-input"
-                           value="${stockData?.supplier || ''}"
+          <input type="text" class="form-input" id="supplier-input"
+            value="${supplierValue || ''}"
                            placeholder="Enter supplier name"
                            style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                            ${isReadOnly ? 'readonly' : ''}>
@@ -10380,14 +10654,34 @@ function generateStockInModal(mode = 'create', stockData = null) {
                         <i data-lucide="user-check" style="width: 14px; height: 14px; color: #6b7280;"></i>
                         Received By
                     </label>
-                    <input type="text" class="form-input" id="receivedby-input"
-                           value="${stockData?.receivedBy || ''}"
+          <input type="text" class="form-input" id="receivedby-input"
+            value="${receivedByValue || ''}"
                            placeholder="Enter receiver name"
                            style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                            ${isReadOnly ? 'readonly' : ''}>
                 </div>
             </div>
-        </div>
+    </div>
+
+    <!-- Recent stock-in records (mini table inside modal) -->
+    <div style="padding: 16px 24px; background: white; border-radius: 12px; margin-top: 12px;">
+      <h4 style="margin:0 0 12px 0;font-size:14px;color:#111827;">Recent Stock In Records</h4>
+      <div style="max-height:200px; overflow:auto; border:1px solid #e5e7eb; border-radius:8px; padding:8px;">
+        <table class="table" style="margin:0;">
+          <thead>
+            <tr>
+              <th style="width:30%">Transaction</th>
+              <th style="width:25%">Date</th>
+              <th style="width:35%">Product</th>
+              <th style="width:10%">Qty</th>
+            </tr>
+          </thead>
+          <tbody id="modal-stockin-recent-body">
+            <tr><td colspan="4" style="text-align:center;color:#6b7280;padding:12px;">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
 
         <div class="modal-footer" style="background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 20px 24px; display: flex; gap: 12px; justify-content: flex-end;">
             <button class="btn btn-secondary" onclick="closeStockInModal()" style="padding: 10px 24px; font-weight: 500; border: 2px solid #d1d5db; transition: all 0.2s;">
@@ -10399,9 +10693,7 @@ function generateStockInModal(mode = 'create', stockData = null) {
             ${
               !isReadOnly
                 ? `
-                <button class="btn btn-primary" onclick="saveStockIn('${
-                  stockData?.id || ''
-                }')" style="padding: 10px 24px; font-weight: 500; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); box-shadow: 0 4px 6px rgba(22, 163, 74, 0.25); transition: all 0.2s;">
+                <button class="btn btn-primary" onclick="saveStockIn('${stockIdValue}')" style="padding: 10px 24px; font-weight: 500; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); box-shadow: 0 4px 6px rgba(22, 163, 74, 0.25); transition: all 0.2s;">
                     <i data-lucide="${
                       mode === 'create' ? 'plus-circle' : 'save'
                     }" style="width: 16px; height: 16px; margin-right: 6px;"></i>
@@ -10428,9 +10720,24 @@ async function saveStockIn(stockId) {
   const supplier = document.getElementById('supplier-input').value
   const receivedBy = document.getElementById('receivedby-input').value
 
+  const isEdit = stockId && stockId !== ''
+
+  // Try to preserve existing transactionId when editing; otherwise generate one for new records
+  let transactionId = null
+  if (isEdit) {
+    const existing = stockInData.find((s) => s.id === stockId)
+    transactionId = existing ? existing.transactionId || existing.id : null
+  }
+  if (!transactionId) transactionId = generateTransactionId()
+
+  // Build payload: include `id` only when editing so saveStockInToAPI chooses PUT for edits and POST for creates
   const newRecord = {
-    id: stockId,
+    ...(isEdit ? { id: stockId } : {}),
+    transactionId,
     date,
+    // API expects date_received; include both camelCase and snake_case aliases
+    dateReceived: date,
+    date_received: date,
     productName,
     sku,
     quantity,
@@ -10492,41 +10799,50 @@ async function deleteStockIn(id) {
 function renderStockInRows() {
   if (!stockInData || stockInData.length === 0)
     return '<tr><td colspan="10" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No records found</td></tr>'
-  return stockInData.map((r, i) => renderStockInRow(r, i)).join('')
+  // Guard against null/undefined entries
+  return stockInData
+    .filter(Boolean)
+    .map((r, i) => renderStockInRow(r, i))
+    .join('')
 }
 
 function renderStockInRow(r, index) {
+  const id = r?.id || ''
+  const transactionId = r?.transactionId || ''
+  const date = r?.date || ''
+  const productName = r?.productName || ''
+  const sku = r?.sku || ''
+  const quantity = r?.quantity ?? 0
+  const unitCost = Number(r?.unitCost) || 0
+  const totalCost = Number(r?.totalCost) || 0
+  const supplier = r?.supplier || ''
+  const receivedBy = r?.receivedBy || ''
+
   return `
-        <tr data-id="${r.id}" style="${
+    <tr data-id="${id}" style="${
     index % 2 === 0 ? 'background-color: white;' : 'background-color: #f9fafb;'
   }">
-            <td style="font-weight: 500;">${r.transactionId}</td>
-            <td>${r.date}</td>
-            <td style="font-weight: 500;">${r.productName}</td>
-            <td style="color: #6b7280;">${r.sku}</td>
-            <td>${r.quantity}</td>
-            <td>${formatCurrency(Number(r.unitCost) || 0)}</td>
-            <td style="font-weight: 500;">${formatCurrency(
-              Number(r.totalCost) || 0
-            )}</td>
-            <td style="color: #6b7280;">${r.supplier}</td>
-            <td style="color: #6b7280;">${r.receivedBy}</td>
-            <td>
-                <div class="table-actions">
-                    <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteStockIn('${
-                      r.id
-                    }')">
-                        <i data-lucide="trash-2"></i>
-                    </button>
-                    <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openStockInModal('edit','${
-                      r.id
-                    }')">
-                        <i data-lucide="edit"></i>
-                    </button>
-                </div>
-            </td>
-        </tr>
-    `
+      <td style="font-weight: 500;">${transactionId}</td>
+      <td>${date}</td>
+      <td style="font-weight: 500;">${productName}</td>
+      <td style="color: #6b7280;">${sku}</td>
+      <td>${quantity}</td>
+      <td>${formatCurrency(unitCost)}</td>
+      <td style="font-weight: 500;">${formatCurrency(totalCost)}</td>
+      <td style="color: #6b7280;">${supplier}</td>
+      <td style="color: #6b7280;">${receivedBy}</td>
+      <td>
+        <div class="table-actions">
+          <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteStockIn('${id}')">
+            <i data-lucide="trash-2"></i>
+          </button>
+          <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openStockInModal('edit','${id}')">
+            <i data-lucide="edit"></i>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `
 }
 
 function generateTransactionId() {
@@ -10958,48 +11274,56 @@ if (!Array.isArray(stockOutData) || stockOutData.length === 0) {
 function renderStockOutRows() {
   if (!stockOutData || stockOutData.length === 0)
     return '<tr><td colspan="12" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No records found</td></tr>'
-  return stockOutData.map((s) => renderStockOutRow(s)).join('')
+  return stockOutData
+    .filter(Boolean)
+    .map((s, i) => renderStockOutRow(s, i))
+    .join('')
 }
 
 function renderStockOutRow(s) {
+  const id = s?.id || ''
+  const issueId = s?.issueId || ''
+  const date = s?.date || ''
+  const productName = s?.productName || ''
+  const sku = s?.sku || ''
+  const quantity = s?.quantity ?? 0
+  const unitCost = Number(s?.unitCost) || 0
+  const totalCost = Number(s?.totalCost) || 0
+  const department = s?.department || ''
+  const issuedTo = s?.issuedTo || ''
+  const issuedBy = s?.issuedBy || ''
+  const status = s?.status || ''
+
   return `
-        <tr data-id="${s.id}">
-            <td class="font-semibold">${s.issueId}</td>
-            <td>${s.date}</td>
-            <td>${s.productName}</td>
-            <td class="text-sm text-gray-600">${s.sku}</td>
-            <td>${s.quantity}</td>
-            <td>${formatCurrency(Number(s.unitCost) || 0)}</td>
-            <td class="font-semibold">${formatCurrency(
-              Number(s.totalCost) || 0
-            )}</td>
-            <td><span class="badge">${s.department}</span></td>
-            <td>${s.issuedTo}</td>
-            <td>${s.issuedBy}</td>
+        <tr data-id="${id}">
+            <td class="font-semibold">${issueId}</td>
+            <td>${date}</td>
+            <td>${productName}</td>
+            <td class="text-sm text-gray-600">${sku}</td>
+            <td>${quantity}</td>
+            <td>${formatCurrency(unitCost)}</td>
+            <td class="font-semibold">${formatCurrency(totalCost)}</td>
+            <td><span class="badge">${department}</span></td>
+            <td>${issuedTo}</td>
+            <td>${issuedBy}</td>
             <td><span class="badge ${
-              s.status === 'Completed'
+              status === 'Completed'
                 ? 'green'
-                : s.status === 'Pending'
+                : status === 'Pending'
                 ? 'yellow'
-                : s.status === 'Cancelled'
+                : status === 'Cancelled'
                 ? 'red'
                 : ''
-            }">${s.status}</span></td>
+            }">${status}</span></td>
             <td>
                 <div class="table-actions">
-                    <button class="icon-action-btn" title="View" onclick="viewStockOutDetails('${
-                      s.id
-                    }')">
+                    <button class="icon-action-btn" title="View" onclick="viewStockOutDetails('${id}')">
                         <i data-lucide="eye"></i>
                     </button>
-                    <button class="icon-action-btn icon-action-warning" title="Edit" onclick="editStockOut('${
-                      s.id
-                    }')">
+                    <button class="icon-action-btn icon-action-warning" title="Edit" onclick="editStockOut('${id}')">
                         <i data-lucide="edit"></i>
                     </button>
-                    <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteStockOut('${
-                      s.id
-                    }')">
+                    <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteStockOut('${id}')">
                         <i data-lucide="trash-2"></i>
                     </button>
                 </div>
