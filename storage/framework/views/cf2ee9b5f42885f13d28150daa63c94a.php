@@ -34,7 +34,7 @@
                                             // use it to embed the local file. Otherwise prefer a CID
                                             // passed from the Mailable, and finally fall back to the
                                             // public URL.
-                                            $logoLocal = public_path('images/cnscrefine.png');
+                                            $logoLocal = public_path('images/UCN1.png');
                                             $logoSrc = null;
                                             try {
                                                 if (isset($message) && method_exists($message, 'embed') && file_exists($logoLocal)) {
@@ -46,7 +46,7 @@
                                             }
 
                                             if (empty($logoSrc)) {
-                                                $logoSrc = $logoCid ?? ($logoUrl ?? asset('images/cnscclrefine.png'));
+                                                $logoSrc = $logoCid ?? ($logoUrl ?? asset('images/UCN1.png'));
                                             }
                                         ?>
                                         <img src="<?php echo e($logoSrc); ?>" alt="Supply System" width="48" height="48" style="display:block;border:0;outline:none;text-decoration:none;" onerror="this.style.display='none'">
