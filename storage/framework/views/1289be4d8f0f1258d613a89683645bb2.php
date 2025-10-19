@@ -87,6 +87,25 @@
                                 <span>Stock Out</span>
                             </button>
                         </div>
+                        <!-- Suppliers moved to its own top-level section -->
+                    </div>
+                </div>
+
+                <!-- Supplier Management (top-level) -->
+                <div class="nav-group">
+                    <button class="nav-button nav-header" data-group="suppliers">
+                        <div class="nav-content">
+                            <i data-lucide="truck" class="icon"></i>
+                            <span>Supplier Management</span>
+                        </div>
+                        <i data-lucide="chevron-right" class="chevron"></i>
+                    </button>
+                    <div class="nav-submenu">
+                        <div class="nav-item" data-page="suppliers">
+                            <button class="nav-button">
+                                <span>Suppliers</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -286,6 +305,11 @@
 
     <!-- User Modal -->
     <div class="modal-overlay" id="user-modal">
+        <div class="modal-content"></div>
+    </div>
+
+    <!-- Supplier Modal -->
+    <div class="modal-overlay" id="supplier-modal-overlay">
         <div class="modal-content"></div>
     </div>
 

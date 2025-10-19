@@ -15,6 +15,7 @@ Route::post('/activities', [ActivityController::class, 'store']);
 
 Route::apiResource('categories', CategoryController::class);
 Route::apiResource('products', ProductController::class);
+Route::apiResource('suppliers', App\Http\Controllers\Api\SupplierController::class);
 Route::apiResource('stock-in', StockInController::class);
 Route::apiResource('stock-out', StockOutController::class);
 Route::apiResource('user-logs', UserLogController::class);

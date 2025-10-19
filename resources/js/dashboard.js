@@ -1940,6 +1940,9 @@ function loadPageContent(pageId) {
     case 'products':
       mainContent.innerHTML = generateProductsPage()
       break
+    case 'suppliers':
+      mainContent.innerHTML = generateSuppliersPage()
+      break
     case 'stock-in':
       mainContent.innerHTML = generateStockInPage()
       break
@@ -2773,6 +2776,921 @@ function generateProductsPage() {
         </div>
     `
 }
+
+// -----------------------------
+// Suppliers Management Page
+// -----------------------------
+
+function generateSuppliersPage() {
+  // Ensure AppState.suppliers exists; attempt to load from API if empty
+  if (!AppState.suppliers) AppState.suppliers = []
+  // kick off async load if not already loaded
+  if (!AppState._suppliersLoaded) {
+    AppState._suppliersLoaded = true
+    loadSuppliersFromAPI()
+  }
+
+  return `
+        <div class="page-header">
+            <div class="page-header-content">
+                <div>
+                    <h1 class="page-title">
+                        <i data-lucide="users" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>
+                        Supplier Management
+                    </h1>
+                    <p class="page-subtitle">Add, edit and manage suppliers</p>
+                </div>
+        <button class="btn btn-primary" id="add-supplier-btn" data-action="add-supplier">
+          <i data-lucide="plus" class="icon"></i>
+          Add Supplier
+        </button>
+            </div>
+        </div>
+
+        <div class="page-content">
+            <div class="table-container">
+                <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Address</th>
+              <th>TIN</th>
+              <th>Contact</th>
+              <th>Email</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+                    <tbody id="suppliers-table-body">
+                        ${renderSuppliersRows()}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        `
+}
+
+function renderSuppliersRows() {
+  const suppliers = AppState.suppliers || []
+  if (suppliers.length === 0) {
+    return `<tr><td colspan="6" style="text-align:center;padding:24px;color:#6b7280;">No suppliers found</td></tr>`
+  }
+  return suppliers
+    .map(
+      (s, i) => `
+        <tr>
+            <td style="font-weight:500;">${escapeHtml(s.name || '')}</td>
+            <td style="color:#6b7280;">${escapeHtml(s.address || '')}</td>
+            <td>${escapeHtml(s.tin || '')}</td>
+            <td>${escapeHtml(s.contact || '')}</td>
+            <td>${escapeHtml(s.email || '')}</td>
+            <td>
+                <div class="table-actions">
+                    <button class="icon-action-btn icon-action-danger" title="Delete" data-action="delete-supplier" data-id="${
+                      s.id || ''
+                    }">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+                    <button class="icon-action-btn icon-action-warning" title="Edit" data-action="edit-supplier" data-id="${
+                      s.id || ''
+                    }">
+                        <i data-lucide="edit"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `
+    )
+    .join('')
+}
+
+// Suppliers page event wiring
+function initSuppliersPageEvents() {
+  // Add button
+  const addBtn = document.getElementById('add-supplier-btn')
+  if (addBtn) {
+    addBtn.removeEventListener('click', _handleAddSupplier)
+    addBtn.addEventListener('click', _handleAddSupplier)
+  }
+
+  // Delegate table actions
+  const tbody = document.getElementById('suppliers-table-body')
+  if (tbody) {
+    tbody.removeEventListener('click', _handleSuppliersTableClick)
+    tbody.addEventListener('click', _handleSuppliersTableClick)
+  }
+}
+
+function _handleAddSupplier(e) {
+  e.preventDefault()
+  openSupplierModal('create', null)
+}
+
+function _handleSuppliersTableClick(e) {
+  const btn = e.target.closest('[data-action]')
+  if (!btn) return
+  const action = btn.getAttribute('data-action')
+  const id = btn.getAttribute('data-id')
+  if (action === 'edit-supplier') openSupplierModal('edit', id)
+  if (action === 'delete-supplier') deleteSupplier(id)
+}
+
+function openSupplierModal(mode = 'create', index = null) {
+  const overlay = document.getElementById('supplier-modal-overlay')
+  if (!overlay) return
+
+  let supplier = {}
+  if (mode === 'edit' && index) {
+    supplier =
+      (AppState.suppliers || []).find((s) => String(s.id) === String(index)) ||
+      {}
+  }
+
+  const modalContent = overlay.querySelector('.modal-content')
+  // Render using the product modal style
+  modalContent.innerHTML = generateSupplierModal(mode, supplier, index)
+  overlay.classList.add('active')
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 10)
+
+  // Attach listeners for modal interactions (overlay click, ESC, save, cancel)
+  // Store handlers on the overlay so we can remove them when closing
+  const overlayClickHandler = function (ev) {
+    if (ev.target === overlay) closeSupplierModal()
+  }
+  const escHandler = function (ev) {
+    if (ev.key === 'Escape') closeSupplierModal()
+  }
+
+  overlay.addEventListener('click', overlayClickHandler)
+  document.addEventListener('keydown', escHandler)
+  overlay._supplierModalHandlers = { overlayClickHandler, escHandler }
+
+  // Hook up save/cancel/close buttons by data-action attributes
+  const closeBtn = modalContent.querySelector('.modal-close')
+  if (closeBtn) closeBtn.addEventListener('click', closeSupplierModal)
+
+  const cancelBtn = modalContent.querySelector(
+    '[data-action="supplier-cancel"]'
+  )
+  if (cancelBtn) cancelBtn.addEventListener('click', closeSupplierModal)
+
+  const saveBtn = modalContent.querySelector('[data-action="supplier-save"]')
+  if (saveBtn) {
+    saveBtn.addEventListener('click', function (ev) {
+      ev.preventDefault()
+      const m = saveBtn.getAttribute('data-mode') || mode
+      const idx = saveBtn.getAttribute('data-index') || index
+      saveSupplier(m, idx === '' ? null : idx)
+    })
+  }
+
+  // Focus first input for quick entry
+  const firstInput = modalContent.querySelector('#supplier-name-input')
+  if (firstInput) {
+    setTimeout(() => firstInput.focus(), 50)
+  }
+
+  // Initialize interactive map for supplier modal (lazy-load Leaflet)
+  try {
+    setTimeout(() => {
+      initSupplierMap(supplier)
+    }, 120)
+  } catch (e) {
+    console.warn('initSupplierMap failed', e)
+  }
+
+  // --- Geocoding: when user types supplier name, try to geocode and autofill address ---
+  try {
+    const nameInput = modalContent.querySelector('#supplier-name-input')
+    const addressInput = modalContent.querySelector('#supplier-address-input')
+    const latInput = modalContent.querySelector('#supplier-lat-input')
+    const lngInput = modalContent.querySelector('#supplier-lng-input')
+
+    function debounce(fn, wait) {
+      let t = null
+      return function (...args) {
+        clearTimeout(t)
+        t = setTimeout(() => fn.apply(this, args), wait)
+      }
+    }
+
+    async function geocodeQuery(q) {
+      // Use Nominatim (OpenStreetMap) public API for simple geocoding
+      if (!q || String(q).trim().length === 0) return null
+      // Restrict search to the Philippines (countrycodes=ph) and request address details
+      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ph&addressdetails=1&q=${encodeURIComponent(
+        q
+      )}`
+      try {
+        const res = await fetch(url, {
+          headers: { Accept: 'application/json' },
+        })
+        if (!res.ok) return null
+        const data = await res.json()
+        if (!Array.isArray(data) || data.length === 0) return null
+        return data[0]
+      } catch (e) {
+        return null
+      }
+    }
+
+    const onNameInput = debounce(async function (ev) {
+      const v = ev.target.value || ''
+      if (v.trim().length < 3) return
+      // perform geocode
+      const result = await geocodeQuery(v + '')
+      if (!result) return
+      // populate address and coords
+      if (addressInput) addressInput.value = result.display_name || ''
+      if (latInput) latInput.value = parseFloat(result.lat).toFixed(6)
+      if (lngInput) lngInput.value = parseFloat(result.lon).toFixed(6)
+
+      // Move map marker if available; init map if needed
+      const container = document.getElementById('supplier-map')
+      const lat = parseFloat(result.lat)
+      const lng = parseFloat(result.lon)
+      if (container) {
+        const map = container._leafletMap
+        const marker = container._marker
+        if (map) {
+          try {
+            setMarkerPosition(map, marker, [lat, lng])
+          } catch (e) {
+            console.warn('Failed to set marker from geocode', e)
+          }
+        } else {
+          // ensure map initializes then set marker shortly after
+          try {
+            initSupplierMap({ latitude: lat, longitude: lng })
+            setTimeout(() => {
+              const cm = container._leafletMap
+              const mk = container._marker
+              if (cm) setMarkerPosition(cm, mk, [lat, lng])
+            }, 400)
+          } catch (e) {
+            console.warn('Failed to init map for geocode result', e)
+          }
+        }
+      }
+    }, 700)
+
+    if (nameInput) {
+      // remove previous if present
+      try {
+        nameInput.removeEventListener('input', nameInput._supplierNameHandler)
+      } catch (e) {}
+      nameInput.addEventListener('input', onNameInput)
+      // store handler reference so it can be removed on close
+      nameInput._supplierNameHandler = onNameInput
+      // keep handler reference on overlay for cleanup
+      overlay._supplierModalHandlers = overlay._supplierModalHandlers || {}
+      overlay._supplierModalHandlers.supplierNameHandler = {
+        el: nameInput,
+        fn: onNameInput,
+      }
+    }
+  } catch (e) {
+    console.warn('Geocoding hookup failed', e)
+  }
+}
+
+// Dynamically load Leaflet CSS/JS only once
+let __leafletLoaded = false
+function loadLeafletAssets() {
+  return new Promise((resolve, reject) => {
+    if (typeof L !== 'undefined' && __leafletLoaded) return resolve()
+    // Load CSS
+    if (!document.querySelector('link[data-leaflet]')) {
+      const l = document.createElement('link')
+      l.setAttribute('rel', 'stylesheet')
+      l.setAttribute('href', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css')
+      l.setAttribute('crossorigin', '')
+      l.setAttribute('data-leaflet', 'true')
+      document.head.appendChild(l)
+    }
+
+    if (typeof L !== 'undefined') {
+      __leafletLoaded = true
+      return resolve()
+    }
+
+    // Load script
+    if (!document.querySelector('script[data-leaflet]')) {
+      const s = document.createElement('script')
+      s.setAttribute('src', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js')
+      s.setAttribute('data-leaflet', 'true')
+      s.onload = () => {
+        __leafletLoaded = true
+        resolve()
+      }
+      s.onerror = (err) => reject(err)
+      document.body.appendChild(s)
+    } else {
+      // script already present but L may not be ready yet
+      const existing = document.querySelector('script[data-leaflet]')
+      existing.addEventListener('load', () => {
+        __leafletLoaded = true
+        resolve()
+      })
+      existing.addEventListener('error', (e) => reject(e))
+    }
+  })
+}
+
+// Initialize the supplier modal map and wire controls
+function initSupplierMap(supplier = {}) {
+  const container = document.getElementById('supplier-map')
+  if (!container) return
+  // Initialize Leaflet map (Leaflet-only implementation)
+  loadLeafletAssets()
+    .then(() => {
+      try {
+        // Avoid double init
+        if (container._leafletMap) {
+          // If coordinates available, update marker
+          const lat = parseFloat(
+            document.getElementById('supplier-lat-input')?.value || ''
+          )
+          const lng = parseFloat(
+            document.getElementById('supplier-lng-input')?.value || ''
+          )
+          if (!isNaN(lat) && !isNaN(lng)) {
+            setMarkerPosition(container._leafletMap, container._marker, [
+              lat,
+              lng,
+            ])
+          }
+          return
+        }
+
+        // Default center: if supplier has coords use them, otherwise a sensible default
+        const lat0 = parseFloat(
+          supplier.latitude || supplier.lat || supplier.latitute || ''
+        )
+        const lng0 = parseFloat(
+          supplier.longitude || supplier.lng || supplier.lon || ''
+        )
+        const hasCoords = !isNaN(lat0) && !isNaN(lng0)
+        const center = hasCoords ? [lat0, lng0] : [14.5995, 120.9842] // Manila fallback
+
+        // Create map
+        const map = L.map(container, { scrollWheelZoom: false }).setView(
+          center,
+          hasCoords ? 13 : 6
+        )
+
+        // Add OSM tile layer (public)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors',
+        }).addTo(map)
+
+        // Create marker if coords present or null placeholder
+        let marker = null
+        if (hasCoords) {
+          marker = L.marker(center, { draggable: true }).addTo(map)
+        }
+
+        // Click on map to place/move marker
+        map.on('click', function (e) {
+          const latlng = e.latlng
+          if (!marker) {
+            marker = L.marker(latlng, { draggable: true }).addTo(map)
+          } else {
+            marker.setLatLng(latlng)
+          }
+          // write to inputs
+          const latInput = document.getElementById('supplier-lat-input')
+          const lngInput = document.getElementById('supplier-lng-input')
+          if (latInput) latInput.value = latlng.lat.toFixed(6)
+          if (lngInput) lngInput.value = latlng.lng.toFixed(6)
+        })
+
+        // If marker draggable, update inputs on dragend
+        const updateInputsFromMarker = () => {
+          if (!marker) return
+          const p = marker.getLatLng()
+          const latInput = document.getElementById('supplier-lat-input')
+          const lngInput = document.getElementById('supplier-lng-input')
+          if (latInput) latInput.value = p.lat.toFixed(6)
+          if (lngInput) lngInput.value = p.lng.toFixed(6)
+        }
+
+        // When a new marker is created, wire dragend
+        if (marker) marker.on('dragend', updateInputsFromMarker)
+
+        // Wire "Use my location" button
+        const geoBtn = document.getElementById('supplier-use-my-location')
+        if (geoBtn) {
+          geoBtn.addEventListener('click', function () {
+            if (!navigator.geolocation) {
+              showAlert('Geolocation is not supported by your browser', 'error')
+              return
+            }
+            geoBtn.setAttribute('data-loading', 'true')
+            navigator.geolocation.getCurrentPosition(
+              (pos) => {
+                geoBtn.removeAttribute('data-loading')
+                const lat = pos.coords.latitude
+                const lng = pos.coords.longitude
+                if (!marker) {
+                  marker = L.marker([lat, lng], { draggable: true }).addTo(map)
+                  marker.on('dragend', updateInputsFromMarker)
+                } else {
+                  marker.setLatLng([lat, lng])
+                }
+                map.setView([lat, lng], 13)
+                updateInputsFromMarker()
+              },
+              (err) => {
+                geoBtn.removeAttribute('data-loading')
+                showAlert('Unable to retrieve your location', 'error')
+              },
+              { enableHighAccuracy: true, timeout: 10000 }
+            )
+          })
+        }
+
+        // When user edits lat/lng inputs manually, try parse and move marker
+        const latInput = document.getElementById('supplier-lat-input')
+        const lngInput = document.getElementById('supplier-lng-input')
+        function onLatLngInputChange() {
+          const lat = parseFloat(latInput?.value || '')
+          const lng = parseFloat(lngInput?.value || '')
+          if (!isNaN(lat) && !isNaN(lng)) {
+            if (!marker) {
+              marker = L.marker([lat, lng], { draggable: true }).addTo(map)
+              marker.on('dragend', updateInputsFromMarker)
+            } else {
+              marker.setLatLng([lat, lng])
+            }
+            map.setView([lat, lng], 13)
+          }
+        }
+        if (latInput) latInput.addEventListener('change', onLatLngInputChange)
+        if (lngInput) lngInput.addEventListener('change', onLatLngInputChange)
+
+        // Store references to avoid multiple inits
+        container._leafletMap = map
+        container._marker = marker
+      } catch (e) {
+        console.error('Leaflet init failed', e)
+      }
+    })
+    .catch((err) => {
+      console.warn('Failed to load Leaflet assets', err)
+    })
+}
+// End of initSupplierMap
+
+function setMarkerPosition(map, marker, latlng) {
+  try {
+    if (!map) return
+    // Leaflet-only: set or move marker then center map and update inputs
+    if (typeof L !== 'undefined' && map && typeof map.setView === 'function') {
+      if (!marker) {
+        marker = L.marker(latlng, { draggable: true }).addTo(map)
+      } else {
+        marker.setLatLng(latlng)
+      }
+      map.setView(latlng, 13)
+      const container =
+        map._container || document.getElementById('supplier-map')
+      if (container) container._marker = marker
+      const latInput = document.getElementById('supplier-lat-input')
+      const lngInput = document.getElementById('supplier-lng-input')
+      if (latInput) latInput.value = parseFloat(latlng[0]).toFixed(6)
+      if (lngInput) lngInput.value = parseFloat(latlng[1]).toFixed(6)
+      return
+    }
+  } catch (e) {
+    console.warn('setMarkerPosition error', e)
+  }
+}
+
+function generateSupplierModal(mode = 'create', supplier = {}, index = null) {
+  const title =
+    mode === 'create'
+      ? 'Add Supplier'
+      : mode === 'edit'
+      ? 'Edit Supplier'
+      : 'Supplier Details'
+  const subtitle =
+    mode === 'create'
+      ? 'Add a new supplier'
+      : mode === 'edit'
+      ? 'Update supplier information'
+      : 'View supplier details'
+  const isReadOnly = mode === 'view'
+  // Use the same structure as product modal for visual parity
+  return `
+    <style>
+    /* Hide empty icon placeholders until lucide replaces them with SVGs */
+    .modal-header .icon-container i:empty { display: none; }
+    </style>
+    <div class="modal-header" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; border-bottom: none; padding: 32px 24px;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+        <div class="icon-container" style="width:64px;height:64px;background:rgba(255,255,255,0.2);border:3px solid rgba(255,255,255,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px);">
+          <i data-lucide="truck" style="width:32px;height:32px;color:white;"></i>
+        </div>
+                <div style="flex: 1;">
+                    <h2 class="modal-title" style="color: white; font-size: 24px; margin-bottom: 4px;">${title}</h2>
+                    <p class="modal-subtitle" style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0;">${subtitle}</p>
+                </div>
+            </div>
+            <button class="modal-close" style="color: white; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+            </button>
+        </div>
+
+        <div class="modal-body" style="padding: 32px 24px; background: #f9fafb;">
+            <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="info" style="width: 18px; height: 18px; color: #dc2626;"></i>
+                    Basic Information
+                </h3>
+
+                <div class="grid-2">
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                            <i data-lucide="user" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                            Supplier Name
+                        </label>
+                        <input type="text" id="supplier-name-input" class="form-input" value="${escapeHtml(
+                          supplier.name || ''
+                        )}" placeholder="e.g., ABC Office Supplies" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;" ${
+    isReadOnly ? 'readonly' : ''
+  }>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                            <i data-lucide="map-pin" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                            Address
+                        </label>
+                        <input type="text" id="supplier-address-input" class="form-input" value="${escapeHtml(
+                          supplier.address || ''
+                        )}" placeholder="Street, City, Postal Code" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;" ${
+    isReadOnly ? 'readonly' : ''
+  }>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                            <i data-lucide="credit-card" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                            TIN
+                        </label>
+                        <input type="text" id="supplier-tin-input" class="form-input" value="${escapeHtml(
+                          supplier.tin || ''
+                        )}" placeholder="Taxpayer Identification Number" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;" ${
+    isReadOnly ? 'readonly' : ''
+  }>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                            <i data-lucide="phone" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                            Contact
+                        </label>
+                        <input type="text" id="supplier-contact-input" class="form-input" value="${escapeHtml(
+                          supplier.contact || ''
+                        )}" placeholder="Phone / Mobile" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;" ${
+    isReadOnly ? 'readonly' : ''
+  }>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                        <i data-lucide="mail" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                        Email
+                    </label>
+                    <input type="email" id="supplier-email-input" class="form-input" value="${escapeHtml(
+                      supplier.email || ''
+                    )}" placeholder="contact@example.com" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;" ${
+    isReadOnly ? 'readonly' : ''
+  }>
+                </div>
+            </div>
+            
+            <!-- Geo / Map Section -->
+            <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <h3 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="map" style="width: 18px; height: 18px; color: #0ea5e9;"></i>
+                    Location / Map
+                </h3>
+                <p style="margin: 6px 0 14px 0; color: #6b7280; font-size: 13px;">Drop a marker on the map or use your current location. Coordinates will be saved with the supplier.</p>
+
+                <div id="supplier-map" style="width:100%;height:280px;border-radius:8px;overflow:hidden;background:#eef2ff;display:flex;align-items:center;justify-content:center;color:#9ca3af;">Map loading...</div>
+
+                <div style="display:flex;gap:8px;margin-top:12px;align-items:center;">
+                    <button class="btn btn-secondary" type="button" id="supplier-use-my-location">Use my location</button>
+                    <div style="flex:1;display:flex;gap:8px;align-items:center;">
+                        <input type="text" id="supplier-lat-input" class="form-input" placeholder="Latitude" value="${escapeHtml(
+                          supplier.latitude || supplier.lat || ''
+                        )}" style="width:48%;">
+                        <input type="text" id="supplier-lng-input" class="form-input" placeholder="Longitude" value="${escapeHtml(
+                          supplier.longitude ||
+                            supplier.lng ||
+                            supplier.lon ||
+                            ''
+                        )}" style="width:48%;">
+                    </div>
+                </div>
+            </div>
+            ${
+              supplier?.id
+                ? `
+                <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 12px; padding: 20px; border-left: 4px solid #2563eb;">
+                    <div style="display: flex; align-items: start; gap: 12px;">
+                        <i data-lucide="info" style="width: 20px; height: 20px; color: #1e40af; flex-shrink: 0; margin-top: 2px;"></i>
+                        <div>
+                            <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #1e3a8a;">Supplier ID: ${
+                              supplier.id
+                            }</h4>
+                            <p style="margin: 0; font-size: 13px; color: #1e40af; line-height: 1.5;">This supplier record was created on ${
+                              supplier.created_at || supplier.created || 'N/A'
+                            }.</p>
+                        </div>
+                    </div>
+                </div>
+            `
+                : ''
+            }
+        </div>
+
+        <div class="modal-footer" style="background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 20px 24px; display: flex; gap: 12px; justify-content: flex-end;">
+            <button class="btn btn-secondary" data-action="supplier-cancel" style="padding: 10px 24px; font-weight: 500; border: 2px solid #d1d5db; transition: all 0.2s;">
+                <i data-lucide="arrow-left" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                Cancel
+            </button>
+            ${
+              !isReadOnly
+                ? `
+                <button class="btn btn-primary" data-action="supplier-save" data-mode="${mode}" data-index="${
+                    index === null ? '' : index
+                  }" style="padding: 10px 24px; font-weight: 500; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); box-shadow: 0 4px 6px rgba(220, 38, 38, 0.25); transition: all 0.2s; display:inline-flex; align-items:center; gap:8px;">
+                    <i data-lucide="${
+                      mode === 'create' ? 'plus-circle' : 'save'
+                    }" style="width:16px;height:16px;margin-right:6px;"></i>
+                    ${mode === 'create' ? 'Add Supplier' : 'Save Changes'}
+                </button>
+            `
+                : ''
+            }
+        </div>
+    `
+}
+
+function closeSupplierModal() {
+  const overlay = document.getElementById('supplier-modal-overlay')
+  if (!overlay) return
+  // Remove attached handlers if any
+  try {
+    const handlers = overlay._supplierModalHandlers
+    if (handlers) {
+      if (handlers.overlayClickHandler)
+        overlay.removeEventListener('click', handlers.overlayClickHandler)
+      if (handlers.escHandler)
+        document.removeEventListener('keydown', handlers.escHandler)
+      // remove supplierNameHandler if present
+      if (
+        handlers.supplierNameHandler &&
+        handlers.supplierNameHandler.el &&
+        handlers.supplierNameHandler.fn
+      ) {
+        try {
+          handlers.supplierNameHandler.el.removeEventListener(
+            'input',
+            handlers.supplierNameHandler.fn
+          )
+        } catch (e) {}
+      }
+      delete overlay._supplierModalHandlers
+    }
+  } catch (e) {}
+
+  overlay.classList.remove('active')
+  // Clear content and let garbage collection remove attached listeners on elements
+  const content = overlay.querySelector('.modal-content')
+  if (content) content.innerHTML = ''
+}
+
+function saveSupplier(mode = 'create', index = null) {
+  const name = document.getElementById('supplier-name-input')?.value || ''
+  const address = document.getElementById('supplier-address-input')?.value || ''
+  const tin = document.getElementById('supplier-tin-input')?.value || ''
+  const contact = document.getElementById('supplier-contact-input')?.value || ''
+  const email = document.getElementById('supplier-email-input')?.value || ''
+
+  if (!name.trim()) {
+    alert('Supplier name is required')
+    return
+  }
+
+  if (!AppState.suppliers) AppState.suppliers = []
+  const payload = {
+    name: name.trim(),
+    address: address.trim(),
+    tin: tin.trim(),
+    contact: contact.trim(),
+    email: email.trim(),
+    // include optional geo coordinates when provided
+    latitude:
+      (document.getElementById('supplier-lat-input')?.value || '').trim() ||
+      null,
+    longitude:
+      (document.getElementById('supplier-lng-input')?.value || '').trim() ||
+      null,
+  }
+
+  ;(async () => {
+    // Disable save button and show spinner
+    try {
+      const modal = document.getElementById('supplier-modal-overlay')
+      const saveBtn = modal?.querySelector('[data-action="supplier-save"]')
+      if (saveBtn) {
+        saveBtn.setAttribute('data-loading', 'true')
+        const spinner = saveBtn.querySelector('.spinner')
+        const text = saveBtn.querySelector('.save-text')
+        if (spinner) spinner.style.display = 'inline-block'
+        if (text) text.style.opacity = '0.6'
+      }
+    } catch (e) {}
+
+    try {
+      if (mode === 'create' || !index) {
+        const res = await fetch('/api/suppliers', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify(payload),
+        })
+        if (!res.ok) throw res
+        const createdBody = await res.json()
+        // server may return created supplier object directly or inside data
+        const created = createdBody.data || createdBody || {}
+        // ensure coords from payload are preserved if server doesn't echo them
+        created.latitude = created.latitude || payload.latitude || null
+        created.longitude = created.longitude || payload.longitude || null
+        AppState.suppliers = [created, ...(AppState.suppliers || [])]
+        showAlert('Supplier added successfully', 'success')
+      } else {
+        const res = await fetch(`/api/suppliers/${index}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify(payload),
+        })
+        if (!res.ok) throw res
+        const updatedBody = await res.json()
+        const updated = updatedBody.data || updatedBody || {}
+        updated.latitude = updated.latitude || payload.latitude || null
+        updated.longitude = updated.longitude || payload.longitude || null
+        AppState.suppliers = (AppState.suppliers || []).map((s) =>
+          String(s.id) === String(updated.id) ? updated : s
+        )
+        showAlert('Supplier updated successfully', 'success')
+      }
+
+      if (window.MockData) window.MockData.suppliers = AppState.suppliers
+
+      const body = document.getElementById('suppliers-table-body')
+      if (body) body.innerHTML = renderSuppliersRows()
+      // restore save button state (in case modal stays open) and close modal
+      try {
+        const modal = document.getElementById('supplier-modal-overlay')
+        const saveBtn = modal?.querySelector('[data-action="supplier-save"]')
+        if (saveBtn) {
+          saveBtn.setAttribute('data-loading', 'false')
+          const spinner = saveBtn.querySelector('.spinner')
+          const text = saveBtn.querySelector('.save-text')
+          if (spinner) spinner.style.display = 'none'
+          if (text) text.style.opacity = '1'
+        }
+      } catch (e) {}
+
+      closeSupplierModal()
+    } catch (err) {
+      // restore save button on error
+      try {
+        const modal = document.getElementById('supplier-modal-overlay')
+        const saveBtn = modal?.querySelector('[data-action="supplier-save"]')
+        if (saveBtn) {
+          saveBtn.setAttribute('data-loading', 'false')
+          const spinner = saveBtn.querySelector('.spinner')
+          const text = saveBtn.querySelector('.save-text')
+          if (spinner) spinner.style.display = 'none'
+          if (text) text.style.opacity = '1'
+        }
+      } catch (e) {}
+      // Try to extract server message when possible
+      try {
+        if (err && typeof err.json === 'function') {
+          const errJson = await err.json()
+          const msg =
+            errJson?.message ||
+            (errJson?.errors ? JSON.stringify(errJson.errors) : null)
+          showAlert(
+            'Failed to save supplier: ' + (msg || 'Server error'),
+            'error'
+          )
+        } else {
+          showAlert('Failed to save supplier', 'error')
+        }
+      } catch (e) {
+        showAlert('Failed to save supplier', 'error')
+      }
+    }
+  })()
+}
+
+async function deleteSupplier(id) {
+  if (!id) return
+
+  // Use the app's confirm modal for consistent UI
+  try {
+    const ok = await showConfirm('Delete this supplier?', 'Confirm Deletion')
+    if (!ok) return
+  } catch (e) {
+    // Fallback to native confirm if showConfirm fails
+    try {
+      if (!confirm('Delete this supplier?')) return
+    } catch (err) {
+      return
+    }
+  }
+
+  try {
+    const res = await fetch(`/api/suppliers/${id}`, {
+      method: 'DELETE',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      credentials: 'same-origin',
+    })
+    if (!res.ok) throw res
+    AppState.suppliers = (AppState.suppliers || []).filter(
+      (s) => String(s.id) !== String(id)
+    )
+    if (window.MockData) window.MockData.suppliers = AppState.suppliers
+    const body = document.getElementById('suppliers-table-body')
+    if (body) body.innerHTML = renderSuppliersRows()
+    showAlert('Supplier deleted successfully', 'success')
+  } catch (e) {
+    // Try to extract server message when possible
+    try {
+      if (e && typeof e.json === 'function') {
+        const errJson = await e.json()
+        const msg =
+          errJson?.message ||
+          (errJson?.errors ? JSON.stringify(errJson.errors) : null)
+        showAlert(
+          'Failed to delete supplier: ' + (msg || 'Server error'),
+          'error'
+        )
+      } else {
+        showAlert('Failed to delete supplier', 'error')
+      }
+    } catch (ex) {
+      showAlert('Failed to delete supplier', 'error')
+    }
+  }
+}
+
+async function loadSuppliersFromAPI() {
+  try {
+    const res = await fetch('/api/suppliers', {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      credentials: 'same-origin',
+    })
+    if (!res.ok) throw res
+    const payload = await res.json()
+    // If paginated, take data
+    const items = Array.isArray(payload)
+      ? payload
+      : payload.data || payload.items || []
+    AppState.suppliers = items
+    if (window.MockData) window.MockData.suppliers = AppState.suppliers
+    const body = document.getElementById('suppliers-table-body')
+    if (body) body.innerHTML = renderSuppliersRows()
+  } catch (e) {
+    // fallback to MockData if API unavailable
+    if (window.MockData && Array.isArray(window.MockData.suppliers)) {
+      AppState.suppliers = window.MockData.suppliers.slice()
+      const body = document.getElementById('suppliers-table-body')
+      if (body) body.innerHTML = renderSuppliersRows()
+    }
+  }
+}
+
+// Supplier helpers are intentionally NOT exposed globally anymore.
+// The UI uses delegated event handlers and data-action attributes. If you
+// must expose any function globally for legacy templates, re-add explicitly.
 
 function generateStockInPage() {
   return `
@@ -6992,6 +7910,9 @@ function initializePageEvents(pageId) {
     case 'products':
       initializeProductsPageEvents()
       break
+    case 'suppliers':
+      initSuppliersPageEvents()
+      break
     case 'new-request':
     case 'pending-approval':
     case 'completed-request':
@@ -7976,22 +8897,20 @@ function generateUserModal(mode = 'view', userData = null) {
     : 'NU'
 
   return `
-        <div class="modal-header" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; border-bottom: none; padding: 32px 24px;">
-            <div style="display: flex; align-items: center; gap: 16px;">
-                ${
-                  mode !== 'create'
-                    ? `
-                    <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 600; backdrop-filter: blur(10px);">
-                        ${initials}
-                    </div>
-                `
-                    : ''
-                }
-                <div style="flex: 1;">
-                    <h2 class="modal-title" style="color: white; font-size: 24px; margin-bottom: 4px;">${title}</h2>
-                    <p class="modal-subtitle" style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0;">${subtitle}</p>
-                </div>
-            </div>
+    <style>
+      /* Hide empty icon placeholders until lucide replaces them with SVGs */
+      .modal-header .icon-container i:empty { display: none; }
+    </style>
+  <div class="modal-header" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; border-bottom: none; padding: 32px 24px;">
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <div class="icon-container" style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
+          <span style="color: white; font-weight: 700; font-size: 18px;">${initials}</span>
+        </div>
+        <div style="flex: 1;">
+          <h2 class="modal-title" style="color: white; font-size: 24px; margin-bottom: 4px;">${title}</h2>
+          <p class="modal-subtitle" style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0;">${subtitle}</p>
+        </div>
+      </div>
             <button class="modal-close" onclick="closeUserModal()" style="color: white; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
                 <i data-lucide="x" style="width: 20px; height: 20px;"></i>
             </button>
@@ -9907,15 +10826,9 @@ function generateProductModal(mode = 'create', productData = null) {
   return `
         <div class="modal-header" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; border-bottom: none; padding: 32px 24px;">
             <div style="display: flex; align-items: center; gap: 16px;">
-                ${
-                  mode !== 'create' && productData
-                    ? `
-                    <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
-                        <i data-lucide="${productIcon}" style="width: 32px; height: 32px; color: white;"></i>
-                    </div>
-                `
-                    : ''
-                }
+        <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
+          <i data-lucide="${productIcon}" style="width: 32px; height: 32px; color: white;"></i>
+        </div>
                 <div style="flex: 1;">
                     <h2 class="modal-title" style="color: white; font-size: 24px; margin-bottom: 4px;">${title}</h2>
                     <p class="modal-subtitle" style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0;">${subtitle}</p>
@@ -10195,15 +11108,9 @@ function generateCategoryModal(mode = 'create', categoryData = null) {
   return `
         <div class="modal-header" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; border-bottom: none; padding: 32px 24px;">
             <div style="display: flex; align-items: center; gap: 16px;">
-                ${
-                  mode !== 'create'
-                    ? `
-                    <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
-                        <i data-lucide="${categoryIcon}" style="width: 32px; height: 32px; color: white;"></i>
-                    </div>
-                `
-                    : ''
-                }
+        <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
+          <i data-lucide="${categoryIcon}" style="width: 32px; height: 32px; color: white;"></i>
+        </div>
                 <div style="flex: 1;">
                     <h2 class="modal-title" style="color: white; font-size: 24px; margin-bottom: 4px;">${title}</h2>
                     <p class="modal-subtitle" style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0;">${subtitle}</p>
