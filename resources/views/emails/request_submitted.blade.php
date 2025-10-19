@@ -27,8 +27,27 @@
                                     <td style="vertical-align:middle;width:64px;">
                                         <!-- Logo: prefer embedded CID (inline) then a provided URL, otherwise asset() -->
                                         @php
-                                            // $logoCid may be a "cid:..." string or null
-                                            $logoSrc = $logoCid ?? ($logoUrl ?? asset('images/cnscrefine.png'));
+                                            // Prefer embedding inside the view (using $message->embed)
+                                            // because embedding via the Mailable may not always produce
+                                            // the CID when rendering outside of the mailer. If $message
+                                            // is available (it is when Laravel actually sends the mail),
+                                            // use it to embed the local file. Otherwise prefer a CID
+                                            // passed from the Mailable, and finally fall back to the
+                                            // public URL.
+                                            $logoLocal = public_path('images/cnscrefine.png');
+                                            $logoSrc = null;
+                                            try {
+                                                if (isset($message) && method_exists($message, 'embed') && file_exists($logoLocal)) {
+                                                    $logoSrc = $message->embed($logoLocal);
+                                                }
+                                            } catch (\Throwable $e) {
+                                                // ignore and fall back
+                                                $logoSrc = null;
+                                            }
+
+                                            if (empty($logoSrc)) {
+                                                $logoSrc = $logoCid ?? ($logoUrl ?? asset('images/cnscclrefine.png'));
+                                            }
                                         @endphp
                                         <img src="{{ $logoSrc }}" alt="Supply System" width="48" height="48" style="display:block;border:0;outline:none;text-decoration:none;" onerror="this.style.display='none'">
                                     </td>
