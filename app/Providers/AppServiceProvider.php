@@ -5,6 +5,8 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
 use App\Commands\ServeDashboard;
+use App\Models\PurchaseRequest;
+use App\Observers\PurchaseRequestObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -29,5 +31,8 @@ class AppServiceProvider extends ServiceProvider
         $this->commands([
             ServeDashboard::class,
         ]);
+
+        // Register model observers
+        PurchaseRequest::observe(PurchaseRequestObserver::class);
     }
 }

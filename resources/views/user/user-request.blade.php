@@ -509,9 +509,26 @@
             const s = document.getElementById('successDialog');
             const txt = document.getElementById('successText');
             const rid = d.request_id || d.requestId || d.requestId || 'submitted';
-            txt.textContent = `Request ${rid} submitted successfully. Please check your email for confirmation and updates.`;
+            // Message: include whether server sent the confirmation email
+            if (d.email_sent === true) {
+                txt.textContent = `Request ${rid} submitted successfully. A confirmation email has been sent to you.`;
+            } else if (d.email_sent === false) {
+                txt.textContent = `Request ${rid} submitted successfully. We were unable to send a confirmation email — please contact admin if you don't receive one.`;
+            } else {
+                txt.textContent = `Request ${rid} submitted successfully. Please check your email for confirmation and updates.`;
+            }
+
+            // Additionally show a transient toast summarizing email status
+            if (d.email_sent === true) {
+                showToast({ message: '✅ Confirmation email sent to your address.', type: 'success', duration: 4500 });
+            } else if (d.email_sent === false) {
+                showToast({ message: '⚠️ Could not send confirmation email. Your request was saved.', type: 'error', duration: 6000 });
+            } else {
+                showToast({ message: 'Request submitted.', type: 'success', duration: 3500 });
+            }
+
             // show dialog if supported
-            if (typeof s.showModal === 'function') { s.showModal(); } else showToast({ message: 'Request submitted.', type: 'success' });
+            if (typeof s.showModal === 'function') { s.showModal(); }
             document.getElementById('purchaseRequestForm').reset();
         }
 
