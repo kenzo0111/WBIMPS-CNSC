@@ -2974,12 +2974,11 @@ function openSupplierModal(mode = 'create', index = null) {
     }
 
     async function geocodeQuery(q) {
-      // Use Nominatim (OpenStreetMap) public API for simple geocoding
+      // Use server-side proxy to Nominatim to avoid CORS and set User-Agent
       if (!q || String(q).trim().length === 0) return null
-      // Restrict search to the Philippines (countrycodes=ph) and request address details
-      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ph&addressdetails=1&q=${encodeURIComponent(
+      const url = `/api/geocode?q=${encodeURIComponent(
         q
-      )}`
+      )}&limit=1&countrycodes=ph`
       try {
         const res = await fetch(url, {
           headers: { Accept: 'application/json' },

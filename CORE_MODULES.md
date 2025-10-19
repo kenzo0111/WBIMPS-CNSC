@@ -12,123 +12,142 @@ SupplySystem is a Laravel-based inventory / procurement application. The main mo
 - Inventory (Stock In / Stock Out)
 - Purchase Requests & Purchase Orders
 - Document generation (PDFs)
+
+```markdown
+# Core Modules — SupplySystem (updated)
+
+This file documents the main modules (domains) in the SupplySystem Laravel app, their responsibilities, key files/paths, and quick navigation tips for maintainers.
+
+Notes about scope and assumptions:
+
+- Based on the repository layout at the workspace root. I assume controllers under `app/Http/Controllers/Api` contain API endpoints and `routes/web.php` contains web + PDF routes.
+- Where a filename is referenced but missing in the repo, it's listed because callers or routes still reference it in controllers or docs.
+
+## High level modules
+
+- Authentication & Access
+- Admin / Dashboard
+- Catalog (Categories & Products)
+- Inventory (Stock In / Stock Out)
+- Purchase Requests & Purchase Orders
+- Document generation (PDF templates and controllers)
 - Activity & User Logging
 - Mail & Notifications
-- Observers & Providers
-- API & Routes
-
-Each module section below lists responsibilities and key files to inspect.
+- Observers, Providers & Model Events
+- API surface & Routes
 
 ---
 
-## Authentication / Access
+## Authentication & Access
 
-Responsibilities:
+Responsibilities
 
-- User authentication and session management
-- Role and admin checks
+- Login, logout and session handling
+- Role checks and admin helpers
 
-Key files:
+Key files
 
-- `app/Http/Controllers/AccessController.php` — login/logout and auth flows
-- `app/Models/User.php` — user model, roles, isAdmin helper
-- `routes/web.php` — web routes that require authentication
+- `app/Http/Controllers/AccessController.php` (auth flows)
+- `app/Models/User.php` (roles, helpers such as `isAdmin`)
+- `routes/web.php` (web routes that require auth)
 
 ---
 
 ## Admin / Dashboard
 
-Responsibilities:
+Responsibilities
 
-- Admin home and dashboard pages
-- Aggregated views and admin-only operations
+- Admin dashboard, aggregated metrics and admin-only pages
 
-Key files:
+Key files
 
 - `app/Http/Controllers/Admin/DashboardController.php`
-- `resources/views/admin/*` — dashboard and admin pages
+- `resources/views/admin/*`
 
 ---
 
 ## Catalog (Categories & Products)
 
-Responsibilities:
+Responsibilities
 
-- Manage product categories and product catalog
-- Maintain product attributes (sku, unit, unit_cost, quantity)
-- Category <-> Product relationships
+- Manage categories and products, product attributes and relationships
 
-Key files and database:
+Key files
 
 - `app/Models/Category.php`
-- `app/Models/Product.php`
+- `app/Models/Product.php` — contains computed attributes (for example `total_value`)
 - `app/Http/Controllers/Api/CategoryController.php`
 - `app/Http/Controllers/Api/ProductController.php`
-- `routes/api.php` — `Route::apiResource('categories', ...)` and `products`
+- `routes/api.php` — API resource routes for categories/products
 
-Notes:
+Notes
 
-- Product model auto-calculates `total_value` on save.
+- Product quantities and unit costs are used to compute inventory values on save.
 
 ---
 
 ## Inventory (Stock In / Stock Out)
 
-Responsibilities:
+Responsibilities
 
-- Record incoming stock (purchases, receipts)
-- Record issued stock (requisition, issues)
-- Track transaction meta like supplier, received_by, issued_to
+- Record stock receipts (stock-in) and stock issuances (stock-out)
+- Maintain transaction metadata (supplier, received_by, issued_to, reference numbers)
 
-Key files and database:
+Key files / tables
 
 - `app/Models/StockIn.php` (table: `stock_in`)
 - `app/Models/StockOut.php` (table: `stock_out`)
 - `app/Http/Controllers/Api/StockInController.php`
 - `app/Http/Controllers/Api/StockOutController.php`
-- `routes/api.php` — API resource routes for stock-in/stock-out
+- `routes/api.php` — resource routes for stock-in / stock-out
 
 ---
 
 ## Purchase Requests & Purchase Orders
 
-Responsibilities:
+Responsibilities
 
-- Submit and manage purchase requests from users
-- Generate purchase orders from approved requests
-- Store request metadata and items (as JSON)
+- Submit, review and approve purchase requests (PR)
+- Generate purchase orders (PO) from approved PRs
+- Store PR items and metadata (commonly JSON-cast fields)
 
-Key files:
+Key files
 
-- `app/Models/PurchaseRequest.php` — items and metadata are JSON-cast
+- `app/Models/PurchaseRequest.php` — JSON-casts for items/metadata
 - `app/Http/Controllers/PurchaseRequestController.php` (web)
 - `app/Http/Controllers/Api/PurchaseRequestController.php` (API)
 - `app/Http/Controllers/PurchaseOrderController.php`
-- `routes/api.php` and `routes/web.php` — endpoints for listing/creating and PDF generation
+
+Notes
+
+- PR lifecycle is managed by model events and/or observers; approvals may trigger emails and activity logs.
 
 ---
 
 ## Document generation (PDFs)
 
-Responsibilities:
+Responsibilities
 
-- Generate printable PDFs for documents like Purchase Request, Purchase Order, Inspection Acceptance Report, Inventory Custodian Slip, Requisition Issue Slip, Property Acknowledgement Receipt
+- Generate printable PDFs for PR, PO and other reports (IAR, ICS, RIS, PAR)
 
-Key files:
+Key files
 
-- Controllers in `app/Http/Controllers/` such as `PurchaseRequestController.php`, `PurchaseOrderController.php`, `InspectionAcceptanceReportController.php`, `InventoryCustodianSlipController.php`, `RequisitionIssueSlipController.php`, `PropertyAcknowledgementReceiptController.php` implement `generatePDF`/`preview` actions
-- Views under `resources/views/*` used for PDF templates
+- PDF generation typically implemented in controllers under `app/Http/Controllers/` (look for `generatePDF`, `preview`, or `download` methods)
+- Views / templates: `resources/views/` (search for view names used by PDF controllers)
+
+Tips
+
+- To preview mailables or PDF templates locally, see `scripts/render_mailable.php` and `scripts/test_render_mailable.php`.
 
 ---
 
 ## Activity & User Logging
 
-Responsibilities:
+Responsibilities
 
-- Record system actions and basic audit trail
-- Track user logins, operations and metadata
+- Record system-level events, user operations, and simple audit trails
 
-Key files:
+Key files
 
 - `app/Models/Activity.php`
 - `app/Models/UserLog.php`
@@ -139,65 +158,67 @@ Key files:
 
 ## Mail & Notifications
 
-Responsibilities:
+Responsibilities
 
-- Email notifications for purchase request submissions and status changes
-- Render and send mailable templates
+- Send emails for PR submissions, status changes, and other notifications
 
-Key files:
+Key files
 
 - `app/Mail/PurchaseRequestSubmitted.php`
 - `app/Mail/StatusChangedMail.php`
-- `scripts/render_mailable.php` — helper for rendering mailables locally
-- `MAILER_SETUP.md` — mail configuration notes
+- `MAILER_SETUP.md` and `scripts/render_mailable.php`
 
 ---
 
-## Observers & Providers
+## Observers, Providers & Model Events
 
-Responsibilities:
+Responsibilities
 
-- React to model events (e.g., purchase request lifecycle)
-- Register services and bindings
+- Hook into model events (create/update/delete) to run side effects (logs, mail, status transitions)
 
-Key files:
+Key files
 
-- `app/Observers/PurchaseRequestObserver.php` — listens to PR events
-- `app/Providers/AppServiceProvider.php` — app-level bootstrapping
-
----
-
-## API & Routes
-
-Responsibilities:
-
-- Expose RESTful API endpoints for SPA or external integration
-- Separate `routes/api.php` and `routes/web.php` for API vs web UI
-
-Key files:
-
-- `routes/api.php` — API routes for categories, products, stock-in/out, user-logs, purchase-requests, activities
-- `routes/web.php` — web routes and PDF generation endpoints
+- `app/Observers/PurchaseRequestObserver.php`
+- `app/Providers/AppServiceProvider.php` (bindings and bootstrapping)
 
 ---
 
-## How to navigate quickly
+## API surface & Routes
 
-- Start with `routes/api.php` and `routes/web.php` to see the public surface.
-- Inspect controllers in `app/Http/Controllers/Api/` for API behavior and request validation.
-- Inspect `app/Models/` for core domain data models and casts (JSON columns, dates).
-- PDF templates live in `resources/views/` — open the templates referenced by `generatePDF` methods.
+Responsibilities
 
-## Next steps / Suggested improvements
+- Provide JSON REST endpoints used by any SPA or external integrators
 
-- Add small README files per module (e.g., `docs/catalog.md`) describing the model relationships and sample API payloads.
-- Create a diagrams folder with a simple architecture diagram (ERD + flow for PR → PO → StockIn).
-- Add tests for core flows: create PR, approve PR, generate PO, stock in/out adjustments.
+Key files
+
+- `routes/api.php` — primary API routes (categories, products, stock, PRs, activities, user-logs)
+- `routes/web.php` — web routes and PDF endpoints
+
+How to explore quickly
+
+- 1. Open `routes/api.php` and `routes/web.php` to see public endpoints.
+- 2. Follow route controller references to inspect validation and business logic.
+- 3. Inspect models in `app/Models` to find casts and relationships.
 
 ---
 
-If you'd like, I can (pick one):
+## Quick maintenance checklist (recommended low-risk improvements)
 
-- generate per-module README files with example requests/responses,
-- create a high-level architecture diagram, or
-- add a small test suite that exercises the Purchase Request flow.
+- Add lightweight per-module docs under `docs/` (examples: `docs/catalog.md`, `docs/inventory.md`).
+- Add a `docs/architecture.md` with a simple ERD and flow for PR → PO → StockIn.
+- Add tests for the core PR lifecycle: create PR, approve PR (observer side-effects), generate PO, and stock-in adjustments.
+
+---
+
+## Where I can help next
+
+- Generate per-module README files with example requests/responses.
+- Create a simple architecture diagram (SVG/PNG) and place it in `docs/diagrams`.
+- Add a minimal test suite that exercises the Purchase Request flow (Pest or PHPUnit) and prove it by running the tests.
+
+---
+
+If you'd like a specific follow-up, tell me which of the three actions above you want and I'll implement it.
+```
+
+---

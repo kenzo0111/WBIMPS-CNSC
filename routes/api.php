@@ -21,3 +21,5 @@ Route::apiResource('stock-out', StockOutController::class);
 Route::apiResource('user-logs', UserLogController::class);
 Route::get('/purchase-requests', [PurchaseRequestController::class, 'index']);
 Route::post('/purchase-requests', [PurchaseRequestController::class, 'store']);
+// Geocoding proxy endpoint
+Route::get('/geocode', [App\Http\Controllers\GeocodeController::class, 'index']);
