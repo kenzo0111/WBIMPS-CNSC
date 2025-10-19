@@ -11655,13 +11655,17 @@ function generateStockOutIssueId() {
 }
 
 // ===== STATUS MANAGEMENT =====
-function initStatusManagement(filter = 'all') {
+async function initStatusManagement(filter = 'all') {
   const mainContent = document.getElementById('main-content')
   if (!mainContent) return
   AppState.currentStatusFilter = filter
 
-  // Load latest user requests from localStorage
-  loadUserRequests()
+  // Load latest user requests from localStorage (kept for backward compatibility)
+  try {
+    loadUserRequests()
+  } catch (e) {
+    // ignore
+  }
 
   // ✅ Render UI
   mainContent.innerHTML = `
@@ -11761,6 +11765,98 @@ function initStatusManagement(filter = 'all') {
             </div>
         </div>
     `
+
+  // Immediately fetch latest purchase requests from server and populate status list
+  ;(async () => {
+    try {
+      const resp = await fetch('/api/purchase-requests', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': getCsrfToken(),
+        },
+        credentials: 'same-origin',
+      })
+
+      if (resp.ok) {
+        const payload = await resp.json()
+        const rows = payload.data || payload || []
+
+        AppState.statusRequests = (rows || []).map((r) => {
+          // Normalize server fields to UI-friendly shape
+          const obj = {}
+          obj.id = r.request_id || r.requestId || r.id || ''
+          obj.requester = r.requester || r.name || r.requester_name || ''
+          obj.email = r.email || ''
+          obj.department = r.department || r.dept || ''
+          // items may be an array or a string; show first item or joined list
+          if (Array.isArray(r.items)) {
+            try {
+              obj.item = r.items
+                .map((it) =>
+                  typeof it === 'object'
+                    ? it.description || it.name || JSON.stringify(it)
+                    : it
+                )
+                .join('; ')
+            } catch (e) {
+              obj.item = String(r.items)
+            }
+          } else {
+            obj.item = r.items || r.items_text || r.items_string || ''
+          }
+          obj.unit = r.unit || ''
+          obj.priority = (r.priority || r.priority_level || 'low')
+            .toString()
+            .toLowerCase()
+          obj.status = (r.status || 'incoming').toString().toLowerCase()
+          obj.updatedAt = formatDate(
+            r.submitted_at ||
+              r.updated_at ||
+              r.created_at ||
+              r.submittedAt ||
+              r.timestamp ||
+              ''
+          )
+          // cost may be present in top-level or inside metadata
+          obj.cost = Number(
+            r.cost || r.total_cost || (r.metadata && r.metadata.cost) || 0
+          )
+          obj.returnRemarks =
+            r.returnRemarks ||
+            r.return_remarks ||
+            (r.metadata && r.metadata.returnRemarks) ||
+            []
+          obj.source = (
+            r.source ||
+            (r.metadata && r.metadata.source) ||
+            'user-form'
+          ).toString()
+          // keep raw server object for advanced views if needed
+          obj._raw = r
+          return obj
+        })
+      } else {
+        console.warn('Failed to load purchase requests:', resp.status)
+      }
+    } catch (e) {
+      console.error('Error fetching purchase requests:', e)
+    }
+
+    // Update table body and status cards after fetch (or fallback)
+    try {
+      const body = document.getElementById('status-table-body')
+      if (body)
+        body.innerHTML = renderStatusRows(
+          AppState.currentStatusFilter || filter || 'all'
+        )
+      refreshStatusCards()
+      lucide.createIcons()
+    } catch (e) {
+      // ignore UI update errors
+    }
+  })()
 
   // ===== Attach Filter Events =====
   document.getElementById('searchInput').addEventListener('input', applyFilters)

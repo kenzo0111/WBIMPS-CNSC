@@ -375,26 +375,52 @@
                 }
             }
         }
-        function handleRequestSubmit(e) {
+        async function handleRequestSubmit(e) {
             e.preventDefault();
             const d = harvestForm();
             const dlg = document.getElementById('requestDialog');
             const txt = document.getElementById('dialogText');
             txt.textContent = `Submit request for ${d.items?.slice(0, 60) || ''} (${d.priority || 'No priority'})?`;
-            if (typeof dlg.showModal === 'function') {
-                dlg.showModal();
-                dlg.addEventListener('close', function onClose() {
-                    dlg.removeEventListener('close', onClose);
-                    if (dlg.returnValue === 'confirm') {
-                        // simulate persistence
-                        setTimeout(() => showSuccess(d), 300);
-                    }
-                });
-            } else if (confirm('Submit purchase request?')) { showSuccess(d); }
+            const proceed = await new Promise((res) => {
+                if (typeof dlg.showModal === 'function') {
+                    dlg.showModal();
+                    dlg.addEventListener('close', function onClose() {
+                        dlg.removeEventListener('close', onClose);
+                        res(dlg.returnValue === 'confirm');
+                    });
+                } else {
+                    res(confirm('Submit purchase request?'))
+                }
+            })
+            if (!proceed) return;
+            // attempt to persist to server first
+            try {
+                const resp = await fetch('/api/purchase-requests', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify(d),
+                })
+                if (!resp.ok) throw new Error('Network response was not ok')
+                const data = await resp.json()
+                showSuccessServer(data)
+            } catch (err) {
+                console.error('Server save failed, falling back to localStorage', err)
+                // fallback to localStorage behavior
+                showSuccessLocal(d)
+            }
         }
-        function showSuccess(d) {
+        function showSuccessServer(d) {
+            // server returned created record
+            const s = document.getElementById('successDialog');
+            const txt = document.getElementById('successText');
+            const rid = d.request_id || d.requestId || d.requestId || 'submitted';
+            txt.textContent = `Request ${rid} submitted successfully. Please check your email for confirmation and updates.`;
+            if (typeof s.showModal === 'function') { s.showModal(); } else alert('Request submitted.');
+            document.getElementById('purchaseRequestForm').reset();
+        }
+
+        function showSuccessLocal(d) {
             // Save request to localStorage for admin dashboard
-            // Get the next sequential number
             let existingRequests = [];
             try {
                 const stored = localStorage.getItem('userPurchaseRequests');
@@ -423,22 +449,18 @@
                 timestamp: timestamp
             };
 
-            // Add new request
             existingRequests.push(request);
 
-            // Save back to localStorage
             try {
                 localStorage.setItem('userPurchaseRequests', JSON.stringify(existingRequests));
             } catch (e) {
                 console.error('Error saving request:', e);
             }
 
-            // Show success message
             const s = document.getElementById('successDialog');
             const txt = document.getElementById('successText');
-            txt.textContent = `Request ${requestId} submitted successfully for ${d.items?.slice(0, 50) || 'items'}. Please check your email for confirmation and updates.`;
-            if (typeof s.showModal === 'function') { s.showModal(); }
-            else alert('Request submitted.');
+            txt.textContent = `Request ${requestId} saved locally and will be visible in the dashboard. Please contact admin if you need confirmation.`;
+            if (typeof s.showModal === 'function') { s.showModal(); } else alert('Request saved locally.');
             document.getElementById('purchaseRequestForm').reset();
         }
     </script>

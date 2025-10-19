@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\StockInController;
 use App\Http\Controllers\Api\StockOutController;
 use App\Http\Controllers\Api\UserLogController;
 use App\Http\Controllers\Api\StatusRequestController;
+use App\Http\Controllers\Api\PurchaseRequestController;
 
 Route::get('/activities', [ActivityController::class, 'index']);
 Route::post('/activities', [ActivityController::class, 'store']);
@@ -17,3 +18,5 @@ Route::apiResource('products', ProductController::class);
 Route::apiResource('stock-in', StockInController::class);
 Route::apiResource('stock-out', StockOutController::class);
 Route::apiResource('user-logs', UserLogController::class);
+Route::get('/purchase-requests', [PurchaseRequestController::class, 'index']);
+Route::post('/purchase-requests', [PurchaseRequestController::class, 'store']);
