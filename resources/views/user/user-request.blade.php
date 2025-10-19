@@ -353,11 +353,106 @@
             window.location.href = '{{ route("user.user-home-page") }}';
         }
         function toast(msg) {
+            // Deprecated: kept for backward compatibility - see showToast API below
+            showToast({ message: msg, type: 'info' });
+        }
+        
+        /* Enhanced toast system --------------------------------------------------
+         - Supports types: info, success, error
+         - Queueing, progress bar, pause-on-hover, accessible ARIA
+         - Use: showToast({message, type='info', duration=3000})
+        -------------------------------------------------------------------------*/
+        function createToastContainer() {
+            let c = document.getElementById('ui-alert-container');
+            if (!c) {
+                c = document.createElement('div');
+                c.id = 'ui-alert-container';
+                c.className = 'ui-alert-container';
+                c.setAttribute('aria-live', 'polite');
+                document.body.appendChild(c);
+            }
+            return c;
+        }
+
+        function showToast({ message = '', type = 'info', duration = 3500 } = {}) {
             try {
-                let c = document.getElementById('ui-alert-container');
-                if (!c) { c = document.createElement('div'); c.id = 'ui-alert-container'; c.style.position = 'fixed'; c.style.top = '14px'; c.style.right = '14px'; c.style.zIndex = '9999'; c.style.display = 'flex'; c.style.flexDirection = 'column'; c.style.gap = '8px'; document.body.appendChild(c); }
-                const n = document.createElement('div'); n.textContent = msg; n.style.background = 'rgba(0,0,0,0.65)'; n.style.color = '#fff'; n.style.padding = '10px 14px'; n.style.fontSize = '13px'; n.style.borderRadius = '10px'; n.style.backdropFilter = 'blur(6px)'; n.style.WebkitBackdropFilter = 'blur(6px)'; n.style.boxShadow = '0 4px 14px rgba(0,0,0,0.35)'; n.style.animation = 'fadeInUp .45s ease'; c.appendChild(n); setTimeout(() => { n.style.opacity = '0'; n.style.transform = 'translateY(-4px)'; n.style.transition = 'all .35s'; setTimeout(() => n.remove(), 380); }, 2500);
-            } catch (e) { console.log(msg); }
+                const container = createToastContainer();
+                const toast = document.createElement('div');
+                toast.className = `ui-toast ui-toast-${type}`;
+                toast.setAttribute('role', 'status');
+                toast.setAttribute('aria-atomic', 'true');
+
+                const inner = document.createElement('div');
+                inner.className = 'ui-toast-inner';
+
+                const text = document.createElement('div');
+                text.className = 'ui-toast-text';
+                text.textContent = message;
+
+                const close = document.createElement('button');
+                close.className = 'ui-toast-close';
+                close.setAttribute('aria-label', 'Dismiss notification');
+                close.innerHTML = '&times;';
+                close.addEventListener('click', () => removeToast(toast));
+
+                const progress = document.createElement('div');
+                progress.className = 'ui-toast-progress';
+
+                inner.appendChild(text);
+                inner.appendChild(close);
+                toast.appendChild(inner);
+                toast.appendChild(progress);
+
+                container.appendChild(toast);
+
+                // animation start
+                requestAnimationFrame(() => toast.classList.add('ui-toast-in'));
+
+                let start = Date.now();
+                let elapsed = 0;
+                let remaining = duration;
+                let rafId = null;
+                let paused = false;
+
+                function tick() {
+                    if (paused) { rafId = requestAnimationFrame(tick); return; }
+                    elapsed = Date.now() - start;
+                    const pct = Math.min(1, elapsed / duration);
+                    progress.style.transform = `scaleX(${1 - pct})`;
+                    if (elapsed >= duration) {
+                        removeToast(toast);
+                    } else {
+                        rafId = requestAnimationFrame(tick);
+                    }
+                }
+
+                // pause on hover / focus
+                toast.addEventListener('mouseenter', () => { paused = true; });
+                toast.addEventListener('mouseleave', () => { paused = false; start = Date.now() - elapsed; });
+                toast.addEventListener('focusin', () => { paused = true; });
+                toast.addEventListener('focusout', () => { paused = false; start = Date.now() - elapsed; });
+
+                // start ticking
+                rafId = requestAnimationFrame(tick);
+
+                // cleanup helper
+                function removeToast(node) {
+                    if (!node) return;
+                    node.classList.remove('ui-toast-in');
+                    node.classList.add('ui-toast-out');
+                    // small delay to allow exit animation
+                    setTimeout(() => node.remove(), 320);
+                    if (rafId) cancelAnimationFrame(rafId);
+                }
+
+                // expose remove on the element for close button and other code
+                toast.removeToast = () => removeToast(toast);
+
+                return toast;
+            } catch (e) {
+                // fallback
+                console.log(message);
+            }
         }
         function onResetForm() {
             // slight defer because type=reset triggers before custom code sometimes
@@ -415,7 +510,8 @@
             const txt = document.getElementById('successText');
             const rid = d.request_id || d.requestId || d.requestId || 'submitted';
             txt.textContent = `Request ${rid} submitted successfully. Please check your email for confirmation and updates.`;
-            if (typeof s.showModal === 'function') { s.showModal(); } else alert('Request submitted.');
+            // show dialog if supported
+            if (typeof s.showModal === 'function') { s.showModal(); } else showToast({ message: 'Request submitted.', type: 'success' });
             document.getElementById('purchaseRequestForm').reset();
         }
 
@@ -460,10 +556,58 @@
             const s = document.getElementById('successDialog');
             const txt = document.getElementById('successText');
             txt.textContent = `Request ${requestId} saved locally and will be visible in the dashboard. Please contact admin if you need confirmation.`;
-            if (typeof s.showModal === 'function') { s.showModal(); } else alert('Request saved locally.');
+            if (typeof s.showModal === 'function') { s.showModal(); } else showToast({ message: `Request ${requestId} saved locally.`, type: 'success' });
             document.getElementById('purchaseRequestForm').reset();
         }
     </script>
+
+    <style>
+        /* Toast UI styles */
+        .ui-alert-container {
+            position: fixed;
+            top: 14px;
+            right: 14px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-end;
+            pointer-events: none; /* allow clicks through empty areas */
+        }
+        .ui-toast {
+            min-width: 260px;
+            max-width: 420px;
+            background: rgba(0,0,0,0.72);
+            color: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            transform: translateY(-8px) scale(.995);
+            opacity: 0;
+            transition: transform .28s cubic-bezier(.2,.9,.3,1), opacity .22s ease;
+            pointer-events: auto;
+        }
+        .ui-toast.ui-toast-in { transform: translateY(0) scale(1); opacity: 1; }
+        .ui-toast.ui-toast-out { transform: translateY(-6px) scale(.98); opacity: 0; }
+        .ui-toast-inner { display:flex; gap:8px; align-items:center; padding: 12px 12px 10px 14px; }
+        .ui-toast-text { flex:1; font-size:13px; line-height:1.25; }
+        .ui-toast-close { background: transparent; border: none; color: rgba(255,255,255,0.9); font-size:18px; padding:6px; margin-left:6px; cursor:pointer; border-radius:6px; }
+        .ui-toast-close:focus { outline: 2px solid rgba(255,255,255,0.12); }
+        .ui-toast-progress { height:4px; background: linear-gradient(90deg,#ffd500,#ff4444); transform-origin: left center; transition: transform .12s linear; }
+
+        /* Type mods */
+        .ui-toast-info { background: linear-gradient(180deg, rgba(0,0,0,0.78), rgba(0,0,0,0.72)); }
+        .ui-toast-success { background: linear-gradient(180deg, #0f172a, #063c18); box-shadow: 0 8px 30px rgba(6,60,24,0.35); }
+        .ui-toast-error { background: linear-gradient(180deg, #2a0b0b, #3b0b0b); box-shadow: 0 8px 30px rgba(59,11,11,0.35); }
+
+        .ui-toast-success .ui-toast-progress { background: linear-gradient(90deg,#34d399,#059669); }
+        .ui-toast-error .ui-toast-progress { background: linear-gradient(90deg,#ff7b7b,#ff3b3b); }
+
+        @media (max-width:640px) {
+            .ui-alert-container { left: 16px; right: 16px; top: 12px; align-items: center; }
+            .ui-toast { width: calc(100% - 32px); max-width: none; }
+        }
+    </style>
 </body>
 
 </html>
