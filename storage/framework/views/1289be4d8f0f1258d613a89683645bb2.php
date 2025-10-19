@@ -36,7 +36,7 @@
             <div class="sidebar-header">
                 <div class="logo-container">
                     <div class="logo-icon">
-                        <img src="<?php echo e($imagesPath); ?>/UCN1.png" alt="Logo" class="icon-logo" />
+                        <img src="<?php echo e($imagesPath); ?>/cnscrefine.png" alt="Logo" class="icon-logo" />
                     </div>
                     <div class="logo-text">
                         <h1>CNSC Supply</h1>
