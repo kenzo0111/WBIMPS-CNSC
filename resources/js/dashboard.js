@@ -554,8 +554,24 @@ async function saveStockOutToAPI(stockOutRecord) {
       }
       return normalized
     } else {
-      const error = await response.json()
-      throw new Error(error.message || 'Failed to save stock out')
+      // Attempt to extract a helpful message from server JSON (supports {message} or {error} or validation errors)
+      let errorBody = {}
+      try {
+        errorBody = await response.json()
+      } catch (e) {
+        // ignore
+      }
+      const msg =
+        errorBody?.message ||
+        errorBody?.error ||
+        (errorBody && errorBody.errors
+          ? Object.values(errorBody.errors).flat().join('; ')
+          : null) ||
+        'Failed to save stock out'
+      const err = new Error(msg)
+      // attach HTTP status so callers can react (e.g., show custom toast on 422)
+      err.status = response.status
+      throw err
     }
   } catch (error) {
     console.error('Error saving stock out:', error)
@@ -10986,6 +11002,27 @@ function openStockOutModal(mode = 'create', stockId = null) {
     const skuInput = modal.querySelector('#so-sku')
     const productInput = modal.querySelector('#so-product')
 
+    // Auto-detect low-stock items when opening the modal (if SKU not pre-filled)
+    try {
+      const products = window.MockData?.products || []
+      const lowItems = products.filter((p) => Number(p.quantity || 0) <= 20)
+      if (
+        (!skuInput || !skuInput.value || skuInput.value.trim() === '') &&
+        lowItems.length
+      ) {
+        const preview = lowItems
+          .slice(0, 5)
+          .map((p) => `${p.id}${p.name ? ` (${p.name})` : ''}: ${p.quantity}`)
+          .join('; ')
+        showAlert(
+          `Low stock detected for ${lowItems.length} item${
+            lowItems.length === 1 ? '' : 's'
+          }: ${preview}${lowItems.length > 5 ? '; ...' : ''}`,
+          'warning'
+        )
+      }
+    } catch (e) {}
+
     // Add a current stock badge under product input
     const badgeId = 'so-current-stock-badge'
     if (productInput && !document.getElementById(badgeId)) {
@@ -11032,10 +11069,41 @@ function openStockOutModal(mode = 'create', stockId = null) {
         if (stockBadge) {
           stockBadge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;background:#eef2ff;padding:4px 8px;border-radius:12px;">Available: <strong>${prod.quantity}</strong></span>`
         }
-        // Prevent entering quantity greater than available
+        // Inline banner + alert when product stock is low (threshold: 20)
+        try {
+          const banner = document.getElementById('so-lowstock-banner')
+          if (typeof prod.quantity === 'number' && prod.quantity <= 20) {
+            // show transient alert
+            showAlert(
+              `Low stock: only ${prod.quantity} unit${
+                prod.quantity === 1 ? '' : 's'
+              } available for ${prod.name}.`,
+              'warning'
+            )
+            // show inline banner with details
+            if (banner) {
+              banner.textContent = `Requested item low in stock — only ${prod.quantity} available.`
+              banner.style.display = 'block'
+            }
+          } else if (banner) {
+            banner.style.display = 'none'
+          }
+        } catch (e) {}
+        // Prevent entering quantity greater than available; auto-adjust on input
         if (qty) {
           qty.setAttribute('max', prod.quantity)
-          if (parseInt(qty.value) > prod.quantity) qty.value = prod.quantity
+          // If current value exceeds available, clamp now and show banner
+          if (parseInt(qty.value) > prod.quantity) {
+            qty.value = prod.quantity
+            const banner = document.getElementById('so-lowstock-banner')
+            if (banner) {
+              banner.textContent = `Requested quantity exceeded available stock — adjusted to ${prod.quantity}.`
+              banner.style.display = 'block'
+            }
+          }
+          // Add input listener to auto-clamp if user types higher than available
+          qty.removeEventListener('input', qtyInputClampHandler)
+          qty.addEventListener('input', qtyInputClampHandler)
         }
         updateTotal()
       } else {
@@ -11052,6 +11120,43 @@ function openStockOutModal(mode = 'create', stockId = null) {
       })
       autoFillFromSku()
     }
+    // quantity clamp handler: defined here to access modal scope
+    function qtyInputClampHandler(e) {
+      const val = parseInt(e.target.value) || 0
+      const max = parseInt(e.target.getAttribute('max')) || Infinity
+      const banner = document.getElementById('so-lowstock-banner')
+      if (val > max) {
+        e.target.value = max
+        if (banner) {
+          banner.textContent = `Requested quantity exceeded available stock — adjusted to ${max}.`
+          banner.style.display = 'block'
+        }
+      } else {
+        // hide banner when quantity within limits
+        if (banner) banner.style.display = 'none'
+      }
+      updateTotal()
+    }
+
+    // Hide inline banner when modal closes or when SKU changes to a different product
+    // Ensure banner is hidden initially if no low stock
+    try {
+      const banner = document.getElementById('so-lowstock-banner')
+      if (banner && banner.textContent.trim() === 'Low stock')
+        banner.style.display = 'none'
+      // hide banner when modal close (listen on modal close button)
+      const closeBtn = modal.querySelector('.modal-close')
+      if (closeBtn)
+        closeBtn.addEventListener(
+          'click',
+          () => banner && (banner.style.display = 'none')
+        )
+      // hide banner when SKU input changes to empty or different SKU
+      skuInput.addEventListener('input', () => {
+        const b = document.getElementById('so-lowstock-banner')
+        if (b) b.style.display = 'none'
+      })
+    } catch (e) {}
     // Prevent backdating: ensure so-date min is today and value is not before today
     try {
       const today = new Date().toISOString().split('T')[0]
@@ -11148,6 +11253,8 @@ function generateStockOutModal(mode = 'create', stockData = null) {
                            placeholder="Enter product name"
                            style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                            ${isReadOnly ? 'readonly' : ''}>
+          <!-- Inline low-stock banner (hidden by default). Visible until modal close or SKU change -->
+          <div id="so-lowstock-banner" style="display:none;margin-top:8px;padding:8px 12px;border-radius:8px;background:#fff7ed;color:#92400e;font-weight:600;font-size:13px;">Low stock</div>
                 </div>
             </div>
 
@@ -11323,6 +11430,35 @@ async function saveStockOut(stockId) {
   // Prevent backdating: clamp date to today
   const clampedSoDate = clampDateToToday(date)
 
+  // Validate available stock: find product by SKU (case-insensitive)
+  try {
+    const prod = (window.MockData?.products || []).find(
+      (p) => (p.id || '').toLowerCase() === (sku || '').toLowerCase()
+    )
+    if (prod) {
+      const available = Number(prod.quantity || 0)
+      if (!isEdit && available <= 20) {
+        // Block creating a stock out when available stock is <= 20
+        showAlert(
+          `Cannot proceed: available stock for ${
+            prod.name || sku
+          } is ${available}, which is at or below the minimum allowed (20). Please restock before issuing.`,
+          'error'
+        )
+        return
+      }
+      // If editing, allow but still clamp quantity to available
+      if (isEdit && quantity > available) {
+        showAlert(
+          `Adjusted quantity to available stock (${available}).`,
+          'warning'
+        )
+        // override record quantity
+        quantity = available
+      }
+    }
+  } catch (e) {}
+
   const record = Object.assign(
     {},
     // only include id when editing so saveStockOutToAPI chooses PUT for edits
@@ -11356,10 +11492,15 @@ async function saveStockOut(stockId) {
       'success'
     )
   } catch (error) {
-    showAlert(
-      `Failed to ${stockId ? 'update' : 'save'} stock out: ${error.message}`,
-      'error'
-    )
+    // If server returned 422 on create, show a specific friendly toast message
+    if (!stockId && error && error.status === 422) {
+      showAlert('Failed to add stock out because of the stocks', 'error')
+    } else {
+      showAlert(
+        `Failed to ${stockId ? 'update' : 'save'} stock out: ${error.message}`,
+        'error'
+      )
+    }
     return
   }
 

@@ -57,8 +57,20 @@ class StockOutController extends Controller
 
         // Check if sufficient stock is available
         $product = Product::where('sku', $validated['sku'])->first();
-        if (!$product || $product->quantity < $validated['quantity']) {
+        if (!$product) {
+            return response()->json(['error' => 'Product not found'], 404);
+        }
+        if ($product->quantity < $validated['quantity']) {
             return response()->json(['error' => 'Insufficient stock'], 400);
+        }
+
+        // Enforce minimum remaining stock threshold: do not allow creating a stock out
+        // which would leave the product with 20 units or less.
+        $remaining = $product->quantity - $validated['quantity'];
+        if ($remaining <= 20) {
+            return response()->json([
+                'error' => "Cannot create stock out: remaining stock for {$product->sku} would be {$remaining}, which is at or below the minimum allowed (20)."
+            ], 422);
         }
 
         $created = null;
@@ -104,11 +116,39 @@ class StockOutController extends Controller
             'date_issued' => 'required|date',
         ]);
 
-        // Check if sufficient stock is available
-        $product = Product::where('sku', $validated['sku'])->first();
-        $availableStock = $product ? $product->quantity + $stockOut->quantity : 0;
-        if ($availableStock < $validated['quantity']) {
-            return response()->json(['error' => 'Insufficient stock'], 400);
+        // Validate product(s) and ensure resulting stock after update doesn't violate minimum threshold
+        $oldQuantity = $stockOut->quantity;
+        $oldSku = $stockOut->sku;
+
+        $newSku = $validated['sku'];
+        $newProduct = Product::where('sku', $newSku)->first();
+        if (!$newProduct) {
+            return response()->json(['error' => 'Product not found'], 404);
+        }
+
+        if ($oldSku === $newSku) {
+            // Same SKU: product currently reflects stock after original issuance, so restore old qty then apply new qty
+            $currentProduct = $newProduct; // same product
+            $newRemaining = $currentProduct->quantity + $oldQuantity - $validated['quantity'];
+            if ($newRemaining < 0) {
+                return response()->json(['error' => 'Insufficient stock'], 400);
+            }
+            if ($newRemaining <= 20) {
+                return response()->json([
+                    'error' => "Cannot update stock out: resulting remaining stock for {$currentProduct->sku} would be {$newRemaining}, which is at or below the minimum allowed (20)."
+                ], 422);
+            }
+        } else {
+            // SKU changed: check new product availability after applying requested quantity
+            if ($newProduct->quantity < $validated['quantity']) {
+                return response()->json(['error' => 'Insufficient stock for target product'], 400);
+            }
+            $newRemaining = $newProduct->quantity - $validated['quantity'];
+            if ($newRemaining <= 20) {
+                return response()->json([
+                    'error' => "Cannot update stock out: resulting remaining stock for {$newProduct->sku} would be {$newRemaining}, which is at or below the minimum allowed (20)."
+                ], 422);
+            }
         }
 
         DB::transaction(function () use ($validated, $stockOut) {
