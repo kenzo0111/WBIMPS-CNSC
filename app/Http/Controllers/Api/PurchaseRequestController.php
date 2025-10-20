@@ -144,4 +144,42 @@ class PurchaseRequestController extends Controller
 
         return response()->json(array_merge($pr->toArray(), ['email_sent' => $emailSent]), 201);
     }
+
+    /**
+     * Update the status of a purchase request.
+     * Accepts either the numeric DB id or the request_id string (eg. REQ-2025-007).
+     */
+    public function updateStatus(Request $request, $id)
+    {
+        $data = $request->validate([
+            'status' => 'required|string',
+        ]);
+
+        // Try to locate by request_id first (eg. REQ-2025-007), then by numeric id
+        $pr = PurchaseRequest::where('request_id', $id)->first();
+        if (!$pr && is_numeric($id)) {
+            $pr = PurchaseRequest::find((int) $id);
+        }
+
+        if (!$pr) {
+            return response()->json(['error' => 'Purchase request not found'], 404);
+        }
+
+        $old = $pr->status;
+        $pr->status = $data['status'];
+        $pr->save();
+
+        // Optionally log activity
+        try {
+            \App\Models\Activity::create([
+                'type' => 'purchase_request_status_changed',
+                'message' => sprintf('Purchase request %s status changed from %s to %s', $pr->request_id ?? $pr->id, $old, $pr->status),
+                'metadata' => ['request_id' => $pr->request_id ?? $pr->id],
+            ]);
+        } catch (\Exception $e) {
+            // ignore logging failures
+        }
+
+        return response()->json($pr);
+    }
 }

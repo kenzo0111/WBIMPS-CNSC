@@ -48,6 +48,8 @@ Route::get('/pdf/preview/appendix71', [PropertyAcknowledgementReceiptController:
 
 Route::middleware('auth')->group(function () {
     Route::get('/contact-support', function () { return view('contact-support'); })->name('contact.support');
+    Route::post('/contact-support', [App\Http\Controllers\SupportController::class, 'store'])->name('support.submit');
+    Route::get('/support/attachment/{id}', [App\Http\Controllers\SupportController::class, 'attachment'])->name('support.attachment');
     Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
     Route::get('/admin/home', function () { return view('admin.home-page'); });
     Route::get('/user/home', function () { return view('user.user-home-page'); })->name('user.user-home-page');

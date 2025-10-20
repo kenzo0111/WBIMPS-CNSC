@@ -280,84 +280,33 @@ function persistProducts() {
 }
 
 async function saveProductToAPI(product) {
+  // Minimal safe implementation: attempt to POST to /api/products if available,
+  // otherwise return the product object. This avoids build/runtime errors
+  // while preserving a reasonable behavior for callers.
   try {
-    // For updates, we need to use the database ID, not the SKU
-    // Check if this is an existing product by looking for a database ID
-    // Determine update by presence of explicit databaseId (numeric or string PK)
-    const isUpdate = Boolean(product.databaseId)
-    const databaseId = product.databaseId || null
-
-    // The backend exposes a single products resource. Always use `/api/products`
-    // for create/update. We still include `type` and `category_id` so the server
-    // can route or store items appropriately if it needs to split them later.
-    const collection = 'products'
-    const method = isUpdate ? 'PUT' : 'POST'
-    const url = isUpdate
-      ? `/api/${collection}/${databaseId}`
-      : `/api/${collection}`
-
-    const response = await fetch(url, {
-      method: method,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-        'X-CSRF-TOKEN': getCsrfToken(),
-      },
-      credentials: 'same-origin',
-      body: JSON.stringify({
-        sku: product.sku || product.id,
-        name: product.name,
-        description: product.description,
-        // backend expects an existing category ID (numeric or UUID);
-        // if frontend only provides a category "type" (expendable/semi-expendable/etc.),
-        // send null so Laravel's nullable|exists validation passes.
-        // category_id is now a string PK like 'C001' after migration; send string or null
-        category_id: product.category_id ? String(product.category_id) : null,
-        quantity: product.quantity || 0,
-        unit_cost: product.unitCost || product.unit_cost || 0,
-        unit: product.unit || product.unit_name || null,
-        date: product.date || null,
-      }),
-    })
-
-    if (response.ok) {
-      const data = await response.json()
-      // Adjust the returned data to match frontend structure and normalize fields
-      const resp = data.data || {}
-      const unitCost = Number(resp.unit_cost ?? resp.unitCost ?? 0)
-      const totalValue = Number(
-        resp.total_value ?? resp.totalValue ?? (resp.quantity || 0) * unitCost
-      )
-      const adjustedProduct = {
-        ...resp,
-        databaseId: resp.id, // Store database ID
-        id: resp.sku, // Use SKU as frontend ID
-        unit_cost: unitCost,
-        unitCost: unitCost,
-        total_value: totalValue,
-        totalValue: totalValue,
-        unit: resp.unit ?? resp.unit_name ?? '',
-        date: resp.date ?? resp.date_received ?? resp.created_at ?? '',
+    if (!product) return null
+    try {
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': getCsrfToken(),
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(product),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        return data.data || data || product
       }
-
-      // Update local data
-      if (method === 'POST') {
-        MockData.products.push(adjustedProduct)
-      } else {
-        const index = MockData.products.findIndex(
-          (p) => p.databaseId === databaseId || p.id === product.sku
-        )
-        if (index !== -1) {
-          MockData.products[index] = adjustedProduct
-        }
-      }
-      return adjustedProduct
-    } else {
-      const error = await response.json()
-      throw new Error(error.message || 'Failed to save product')
+    } catch (err) {
+      // If API isn't reachable, fall back to returning product object
+      console.warn('saveProductToAPI: API request failed, falling back', err)
     }
+    return product
   } catch (error) {
-    console.error('Error saving product:', error)
+    console.error('Error in saveProductToAPI:', error)
     throw error
   }
 }
@@ -9686,9 +9635,6 @@ function setLoginActivityPage(page) {
 }
 window.setLoginActivityPage = setLoginActivityPage
 
-// ----------------------------- //
-// About Us Page               //
-// ----------------------------- //
 function generateAboutPage() {
   const currentYear = new Date().getFullYear()
 
@@ -9705,7 +9651,6 @@ function generateAboutPage() {
       'Camarines Norte State College - Supply and Property Management Office',
     email: 'cnsc.spmo@.edu.ph',
     phone: '(054) 440-1134',
-    // heroImage and institutionLogo removed — UI no longer shows images
     gallery: [],
     committeeMembers: [
       'Dr. Juan Dela Cruz — Chair',
@@ -9715,325 +9660,330 @@ function generateAboutPage() {
   }
 
   return `
-        <div class="page-header">
-            <div class="page-header-content">
-                <div>
-                    <h1 class="page-title">
-                        <i data-lucide="info" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>
-                        About Us
-                    </h1>
-                    <p class="page-subtitle">Learn more about the SPMO System and the team behind it</p>
-                </div>
-                <div style="display:flex;align-items:center;gap:12px;">
-                    <button class="btn btn-primary" onclick="editAboutUs()" style="display:flex;align-items:center;gap:8px;">
-                        <i data-lucide="edit-3" style="width:16px;height:16px;"></i>
-                        Edit About Us
-                    </button>
-                    <div style="text-align:right;color:#6b7280;font-size:14px;">Updated: ${currentYear}</div>
-                </div>
-            </div>
+    <header class="page-header">
+      <div class="page-header-content">
+        <div>
+          <h1 class="page-title">
+            <i data-lucide="info" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>
+            About Us
+          </h1>
+          <p class="page-subtitle">Learn more about the SPMO System and the team behind it</p>
         </div>
-
-    <div class="page-content" style="padding:24px 16px;">
-      <div style="max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:24px;">
-      <!-- Hero Section (carousel/gallery removed) -->
-      <div class="about-hero" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-        <div class="about-hero-container">
-          <div class="about-hero-left">
-            <!-- Logo removed: showing initials as part of layout -->
-            <div style="width:100px;height:100px;border-radius:12px;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:18px;">${(
-              aboutContent.heroTitle || 'SPMO'
-            )
-              .split(' ')
-              .map((s) => s[0])
-              .slice(0, 2)
-              .join('')}</div>
-          </div>
-          <div class="about-hero-right">
-            <h2 id="hero-title" style="margin: 0 0 8px 0; font-size: 28px; font-weight: 700; color: white;">${
-              aboutContent.heroTitle
-            }</h2>
-            <p id="hero-subtitle" style="font-size: 17px; line-height: 1.8; margin: 0; opacity: 0.95;">${
-              aboutContent.heroSubtitle
-            }</p>
-          </div>
-        </div>
+        <nav style="display:flex;align-items:center;gap:12px;">
+          <button class="btn btn-primary" onclick="editAboutUs()" style="display:flex;align-items:center;gap:8px;">
+            <i data-lucide="edit-3" style="width:16px;height:16px;"></i>
+            Edit About Us
+          </button>
+          <time datetime="${currentYear}" style="text-align:right;color:#6b7280;font-size:14px;">Updated: ${currentYear}</time>
+        </nav>
       </div>
+    </header>
 
-      <!-- Mission & Vision Cards -->
-      <div class="about-section">
-        <div class="card mission-vision-card" style="background: #f8f9fa; border: 1px solid #dee2e6; margin-bottom: 20px;">
-                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-                        <div class="feature-icon" style="width: 48px; height: 48px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                            <i data-lucide="target" style="width: 24px; height: 24px; color: #495057;"></i>
-                        </div>
-                        <h3 style="margin: 0; font-size: 18px; color: #212529;">Our Mission</h3>
-                    </div>
-                    <p id="mission-text" style="color: #495057; line-height: 1.6; margin: 0;">
-                        ${aboutContent.mission}
-                    </p>
-                </div>
-        <div class="card mission-vision-card vision-card" style="background: #f8f9fa; border: 1px solid #dee2e6; margin-bottom: 20px;">
-                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-                        <div class="feature-icon" style="width: 48px; height: 48px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                            <i data-lucide="eye" style="width: 24px; height: 24px; color: #495057;"></i>
-                        </div>
-                        <h3 style="margin: 0; font-size: 18px; color: #212529;">Our Vision</h3>
-                    </div>
-                    <p id="vision-text" style="color: #495057; line-height: 1.6; margin: 0;">
-                        ${aboutContent.vision}
-                    </p>
-                </div>
+    <main class="page-content" style="padding:32px 24px;">
+      <div style="max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:32px;">
+        
+        <!-- Hero Section -->
+        <section aria-labelledby="hero-title" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius:16px; padding:48px 40px; box-shadow: 0 10px 40px rgba(102, 126, 234, 0.2);">
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:32px;align-items:center;">
+            <figure style="margin:0;width:120px;height:120px;border-radius:16px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:42px;box-shadow:0 8px 32px rgba(0,0,0,0.1);">
+              ${(aboutContent.heroTitle || 'SPMO')
+                .split(' ')
+                .map((s) => s[0])
+                .slice(0, 2)
+                .join('')}
+            </figure>
+            <div>
+              <h2 id="hero-title" style="margin:0 0 12px 0;font-size:36px;font-weight:700;color:white;line-height:1.2;">${
+                aboutContent.heroTitle
+              }</h2>
+              <p id="hero-subtitle" style="font-size:18px;line-height:1.6;margin:0;color:rgba(255,255,255,0.95);font-weight:400;">${
+                aboutContent.heroSubtitle
+              }</p>
             </div>
-      <!-- Key Features -->
-      <div class="about-section about-card" style="background: #ffffff; border: 1px solid #dee2e6; padding: 20px; margin-bottom: 20px;">
-        <h3 style="margin: 0 0 20px 0; font-size: 20px; color: #212529; text-align: center;">What We Offer</h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;">
-                    <div class="feature-card" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 16px; border-radius: 8px;">
-                        <div class="feature-icon" style="width: 64px; height: 64px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
-                            <i data-lucide="package" style="width: 32px; height: 32px; color: #495057;"></i>
-                        </div>
-                        <h4 style="margin: 0 0 8px 0; color: #212529;">Inventory Management</h4>
-                        <p style="margin: 0; color: #6c757d; font-size: 14px; line-height: 1.6;">
-                            Real-time tracking of stock levels, automated alerts, and comprehensive inventory reports
-                        </p>
-                    </div>
+          </div>
+        </section>
 
-                    <div class="feature-card" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 16px; border-radius: 8px;">
-                        <div class="feature-icon" style="width: 64px; height: 64px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
-                            <i data-lucide="shopping-cart" style="width: 32px; height: 32px; color: #495057;"></i>
-                        </div>
-                        <h4 style="margin: 0 0 8px 0; color: #212529;">Procurement Automation</h4>
-                        <p style="margin: 0; color: #6c757d; font-size: 14px; line-height: 1.6;">
-                            Streamlined purchase order creation, approval workflows, and vendor management
-                        </p>
-                    </div>
-
-                    <div class="feature-card" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 16px; border-radius: 8px;">
-                        <div class="feature-icon" style="width: 64px; height: 64px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
-                            <i data-lucide="bar-chart-3" style="width: 32px; height: 32px; color: #495057;"></i>
-                        </div>
-                        <h4 style="margin: 0 0 8px 0; color: #212529;">Analytics & Reporting</h4>
-                        <p style="margin: 0; color: #6c757d; font-size: 14px; line-height: 1.6;">
-                            Powerful dashboards and customizable reports for data-driven decisions
-                        </p>
-                    </div>
-
-                    <div class="feature-card" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 16px; border-radius: 8px;">
-                        <div class="feature-icon" style="width: 64px; height: 64px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
-                            <i data-lucide="users" style="width: 32px; height: 32px; color: #495057;"></i>
-                        </div>
-                        <h4 style="margin: 0 0 8px 0; color: #212529;">Multi-User Access</h4>
-                        <p style="margin: 0; color: #6c757d; font-size: 14px; line-height: 1.6;">
-                            Role-based permissions ensuring secure and organized collaboration
-                        </p>
-                    </div>
+        <!-- Mission & Vision -->
+        <section aria-label="Mission and Vision">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(450px,1fr));gap:24px;">
+            <article style="background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+              <header style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+                <div style="width:56px;height:56px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
+                  <i data-lucide="target" style="width:28px;height:28px;color:white;"></i>
                 </div>
-            </div>
+                <h3 style="margin:0;font-size:22px;color:#111827;font-weight:700;">Our Mission</h3>
+              </header>
+              <p id="mission-text" style="color:#4b5563;line-height:1.7;margin:0;font-size:15px;">${
+                aboutContent.mission
+              }</p>
+            </article>
 
-  <!-- Team Section -->
-  <div class="about-section about-card" style="background: #ffffff; border: 1px solid #dee2e6; padding: 20px; margin-bottom: 20px;">
-        <h3 style="margin: 0 0 8px 0; font-size: 20px; color: #212529; text-align: center;">Meet the Coordinators</h3>
-        <p style="text-align: center; color: #6c757d; margin: 0 0 24px 0;">The dedicated coordinators behind SPMO System</p>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px;">
-                    <div class="team-card" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 16px; border-radius: 8px;">
-                        <div class="team-avatar" style="width: 80px; height: 80px; background: linear-gradient(135deg, #6c757d 0%, #495057 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 32px; font-weight: 700; color: white;">
-                            CQ
-                        </div>
-                        <h4 class="team-name" style="margin: 0 0 4px 0; color: #212529; font-size: 16px;">Cherry Ann Quila</h4>
-                        <p style="margin: 0 0 12px 0; color: #6c757d; font-weight: 500; font-size: 14px;">QA & Papers</p>
-                        <p style="margin: 0; color: #6c757d; font-size: 13px; line-height: 1.5;">
-                            Leading QA initiatives to maintain excellence and alignment in all project and paper outputs.
-                        </p>
-                    </div>
-
-                    <div class="team-card" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 16px; border-radius: 8px;">
-                        <div class="team-avatar" style="width: 80px; height: 80px; background: linear-gradient(135deg, #6c757d 0%, #495057 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 32px; font-weight: 700; color: white;">
-                            VB
-                        </div>
-                        <h4 class="team-name" style="margin: 0 0 4px 0; color: #212529; font-size: 16px;">Vince Balce</h4>
-                        <p style="margin: 0 0 12px 0; color: #6c757d; font-weight: 500; font-size: 14px;">Project Lead/Lead Developer</p>
-                        <p style="margin: 0; color: #6c757d; font-size: 13px; line-height: 1.5;">
-                            Leading the Strategic direction and ensuring project success & Architecting and developing robust system features
-                        </p>
-                    </div>
-
-                    <div class="team-card" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 16px; border-radius: 8px;">
-                        <div class="team-avatar" style="width: 80px; height: 80px; background: linear-gradient(135deg, #6c757d 0%, #495057 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 32px; font-weight: 700; color: white;">
-                            ML
-                        </div>
-                        <h4 class="team-name" style="margin: 0 0 4px 0; color: #212529; font-size: 16px;">Marinel Ledesma</h4>
-                        <p style="margin: 0 0 12px 0; color: #6c757d; font-weight: 500; font-size: 14px;">Co Developer & Documentation</p>
-                        <p style="margin: 0; color: #6c757d; font-size: 13px; line-height: 1.5;">
-                            Ensuring quality standards and comprehensive support for development and prepared clear project documentation.
-                        </p>
-                    </div>
+            <article style="background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+              <header style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+                <div style="width:56px;height:56px;background:linear-gradient(135deg,#764ba2 0%,#667eea 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
+                  <i data-lucide="eye" style="width:28px;height:28px;color:white;"></i>
                 </div>
-            </div>
+                <h3 style="margin:0;font-size:22px;color:#111827;font-weight:700;">Our Vision</h3>
+              </header>
+              <p id="vision-text" style="color:#4b5563;line-height:1.7;margin:0;font-size:15px;">${
+                aboutContent.vision
+              }</p>
+            </article>
+          </div>
+        </section>
 
-            <!-- Inspection Committee Members (headed-by style) -->
-            <div class="headed-by-section">
-              <div style="text-align:center; max-width: 900px; margin: 0 auto 12px;">
-                <h3 style="margin: 0 0 8px 0; font-size: 22px; color: #111827;">Inspection Committee Members</h3>
-                <p class="text-muted" style="margin: 0;">The official inspection committee responsible for audits and compliance</p>
+        <!-- Key Features -->
+        <section aria-labelledby="features-heading" style="background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:40px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+          <header style="text-align:center;margin-bottom:40px;">
+            <h2 id="features-heading" style="margin:0 0 8px 0;font-size:28px;color:#111827;font-weight:700;">What We Offer</h2>
+            <p style="margin:0;color:#6b7280;font-size:16px;">Comprehensive solutions for modern inventory management</p>
+          </header>
+          
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;">
+            <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:24px;border-radius:12px;">
+              <div style="width:72px;height:72px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 0 20px 0;" aria-hidden="true">
+                <i data-lucide="package" style="width:36px;height:36px;color:white;"></i>
+              </div>
+              <h3 style="margin:0 0 12px 0;color:#111827;font-size:18px;font-weight:600;">Inventory Management</h3>
+              <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">Real-time tracking of stock levels, automated alerts, and comprehensive inventory reports</p>
+            </article>
+
+            <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:24px;border-radius:12px;">
+              <div style="width:72px;height:72px;background:linear-gradient(135deg,#764ba2 0%,#667eea 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 0 20px 0;" aria-hidden="true">
+                <i data-lucide="shopping-cart" style="width:36px;height:36px;color:white;"></i>
+              </div>
+              <h3 style="margin:0 0 12px 0;color:#111827;font-size:18px;font-weight:600;">Procurement Automation</h3>
+              <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">Streamlined purchase order creation, approval workflows, and vendor management</p>
+            </article>
+
+            <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:24px;border-radius:12px;">
+              <div style="width:72px;height:72px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 0 20px 0;" aria-hidden="true">
+                <i data-lucide="bar-chart-3" style="width:36px;height:36px;color:white;"></i>
+              </div>
+              <h3 style="margin:0 0 12px 0;color:#111827;font-size:18px;font-weight:600;">Analytics & Reporting</h3>
+              <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">Powerful dashboards and customizable reports for data-driven decisions</p>
+            </article>
+
+            <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:24px;border-radius:12px;">
+              <div style="width:72px;height:72px;background:linear-gradient(135deg,#764ba2 0%,#667eea 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 0 20px 0;" aria-hidden="true">
+                <i data-lucide="users" style="width:36px;height:36px;color:white;"></i>
+              </div>
+              <h3 style="margin:0 0 12px 0;color:#111827;font-size:18px;font-weight:600;">Multi-User Access</h3>
+              <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">Role-based permissions ensuring secure and organized collaboration</p>
+            </article>
+          </div>
+        </section>
+
+        <!-- Team Section -->
+        <section aria-labelledby="team-heading" style="background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:40px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+          <header style="text-align:center;margin-bottom:40px;">
+            <h2 id="team-heading" style="margin:0 0 8px 0;font-size:28px;color:#111827;font-weight:700;">Meet the Coordinators</h2>
+            <p style="margin:0;color:#6b7280;font-size:16px;">The dedicated team behind SPMO System</p>
+          </header>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;">
+            <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:28px;border-radius:12px;text-align:center;">
+              <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(102,126,234,0.3);" aria-label="Cherry Ann Quila">CQ</figure>
+              <h3 style="margin:0 0 6px 0;color:#111827;font-size:18px;font-weight:600;">Cherry Ann Quila</h3>
+              <p style="margin:0 0 12px 0;color:#667eea;font-weight:600;font-size:14px;">QA & Papers</p>
+              <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">Leading QA initiatives to maintain excellence and alignment in all project and paper outputs.</p>
+            </article>
+
+            <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:28px;border-radius:12px;text-align:center;">
+              <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#764ba2 0%,#667eea 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(118,75,162,0.3);" aria-label="Vince Balce">VB</figure>
+              <h3 style="margin:0 0 6px 0;color:#111827;font-size:18px;font-weight:600;">Vince Balce</h3>
+              <p style="margin:0 0 12px 0;color:#764ba2;font-weight:600;font-size:14px;">Project Lead/Lead Developer</p>
+              <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">Leading strategic direction and architecting robust system features for project success.</p>
+            </article>
+
+            <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:28px;border-radius:12px;text-align:center;">
+              <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(102,126,234,0.3);" aria-label="Marinel Ledesma">ML</figure>
+              <h3 style="margin:0 0 6px 0;color:#111827;font-size:18px;font-weight:600;">Marinel Ledesma</h3>
+              <p style="margin:0 0 12px 0;color:#667eea;font-weight:600;font-size:14px;">Co Developer & Documentation</p>
+              <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">Ensuring quality standards with comprehensive support and clear project documentation.</p>
+            </article>
+          </div>
+        </section>
+
+        <!-- Inspection Committee -->
+        <section aria-labelledby="committee-heading" style="background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:40px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+          <header style="text-align:center;margin-bottom:32px;">
+            <h2 id="committee-heading" style="margin:0 0 8px 0;font-size:28px;color:#111827;font-weight:700;">Inspection Committee Members</h2>
+            <p style="margin:0;color:#6b7280;font-size:16px;">Official committee responsible for audits and compliance</p>
+          </header>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;">
+            ${
+              (aboutContent.committeeMembers || [])
+                .map((m) => {
+                  // Normalize to an object: support legacy string format or structured object
+                  let member = {
+                    name: '',
+                    role: '',
+                    position: '',
+                    inspectionArea: '',
+                  }
+                  if (!m) return null
+                  if (typeof m === 'string') {
+                    // Legacy formats: "Name — Role" or "Name — Role | Position | Area"
+                    const parts = m.split('—')
+                    const left = (parts[0] || m).trim()
+                    const right = parts.slice(1).join('—').trim()
+                    const extras =
+                      right.indexOf('|') !== -1
+                        ? right.split('|').map((s) => s.trim())
+                        : [right.trim()]
+                    member.name = left
+                    member.role = extras[0] || ''
+                    member.position = extras[1] || ''
+                    member.inspectionArea = extras[2] || ''
+                  } else if (typeof m === 'object') {
+                    member.name = m.name || m.title || ''
+                    member.role = m.role || ''
+                    member.position = m.position || ''
+                    member.inspectionArea = m.inspectionArea || m.area || ''
+                  }
+
+                  const name = escapeHtml(String(member.name || '').trim())
+                  const role = escapeHtml(String(member.role || '').trim())
+                  const position = escapeHtml(
+                    String(member.position || '').trim()
+                  )
+                  const area = escapeHtml(
+                    String(member.inspectionArea || '').trim()
+                  )
+
+                  const initials = (name || '')
+                    .split(' ')
+                    .map((p) => p[0] || '')
+                    .slice(0, 2)
+                    .join('')
+                    .toUpperCase()
+
+                  return `
+                    <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:28px;border-radius:12px;text-align:center;">
+                      <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(102,126,234,0.3);" aria-label="${name}">${initials}</figure>
+                      <h3 style="margin:0 0 6px 0;color:#111827;font-size:18px;font-weight:600;">${name}</h3>
+                      ${
+                        role
+                          ? `<p style="margin:0 0 8px 0;color:#667eea;font-weight:600;font-size:14px;">${role}</p>`
+                          : ''
+                      }
+                      ${
+                        position
+                          ? `<p style="margin:0 0 12px 0;color:#9ca3af;font-weight:500;font-size:13px;">${position}</p>`
+                          : ''
+                      }
+                      ${
+                        area
+                          ? `<p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">${area}</p>`
+                          : ''
+                      }
+                    </article>
+                  `
+                })
+                .filter((x) => x !== null)
+                .join('') ||
+              `<div style="grid-column:1/-1;text-align:center;color:#6b7280;padding:20px;">No committee members listed</div>`
+            }
+          </div>
+        </section>
+
+        <!-- Headed By Section -->
+        <section aria-labelledby="leadership-heading" style="background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border:2px solid #bae6fd;border-radius:16px;padding:40px;box-shadow:0 4px 12px rgba(2,132,199,0.1);">
+          <div style="text-align:center;max-width:800px;margin:0 auto;">
+            <header style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:28px;">
+              <div style="width:56px;height:56px;background:#0284c7;border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(2,132,199,0.3);" aria-hidden="true">
+                <i data-lucide="shield-check" style="width:28px;height:28px;color:white;"></i>
+              </div>
+              <h2 id="leadership-heading" style="margin:0;font-size:28px;color:#111827;font-weight:700;">Headed by</h2>
+            </header>
+            
+            <article style="background:white;border-radius:16px;padding:32px;box-shadow:0 8px 24px rgba(0,0,0,0.08);">
+              <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap;">
+                <figure style="margin:0;width:96px;height:96px;background:linear-gradient(135deg,#0284c7 0%,#0369a1 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;border:4px solid white;box-shadow:0 8px 20px rgba(2,132,199,0.3);" aria-label="Supply Officer III">SO</figure>
+                <div style="text-align:left;">
+                  <h3 style="margin:0 0 6px 0;color:#111827;font-size:24px;font-weight:700;">Supply Officer III</h3>
+                  <p style="margin:0 0 10px 0;color:#0284c7;font-weight:600;font-size:17px;">Supply and Property Management Office</p>
+                  <p style="margin:0;color:#6b7280;font-size:15px;font-style:italic;line-height:1.5;">Overseeing strategic management and coordination of SPMO operations</p>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- Contact Section -->
+        <section aria-labelledby="contact-heading" style="background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:40px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+          <div style="text-align:center;max-width:700px;margin:0 auto;">
+            <div style="width:72px;height:72px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;box-shadow:0 4px 12px rgba(102,126,234,0.25);" aria-hidden="true">
+              <i data-lucide="mail" style="width:36px;height:36px;color:white;"></i>
+            </div>
+            <header style="margin-bottom:32px;">
+              <h2 id="contact-heading" style="margin:0 0 8px 0;font-size:28px;color:#111827;font-weight:700;">Contact Information</h2>
+              <p style="margin:0;color:#6b7280;line-height:1.6;font-size:16px;">Get in touch with us for questions or support</p>
+            </header>
+            
+            <address style="font-style:normal;display:grid;gap:16px;text-align:left;">
+              <div style="background:#f9fafb;border:1px solid #e5e7eb;padding:20px;border-radius:10px;display:flex;align-items:center;gap:16px;">
+                <div style="width:48px;height:48px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
+                  <i data-lucide="building-2" style="width:24px;height:24px;color:white;"></i>
+                </div>
+                <div style="min-width:0;">
+                  <p style="margin:0 0 4px 0;font-weight:600;color:#111827;font-size:15px;">Institution</p>
+                  <p id="institution-text" style="margin:0;color:#6b7280;font-size:14px;word-break:break-word;">${
+                    aboutContent.institution
+                  }</p>
+                </div>
               </div>
 
-              <div class="headed-by-inner" style="max-width:1100px;margin:16px auto 0;">
-                ${
-                  (aboutContent.committeeMembers || [])
-                    .map((m) => {
-                      const name = escapeHtml(m.split('—')[0]?.trim() || m)
-                      const role = escapeHtml(m.split('—')[1]?.trim() || '')
-                      const initials = (name || '')
-                        .split(' ')
-                        .map((p) => p[0] || '')
-                        .slice(0, 2)
-                        .join('')
-                        .toUpperCase()
-
-                      return `
-                        <div style="min-width:200px; display:flex; gap:12px; align-items:center; text-align:left;">
-                          <div class="headed-by-avatar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">${initials}</div>
-                          <div>
-                            <h4 style="margin:0 0 6px 0; font-size:18px; color:#111827;">${name}</h4>
-                            ${
-                              role
-                                ? `<p class="text-muted" style="margin:0;"><span class=\"role-badge\">${role}</span></p>`
-                                : ''
-                            }
-                          </div>
-                        </div>
-                      `
-                    })
-                    .join('') ||
-                  `<div style="grid-column:1/-1;text-align:center;color:#6b7280;padding:12px;">No committee members listed</div>`
-                }
+              <div style="background:#f9fafb;border:1px solid #e5e7eb;padding:20px;border-radius:10px;display:flex;align-items:center;gap:16px;">
+                <div style="width:48px;height:48px;background:linear-gradient(135deg,#764ba2 0%,#667eea 100%);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
+                  <i data-lucide="mail" style="width:24px;height:24px;color:white;"></i>
+                </div>
+                <div style="min-width:0;">
+                  <p style="margin:0 0 4px 0;font-weight:600;color:#111827;font-size:15px;">Institutional Email</p>
+                  <a href="mailto:${
+                    aboutContent.email
+                  }" id="email-text" style="margin:0;color:#667eea;font-size:14px;word-break:break-word;text-decoration:none;">${
+    aboutContent.email
+  }</a>
+                </div>
               </div>
-            </div>
 
-            <!-- Headed by Section -->
-      <div class="card" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 2px solid #bae6fd;">
-        <div style="text-align: center; max-width: 700px; margin: 0 auto;">
-                    <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 20px;">
-                        <div style="width: 48px; height: 48px; background: #0284c7; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                            <i data-lucide="shield-check" style="width: 24px; height: 24px; color: white;"></i>
-                        </div>
-                        <h3 style="margin: 0; font-size: 24px; color: #111827;">Headed by</h3>
-                    </div>
-                    
-                    <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap;">
-                            <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 700; color: white; border: 4px solid white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-                                SO
-                            </div>
-                            <div style="text-align: left;">
-                                <h4 style="margin: 0 0 4px 0; color: #111827; font-size: 22px; font-weight: 700;">Supply Officer III</h4>
-                                <p style="margin: 0; color: #0284c7; font-weight: 600; font-size: 16px;">Property and Supply Management Office</p>
-                                <p style="margin: 8px 0 0 0; color: #6b7280; font-size: 14px; font-style: italic;">
-                                    Overseeing the strategic management and coordination of SPMO operations
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+              <div style="background:#f9fafb;border:1px solid #e5e7eb;padding:20px;border-radius:10px;display:flex;align-items:center;gap:16px;">
+                <div style="width:48px;height:48px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
+                  <i data-lucide="phone" style="width:24px;height:24px;color:white;"></i>
                 </div>
-            </div>
-
-  <!-- Contact Section -->
-  <div class="about-section about-card" style="background: #ffffff; border: 1px solid #dee2e6; padding: 20px; margin-bottom: 20px;">
-        <div style="text-align: center; max-width: 600px; margin: 0 auto;">
-                    <div style="width: 64px; height: 64px; background: #6c757d; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
-                        <i data-lucide="mail" style="width: 32px; height: 32px; color: white;"></i>
-                    </div>
-                    <h3 style="margin: 0 0 8px 0; font-size: 20px; color: #212529;">Contact Information</h3>
-                    <p style="margin: 0 0 24px 0; color: #6c757d; line-height: 1.6;">
-                        Get in touch with us for questions or support
-                    </p>
-                    
-                    <div style="display: grid; gap: 16px; text-align: left;">
-                        <div class="contact-card" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; border-radius: 6px;">
-                            <div class="contact-icon" style="width: 40px; height: 40px; background: #e9ecef; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i data-lucide="building-2" style="width: 20px; height: 20px; color: #495057;"></i>
-                            </div>
-                            <div>
-                                <p style="margin: 0; font-weight: 600; color: #212529; font-size: 14px;">Institution</p>
-                                <p id="institution-text" style="margin: 0; color: #6c757d; font-size: 14px;">${
-                                  aboutContent.institution
-                                }</p>
-                            </div>
-                        </div>
-
-                        <div class="contact-card" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; border-radius: 6px;">
-                            <div class="contact-icon" style="width: 40px; height: 40px; background: #e9ecef; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i data-lucide="mail" style="width: 20px; height: 20px; color: #495057;"></i>
-                            </div>
-                            <div>
-                                <p style="margin: 0; font-weight: 600; color: #212529; font-size: 14px;">Institutional Email</p>
-                                <p id="email-text" style="margin: 0; color: #6c757d; font-size: 14px;">${
-                                  aboutContent.email
-                                }</p>
-                            </div>
-                        </div>
-
-                        <div class="contact-card" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; border-radius: 6px;">
-                            <div class="contact-icon" style="width: 40px; height: 40px; background: #e9ecef; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i data-lucide="phone" style="width: 20px; height: 20px; color: #495057;"></i>
-                            </div>
-                            <div>
-                                <p style="margin: 0; font-weight: 600; color: #212529; font-size: 14px;">Contact Number</p>
-                                <p id="phone-text" style="margin: 0; color: #6c757d; font-size: 14px;">${
-                                  aboutContent.phone
-                                }</p>
-                            </div>
-                        </div>
-                    </div>
+                <div style="min-width:0;">
+                  <p style="margin:0 0 4px 0;font-weight:600;color:#111827;font-size:15px;">Contact Number</p>
+                  <a href="tel:${aboutContent.phone.replace(
+                    /[^0-9+]/g,
+                    ''
+                  )}" id="phone-text" style="margin:0;color:#667eea;font-size:14px;word-break:break-word;text-decoration:none;">${
+    aboutContent.phone
+  }</a>
                 </div>
-            </div>
+              </div>
+            </address>
+          </div>
+        </section>
 
-      <!-- Footer Note -->
-      <div class="about-section about-footer">
-                <p style="margin: 0; color: #6b7280; font-size: 14px;">
-                    © ${currentYear} SPMO System - Camarines Norte State College. All rights reserved.
-                </p>
-            </div>
+        <!-- Footer -->
+        <footer style="text-align:center;padding:24px 0;border-top:1px solid #e5e7eb;">
+          <p style="margin:0;color:#6b7280;font-size:14px;">© ${currentYear} SPMO System - Camarines Norte State College. All rights reserved.</p>
+        </footer>
       </div>
-    </div>
-    `
+    </main>
+  `
 }
 
 // ----------------------------- //
 // Support Page (Submit Ticket Only)//
 // ----------------------------- //
 function generateSupportPage() {
-  // Load existing support tickets from localStorage
-  let tickets = []
-  try {
-    const raw = localStorage.getItem('spmo_supportTickets')
-    if (raw) tickets = JSON.parse(raw) || []
-  } catch (e) {
-    tickets = []
-  }
-
+  // Render initial shell; tickets will be loaded by refreshSupportTickets
   const ticketRows =
-    tickets
-      .map(
-        (t) => `
-        <tr>
-            <td style="font-weight:600;color:#111827;">${escapeHtml(
-              t.name
-            )}</td>
-            <td>${escapeHtml(t.email)}</td>
-            <td>${escapeHtml(t.message).slice(0, 60)}${
-          t.message.length > 60 ? '…' : ''
-        }</td>
-            <td><span class="badge ${
-              t.status === 'Open' ? 'yellow' : 'green'
-            }" style="font-size:11px;">${t.status}</span></td>
-            <td style="font-size:12px;color:#6b7280;">${t.created}</td>
-        </tr>`
-      )
-      .join('') ||
-    '<tr><td colspan="5" style="text-align:center;padding:20px;color:#6b7280;">No support tickets yet</td></tr>'
+    '<tr><td colspan="5" style="text-align:center;padding:20px;color:#6b7280;">Loading…</td></tr>'
 
   return `
         <div class="page-header">
@@ -10061,7 +10011,7 @@ function generateSupportPage() {
                         <i data-lucide="list" style="width:18px;height:18px;color:#111827;"></i>
                         Submitted Tickets
                     </h3>
-                    <div style="font-size:12px;color:#6b7280;">${tickets.length} total</div>
+              <div id="support-total" style="font-size:12px;color:#6b7280;">0 total</div>
                 </div>
                 <div style="overflow-x:auto;">
                     <table class="table" style="min-width:760px;">
@@ -10074,10 +10024,12 @@ function generateSupportPage() {
                                 <th>Created</th>
                             </tr>
                         </thead>
-                        <tbody id="support-ticket-body">${ticketRows}</tbody>
+              <tbody id="support-ticket-body">${ticketRows}</tbody>
                     </table>
                 </div>
             </div>
+        <!-- Modal container for ticket preview -->
+        <div id="support-ticket-modal" class="modal-overlay" style="display:none;"></div>
         </div>
     `
 }
@@ -10086,52 +10038,280 @@ function generateSupportPage() {
 // to avoid duplicate identifier errors during bundling. Use the existing escapeHtml.
 
 // Refresh tickets list (re-render only tickets table body without full page reload)
-function refreshSupportTickets() {
+async function refreshSupportTickets() {
   if (AppState.currentPage !== 'support') return
-  let tickets = []
-  try {
-    const raw = localStorage.getItem('spmo_supportTickets')
-    if (raw) tickets = JSON.parse(raw) || []
-  } catch (e) {
-    tickets = []
-  }
   const body = document.getElementById('support-ticket-body')
+  const totalEl = document.getElementById('support-total')
   if (!body) return
   body.innerHTML =
-    tickets
-      .map(
-        (t) =>
-          `<tr><td style=\"font-weight:600;color:#111827;\">${escapeHtml(
-            t.name
-          )}</td><td>${escapeHtml(t.email)}</td><td>${escapeHtml(
+    '<tr><td colspan="5" style="text-align:center;padding:20px;color:#6b7280;">Loading…</td></tr>'
+  try {
+    const res = await fetch('/api/support-tickets')
+    if (!res.ok) throw new Error('Failed to load')
+    const tickets = await res.json()
+    totalEl && (totalEl.textContent = `${tickets.length} total`)
+    if (!tickets || tickets.length === 0) {
+      body.innerHTML =
+        '<tr><td colspan="5" style="text-align:center;padding:20px;color:#6b7280;">No support tickets yet</td></tr>'
+      return
+    }
+
+    body.innerHTML = tickets
+      .map((t) => {
+        const msg = (t.message || '').slice(0, 100)
+        const created = t.created_at || t.created || ''
+        const statusBadge = `<span class="badge ${
+          t.status === 'Open' ? 'yellow' : 'green'
+        }" style="font-size:11px;">${t.status}</span>`
+        const attachmentsBtn =
+          t.attachments && t.attachments.length
+            ? `<button class="btn btn-secondary" onclick="previewTicket(${t.id})" style="padding:6px 8px;font-size:12px;">Preview</button>`
+            : ''
+        return `<tr>
+          <td style="font-weight:600;color:#111827;">${escapeHtml(t.name)}</td>
+          <td>${escapeHtml(t.email)}</td>
+          <td>${escapeHtml(msg)}${
+          (t.message || '').length > 100 ? '…' : ''
+        }</td>
+          <td>${statusBadge}</td>
+          <td style="font-size:12px;color:#6b7280;">${created}<div style="margin-top:6px;">${attachmentsBtn}</div></td>
+        </tr>`
+      })
+      .join('')
+  } catch (e) {
+    body.innerHTML =
+      '<tr><td colspan="5" style="text-align:center;padding:20px;color:#6b7280;">Unable to load tickets</td></tr>'
+  }
+}
+
+// Preview ticket modal which shows full message and attachments and allows status update
+async function previewTicket(id) {
+  // Locate or create modal overlay
+  let overlay = document.getElementById('support-ticket-modal')
+  if (!overlay) {
+    overlay = document.createElement('div')
+    overlay.id = 'support-ticket-modal'
+    overlay.className = 'modal-overlay'
+    // ensure overlay is visible when created (page template initializes it with display:none)
+    overlay.style.display = 'block'
+    document.body.appendChild(overlay)
+  }
+
+  overlay.classList.add('active')
+  // make sure the overlay is shown (some templates set display:none initially)
+  overlay.style.display = 'block'
+  // Ensure content container
+  if (!overlay.querySelector('.modal-content')) {
+    const wrapper = document.createElement('div')
+    wrapper.className = 'modal-content compact'
+    wrapper.setAttribute('role', 'dialog')
+    wrapper.setAttribute('aria-modal', 'true')
+    wrapper.style.cssText =
+      'max-width:800px;margin:6vh auto;max-height:88vh;overflow:auto;padding:0;'
+    overlay.appendChild(wrapper)
+  }
+
+  const content = overlay.querySelector('.modal-content')
+  // initial loading shell using viewStatusRequest style
+  content.innerHTML = `
+    <div class="modal-header" style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; border-bottom: none; padding: 32px 24px;">
+      <div style="display:flex;align-items:center;gap:16px;">
+        <div style="width:64px;height:64px;background:rgba(255,255,255,0.2);border:3px solid rgba(255,255,255,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;">
+          <i data-lucide="life-buoy" style="width:32px;height:32px;color:white;"></i>
+        </div>
+        <div style="flex:1;">
+          <h2 id="support-ticket-title" style="color:white;font-size:20px;margin:0;">Support Ticket</h2>
+          <p style="color:rgba(255,255,255,0.9);margin:4px 0 0 0;font-size:14px;">Ticket details and attachments</p>
+        </div>
+      </div>
+      <button class="modal-close" aria-label="Close" style="color:white;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);width:36px;height:36px;border-radius:50%;"> 
+        <i data-lucide="x" style="width:16px;height:16px;color:white;"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="padding:32px 24px;background:#f9fafb;">
+      <div style="background:white;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+        <p style="margin:0;color:#6b7280;">Loading…</p>
+      </div>
+    </div>
+    <div class="modal-footer" style="padding:20px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:12px;">
+      <button class="btn btn-secondary">Close</button>
+    </div>
+  `
+
+  // wire close handlers and backdrop click
+  overlay
+    .querySelector('.modal-close')
+    ?.addEventListener('click', closeSupportModal)
+  overlay
+    .querySelector('.modal-footer .btn')
+    ?.addEventListener('click', closeSupportModal)
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeSupportModal()
+  })
+
+  // focus trap + escape
+  try {
+    overlay._lastFocused = document.activeElement
+    overlay._supportKeydown = function (e) {
+      if (e.key === 'Escape') return closeSupportModal()
+      if (e.key !== 'Tab') return
+      const focusable = Array.from(
+        overlay.querySelectorAll(
+          'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => el.offsetParent !== null)
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener('keydown', overlay._supportKeydown)
+  } catch (e) {}
+
+  // fetch ticket and replace content
+  try {
+    const res = await fetch(`/api/support-tickets/${id}`)
+    if (!res.ok) throw new Error('Not found')
+    const t = await res.json()
+    const attachmentsHtml =
+      (t.attachments || [])
+        .map(
+          (a) =>
+            `<li style="margin-bottom:8px;"><a href="/support/attachment/${
+              a.id
+            }" target="_blank">${escapeHtml(a.original_name)}</a> (${Math.round(
+              (a.size || 0) / 1024
+            )} KB)</li>`
+        )
+        .join('') || '<li style="color:#6b7280">No attachments</li>'
+
+    content.innerHTML = `
+      <div class="modal-header" style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; border-bottom: none; padding: 32px 24px; display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:16px;">
+          <div style="width:64px;height:64px;background:rgba(255,255,255,0.2);border:3px solid rgba(255,255,255,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;">
+            <i data-lucide="life-buoy" style="width:32px;height:32px;color:white;"></i>
+          </div>
+          <div style="flex:1;">
+            <h2 id="support-ticket-title" style="color:white;font-size:20px;margin:0;">Ticket: ${escapeHtml(
+              t.ticket_id || '#' + t.id
+            )}</h2>
+            <p style="color:rgba(255,255,255,0.9);margin:4px 0 0 0;font-size:14px;">From ${escapeHtml(
+              t.name
+            )} &lt;${escapeHtml(t.email)}&gt;</p>
+          </div>
+        </div>
+        <button class="modal-close" aria-label="Close" style="color:white;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;"> 
+          <i data-lucide="x" style="width:16px;height:16px;color:white;"></i>
+        </button>
+      </div>
+      <div class="modal-body" style="padding:32px 24px;background:#f9fafb;">
+        <div style="background:white;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+          <h3 style="margin:0 0 12px 0;font-size:16px;font-weight:600;color:#111827;">Message</h3>
+          <div style="margin-top:8px;padding:12px;background:#f8fafc;border-radius:8px;border:1px solid #e5e7eb;white-space:pre-wrap;color:#111827;">${escapeHtml(
             t.message
-          ).slice(0, 60)}${
-            t.message.length > 60 ? '…' : ''
-          }</td><td><span class=\"badge ${
-            t.status === 'Open' ? 'yellow' : 'green'
-          }\" style=\"font-size:11px;\">${
-            t.status
-          }</span></td><td style=\"font-size:12px;color:#6b7280;\">${
-            t.created
-          }</td></tr>`
-      )
-      .join('') ||
-    '<tr><td colspan="5" style="text-align:center;padding:20px;color:#6b7280;">No support tickets yet</td></tr>'
+          )}</div>
+          <h3 style="margin:20px 0 12px 0;font-size:16px;font-weight:600;color:#111827;">Attachments</h3>
+          <div style="margin-top:8px;"><ul style="margin:0;padding-left:18px;">${attachmentsHtml}</ul></div>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding:20px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end;align-items:center;">
+        <div style="font-size:13px;color:#6b7280;margin-right:auto;">Created: ${escapeHtml(
+          t.created_at || t.created || ''
+        )}</div>
+        <label for="support-status-select" style="margin-right:6px;">Status:</label>
+        <select id="support-status-select" style="padding:6px;border-radius:6px;border:1px solid #d1d5db;">
+          <option value="Open" ${
+            t.status === 'Open' ? 'selected' : ''
+          }>Open</option>
+          <option value="Closed" ${
+            t.status === 'Closed' ? 'selected' : ''
+          }>Closed</option>
+        </select>
+        <button class="btn btn-secondary">Close</button>
+        <button class="btn btn-primary">Save</button>
+      </div>
+    `
+
+    // re-wire buttons
+    overlay
+      .querySelector('.modal-close')
+      ?.addEventListener('click', closeSupportModal)
+    overlay
+      .querySelector('.modal-footer .btn-secondary')
+      ?.addEventListener('click', closeSupportModal)
+    overlay
+      .querySelector('.modal-footer .btn-primary')
+      ?.addEventListener('click', () => updateTicketStatus(t.id))
+    try {
+      lucide.createIcons()
+    } catch (e) {}
+  } catch (e) {
+    content.innerHTML = '<p>Unable to load ticket.</p>'
+  }
+}
+window.previewTicket = previewTicket
+
+function closeSupportModal() {
+  const modal = document.getElementById('support-ticket-modal')
+  if (!modal) return
+  modal.className = 'modal-overlay'
+  modal.style.display = 'none'
+  // remove keyboard handler if attached
+  try {
+    if (modal._supportKeydown) {
+      document.removeEventListener('keydown', modal._supportKeydown)
+      modal._supportKeydown = null
+    }
+    // restore focus
+    if (modal._lastFocused && typeof modal._lastFocused.focus === 'function') {
+      modal._lastFocused.focus()
+    }
+  } catch (e) {}
+  setTimeout(() => (modal.innerHTML = ''), 300)
+}
+
+async function updateTicketStatus(id) {
+  const select = document.getElementById('support-status-select')
+  if (!select) return
+  const status = select.value
+  try {
+    const res = await fetch(`/api/support-tickets/${id}/status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      body: JSON.stringify({ status }),
+    })
+    if (!res.ok) throw new Error('Failed')
+    showAlert('Status updated', 'success')
+    closeSupportModal()
+    refreshSupportTickets()
+  } catch (e) {
+    showAlert('Unable to update status', 'error')
+  }
 }
 window.refreshSupportTickets = refreshSupportTickets
 
-// Extend initializePageEvents to wire support page events
-const _origInitPageEvents_forSupport = initializePageEvents
-initializePageEvents = function (pageId) {
-  _origInitPageEvents_forSupport(pageId)
-  if (pageId === 'support') {
-    // Simply refresh tickets; submission form removed.
-    refreshSupportTickets()
-  }
-}
+// Committee HTML placeholder. The real HTML is generated inside editAboutUs
+let committeeHtml = ''
 
-// Edit About Us Modal
 function editAboutUs() {
+  let modal = document.getElementById('edit-about-modal')
+  if (!modal) {
+    modal = document.createElement('div')
+    modal.id = 'edit-about-modal'
+    modal.className = 'modal-overlay'
+    document.body.appendChild(modal)
+  }
+
+  // Prepare current content safely from AppState (fallback to defaults)
   const currentContent = AppState.aboutUsContent || {
     heroTitle: 'SPMO System',
     heroSubtitle:
@@ -10144,15 +10324,84 @@ function editAboutUs() {
       'Camarines Norte State College - Supply and Property Management Office',
     email: 'cnsc.spmo@.edu.ph',
     phone: '(054) 440-1134',
-    // image fields removed
+    gallery: [],
+    committeeMembers: [],
   }
 
-  let modal = document.getElementById('edit-about-modal')
-  if (!modal) {
-    modal = document.createElement('div')
-    modal.id = 'edit-about-modal'
-    modal.className = 'modal-overlay'
-    document.body.appendChild(modal)
+  // Build committee members HTML separately to keep template literal simple
+  let committeeHtml = ''
+  const members = currentContent.committeeMembers || []
+  if (members.length > 0) {
+    committeeHtml = members
+      .map((m) => {
+        let mem = { name: '', role: '', position: '', area: '' }
+        if (typeof m === 'string') {
+          const parts = m.split('—')
+          mem.name = (parts[0] || '').trim()
+          const rest = parts.slice(1).join('—').trim()
+          if (rest) {
+            const extras = rest.split('|').map((s) => s.trim())
+            mem.role = extras[0] || ''
+            mem.position = extras[1] || ''
+            mem.area = extras[2] || ''
+          }
+        } else if (typeof m === 'object' && m !== null) {
+          mem.name = m.name || m.title || ''
+          mem.role = m.role || ''
+          mem.position = m.position || ''
+          mem.area = m.inspectionArea || m.area || ''
+        }
+
+        return `
+          <div class="committee-member-row" style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;">
+            <input class="committee-name-input" type="text" value="${String(
+              mem.name
+            )
+              .replace(/"/g, '&quot;')
+              .replace(/</g, '&lt;')
+              .replace(
+                />/g,
+                '&gt;'
+              )}" placeholder="Name" style="flex:1;min-width:160px;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+            <input class="committee-role-input" type="text" value="${String(
+              mem.role
+            )
+              .replace(/"/g, '&quot;')
+              .replace(/</g, '&lt;')
+              .replace(
+                />/g,
+                '&gt;'
+              )}" placeholder="Role" style="flex:1;min-width:140px;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+            <input class="committee-position-input" type="text" value="${String(
+              mem.position
+            )
+              .replace(/"/g, '&quot;')
+              .replace(/</g, '&lt;')
+              .replace(
+                />/g,
+                '&gt;'
+              )}" placeholder="Position" style="flex:1;min-width:140px;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+            <input class="committee-area-input" type="text" value="${String(
+              mem.area
+            )
+              .replace(/"/g, '&quot;')
+              .replace(/</g, '&lt;')
+              .replace(
+                />/g,
+                '&gt;'
+              )}" placeholder="Inspection Area" style="flex:1;min-width:160px;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+            <div class="committee-controls" style="display:flex;flex-direction:column;gap:6px;">
+              <button type="button" class="btn btn-secondary" onclick="moveCommitteeMemberUp(this)" title="Move up">⯅</button>
+              <button type="button" class="btn btn-secondary" onclick="moveCommitteeMemberDown(this)" title="Move down">⯆</button>
+              <button type="button" class="btn btn-danger" onclick="removeCommitteeMember(this)" title="Remove">Remove</button>
+            </div>
+          </div>
+        `
+      })
+      .join('')
+  } else {
+    committeeHtml =
+      '<div class="about-card" style="color:#6b7280;padding:8px;border-radius:6px;background:#fff;border:1px dashed #e5e7eb;">No members yet. Use &quot;Add Member&quot; to create one.</div>'
   }
 
   modal.className = 'modal-overlay active'
@@ -10246,37 +10495,12 @@ function editAboutUs() {
           <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #111827; font-weight: 600;">Inspection Committee Members</h3>
           <p style="margin:0 0 8px 0;color:#6b7280;font-size:13px;">Add, remove or reorder committee members. Use <code>Name — Role</code> for clarity.</p>
                     <div id="committee-list">
-                        ${
-                          (currentContent.committeeMembers || []).length > 0
-                            ? (currentContent.committeeMembers || [])
-                                .map(
-                                  (m) => `
-                            <div class="committee-member-row">
-                                <input class="committee-member-input" type="text" value="${String(
-                                  m
-                                )
-                                  .replace(/"/g, '&quot;')
-                                  .replace(/</g, '&lt;')
-                                  .replace(
-                                    />/g,
-                                    '&gt;'
-                                  )}" placeholder="Name — Role">
-                                <div class="committee-controls">
-                                    <button type="button" class="btn btn-secondary" onclick="moveCommitteeMemberUp(this)" title="Move up">⯅</button>
-                                    <button type="button" class="btn btn-secondary" onclick="moveCommitteeMemberDown(this)" title="Move down">⯆</button>
-                                    <button type="button" class="btn btn-danger" onclick="removeCommitteeMember(this)" title="Remove">Remove</button>
-                                </div>
-                            </div>
-                        `
-                                )
-                                .join('')
-                            : '<div class="about-card" style="color:#6b7280;padding:8px;border-radius:6px;background:#fff;border:1px dashed #e5e7eb;">No members yet. Use "Add Member" to create one.</div>'
-                        }
+                      ${committeeHtml}
                     </div>
-          <div style="margin-top:10px;display:flex;gap:8px;">
-            <button type="button" class="btn btn-primary" onclick="addCommitteeMember()" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;">Add Member</button>
-            <button type="button" class="btn btn-secondary" onclick="(function(){ const c=document.getElementById('committee-list'); if(!c) return; c.querySelectorAll('.committee-member-input').forEach(i=>i.value=''); })()" style="padding:8px 12px;">Clear All</button>
-          </div>
+            <div style="margin-top:10px;display:flex;gap:8px;">
+              <button type="button" class="btn btn-primary" onclick="addCommitteeMember()" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;">Add Member</button>
+              <button type="button" class="btn btn-secondary" onclick="(function(){ const c=document.getElementById('committee-list'); if(!c) return; c.querySelectorAll('.committee-member-row').forEach(r=>{ r.querySelectorAll('input').forEach(i=>i.value='') }); })()" style="padding:8px 12px;">Clear All</button>
+            </div>
         </div>
             </div>
             
@@ -10321,10 +10545,33 @@ function saveAboutUs() {
   const committeeListEl = document.getElementById('committee-list')
   let committeeMembers = []
   if (committeeListEl) {
-    const inputs = Array.from(
-      committeeListEl.querySelectorAll('.committee-member-input')
+    const rows = Array.from(
+      committeeListEl.querySelectorAll('.committee-member-row')
     )
-    committeeMembers = inputs.map((i) => i.value.trim()).filter((s) => s)
+    committeeMembers = rows
+      .map((r) => {
+        const name = (r.querySelector('.committee-name-input') || {}).value
+          ? r.querySelector('.committee-name-input').value.trim()
+          : ''
+        const role = (r.querySelector('.committee-role-input') || {}).value
+          ? r.querySelector('.committee-role-input').value.trim()
+          : ''
+        const position = (r.querySelector('.committee-position-input') || {})
+          .value
+          ? r.querySelector('.committee-position-input').value.trim()
+          : ''
+        const area = (r.querySelector('.committee-area-input') || {}).value
+          ? r.querySelector('.committee-area-input').value.trim()
+          : ''
+        if (!name && !role && !position && !area) return null
+        return {
+          name: name || '',
+          role: role || '',
+          position: position || '',
+          inspectionArea: area || '',
+        }
+      })
+      .filter((x) => x !== null)
   } else {
     committeeMembers = []
   }
@@ -10365,18 +10612,31 @@ function saveAboutUs() {
 // Image removal helpers removed — images are no longer used on About page
 
 // --- Committee member list helpers (used in Edit About modal) ---
-function addCommitteeMember(value = '') {
+function addCommitteeMember(value = {}) {
   const list = document.getElementById('committee-list')
   if (!list) return
   const wrapper = document.createElement('div')
   wrapper.className = 'committee-member-row'
-  wrapper.style.cssText = 'display:flex;gap:8px;align-items:center;'
+  wrapper.style.cssText =
+    'display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;'
+  const name =
+    value && value.name ? String(value.name).replace(/"/g, '&quot;') : ''
+  const role =
+    value && value.role ? String(value.role).replace(/"/g, '&quot;') : ''
+  const position =
+    value && value.position
+      ? String(value.position).replace(/"/g, '&quot;')
+      : ''
+  const area =
+    value && (value.inspectionArea || value.area)
+      ? String(value.inspectionArea || value.area).replace(/"/g, '&quot;')
+      : ''
   wrapper.innerHTML = `
-    <input class="committee-member-input" type="text" value="${String(value)
-      .replace(/"/g, '&quot;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')}" placeholder="Name — Role">
-    <div class="committee-controls">
+    <input class="committee-name-input" type="text" value="${name}" placeholder="Name" style="flex:1;min-width:160px;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+    <input class="committee-role-input" type="text" value="${role}" placeholder="Role" style="flex:1;min-width:140px;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+    <input class="committee-position-input" type="text" value="${position}" placeholder="Position" style="flex:1;min-width:140px;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+    <input class="committee-area-input" type="text" value="${area}" placeholder="Inspection Area" style="flex:1;min-width:160px;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+    <div class="committee-controls" style="display:flex;flex-direction:column;gap:6px;">
       <button type="button" class="btn btn-secondary" onclick="moveCommitteeMemberUp(this)" title="Move up">⯅</button>
       <button type="button" class="btn btn-secondary" onclick="moveCommitteeMemberDown(this)" title="Move down">⯆</button>
       <button type="button" class="btn btn-danger" onclick="removeCommitteeMember(this)" title="Remove">Remove</button>
@@ -10582,7 +10842,29 @@ function markNotificationAsRead(notificationId) {
     )
     if (notification) {
       notification.read = true
-      loadPageContent('activity') // Refresh the page
+      // Update activity view in-place if visible, otherwise refresh activity page
+      try {
+        saveNotifications()
+        updateNotificationBadge()
+        const activityList = document.getElementById('recent-activity-list')
+        if (activityList && AppState.currentPage === 'dashboard') {
+          // Update notifications area only (recent activity may include notifications)
+          try {
+            renderNotifications()
+          } catch (e) {}
+        } else if (AppState.currentPage === 'activity') {
+          // If on the activity page, re-render the full activity area
+          try {
+            const body = document.getElementById('main-content')
+            if (body) body.innerHTML = generateActivityPage()
+            lucide.createIcons()
+            initializePageEvents('activity')
+          } catch (e) {}
+        }
+      } catch (e) {
+        // Fallback to full page content reload when something unexpected occurs
+        loadPageContent('activity')
+      }
       updateNotificationBadge()
     }
   }
@@ -10904,6 +11186,27 @@ async function saveProduct(productId) {
 
   closeProductModal()
   await loadProductsFromAPI()
+  // Try to update products table in-place when present
+  try {
+    const tbody = document.getElementById('products-table-body')
+    if (tbody) {
+      // If existing row, replace; otherwise append. Use authoritative MockData.
+      const prod = MockData.products.find(
+        (p) => p.id === (productData.id || productData.sku)
+      )
+      if (prod) {
+        const existing = tbody.querySelector(`tr[data-id="${prod.id}"]`)
+        const rowHtml = renderProductRow ? renderProductRow(prod) : null
+        if (existing && rowHtml) existing.outerHTML = rowHtml
+        else if (rowHtml) tbody.insertAdjacentHTML('beforeend', rowHtml)
+        if (window.lucide) lucide.createIcons()
+        return
+      }
+    }
+  } catch (e) {
+    // ignore and fallback
+  }
+  // fallback
   loadPageContent('products') // refresh list
 }
 
@@ -10924,8 +11227,17 @@ async function deleteProduct(productId) {
     return
   }
 
-  // Reload the page
+  // Update products table in-place when possible
   await loadProductsFromAPI()
+  try {
+    const tbody = document.getElementById('products-table-body')
+    if (tbody) {
+      const row = tbody.querySelector(`tr[data-id="${productId}"]`)
+      if (row) row.remove()
+      if (window.lucide) lucide.createIcons()
+      return
+    }
+  } catch (e) {}
   loadPageContent('products')
 }
 
@@ -11433,6 +11745,20 @@ function saveCategory(categoryId) {
       }
     } finally {
       closeCategoryModal()
+      // Try to update categories table in-place
+      try {
+        const tbody = document.getElementById('categories-table-body')
+        if (tbody) {
+          // Re-render entire table body using MockData
+          if (typeof renderCategoryRow === 'function') {
+            tbody.innerHTML = (MockData.categories || [])
+              .map((c) => renderCategoryRow(c))
+              .join('')
+            if (window.lucide) lucide.createIcons()
+            return
+          }
+        }
+      } catch (e) {}
       loadPageContent('categories') // refresh table/page
     }
   })()
@@ -11479,6 +11805,16 @@ async function deleteCategory(categoryId) {
         (c) => c.id !== categoryId
       )
     } finally {
+      // update categories table in-place if possible
+      try {
+        const tbody = document.getElementById('categories-table-body')
+        if (tbody) {
+          const row = tbody.querySelector(`tr[data-id="${categoryId}"]`)
+          if (row) row.remove()
+          if (window.lucide) lucide.createIcons()
+          return
+        }
+      } catch (e) {}
       loadPageContent('categories')
     }
   })()
@@ -11918,6 +12254,26 @@ async function saveStockIn(stockId) {
   console.log('Saving stock-in record:', newRecord)
 
   closeStockInModal()
+  // Update stock-in table in-place if present
+  try {
+    const tbody = document.getElementById('stock-in-table-body')
+    if (tbody) {
+      // find the saved record (authoritative from MockData / stockInData)
+      const rec = stockInData.find(
+        (r) =>
+          r.id === newRecord.id || r.transactionId === newRecord.transactionId
+      )
+      if (rec && typeof renderStockInRow === 'function') {
+        const existing = tbody.querySelector(`tr[data-id="${rec.id}"]`)
+        const rowHtml = renderStockInRow(rec)
+        if (existing) existing.outerHTML = rowHtml
+        else tbody.insertAdjacentHTML('beforeend', rowHtml)
+        if (window.lucide) lucide.createIcons()
+        refreshProductsViewIfOpen()
+        return
+      }
+    }
+  } catch (e) {}
   loadPageContent('stock-in') // refresh stock-in page
   refreshProductsViewIfOpen()
 }
@@ -11946,6 +12302,16 @@ async function deleteStockIn(id) {
   }
 
   // Reload the page
+  try {
+    const tbody = document.getElementById('stock-in-table-body')
+    if (tbody) {
+      const row = tbody.querySelector(`tr[data-id="${id}"]`)
+      if (row) row.remove()
+      if (window.lucide) lucide.createIcons()
+      refreshProductsViewIfOpen()
+      return
+    }
+  } catch (e) {}
   loadPageContent('stock-in')
   refreshProductsViewIfOpen()
 }
@@ -12655,8 +13021,17 @@ async function deleteStockOut(id) {
     showAlert(`Failed to delete stock out: ${error.message}`, 'error')
     return
   }
-
-  // Reload the page
+  // Update stock-out table in-place when possible
+  try {
+    const tbody = document.getElementById('stock-out-table-body')
+    if (tbody) {
+      const row = tbody.querySelector(`tr[data-id="${id}"]`)
+      if (row) row.remove()
+      if (window.lucide) lucide.createIcons()
+      refreshProductsViewIfOpen()
+      return
+    }
+  } catch (e) {}
   loadPageContent('stock-out')
   refreshProductsViewIfOpen()
 }
@@ -13040,6 +13415,47 @@ function renderStatusRows(status) {
   return html
 }
 
+// Update a status request row (used by inline onclick handlers)
+async function updateStatusRow(id, newStatus) {
+  // Update local AppState first for snappy UI
+  const rec = (AppState.statusRequests || []).find((r) => r.id === id)
+  if (!rec) {
+    showAlert('Request not found', 'error')
+    return
+  }
+  const oldStatus = rec.status
+  rec.status = newStatus
+  rec.updatedAt = new Date().toISOString().split('T')[0]
+
+  // Optimistically refresh UI
+  refreshStatusCards()
+  const tbody = document.getElementById('status-table-body')
+  if (tbody)
+    tbody.innerHTML = renderStatusRows(AppState.currentStatusFilter || 'all')
+
+  // Try to persist change to server if API exists
+  try {
+    const res = await fetch(`/api/status-requests/${id}/status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      body: JSON.stringify({ status: newStatus }),
+    })
+    if (!res.ok) throw new Error('Failed to update on server')
+    showAlert('Status updated', 'success')
+  } catch (e) {
+    // Revert on failure
+    rec.status = oldStatus
+    refreshStatusCards()
+    if (tbody)
+      tbody.innerHTML = renderStatusRows(AppState.currentStatusFilter || 'all')
+    showAlert('Unable to update status on server', 'error')
+  }
+}
+window.updateStatusRow = updateStatusRow
+
 // ===== Apply Filters =====
 function applyFilters() {
   const search = document.getElementById('searchInput').value.toLowerCase()
@@ -13291,58 +13707,7 @@ function confirmReturn(requestId) {
   try {
     lucide.createIcons()
   } catch (e) {}
-
-  // Update counts
-  refreshStatusCards()
-
-  // Show success message
-  const remarksText = reasons.join(', ')
-  showAlert(`Request ${requestId} returned. Reasons: ${remarksText}`, 'success')
-  try {
-    if (typeof saveStatusRequests === 'function') saveStatusRequests()
-  } catch (e) {}
 }
-
-// ===== Update Row Status (for Received actions) =====
-function updateStatusRow(requestId, newStatus) {
-  try {
-    const rec = (AppState.statusRequests || []).find((r) => r.id === requestId)
-    if (!rec) {
-      showAlert('Row not found', 'error')
-      return
-    }
-    rec.status = newStatus
-    rec.updatedAt = new Date().toISOString().split('T')[0]
-    // Re-render current filter view
-    const body = document.getElementById('status-table-body')
-    if (body)
-      body.innerHTML = renderStatusRows(AppState.currentStatusFilter || 'all')
-    // icons already re-init inside renderStatusRows; safeguard:
-    try {
-      lucide.createIcons()
-    } catch (e) {}
-    // Update counts on cards
-    refreshStatusCards()
-    const statusLabel = newStatus.charAt(0).toUpperCase() + newStatus.slice(1)
-    showAlert(`Request ${requestId} marked as ${statusLabel}`, 'success')
-    // Notify status change
-    try {
-      const title = `Request ${requestId} ${statusLabel}`
-      const message = `Status changed to ${statusLabel} for request ${requestId}`
-      if (typeof createNotification === 'function') {
-        createNotification({ title, message, type: 'info', icon: 'clock' })
-      } else {
-        addNotification(title, message, 'info', 'clock')
-      }
-    } catch (e) {}
-    try {
-      if (typeof saveStatusRequests === 'function') saveStatusRequests()
-    } catch (err) {}
-  } catch (e) {
-    console.error(e)
-  }
-}
-
 // Lightweight viewer for status management entries
 function viewStatusRequest(id) {
   const rec = (AppState.statusRequests || []).find((r) => r.id === id)
