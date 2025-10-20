@@ -170,6 +170,21 @@ Key files
 
 ---
 
+## Suppliers
+
+Responsibilities
+
+- Manage supplier records, addresses and supplier metadata used by stock-in and purchase flows
+
+Key files
+
+- `app/Models/Supplier.php`
+- Supplier fields are referenced in PDF templates and stock-in views (search `Supplier` in compiled views under `storage/framework/views`)
+
+Notes
+
+- Suppliers have dedicated model support and are surfaced in PDF templates and stock-in records.
+
 ## Observers, Providers & Model Events
 
 Responsibilities
@@ -182,6 +197,21 @@ Key files
 - `app/Providers/AppServiceProvider.php` (bindings and bootstrapping)
 
 ---
+
+## Console / Commands
+
+Responsibilities
+
+- CLI helpers, developer tooling and convenience commands (local dev dashboard, renderers)
+
+Key files
+
+- `app/Commands/ServeDashboard.php` — serves the local dashboard used during development
+- Misc scripts: `scripts/render_mailable.php`, `scripts/send_test_mail.php`
+
+Notes
+
+- Commands are registered in `app/Console/Kernel.php` and can be executed via `php artisan`.
 
 ## API surface & Routes
 
@@ -215,6 +245,14 @@ How to explore quickly
 - Generate per-module README files with example requests/responses.
 - Create a simple architecture diagram (SVG/PNG) and place it in `docs/diagrams`.
 - Add a minimal test suite that exercises the Purchase Request flow (Pest or PHPUnit) and prove it by running the tests.
+
+---
+
+## Recent additions (summary)
+
+- `app/Models/Supplier.php` — supplier model and references in compiled views.
+- `app/Commands/ServeDashboard.php` — development CLI to serve a local dashboard.
+- Mailables and observer remain central to PR lifecycle (`app/Mail/*`, `app/Observers/PurchaseRequestObserver.php`).
 
 ---
 

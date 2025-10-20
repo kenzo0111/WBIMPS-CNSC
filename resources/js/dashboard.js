@@ -9705,9 +9705,13 @@ function generateAboutPage() {
       'Camarines Norte State College - Supply and Property Management Office',
     email: 'cnsc.spmo@.edu.ph',
     phone: '(054) 440-1134',
-    heroImage: '',
-    institutionLogo: '',
+    // heroImage and institutionLogo removed — UI no longer shows images
     gallery: [],
+    committeeMembers: [
+      'Dr. Juan Dela Cruz — Chair',
+      'Ms. Maria Santos — Member',
+      'Mr. Pedro Reyes — Member',
+    ],
   }
 
   return `
@@ -9733,136 +9737,183 @@ function generateAboutPage() {
     <div class="page-content" style="padding:24px 16px;">
       <div style="max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:24px;">
       <!-- Hero Section (carousel/gallery removed) -->
-      <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 36px 16px; text-align: center; border: none;">
-        <div style="max-width: 820px; margin: 0 auto;">
-                    ${
-                      aboutContent.institutionLogo
-                        ? `<img src="${aboutContent.institutionLogo}" alt="Institution Logo" style="width: 100px; height: 100px; object-fit: contain; margin: 0 auto 20px; display: block; background: white; border-radius: 12px; padding: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">`
-                        : ''
-                    }
-          <h2 id="hero-title" style="margin: 0 0 12px 0; font-size: 28px; font-weight: 700; color: white;">${
-            aboutContent.heroTitle
-          }</h2>
-          <p id="hero-subtitle" style="font-size: 17px; line-height: 1.8; margin: 0; opacity: 0.95;">${
-            aboutContent.heroSubtitle
-          }</p>
+      <div class="about-hero" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div class="about-hero-container">
+          <div class="about-hero-left">
+            <!-- Logo removed: showing initials as part of layout -->
+            <div style="width:100px;height:100px;border-radius:12px;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:18px;">${(
+              aboutContent.heroTitle || 'SPMO'
+            )
+              .split(' ')
+              .map((s) => s[0])
+              .slice(0, 2)
+              .join('')}</div>
+          </div>
+          <div class="about-hero-right">
+            <h2 id="hero-title" style="margin: 0 0 8px 0; font-size: 28px; font-weight: 700; color: white;">${
+              aboutContent.heroTitle
+            }</h2>
+            <p id="hero-subtitle" style="font-size: 17px; line-height: 1.8; margin: 0; opacity: 0.95;">${
+              aboutContent.heroSubtitle
+            }</p>
+          </div>
         </div>
       </div>
 
       <!-- Mission & Vision Cards -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-        <div class="card" style="border-left: 4px solid #667eea; padding:18px;">
+      <div class="about-section">
+        <div class="card mission-vision-card" style="background: #f8f9fa; border: 1px solid #dee2e6; margin-bottom: 20px;">
                     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-                        <div style="width: 48px; height: 48px; background: #ede9fe; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                            <i data-lucide="target" style="width: 24px; height: 24px; color: #667eea;"></i>
+                        <div class="feature-icon" style="width: 48px; height: 48px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="target" style="width: 24px; height: 24px; color: #495057;"></i>
                         </div>
-                        <h3 style="margin: 0; font-size: 20px; color: #111827;">Our Mission</h3>
+                        <h3 style="margin: 0; font-size: 18px; color: #212529;">Our Mission</h3>
                     </div>
-                    <p id="mission-text" style="color: #4b5563; line-height: 1.7; margin: 0;">
+                    <p id="mission-text" style="color: #495057; line-height: 1.6; margin: 0;">
                         ${aboutContent.mission}
                     </p>
                 </div>
-        <div class="card" style="border-left: 4px solid #10b981; padding:18px;">
+        <div class="card mission-vision-card vision-card" style="background: #f8f9fa; border: 1px solid #dee2e6; margin-bottom: 20px;">
                     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-                        <div style="width: 48px; height: 48px; background: #d1fae5; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                            <i data-lucide="eye" style="width: 24px; height: 24px; color: #10b981;"></i>
+                        <div class="feature-icon" style="width: 48px; height: 48px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="eye" style="width: 24px; height: 24px; color: #495057;"></i>
                         </div>
-                        <h3 style="margin: 0; font-size: 20px; color: #111827;">Our Vision</h3>
+                        <h3 style="margin: 0; font-size: 18px; color: #212529;">Our Vision</h3>
                     </div>
-                    <p id="vision-text" style="color: #4b5563; line-height: 1.7; margin: 0;">
+                    <p id="vision-text" style="color: #495057; line-height: 1.6; margin: 0;">
                         ${aboutContent.vision}
                     </p>
                 </div>
             </div>
       <!-- Key Features -->
-      <div class="card" style="padding:18px;">
-        <h3 style="margin: 0 0 20px 0; font-size: 22px; color: #111827; text-align: center;">What We Offer</h3>
+      <div class="about-section about-card" style="background: #ffffff; border: 1px solid #dee2e6; padding: 20px; margin-bottom: 20px;">
+        <h3 style="margin: 0 0 20px 0; font-size: 20px; color: #212529; text-align: center;">What We Offer</h3>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;">
-                    <div style="text-align: center; padding: 20px;">
-                        <div style="width: 64px; height: 64px; background: #fef3c7; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
-                            <i data-lucide="package" style="width: 32px; height: 32px; color: #f59e0b;"></i>
+                    <div class="feature-card" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 16px; border-radius: 8px;">
+                        <div class="feature-icon" style="width: 64px; height: 64px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                            <i data-lucide="package" style="width: 32px; height: 32px; color: #495057;"></i>
                         </div>
-                        <h4 style="margin: 0 0 8px 0; color: #111827;">Inventory Management</h4>
-                        <p style="margin: 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
+                        <h4 style="margin: 0 0 8px 0; color: #212529;">Inventory Management</h4>
+                        <p style="margin: 0; color: #6c757d; font-size: 14px; line-height: 1.6;">
                             Real-time tracking of stock levels, automated alerts, and comprehensive inventory reports
                         </p>
                     </div>
 
-                    <div style="text-align: center; padding: 20px;">
-                        <div style="width: 64px; height: 64px; background: #dbeafe; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
-                            <i data-lucide="shopping-cart" style="width: 32px; height: 32px; color: #3b82f6;"></i>
+                    <div class="feature-card" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 16px; border-radius: 8px;">
+                        <div class="feature-icon" style="width: 64px; height: 64px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                            <i data-lucide="shopping-cart" style="width: 32px; height: 32px; color: #495057;"></i>
                         </div>
-                        <h4 style="margin: 0 0 8px 0; color: #111827;">Procurement Automation</h4>
-                        <p style="margin: 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
+                        <h4 style="margin: 0 0 8px 0; color: #212529;">Procurement Automation</h4>
+                        <p style="margin: 0; color: #6c757d; font-size: 14px; line-height: 1.6;">
                             Streamlined purchase order creation, approval workflows, and vendor management
                         </p>
                     </div>
 
-                    <div style="text-align: center; padding: 20px;">
-                        <div style="width: 64px; height: 64px; background: #fce7f3; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
-                            <i data-lucide="bar-chart-3" style="width: 32px; height: 32px; color: #ec4899;"></i>
+                    <div class="feature-card" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 16px; border-radius: 8px;">
+                        <div class="feature-icon" style="width: 64px; height: 64px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                            <i data-lucide="bar-chart-3" style="width: 32px; height: 32px; color: #495057;"></i>
                         </div>
-                        <h4 style="margin: 0 0 8px 0; color: #111827;">Analytics & Reporting</h4>
-                        <p style="margin: 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
+                        <h4 style="margin: 0 0 8px 0; color: #212529;">Analytics & Reporting</h4>
+                        <p style="margin: 0; color: #6c757d; font-size: 14px; line-height: 1.6;">
                             Powerful dashboards and customizable reports for data-driven decisions
                         </p>
                     </div>
 
-                    <div style="text-align: center; padding: 20px;">
-                        <div style="width: 64px; height: 64px; background: #d1fae5; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
-                            <i data-lucide="users" style="width: 32px; height: 32px; color: #10b981;"></i>
+                    <div class="feature-card" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 16px; border-radius: 8px;">
+                        <div class="feature-icon" style="width: 64px; height: 64px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                            <i data-lucide="users" style="width: 32px; height: 32px; color: #495057;"></i>
                         </div>
-                        <h4 style="margin: 0 0 8px 0; color: #111827;">Multi-User Access</h4>
-                        <p style="margin: 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
+                        <h4 style="margin: 0 0 8px 0; color: #212529;">Multi-User Access</h4>
+                        <p style="margin: 0; color: #6c757d; font-size: 14px; line-height: 1.6;">
                             Role-based permissions ensuring secure and organized collaboration
                         </p>
                     </div>
                 </div>
             </div>
 
-      <!-- Team Section -->
-      <div class="card" style="padding:18px;">
-        <h3 style="margin: 0 0 8px 0; font-size: 22px; color: #111827; text-align: center;">Meet the Coordinators</h3>
-        <p style="text-align: center; color: #6b7280; margin: 0 0 24px 0;">The dedicated coordinators behind SPMO System</p>
+  <!-- Team Section -->
+  <div class="about-section about-card" style="background: #ffffff; border: 1px solid #dee2e6; padding: 20px; margin-bottom: 20px;">
+        <h3 style="margin: 0 0 8px 0; font-size: 20px; color: #212529; text-align: center;">Meet the Coordinators</h3>
+        <p style="text-align: center; color: #6c757d; margin: 0 0 24px 0;">The dedicated coordinators behind SPMO System</p>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px;">
-                    <div style="text-align: center; padding: 24px; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb; transition: all 0.3s;">
-                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 32px; font-weight: 700; color: white;">
+                    <div class="team-card" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 16px; border-radius: 8px;">
+                        <div class="team-avatar" style="width: 80px; height: 80px; background: linear-gradient(135deg, #6c757d 0%, #495057 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 32px; font-weight: 700; color: white;">
                             CQ
                         </div>
-                        <h4 style="margin: 0 0 4px 0; color: #111827; font-size: 18px;">Cherry Ann Quila</h4>
-                        <p style="margin: 0 0 12px 0; color: #667eea; font-weight: 600; font-size: 14px;">QA & Papers</p>
-                        <p style="margin: 0; color: #6b7280; font-size: 13px; line-height: 1.5;">
+                        <h4 class="team-name" style="margin: 0 0 4px 0; color: #212529; font-size: 16px;">Cherry Ann Quila</h4>
+                        <p style="margin: 0 0 12px 0; color: #6c757d; font-weight: 500; font-size: 14px;">QA & Papers</p>
+                        <p style="margin: 0; color: #6c757d; font-size: 13px; line-height: 1.5;">
                             Leading QA initiatives to maintain excellence and alignment in all project and paper outputs.
                         </p>
                     </div>
 
-                    <div style="text-align: center; padding: 24px; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb; transition: all 0.3s;">
-                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 32px; font-weight: 700; color: white;">
+                    <div class="team-card" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 16px; border-radius: 8px;">
+                        <div class="team-avatar" style="width: 80px; height: 80px; background: linear-gradient(135deg, #6c757d 0%, #495057 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 32px; font-weight: 700; color: white;">
                             VB
                         </div>
-                        <h4 style="margin: 0 0 4px 0; color: #111827; font-size: 18px;">Vince Balce</h4>
-                        <p style="margin: 0 0 12px 0; color: #3b82f6; font-weight: 600; font-size: 14px;">Project Lead/Lead Developer</p>
-                        <p style="margin: 0; color: #6b7280; font-size: 13px; line-height: 1.5;">
+                        <h4 class="team-name" style="margin: 0 0 4px 0; color: #212529; font-size: 16px;">Vince Balce</h4>
+                        <p style="margin: 0 0 12px 0; color: #6c757d; font-weight: 500; font-size: 14px;">Project Lead/Lead Developer</p>
+                        <p style="margin: 0; color: #6c757d; font-size: 13px; line-height: 1.5;">
                             Leading the Strategic direction and ensuring project success & Architecting and developing robust system features
                         </p>
                     </div>
 
-                    <div style="text-align: center; padding: 24px; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb; transition: all 0.3s;">
-                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 32px; font-weight: 700; color: white;">
+                    <div class="team-card" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 16px; border-radius: 8px;">
+                        <div class="team-avatar" style="width: 80px; height: 80px; background: linear-gradient(135deg, #6c757d 0%, #495057 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 32px; font-weight: 700; color: white;">
                             ML
                         </div>
-                        <h4 style="margin: 0 0 4px 0; color: #111827; font-size: 18px;">Marinel Ledesma</h4>
-                        <p style="margin: 0 0 12px 0; color: #ec4899; font-weight: 600; font-size: 14px;">Co Developer & Documentation</p>
-                        <p style="margin: 0; color: #6b7280; font-size: 13px; line-height: 1.5;">
+                        <h4 class="team-name" style="margin: 0 0 4px 0; color: #212529; font-size: 16px;">Marinel Ledesma</h4>
+                        <p style="margin: 0 0 12px 0; color: #6c757d; font-weight: 500; font-size: 14px;">Co Developer & Documentation</p>
+                        <p style="margin: 0; color: #6c757d; font-size: 13px; line-height: 1.5;">
                             Ensuring quality standards and comprehensive support for development and prepared clear project documentation.
                         </p>
                     </div>
                 </div>
             </div>
 
-      <!-- Headed by Section -->
-      <div class="card" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 2px solid #bae6fd; padding:18px;">
+            <!-- Inspection Committee Members (headed-by style) -->
+            <div class="headed-by-section">
+              <div style="text-align:center; max-width: 900px; margin: 0 auto 12px;">
+                <h3 style="margin: 0 0 8px 0; font-size: 22px; color: #111827;">Inspection Committee Members</h3>
+                <p class="text-muted" style="margin: 0;">The official inspection committee responsible for audits and compliance</p>
+              </div>
+
+              <div class="headed-by-inner" style="max-width:1100px;margin:16px auto 0;">
+                ${
+                  (aboutContent.committeeMembers || [])
+                    .map((m) => {
+                      const name = escapeHtml(m.split('—')[0]?.trim() || m)
+                      const role = escapeHtml(m.split('—')[1]?.trim() || '')
+                      const initials = (name || '')
+                        .split(' ')
+                        .map((p) => p[0] || '')
+                        .slice(0, 2)
+                        .join('')
+                        .toUpperCase()
+
+                      return `
+                        <div style="min-width:200px; display:flex; gap:12px; align-items:center; text-align:left;">
+                          <div class="headed-by-avatar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">${initials}</div>
+                          <div>
+                            <h4 style="margin:0 0 6px 0; font-size:18px; color:#111827;">${name}</h4>
+                            ${
+                              role
+                                ? `<p class="text-muted" style="margin:0;"><span class=\"role-badge\">${role}</span></p>`
+                                : ''
+                            }
+                          </div>
+                        </div>
+                      `
+                    })
+                    .join('') ||
+                  `<div style="grid-column:1/-1;text-align:center;color:#6b7280;padding:12px;">No committee members listed</div>`
+                }
+              </div>
+            </div>
+
+            <!-- Headed by Section -->
+      <div class="card" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 2px solid #bae6fd;">
         <div style="text-align: center; max-width: 700px; margin: 0 auto;">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 20px;">
                         <div style="width: 48px; height: 48px; background: #0284c7; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
@@ -9888,49 +9939,49 @@ function generateAboutPage() {
                 </div>
             </div>
 
-      <!-- Contact Section -->
-      <div class="card" style="background: #f9fafb; border: 2px solid #e5e7eb; padding:18px;">
+  <!-- Contact Section -->
+  <div class="about-section about-card" style="background: #ffffff; border: 1px solid #dee2e6; padding: 20px; margin-bottom: 20px;">
         <div style="text-align: center; max-width: 600px; margin: 0 auto;">
-                    <div style="width: 64px; height: 64px; background: #667eea; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                    <div style="width: 64px; height: 64px; background: #6c757d; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
                         <i data-lucide="mail" style="width: 32px; height: 32px; color: white;"></i>
                     </div>
-                    <h3 style="margin: 0 0 8px 0; font-size: 24px; color: #111827;">Contact Information</h3>
-                    <p style="margin: 0 0 24px 0; color: #6b7280; line-height: 1.6;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 20px; color: #212529;">Contact Information</h3>
+                    <p style="margin: 0 0 24px 0; color: #6c757d; line-height: 1.6;">
                         Get in touch with us for questions or support
                     </p>
                     
                     <div style="display: grid; gap: 16px; text-align: left;">
-                        <div style="display: flex; align-items: center; gap: 12px; padding: 16px; background: white; border-radius: 8px;">
-                            <div style="width: 40px; height: 40px; background: #ede9fe; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i data-lucide="building-2" style="width: 20px; height: 20px; color: #667eea;"></i>
+                        <div class="contact-card" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; border-radius: 6px;">
+                            <div class="contact-icon" style="width: 40px; height: 40px; background: #e9ecef; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i data-lucide="building-2" style="width: 20px; height: 20px; color: #495057;"></i>
                             </div>
                             <div>
-                                <p style="margin: 0; font-weight: 600; color: #111827; font-size: 14px;">Institution</p>
-                                <p id="institution-text" style="margin: 0; color: #6b7280; font-size: 14px;">${
+                                <p style="margin: 0; font-weight: 600; color: #212529; font-size: 14px;">Institution</p>
+                                <p id="institution-text" style="margin: 0; color: #6c757d; font-size: 14px;">${
                                   aboutContent.institution
                                 }</p>
                             </div>
                         </div>
 
-                        <div style="display: flex; align-items: center; gap: 12px; padding: 16px; background: white; border-radius: 8px;">
-                            <div style="width: 40px; height: 40px; background: #dbeafe; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i data-lucide="mail" style="width: 20px; height: 20px; color: #3b82f6;"></i>
+                        <div class="contact-card" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; border-radius: 6px;">
+                            <div class="contact-icon" style="width: 40px; height: 40px; background: #e9ecef; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i data-lucide="mail" style="width: 20px; height: 20px; color: #495057;"></i>
                             </div>
                             <div>
-                                <p style="margin: 0; font-weight: 600; color: #111827; font-size: 14px;">Institutional Email</p>
-                                <p id="email-text" style="margin: 0; color: #6b7280; font-size: 14px;">${
+                                <p style="margin: 0; font-weight: 600; color: #212529; font-size: 14px;">Institutional Email</p>
+                                <p id="email-text" style="margin: 0; color: #6c757d; font-size: 14px;">${
                                   aboutContent.email
                                 }</p>
                             </div>
                         </div>
 
-                        <div style="display: flex; align-items: center; gap: 12px; padding: 16px; background: white; border-radius: 8px;">
-                            <div style="width: 40px; height: 40px; background: #d1fae5; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i data-lucide="phone" style="width: 20px; height: 20px; color: #10b981;"></i>
+                        <div class="contact-card" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; border-radius: 6px;">
+                            <div class="contact-icon" style="width: 40px; height: 40px; background: #e9ecef; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i data-lucide="phone" style="width: 20px; height: 20px; color: #495057;"></i>
                             </div>
                             <div>
-                                <p style="margin: 0; font-weight: 600; color: #111827; font-size: 14px;">Contact Number</p>
-                                <p id="phone-text" style="margin: 0; color: #6b7280; font-size: 14px;">${
+                                <p style="margin: 0; font-weight: 600; color: #212529; font-size: 14px;">Contact Number</p>
+                                <p id="phone-text" style="margin: 0; color: #6c757d; font-size: 14px;">${
                                   aboutContent.phone
                                 }</p>
                             </div>
@@ -9940,7 +9991,7 @@ function generateAboutPage() {
             </div>
 
       <!-- Footer Note -->
-      <div style="padding: 18px; text-align: center; background: linear-gradient(to right, #f9fafb, #f3f4f6, #f9fafb); border-radius: 12px;">
+      <div class="about-section about-footer">
                 <p style="margin: 0; color: #6b7280; font-size: 14px;">
                     © ${currentYear} SPMO System - Camarines Norte State College. All rights reserved.
                 </p>
@@ -10093,8 +10144,7 @@ function editAboutUs() {
       'Camarines Norte State College - Supply and Property Management Office',
     email: 'cnsc.spmo@.edu.ph',
     phone: '(054) 440-1134',
-    heroImage: '',
-    institutionLogo: '',
+    // image fields removed
   }
 
   let modal = document.getElementById('edit-about-modal')
@@ -10190,6 +10240,44 @@ function editAboutUs() {
                         </div>
                     </div>
                 </div>
+                
+        <!-- Inspection Committee Members -->
+        <div style="padding: 16px; background: #f9fafb; border-radius: 8px; border: 2px solid #e5e7eb;">
+          <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #111827; font-weight: 600;">Inspection Committee Members</h3>
+          <p style="margin:0 0 8px 0;color:#6b7280;font-size:13px;">Add, remove or reorder committee members. Use <code>Name — Role</code> for clarity.</p>
+                    <div id="committee-list">
+                        ${
+                          (currentContent.committeeMembers || []).length > 0
+                            ? (currentContent.committeeMembers || [])
+                                .map(
+                                  (m) => `
+                            <div class="committee-member-row">
+                                <input class="committee-member-input" type="text" value="${String(
+                                  m
+                                )
+                                  .replace(/"/g, '&quot;')
+                                  .replace(/</g, '&lt;')
+                                  .replace(
+                                    />/g,
+                                    '&gt;'
+                                  )}" placeholder="Name — Role">
+                                <div class="committee-controls">
+                                    <button type="button" class="btn btn-secondary" onclick="moveCommitteeMemberUp(this)" title="Move up">⯅</button>
+                                    <button type="button" class="btn btn-secondary" onclick="moveCommitteeMemberDown(this)" title="Move down">⯆</button>
+                                    <button type="button" class="btn btn-danger" onclick="removeCommitteeMember(this)" title="Remove">Remove</button>
+                                </div>
+                            </div>
+                        `
+                                )
+                                .join('')
+                            : '<div class="about-card" style="color:#6b7280;padding:8px;border-radius:6px;background:#fff;border:1px dashed #e5e7eb;">No members yet. Use "Add Member" to create one.</div>'
+                        }
+                    </div>
+          <div style="margin-top:10px;display:flex;gap:8px;">
+            <button type="button" class="btn btn-primary" onclick="addCommitteeMember()" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;">Add Member</button>
+            <button type="button" class="btn btn-secondary" onclick="(function(){ const c=document.getElementById('committee-list'); if(!c) return; c.querySelectorAll('.committee-member-input').forEach(i=>i.value=''); })()" style="padding:8px 12px;">Clear All</button>
+          </div>
+        </div>
             </div>
             
             <div class="modal-footer" style="padding: 20px 24px; border-top: 1px solid #e5e7eb; background: #f9fafb; flex-shrink: 0; display: flex; gap: 12px; justify-content: flex-end;">
@@ -10229,6 +10317,17 @@ function saveAboutUs() {
   const institution = document.getElementById('edit-institution').value.trim()
   const email = document.getElementById('edit-email').value.trim()
   const phone = document.getElementById('edit-phone').value.trim()
+  // Collect committee members from dynamic list inputs (if present)
+  const committeeListEl = document.getElementById('committee-list')
+  let committeeMembers = []
+  if (committeeListEl) {
+    const inputs = Array.from(
+      committeeListEl.querySelectorAll('.committee-member-input')
+    )
+    committeeMembers = inputs.map((i) => i.value.trim()).filter((s) => s)
+  } else {
+    committeeMembers = []
+  }
 
   // Validation
   if (
@@ -10253,8 +10352,8 @@ function saveAboutUs() {
     institution,
     email,
     phone,
-    institutionLogo: AppState.aboutUsContent?.institutionLogo || '',
-    heroImage: AppState.aboutUsContent?.heroImage || '',
+    committeeMembers,
+    // image fields removed — not stored anymore
   }
 
   // Close modal and refresh
@@ -10263,21 +10362,55 @@ function saveAboutUs() {
   showAlert('About Us content updated successfully!', 'success')
 }
 
-function removeAboutImage(type) {
-  if (type === 'logo') {
-    if (AppState.aboutUsContent) {
-      AppState.aboutUsContent.institutionLogo = ''
-    }
-  } else if (type === 'hero') {
-    if (AppState.aboutUsContent) {
-      AppState.aboutUsContent.heroImage = ''
-    }
-  }
+// Image removal helpers removed — images are no longer used on About page
 
-  // Re-open modal to refresh display
-  editAboutUs()
-  showAlert('Image removed successfully!', 'success')
+// --- Committee member list helpers (used in Edit About modal) ---
+function addCommitteeMember(value = '') {
+  const list = document.getElementById('committee-list')
+  if (!list) return
+  const wrapper = document.createElement('div')
+  wrapper.className = 'committee-member-row'
+  wrapper.style.cssText = 'display:flex;gap:8px;align-items:center;'
+  wrapper.innerHTML = `
+    <input class="committee-member-input" type="text" value="${String(value)
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')}" placeholder="Name — Role">
+    <div class="committee-controls">
+      <button type="button" class="btn btn-secondary" onclick="moveCommitteeMemberUp(this)" title="Move up">⯅</button>
+      <button type="button" class="btn btn-secondary" onclick="moveCommitteeMemberDown(this)" title="Move down">⯆</button>
+      <button type="button" class="btn btn-danger" onclick="removeCommitteeMember(this)" title="Remove">Remove</button>
+    </div>
+  `
+  list.appendChild(wrapper)
+  return wrapper
 }
+
+function removeCommitteeMember(buttonEl) {
+  const row = buttonEl.closest('.committee-member-row')
+  if (!row) return
+  row.remove()
+}
+
+function moveCommitteeMemberUp(buttonEl) {
+  const row = buttonEl.closest('.committee-member-row')
+  if (!row) return
+  const prev = row.previousElementSibling
+  if (prev) row.parentNode.insertBefore(row, prev)
+}
+
+function moveCommitteeMemberDown(buttonEl) {
+  const row = buttonEl.closest('.committee-member-row')
+  if (!row) return
+  const next = row.nextElementSibling
+  if (next) row.parentNode.insertBefore(next, row)
+}
+
+// Expose helpers to global scope so inline onclick handlers work
+window.addCommitteeMember = addCommitteeMember
+window.removeCommitteeMember = removeCommitteeMember
+window.moveCommitteeMemberUp = moveCommitteeMemberUp
+window.moveCommitteeMemberDown = moveCommitteeMemberDown
 
 // -----------------------------//
 // Activity & Notifications Page //
@@ -13586,7 +13719,6 @@ const exposedFunctions = {
   setLoginActivityPage,
   editAboutUs,
   refreshSupportTickets,
-  removeAboutImage,
   closeEditAboutModal,
   saveAboutUs,
 }

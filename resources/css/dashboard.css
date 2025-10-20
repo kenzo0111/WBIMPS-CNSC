@@ -3385,3 +3385,300 @@ table.sticky-header thead tr th {
 body.modal-open {
   overflow: hidden;
 }
+
+/* ===== ABOUT US PAGE STYLES ===== */
+
+/* About page hero section */
+.about-hero {
+  color: white;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  border: none;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.about-hero-container {
+  max-width: 1000px;
+  width: 100%;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.about-hero-left {
+  flex: 0 0 100px;
+}
+
+.about-hero-right {
+  flex: 1 1 auto;
+}
+
+.about-hero-right h2 {
+  margin: 0 0 8px 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+}
+
+.about-hero-right p {
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0;
+  opacity: 0.95;
+}
+
+/* About page sections */
+.about-section {
+  margin-bottom: 24px;
+}
+
+.about-card {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  margin-bottom: 20px;
+}
+
+/* Mission & Vision Cards */
+.mission-vision-card {
+  border-left: 3px solid #667eea;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+}
+
+.vision-card {
+  border-left-color: #10b981;
+}
+
+/* Feature cards */
+.feature-card {
+  text-align: center;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+}
+
+.feature-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Team member cards */
+.team-card {
+  text-align: center;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+}
+
+.team-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+}
+
+.team-name {
+  margin: 0 0 4px 0;
+  color: #212529;
+  font-size: 16px;
+}
+
+.team-role {
+  margin: 0;
+  color: #6c757d;
+  font-size: 13px;
+}
+
+/* Contact cards */
+.contact-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+}
+
+.contact-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Committee section */
+.committee-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.committee-card {
+  background: #fff;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  text-align: center;
+}
+
+.committee-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: white;
+  margin: 0 auto 8px auto;
+  font-size: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.committee-name {
+  margin: 0;
+  font-weight: 600;
+  color: #212529;
+  font-size: 14px;
+}
+
+.committee-role {
+  margin: 4px 0 0 0;
+  color: #6c757d;
+  font-size: 12px;
+}
+
+/* Headed-by section */
+.headed-by-section {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #bae6fd;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.headed-by-inner {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.headed-by-avatar {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: white;
+  font-size: 28px;
+  border: 3px solid white;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+}
+
+/* About footer */
+.about-footer {
+  padding: 16px;
+  text-align: center;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+/* Role badge */
+.role-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  background: #eef2ff;
+  color: #3b82f6;
+  border-radius: 12px;
+  font-weight: 500;
+  font-size: 11px;
+}
+
+/* Responsive design for About page */
+@media (max-width: 768px) {
+  .about-hero {
+    padding: 16px;
+  }
+
+  .about-hero-container {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .about-hero-left {
+    flex: 0 0 auto;
+  }
+
+  .about-hero-right {
+    text-align: center;
+  }
+
+  .about-hero-right h2 {
+    font-size: 20px;
+  }
+
+  .about-hero-right p {
+    font-size: 14px;
+  }
+
+  .mission-vision-card,
+  .about-card {
+    padding: 12px;
+  }
+
+  .team-card {
+    padding: 12px;
+  }
+
+  .feature-card {
+    padding: 12px;
+  }
+
+  .contact-card {
+    flex-direction: column;
+    text-align: center;
+    gap: 6px;
+  }
+
+  .headed-by-inner {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
+
+  .committee-grid {
+    grid-template-columns: 1fr;
+  }
+}
