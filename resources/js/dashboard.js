@@ -8424,54 +8424,58 @@ window.logout = logout
 // ------------------------//
 
 function generateRolesManagementPage() {
-  // Sample data for initial load only
-  const initialMembers = [
-    {
-      id: 'SA001',
-      group: 'Group Juan',
-      name: 'Cherry Ann Quila',
-      role: 'Leader',
-      email: 'cherry@cnsc.edu.ph',
-      department: 'IT',
-      status: 'Active',
-      created: '2025-01-15',
-    },
-    {
-      id: 'SA002',
-      group: 'Group Juan',
-      name: 'Vince Balce',
-      role: 'Member',
-      email: 'vince@cnsc.edu.ph',
-      department: 'Finance',
-      status: 'Inactive',
-      created: '2025-02-01',
-    },
-    {
-      id: 'SA003',
-      group: 'Group Juan',
-      name: 'Marinel Ledesma',
-      role: 'Member',
-      email: 'marinel@cnsc.edu.ph',
-      department: 'HR',
-      status: 'Active',
-      created: '2025-03-10',
-    },
-  ]
-
-  // FIX: Only initialize MockData.users if it doesn't already exist.
+  // Initialize MockData if not exists (for backward compatibility)
   if (!window.MockData) window.MockData = {}
-  if (!window.MockData.users) {
-    window.MockData.users = initialMembers
+  if (!window.MockData.users) window.MockData.users = []
+
+  // Fetch users from API synchronously
+  try {
+    const xhr = new XMLHttpRequest()
+    xhr.open('GET', '/api/users', false) // synchronous
+    xhr.send()
+    if (xhr.status === 200) {
+      const apiUsers = JSON.parse(xhr.responseText)
+      window.MockData.users = apiUsers.map((user) => ({
+        id: user.id || '',
+        group: 'Group Juan', // Default group
+        name: user.name || 'Unknown',
+        role: user.role || 'User',
+        email: user.email || '',
+        department: 'IT', // Default department
+        status:
+          user.status === 'pending_activation'
+            ? 'Pending'
+            : user.status === 'active'
+            ? 'Active'
+            : 'Inactive',
+        created: user.created_at
+          ? new Date(user.created_at).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0],
+      }))
+    }
+  } catch (e) {
+    console.error('Error fetching users:', e)
+    // Use existing MockData
   }
 
-  const membersToRender = window.MockData.users
-
   // Calculate statistics
-  const totalMembers = membersToRender.length
-  const activeMembers = membersToRender.filter(
+  const totalMembers = window.MockData.users.length
+  const activeMembers = window.MockData.users.filter(
     (m) => m.status === 'Active'
   ).length
 
+  return renderRolesManagementPage(
+    totalMembers,
+    activeMembers,
+    window.MockData.users
+  )
+}
+
+function renderRolesManagementPage(
+  totalMembers,
+  activeMembers,
+  membersToRender
+) {
   const html = `
         <div class="page-header">
             <div class="page-header-content">
@@ -8682,7 +8686,7 @@ function saveUser(userId) {
   const userData = {
     name: nameInput ? nameInput.value : '',
     email: emailInput ? emailInput.value : '',
-    role: roleInput ? roleInput.value : '',
+    role: roleInput ? roleInput.value : 'User',
     status: statusInput ? statusInput.value : 'Active',
     created: createdInput
       ? createdInput.value || new Date().toISOString().split('T')[0]
@@ -8691,25 +8695,89 @@ function saveUser(userId) {
 
   if (!userId) {
     // --- CREATE NEW USER ---
-    if (!window.MockData) window.MockData = {}
-    if (!window.MockData.users) window.MockData.users = []
+    // Make API call to create user and send email
+    fetch('/api/users', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+      }),
+    })
+      .then(async (response) => {
+        // Try to parse JSON only when the response is JSON; otherwise capture text
+        const contentType = (
+          response.headers.get('content-type') || ''
+        ).toLowerCase()
+        let payload = null
+        if (contentType.includes('application/json')) {
+          try {
+            payload = await response.json()
+          } catch (e) {
+            payload = null
+          }
+        } else {
+          // Non-JSON (likely an HTML error page). Read text and create a friendly message.
+          const text = await response.text().catch(() => '')
+          const stripped = text
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+          payload = {
+            htmlError: stripped || 'Server returned an HTML error page',
+          }
+        }
 
-    // Robust ID generation
-    const maxIdNum = window.MockData.users
-      .map((u) => parseInt(String(u.id).replace(/\D/g, ''), 10))
-      .filter((n) => !isNaN(n))
-      .reduce((max, current) => Math.max(max, current), 0)
+        if (!response.ok) {
+          // If Laravel validation failed, it typically returns 422 with { message, errors: { field: [msg] } }
+          if (response.status === 422 && payload && payload.errors) {
+            const messages = []
+            Object.keys(payload.errors).forEach((field) => {
+              const arr = payload.errors[field]
+              if (Array.isArray(arr)) {
+                arr.forEach((m) => messages.push(`${field}: ${m}`))
+              } else if (arr) {
+                messages.push(`${field}: ${arr}`)
+              }
+            })
+            const msg =
+              messages.join('\n') || payload.message || 'Validation failed'
+            const err = new Error(msg)
+            err.status = response.status
+            err.payload = payload
+            throw err
+          }
 
-    const newIdNumber = maxIdNum + 1
+          const msg =
+            (payload && (payload.message || payload.htmlError)) ||
+            `Failed to create user (HTTP ${response.status})`
+          const err = new Error(msg)
+          err.status = response.status
+          err.payload = payload
+          throw err
+        }
 
-    const newUser = {
-      id: `SA${String(newIdNumber).padStart(3, '0')}`,
-      group: 'New Group',
-      ...userData,
-    }
-
-    window.MockData.users.push(newUser)
-    showAlert(`New user ${userData.name} added successfully!`, 'success')
+        return payload
+      })
+      .then((data) => {
+        showAlert(
+          `User ${userData.name} created successfully! An account setup email has been sent to ${userData.email}.`,
+          'success'
+        )
+        closeUserModal()
+        refreshRolesTable() // Refresh the table to reflect changes
+      })
+      .catch((error) => {
+        // Surface clearer error messages (server HTML, validation message, network errors)
+        console.error('Error creating user:', error)
+        const msg =
+          (error && error.message) || 'Failed to create user. Please try again.'
+        showAlert(msg, 'error')
+      })
   } else if (userId === 'current') {
     // Update AppState.currentUser
     AppState.currentUser = {
@@ -8741,6 +8809,8 @@ function saveUser(userId) {
     showAlert('Profile updated successfully!', 'success')
   } else {
     // --- UPDATE EXISTING USER (EDIT) ---
+    // For now, keep the MockData update for existing users
+    // TODO: Implement API call for updating users when needed
     const existing = window.MockData.users.find((u) => u.id === userId)
     if (existing) {
       Object.assign(existing, userData)

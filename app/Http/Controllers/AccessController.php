@@ -27,7 +27,7 @@ class AccessController extends Controller
     {
         $credentials = $request->validate([
             'email' => ['required', 'email'],
-            'pin' => ['required', 'digits:6'],
+            'pin' => ['required', 'string', 'min:8'], // Now it's password
         ]);
 
         /** @var \App\Models\User|null $user */
@@ -35,7 +35,13 @@ class AccessController extends Controller
 
         if (! $user || ! Hash::check($credentials['pin'], $user->password)) {
             return response()->json([
-                'message' => 'Invalid email or security PIN.',
+                'message' => 'Invalid email or password.',
+            ], 422);
+        }
+
+        if ($user->status !== 'active') {
+            return response()->json([
+                'message' => 'Account is not activated. Please check your email for setup instructions.',
             ], 422);
         }
 

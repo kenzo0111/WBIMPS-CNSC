@@ -176,15 +176,8 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Security PIN</label>
-            <div class="otp-container" id="otp">
-              <input type="password" inputmode="numeric" maxlength="1" aria-label="Digit 1">
-              <input type="password" inputmode="numeric" maxlength="1" aria-label="Digit 2">
-              <input type="password" inputmode="numeric" maxlength="1" aria-label="Digit 3">
-              <input type="password" inputmode="numeric" maxlength="1" aria-label="Digit 4">
-              <input type="password" inputmode="numeric" maxlength="1" aria-label="Digit 5">
-              <input type="password" inputmode="numeric" maxlength="1" aria-label="Digit 6">
-            </div>
+            <label class="form-label">Password</label>
+            <input class="form-input" id="password" name="password" type="password" placeholder="Enter your password" required />
           </div>
 
           <div class="form-extras">
@@ -255,56 +248,33 @@
       }
     }
 
-    // OTP / PIN behavior (Updated for new class names)
-    const otpInputs = Array.from(document.querySelectorAll('.otp-container input'));
+    // Password field
+    const passwordInput = document.getElementById('password');
     const hiddenPin = document.getElementById('hiddenPin');
     const emailInput = document.getElementById('email');
-
-    const setHidden = () => hiddenPin.value = otpInputs.map(i => i.value).join('');
-
-    otpInputs.forEach((input, idx) => {
-      input.addEventListener('input', () => {
-        input.value = input.value.replace(/[^0-9]/g, '').slice(0, 1);
-        if (input.value && idx < otpInputs.length - 1) otpInputs[idx + 1].focus();
-        setHidden();
-      });
-
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Backspace' && !input.value && idx > 0) otpInputs[idx - 1].focus();
-        if (e.key === 'ArrowLeft' && idx > 0) otpInputs[idx - 1].focus();
-        if (e.key === 'ArrowRight' && idx < otpInputs.length - 1) otpInputs[idx + 1].focus();
-      });
-
-      input.addEventListener('paste', (e) => {
-        e.preventDefault();
-        const digits = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, otpInputs.length).split('');
-        otpInputs.forEach((box, i) => box.value = digits[i] || '');
-        const next = digits.length >= otpInputs.length ? otpInputs[otpInputs.length - 1] : otpInputs[digits.length] || otpInputs[0];
-        next.focus(); setHidden();
-      });
-    });
 
     function handleLogin(event) {
       // Prevent the form from doing a traditional page reload submission
       event.preventDefault();
 
       const userEmail = emailInput.value;
-      const userPin = hiddenPin.value;
+      const userPassword = passwordInput.value;
 
-      // Basic validation: Check if all 6 PIN digits are entered
-      if (userPin.length !== 6) {
-        // Show modal alert dialog (fallbacks to native alert if not supported)
-        showAlertDialog("Please enter all 6 digits of your credentials.");
-        otpInputs[0].focus(); // Focus on the first PIN box
-        return; // Stop the login process
+      // Basic validation: Check if password is entered
+      if (!userPassword || userPassword.length < 8) {
+        showAlertDialog("Please enter your password (minimum 8 characters).");
+        passwordInput.focus();
+        return;
       }
 
       // Update heading in case email just completed
       updateWelcomeHeading();
 
-      // --- In a real application, you would send userEmail and userPin to a server here ---
-      // Show a modal dialog that confirms the attempted login instead of logging to the console
-      showLoginDialog(userEmail, userPin);
+      // Set hidden field for compatibility
+      hiddenPin.value = userPassword;
+
+      // Show login confirmation
+      showLoginDialog(userEmail, userPassword);
     }
   </script>
   <!-- Login confirmation dialog -->
@@ -446,26 +416,26 @@
       }
     }
 
-    function showLoginDialog(email, pin) {
+    function showLoginDialog(email, password) {
       const dialog = document.getElementById('loginDialog');
       const text = document.getElementById('dialogText');
-      const masked = maskPin(pin);
-      text.textContent = `Sign in as ${email} with PIN ${masked}?`;
+      const masked = '*'.repeat(Math.min(password.length, 8));
+      text.textContent = `Sign in as ${email} with password ${masked}?`;
       if (typeof dialog.showModal === 'function') {
         dialog.showModal();
         function onClose() {
           const val = dialog.returnValue;
           dialog.removeEventListener('close', onClose);
           if (val === 'confirm') {
-            startAuthentication(email, pin);
+            startAuthentication(email, password);
           } else {
-            otpInputs[0].focus();
+            passwordInput.focus();
           }
         }
         dialog.addEventListener('close', onClose);
       } else {
-        const ok = confirm(`Sign in as ${email} with PIN ${masked}?`);
-        if (ok) startAuthentication(email, pin, true); else otpInputs[0].focus();
+        const ok = confirm(`Sign in as ${email} with password ${masked}?`);
+        if (ok) startAuthentication(email, password, true); else passwordInput.focus();
       }
     }
 

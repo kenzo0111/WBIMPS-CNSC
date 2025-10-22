@@ -13,7 +13,7 @@
   <header>
     <div class="header-container">
       <div class="logo">
-  <img src="<?php echo e($imagesPath); ?>/UCN1.png" alt="School Logo">
+  <img src="<?php echo e($imagesPath); ?>/cnscrefine.png" alt="School Logo">
         <div class="logo-text">
           <h1>Supply and Property Management</h1>
           <hr>

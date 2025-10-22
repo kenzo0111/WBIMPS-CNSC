@@ -19,6 +19,10 @@ Route::get('/', function () {
 Route::get('/login', [AccessController::class, 'show'])->name('login');
 Route::post('/login', [AccessController::class, 'authenticate'])->name('login.perform');
 Route::post('/logout', [AccessController::class, 'logout'])->name('logout');
+
+// Account setup routes
+Route::get('/account/setup/{token}', [App\Http\Controllers\AccountSetupController::class, 'showSetupForm'])->name('account.setup');
+Route::post('/account/setup', [App\Http\Controllers\AccountSetupController::class, 'setupAccount'])->name('account.setup.post');
 Route::post('/purchase-request/generate', [PurchaseRequestController::class, 'generatePDF'])->name('purchase-request.generate');
 Route::get('/purchase-request/preview', [PurchaseRequestController::class, 'preview'])->name('purchase-request.preview');
 Route::post('/purchase-order/generate', [PurchaseOrderController::class, 'generatePDF'])->name('purchase-order.generate');

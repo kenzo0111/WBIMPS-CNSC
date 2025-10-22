@@ -16,6 +16,23 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
+        // Ensure there is an admin account that matches the README test credentials
+        // Email: admin@example.com  Password/PIN: admin123
+        User::updateOrCreate(
+            ['email' => 'admin@example.com'],
+            [
+                'name' => 'Administrator',
+                'password' => Hash::make('admin123'),
+                'email_verified_at' => now(),
+                // AccessController requires status === 'active' to allow login
+                'status' => 'active',
+                'role' => 'Administrator',
+                'department' => 'Admin',
+                'is_admin' => true,
+            ]
+        );
+
+        // Keep an additional test user for convenience
         User::updateOrCreate(
             ['email' => 'test@example.com'],
             [

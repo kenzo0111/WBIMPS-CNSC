@@ -19,6 +19,7 @@ Route::apiResource('suppliers', App\Http\Controllers\Api\SupplierController::cla
 Route::apiResource('stock-in', StockInController::class);
 Route::apiResource('stock-out', StockOutController::class);
 Route::apiResource('user-logs', UserLogController::class);
+Route::apiResource('users', App\Http\Controllers\Api\UserController::class);
 Route::get('/purchase-requests', [PurchaseRequestController::class, 'index']);
 Route::post('/purchase-requests', [PurchaseRequestController::class, 'store']);
 // Update status for a purchase request (accepts request_id like REQ-2025-007 or numeric id)

@@ -43,10 +43,25 @@ return [
             'url' => env('MAIL_URL'),
             'host' => env('MAIL_HOST', '127.0.0.1'),
             'port' => env('MAIL_PORT', 2525),
+            'encryption' => env('MAIL_ENCRYPTION', null),
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
             'timeout' => null,
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+            /*
+             | For local development some systems (Windows/XAMPP) may fail STARTTLS
+             | certificate verification. We add stream options driven by env so
+             | developers may disable peer verification locally. Do NOT use in
+             | production — prefer proper CA verification or a dedicated mail
+             | service (Mailgun/SES/Postmark) instead.
+             */
+            'stream' => [
+                'ssl' => [
+                    'allow_self_signed' => env('MAIL_ALLOW_SELF_SIGNED', false),
+                    'verify_peer' => env('MAIL_VERIFY_PEER', true),
+                    'verify_peer_name' => env('MAIL_VERIFY_PEER_NAME', true),
+                ],
+            ],
         ],
 
         'ses' => [
