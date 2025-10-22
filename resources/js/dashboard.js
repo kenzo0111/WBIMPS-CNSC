@@ -280,21 +280,36 @@ function persistProducts() {
 }
 
 async function saveProductToAPI(product) {
-  // Minimal safe implementation: attempt to POST to /api/products if available,
+  // Minimal safe implementation: attempt to POST/PUT to /api/products if available,
   // otherwise return the product object. This avoids build/runtime errors
   // while preserving a reasonable behavior for callers.
   try {
     if (!product) return null
     try {
-      const res = await fetch('/api/products', {
-        method: 'POST',
+      const isUpdate = product.databaseId && product.databaseId !== ''
+      const method = isUpdate ? 'PUT' : 'POST'
+      const url = isUpdate
+        ? `/api/products/${product.databaseId}`
+        : '/api/products'
+
+      const res = await fetch(url, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
           'X-Requested-With': 'XMLHttpRequest',
           'X-CSRF-TOKEN': getCsrfToken(),
         },
         credentials: 'same-origin',
-        body: JSON.stringify(product),
+        body: JSON.stringify({
+          sku: product.id || product.sku,
+          name: product.name,
+          description: product.description,
+          category_id: product.category_id,
+          quantity: product.quantity,
+          unit: product.unit,
+          unit_cost: product.unitCost || product.unit_cost,
+          date: product.date,
+        }),
       })
       if (res.ok) {
         const data = await res.json()
@@ -1178,7 +1193,20 @@ function logUserLogin(email, name, status = 'Success') {
       window.MockData.userLogs = window.MockData.userLogs.slice(0, 100)
     }
 
-    // Persistence disabled: keep logs in-memory only
+    // Try to persist to server (best-effort). Post and ignore failures.
+    try {
+      postUserLog({
+        email: logEntry.email,
+        name: logEntry.name,
+        action: logEntry.action,
+        timestamp: new Date().toISOString(),
+        ip_address: logEntry.ipAddress || null,
+        device: logEntry.device,
+        status: logEntry.status,
+      }).catch((err) => console.warn('postUserLog failed', err))
+    } catch (e) {
+      console.warn('Failed to enqueue postUserLog', e)
+    }
 
     console.log('User login logged:', logEntry)
     return logEntry
@@ -1257,7 +1285,20 @@ function logUserLogout(email, name) {
       window.MockData.userLogs = window.MockData.userLogs.slice(0, 100)
     }
 
-    // Persistence disabled: keep logs in-memory only
+    // Try to persist to server (best-effort)
+    try {
+      postUserLog({
+        email: logEntry.email,
+        name: logEntry.name,
+        action: logEntry.action,
+        timestamp: new Date().toISOString(),
+        ip_address: logEntry.ipAddress || null,
+        device: logEntry.device,
+        status: logEntry.status,
+      }).catch((err) => console.warn('postUserLog failed', err))
+    } catch (e) {
+      console.warn('Failed to enqueue postUserLog', e)
+    }
 
     console.log('User logout logged:', logEntry)
     return logEntry
@@ -1272,6 +1313,86 @@ function loadUserLogs() {
   if (!window.MockData) window.MockData = {}
   window.MockData.userLogs = window.MockData.userLogs || []
   return window.MockData.userLogs
+}
+
+// POST a user log to backend API (best-effort, does not throw on failure)
+async function postUserLog(payload = {}) {
+  try {
+    const url =
+      (window.APP_ROUTES && window.APP_ROUTES.userLogs) || '/api/user-logs'
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload),
+    })
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '')
+      throw new Error(`HTTP ${res.status} - ${txt}`)
+    }
+
+    const json = await res.json()
+    // Normalize returned log into MockData for immediate UI reflection
+    if (json && json.data) {
+      window.MockData = window.MockData || {}
+      window.MockData.userLogs = window.MockData.userLogs || []
+      // prepend server-created log
+      window.MockData.userLogs.unshift(json.data)
+      // keep a reasonable cap
+      if (window.MockData.userLogs.length > 200)
+        window.MockData.userLogs = window.MockData.userLogs.slice(0, 200)
+    }
+
+    return json
+  } catch (e) {
+    // swallow errors to avoid interfering with login flow
+    console.warn('postUserLog error', e)
+    return null
+  }
+}
+
+// GET user logs from backend and populate in-memory logs (returns array)
+async function loadUserLogsFromAPI(limit = 100) {
+  try {
+    const url =
+      (window.APP_ROUTES && window.APP_ROUTES.userLogs) || '/api/user-logs'
+    const res = await fetch(`${url}?limit=${limit}`, {
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        Accept: 'application/json',
+      },
+      credentials: 'same-origin',
+    })
+    if (!res.ok) throw new Error(`Failed to load user logs: ${res.status}`)
+    const json = await res.json()
+    let data = []
+    if (Array.isArray(json)) data = json
+    else if (Array.isArray(json.data)) data = json.data
+    else if (Array.isArray(json.results)) data = json.results
+
+    window.MockData = window.MockData || {}
+    // normalize timestamps to `timestamp` field for UI convenience
+    window.MockData.userLogs = data.map((d) => ({
+      id: d.id || d.log_id || d._id || null,
+      email: d.email || '',
+      name: d.name || '',
+      action: d.action || '',
+      timestamp: d.timestamp || d.created_at || d.createdAt || null,
+      ipAddress: d.ip_address || d.ipAddress || null,
+      device: d.device || null,
+      status: d.status || null,
+      raw: d,
+    }))
+
+    return window.MockData.userLogs
+  } catch (e) {
+    console.warn('loadUserLogsFromAPI failed', e)
+    return window.MockData.userLogs || []
+  }
 }
 
 // Load users (no persistence) - keep users in-memory only
@@ -2475,6 +2596,16 @@ loadPageContent = function (pageId) {
       const acts = await fetchActivities(8)
       renderActivityList(acts)
     }, 120)
+  }
+  // Load server-side user logs before showing login activity page so UI is backed by DB
+  if (pageId === 'login-activity') {
+    ;(async () => {
+      await loadUserLogsFromAPI(200).catch(() => {})
+      // proceed to render page via original loader
+      _origLoadPageContent(pageId)
+      if (window.lucide) setTimeout(() => lucide.createIcons(), 10)
+    })()
+    return
   }
 }
 
@@ -8584,7 +8715,9 @@ function renderRolesManagementPage(
                         ${membersToRender
                           .map(
                             (member, index) => `
-                            <tr style="transition: all 0.2s;">
+                            <tr data-user-id="${
+                              member.id
+                            }" style="transition: all 0.2s;">
                                 <td style="padding-left: 24px;">
                                     <div style="font-family: 'Courier New', monospace; font-size: 13px; color: #6b7280; font-weight: 600;">
                                         ${member.id}
@@ -8831,28 +8964,79 @@ async function deleteMember(memberId) {
     'Delete Member'
   )
   if (!ok) return
+  // Attempt server-side delete first so the database stays in sync
+  try {
+    const resp = await fetch(`/api/users/${memberId}`, {
+      method: 'DELETE',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+    })
 
-  // Find the user name before deleting
+    if (!resp.ok) {
+      // Try to read server message
+      let msg = 'Failed to delete user on server.'
+      try {
+        const body = await resp.json()
+        if (body && body.message) msg = body.message
+      } catch (e) {
+        /* ignore json parse error */
+      }
+      showAlert(msg, 'danger')
+      return
+    }
+  } catch (err) {
+    showAlert('Network error while deleting user.', 'danger')
+    return
+  }
+
+  // If server delete succeeded, update client-side state & UI
   const user = window.MockData.users.find((u) => u.id === memberId)
   const userName = user ? user.name : 'User'
 
-  // Delete the user
+  // Remove from mock data
   window.MockData.users = window.MockData.users.filter((u) => u.id !== memberId)
+
+  // Remove DOM row (use data-user-id which is robust against markup changes)
+  const row = document.querySelector(`tr[data-user-id="${memberId}"]`)
+  if (row && row.parentNode) {
+    row.parentNode.removeChild(row)
+  } else {
+    // fallback: re-render the table from MockData
+    refreshRolesTable()
+  }
 
   // Show success toast
   showAlert(`${userName} has been successfully deleted`, 'success')
-
-  // Refresh the table to reflect deletion
-  refreshRolesTable()
 }
+
+// Expose deleteMember for inline onclick handlers
+window.deleteMember = deleteMember
 
 function refreshRolesTable() {
   // Assuming your main content container has the ID 'main-content'
   const mainContentArea = document.getElementById('main-content')
 
   if (mainContentArea) {
-    // Regenerate the entire page HTML using the updated MockData.users
-    const newPageHTML = generateRolesManagementPage()
+    // Regenerate the entire page HTML using the updated client-side MockData.users
+    // Avoid calling generateRolesManagementPage() here because it performs a
+    // synchronous fetch to /api/users and would overwrite the client-side
+    // MockData.users (undoing client deletions). Instead, render from the
+    // current MockData snapshot.
+    const users =
+      window.MockData && Array.isArray(window.MockData.users)
+        ? window.MockData.users
+        : []
+
+    const totalMembers = users.length
+    const activeMembers = users.filter((m) => m.status === 'Active').length
+
+    const newPageHTML = renderRolesManagementPage(
+      totalMembers,
+      activeMembers,
+      users
+    )
 
     mainContentArea.innerHTML = newPageHTML
 
@@ -9703,6 +9887,25 @@ function setLoginActivityPage(page) {
   AppState.loginActivityPage = clamped
   loadPageContent('login-activity')
 }
+
+// --- Expose commonly used handlers to global scope for legacy inline handlers ---
+;(function exposeLegacyHandlers() {
+  const handlers = {
+    openUserModal,
+    closeUserModal,
+    saveUser,
+    deleteMember,
+    refreshRolesTable,
+    setLoginActivityPage,
+    showConfirm,
+    showAlert,
+    logout,
+  }
+
+  Object.keys(handlers).forEach((k) => {
+    if (!window[k]) window[k] = handlers[k]
+  })
+})()
 window.setLoginActivityPage = setLoginActivityPage
 
 function generateAboutPage() {

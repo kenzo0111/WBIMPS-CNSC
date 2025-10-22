@@ -220,13 +220,7 @@
 
     // Determine if user is returning (has a prior login log)
     function isReturningUser(email) {
-      if (!email) return false;
-      try {
-        const logsRaw = localStorage.getItem('spmo_userLogs');
-        if (!logsRaw) return false;
-        const logs = JSON.parse(logsRaw);
-        return Array.isArray(logs) && logs.some(l => (l.email || '').toLowerCase() === email.toLowerCase() && l.action === 'Login');
-      } catch (e) { return false; }
+      return false;
     }
 
     // Update welcome heading dynamically
@@ -334,22 +328,7 @@
 
     // Update user status in MockData (localStorage only for this standalone page)
     function updateUserStatus(email, status) {
-      try {
-        let users = [];
-        try {
-          const stored = localStorage.getItem('mockDataUsers');
-          if (stored) users = JSON.parse(stored);
-        } catch (e) {
-          console.warn('Could not load existing users:', e);
-        }
-        const user = users.find(u => u.email === email);
-        if (user) {
-          user.status = status;
-          localStorage.setItem('mockDataUsers', JSON.stringify(users));
-        }
-      } catch (error) {
-        console.error('Error updating user status:', error);
-      }
+      // Removed localStorage usage
     }
 
   function logUserLogin(email, status = 'Success', profile = null) {
@@ -359,58 +338,8 @@
           updateUserStatus(email, 'Active');
         }
 
-        // Get or initialize userLogs from localStorage
-        let userLogs = [];
-        try {
-          const stored = localStorage.getItem('spmo_userLogs');
-          if (stored) {
-            userLogs = JSON.parse(stored);
-          }
-        } catch (e) {
-          console.warn('Could not load existing logs:', e);
-        }
-
-        // Generate unique log ID
-        const logId = 'LOG' + String(userLogs.length + 1).padStart(3, '0');
-
-        // Get current timestamp
-        const now = new Date();
-        const timestamp = now.toISOString().replace('T', ' ').substring(0, 19);
-
-  const name = profile?.name || extractNameFromEmail(email);
-
-        // Detect device info
-        const userAgent = navigator.userAgent;
-        let device = 'Unknown Device';
-        if (userAgent.indexOf('Windows') !== -1) device = 'Windows PC';
-        else if (userAgent.indexOf('Mac') !== -1) device = 'MacBook';
-        else if (userAgent.indexOf('Linux') !== -1) device = 'Linux PC';
-        else if (userAgent.indexOf('Android') !== -1) device = 'Android Device';
-        else if (userAgent.indexOf('iPhone') !== -1 || userAgent.indexOf('iPad') !== -1) device = 'iOS Device';
-
-        // Create log entry
-        const logEntry = {
-          id: logId,
-          email: email,
-          name: name,
-          action: 'Login',
-          timestamp: timestamp,
-          ipAddress: 'N/A',
-          device: device,
-          status: status
-        };
-
-        // Add to beginning of logs array (newest first)
-        userLogs.unshift(logEntry);
-
-        // Keep only last 100 logs
-        if (userLogs.length > 100) {
-          userLogs = userLogs.slice(0, 100);
-        }
-
-        // Save to localStorage
-        localStorage.setItem('spmo_userLogs', JSON.stringify(userLogs));
-        console.log('User login logged:', logEntry);
+        // Removed localStorage logging
+        console.log('User login logged:', { email, status });
       } catch (error) {
         console.error('Error logging user login:', error);
       }
@@ -514,21 +443,7 @@
     // Save user session to localStorage
     function saveUserSession(email, profile = null) {
       try {
-        // Get users from localStorage to find matching user
-        let users = [];
-        try {
-          const stored = localStorage.getItem('mockDataUsers');
-          if (stored) {
-            users = JSON.parse(stored);
-          }
-        } catch (e) {
-          console.warn('Could not load users:', e);
-        }
-
-        // Find user by email
-        const user = users.find(u => u.email === email);
-
-        const source = profile || user || {};
+        const source = profile || {};
 
         // Create session data
         const sessionData = {
@@ -540,8 +455,7 @@
           loginTime: new Date().toISOString()
         };
 
-        // Save to localStorage
-        localStorage.setItem('userSession', JSON.stringify(sessionData));
+        // Removed localStorage save
         console.log('User session saved:', sessionData);
       } catch (error) {
         console.error('Error saving user session:', error);

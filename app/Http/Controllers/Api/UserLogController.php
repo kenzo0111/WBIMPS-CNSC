@@ -50,11 +50,15 @@ class UserLogController extends Controller
             'timestamp' => 'nullable|date',
             'ip_address' => 'nullable|string',
             'device' => 'nullable|string',
-            'status' => 'string|default:Success',
+            'status' => 'nullable|string',
         ]);
 
         if (!isset($validated['timestamp'])) {
             $validated['timestamp'] = now();
+        }
+
+        if (!isset($validated['status'])) {
+            $validated['status'] = 'Success';
         }
 
         $log = UserLog::create($validated);
