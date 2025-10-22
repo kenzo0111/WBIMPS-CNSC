@@ -10104,17 +10104,20 @@ async function previewTicket(id) {
   if (!overlay.querySelector('.modal-content')) {
     const wrapper = document.createElement('div')
     wrapper.className = 'modal-content compact'
+    // dialog semantics: labelled by the ticket title and described by the message body
     wrapper.setAttribute('role', 'dialog')
     wrapper.setAttribute('aria-modal', 'true')
+    wrapper.setAttribute('aria-labelledby', 'support-ticket-title')
+    wrapper.setAttribute('aria-describedby', 'support-modal-body')
     wrapper.style.cssText =
       'max-width:800px;margin:6vh auto;max-height:88vh;overflow:auto;padding:0;'
     overlay.appendChild(wrapper)
   }
 
   const content = overlay.querySelector('.modal-content')
-  // initial loading shell using viewStatusRequest style
+  // initial loading shell using semantic elements
   content.innerHTML = `
-    <div class="modal-header" style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; border-bottom: none; padding: 32px 24px;">
+    <header class="modal-header" style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; border-bottom: none; padding: 32px 24px;">
       <div style="display:flex;align-items:center;gap:16px;">
         <div style="width:64px;height:64px;background:rgba(255,255,255,0.2);border:3px solid rgba(255,255,255,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;">
           <i data-lucide="life-buoy" style="width:32px;height:32px;color:white;"></i>
@@ -10127,15 +10130,15 @@ async function previewTicket(id) {
       <button class="modal-close" aria-label="Close" style="color:white;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);width:36px;height:36px;border-radius:50%;"> 
         <i data-lucide="x" style="width:16px;height:16px;color:white;"></i>
       </button>
-    </div>
-    <div class="modal-body" style="padding:32px 24px;background:#f9fafb;">
-      <div style="background:white;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+    </header>
+    <main class="modal-body" id="support-modal-body" style="padding:32px 24px;background:#f9fafb;">
+      <article style="background:white;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
         <p style="margin:0;color:#6b7280;">Loading…</p>
-      </div>
-    </div>
-    <div class="modal-footer" style="padding:20px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:12px;">
+      </article>
+    </main>
+    <footer class="modal-footer" style="padding:20px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:12px;">
       <button class="btn btn-secondary">Close</button>
-    </div>
+    </footer>
   `
 
   // wire close handlers and backdrop click
@@ -10146,14 +10149,42 @@ async function previewTicket(id) {
     .querySelector('.modal-footer .btn')
     ?.addEventListener('click', closeSupportModal)
   overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closeSupportModal()
+    if (e.target === overlay) {
+      // if dirty, confirm using in-UI dialog
+      if (overlay._supportDirty) {
+        showInUiConfirm('You have unsaved changes. Close without saving?', {
+          title: 'Unsaved changes',
+          confirmText: 'Close',
+          cancelText: 'Cancel',
+        }).then((keep) => {
+          if (keep) closeSupportModal()
+        })
+        return
+      }
+      closeSupportModal()
+    }
   })
 
   // focus trap + escape
   try {
     overlay._lastFocused = document.activeElement
     overlay._supportKeydown = function (e) {
-      if (e.key === 'Escape') return closeSupportModal()
+      if (e.key === 'Escape') {
+        // if dirty, confirm using in-UI dialog
+        try {
+          if (overlay._supportDirty) {
+            showInUiConfirm('You have unsaved changes. Close without saving?', {
+              title: 'Unsaved changes',
+              confirmText: 'Close',
+              cancelText: 'Cancel',
+            }).then((keep) => {
+              if (keep) closeSupportModal()
+            })
+            return
+          }
+        } catch (e) {}
+        return closeSupportModal()
+      }
       if (e.key !== 'Tab') return
       const focusable = Array.from(
         overlay.querySelectorAll(
@@ -10192,7 +10223,7 @@ async function previewTicket(id) {
         .join('') || '<li style="color:#6b7280">No attachments</li>'
 
     content.innerHTML = `
-      <div class="modal-header" style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; border-bottom: none; padding: 32px 24px; display:flex;align-items:center;justify-content:space-between;">
+      <header class="modal-header" style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; border-bottom: none; padding: 32px 24px; display:flex;align-items:center;justify-content:space-between;" role="banner">
         <div style="display:flex;align-items:center;gap:16px;">
           <div style="width:64px;height:64px;background:rgba(255,255,255,0.2);border:3px solid rgba(255,255,255,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;">
             <i data-lucide="life-buoy" style="width:32px;height:32px;color:white;"></i>
@@ -10209,45 +10240,124 @@ async function previewTicket(id) {
         <button class="modal-close" aria-label="Close" style="color:white;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;"> 
           <i data-lucide="x" style="width:16px;height:16px;color:white;"></i>
         </button>
-      </div>
-      <div class="modal-body" style="padding:32px 24px;background:#f9fafb;">
-        <div style="background:white;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+      </header>
+      <main class="modal-body" id="support-modal-body" style="padding:32px 24px;background:#f9fafb;">
+        <article style="background:white;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
           <h3 style="margin:0 0 12px 0;font-size:16px;font-weight:600;color:#111827;">Message</h3>
           <div style="margin-top:8px;padding:12px;background:#f8fafc;border-radius:8px;border:1px solid #e5e7eb;white-space:pre-wrap;color:#111827;">${escapeHtml(
             t.message
           )}</div>
           <h3 style="margin:20px 0 12px 0;font-size:16px;font-weight:600;color:#111827;">Attachments</h3>
-          <div style="margin-top:8px;"><ul style="margin:0;padding-left:18px;">${attachmentsHtml}</ul></div>
+          <div style="margin-top:8px;" id="support-attachments-container"><ul style="margin:0;padding-left:18px;">${attachmentsHtml}</ul></div>
+        </article>
+      </main>
+      <footer class="modal-footer" style="padding:16px 20px;background:#f9fafb;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:space-between;align-items:center;">
+        <div style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;">
+          <div style="font-size:13px;color:#6b7280;">Created: ${escapeHtml(
+            t.created_at || t.created || ''
+          )}</div>
+          <div id="support-inline-feedback" role="status" aria-live="polite" style="font-size:13px;color:#6b7280;display:none;"></div>
         </div>
-      </div>
-      <div class="modal-footer" style="padding:20px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end;align-items:center;">
-        <div style="font-size:13px;color:#6b7280;margin-right:auto;">Created: ${escapeHtml(
-          t.created_at || t.created || ''
-        )}</div>
-        <label for="support-status-select" style="margin-right:6px;">Status:</label>
-        <select id="support-status-select" style="padding:6px;border-radius:6px;border:1px solid #d1d5db;">
-          <option value="Open" ${
-            t.status === 'Open' ? 'selected' : ''
-          }>Open</option>
-          <option value="Closed" ${
-            t.status === 'Closed' ? 'selected' : ''
-          }>Closed</option>
-        </select>
-        <button class="btn btn-secondary">Close</button>
-        <button class="btn btn-primary">Save</button>
-      </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label for="support-status-select" style="margin-right:6px;">Status:</label>
+          <select id="support-status-select" style="padding:6px;border-radius:6px;border:1px solid #d1d5db;">
+            <option value="Open" ${
+              t.status === 'Open' ? 'selected' : ''
+            }>Open</option>
+            <option value="Closed" ${
+              t.status === 'Closed' ? 'selected' : ''
+            }>Closed</option>
+          </select>
+          <button class="btn btn-secondary" id="support-modal-close">Close</button>
+          <button class="btn btn-primary" id="support-modal-save">Save</button>
+        </div>
+      </footer>
     `
 
-    // re-wire buttons
+    // track dirty state (status changes) and wire close handlers
+    const modalEl = overlay
+    const selectEl = overlay.querySelector('#support-status-select')
+    if (selectEl) {
+      modalEl._supportOriginalStatus = selectEl.value
+      modalEl._supportDirty = false
+      selectEl.addEventListener('change', () => {
+        try {
+          modalEl._supportDirty =
+            selectEl.value !== modalEl._supportOriginalStatus
+          const fb = overlay.querySelector('#support-inline-feedback')
+          if (fb) {
+            if (modalEl._supportDirty) {
+              fb.style.display = 'block'
+              fb.style.color = '#f59e0b' // amber
+              fb.textContent = 'Unsaved changes'
+            } else {
+              fb.style.display = 'none'
+              fb.textContent = ''
+            }
+          }
+        } catch (e) {}
+      })
+    }
+
+    // wire close handlers
     overlay
       .querySelector('.modal-close')
       ?.addEventListener('click', closeSupportModal)
     overlay
-      .querySelector('.modal-footer .btn-secondary')
+      .querySelector('#support-modal-close')
       ?.addEventListener('click', closeSupportModal)
+    const saveBtn = overlay.querySelector('#support-modal-save')
+    const feedbackEl = overlay.querySelector('#support-inline-feedback')
     overlay
-      .querySelector('.modal-footer .btn-primary')
-      ?.addEventListener('click', () => updateTicketStatus(t.id))
+      .querySelector('#support-modal-save')
+      ?.addEventListener('click', async () => {
+        // clear previous feedback
+        if (feedbackEl) {
+          feedbackEl.style.display = 'none'
+          feedbackEl.textContent = ''
+        }
+        const result = await updateTicketStatus(t.id, { ui: { saveBtn } })
+        // clear dirty flag on success so close won't prompt
+        if (result && result.ok) {
+          try {
+            const modalNow = document.getElementById('support-ticket-modal')
+            if (modalNow) modalNow._supportDirty = false
+          } catch (e) {}
+        }
+      })
+
+    // show image thumbnails for attachments (if images)
+    try {
+      const attachContainer = overlay.querySelector(
+        '#support-attachments-container'
+      )
+      if (attachContainer) {
+        const imgs = Array.from(attachContainer.querySelectorAll('a'))
+        imgs.forEach((a) => {
+          const href = a.getAttribute('href') || ''
+          const lower = (a.textContent || '').toLowerCase()
+          if (
+            /(\.png|\.jpe?g|\.gif|\.webp)$/i.test(href) ||
+            /(\.png|\.jpe?g|\.gif|\.webp)$/i.test(lower)
+          ) {
+            // try to create a small thumbnail preview next to the link
+            const img = document.createElement('img')
+            img.src = href
+            img.alt = a.textContent || 'attachment'
+            img.style.cssText =
+              'width:64px;height:64px;object-fit:cover;border-radius:6px;margin-right:8px;border:1px solid #e5e7eb;'
+            const wrapper = document.createElement('div')
+            wrapper.style.cssText =
+              'display:flex;align-items:center;margin-bottom:8px;'
+            wrapper.appendChild(img)
+            const linkWrap = document.createElement('div')
+            linkWrap.innerHTML = a.outerHTML
+            wrapper.appendChild(linkWrap)
+            a.parentElement && a.parentElement.replaceWith(wrapper)
+          }
+        })
+      }
+    } catch (e) {}
     try {
       lucide.createIcons()
     } catch (e) {}
@@ -10257,9 +10367,132 @@ async function previewTicket(id) {
 }
 window.previewTicket = previewTicket
 
+// Accessible in-UI confirm dialog. Returns a Promise<boolean> that resolves to true when confirmed.
+function showInUiConfirm(message, options = {}) {
+  const title = options.title || 'Confirm'
+  const confirmText = options.confirmText || 'Yes'
+  const cancelText = options.cancelText || 'No'
+
+  return new Promise((resolve) => {
+    // if a dialog already exists, do not create another
+    if (document.getElementById('ui-confirm-overlay')) {
+      // fallback to native confirm if double-invoked
+      try {
+        return resolve(window.confirm(message))
+      } catch (e) {
+        return resolve(false)
+      }
+    }
+
+    const overlay = document.createElement('div')
+    overlay.id = 'ui-confirm-overlay'
+    // use CSS class for theming
+    overlay.className = 'ui-confirm-overlay'
+    overlay.setAttribute('role', 'presentation')
+
+    const dialog = document.createElement('div')
+    dialog.setAttribute('role', 'alertdialog')
+    dialog.setAttribute('aria-modal', 'true')
+    dialog.setAttribute('aria-labelledby', 'ui-confirm-title')
+    dialog.setAttribute('aria-describedby', 'ui-confirm-desc')
+    // style via CSS class so it's easily themeable
+    dialog.className = 'ui-confirm-dialog'
+
+    dialog.innerHTML = `
+      <h3 id="ui-confirm-title" class="ui-confirm-title">${title}</h3>
+      <div id="ui-confirm-desc" class="ui-confirm-desc">${escapeHtml(
+        String(message)
+      )}</div>
+      <div class="ui-confirm-actions">
+        <button id="ui-confirm-cancel" class="btn btn-secondary">${cancelText}</button>
+        <button id="ui-confirm-confirm" class="btn btn-primary">${confirmText}</button>
+      </div>
+    `
+
+    overlay.appendChild(dialog)
+    document.body.appendChild(overlay)
+
+    // focus management
+    const confirmBtn = document.getElementById('ui-confirm-confirm')
+    const cancelBtn = document.getElementById('ui-confirm-cancel')
+    const previouslyFocused = document.activeElement
+    const focusable = [cancelBtn, confirmBtn]
+    let focusIndex = 0
+    focusable[focusIndex].focus()
+
+    function cleanup(result) {
+      try {
+        document.removeEventListener('keydown', onKey)
+      } catch (e) {}
+      overlay.remove()
+      try {
+        if (previouslyFocused && typeof previouslyFocused.focus === 'function')
+          previouslyFocused.focus()
+      } catch (e) {}
+      resolve(result)
+    }
+
+    function onKey(e) {
+      if (e.key === 'Escape') return cleanup(false)
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        focusIndex =
+          (focusIndex + (e.shiftKey ? -1 : 1) + focusable.length) %
+          focusable.length
+        focusable[focusIndex].focus()
+      }
+      if (e.key === 'Enter') {
+        // Enter activates the currently focused button
+        if (document.activeElement === cancelBtn) return cleanup(false)
+        if (document.activeElement === confirmBtn) return cleanup(true)
+      }
+    }
+
+    cancelBtn.addEventListener('click', () => cleanup(false))
+    confirmBtn.addEventListener('click', () => cleanup(true))
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        // clicking backdrop treats as cancel
+        cleanup(false)
+      }
+    })
+    document.addEventListener('keydown', onKey)
+  })
+}
+
 function closeSupportModal() {
   const modal = document.getElementById('support-ticket-modal')
   if (!modal) return
+  // if dirty, confirm before closing (use synchronous behaviour via Promise)
+  try {
+    if (modal._supportDirty) {
+      // showInUiConfirm returns a Promise — block closing until user responds
+      showInUiConfirm('You have unsaved changes. Close without saving?', {
+        title: 'Unsaved changes',
+        confirmText: 'Close',
+        cancelText: 'Cancel',
+      }).then((ok) => {
+        if (!ok) return
+        modal.className = 'modal-overlay'
+        modal.style.display = 'none'
+        try {
+          if (modal._supportKeydown) {
+            document.removeEventListener('keydown', modal._supportKeydown)
+            modal._supportKeydown = null
+          }
+          if (
+            modal._lastFocused &&
+            typeof modal._lastFocused.focus === 'function'
+          ) {
+            modal._lastFocused.focus()
+          }
+        } catch (e) {}
+        setTimeout(() => (modal.innerHTML = ''), 300)
+      })
+      return
+    }
+  } catch (e) {}
+
   modal.className = 'modal-overlay'
   modal.style.display = 'none'
   // remove keyboard handler if attached
@@ -10276,10 +10509,27 @@ function closeSupportModal() {
   setTimeout(() => (modal.innerHTML = ''), 300)
 }
 
-async function updateTicketStatus(id) {
+async function updateTicketStatus(id, opts = {}) {
   const select = document.getElementById('support-status-select')
-  if (!select) return
+  if (!select) return { ok: false, error: 'no-select' }
   const status = select.value
+  const ui = opts.ui || {}
+  const saveBtn = ui.saveBtn || document.getElementById('support-modal-save')
+  const feedbackEl = document.getElementById('support-inline-feedback')
+
+  // disable UI
+  if (saveBtn) {
+    saveBtn.disabled = true
+    saveBtn.setAttribute('aria-disabled', 'true')
+    // show spinner
+    const spinner = document.createElement('span')
+    spinner.className = 'spinner'
+    spinner.style.cssText =
+      'display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:rgba(255,255,255,1);border-radius:50%;margin-right:8px;vertical-align:middle;'
+    spinner.id = 'support-save-spinner'
+    saveBtn.prepend(spinner)
+  }
+
   try {
     const res = await fetch(`/api/support-tickets/${id}/status`, {
       method: 'POST',
@@ -10289,12 +10539,53 @@ async function updateTicketStatus(id) {
       },
       body: JSON.stringify({ status }),
     })
-    if (!res.ok) throw new Error('Failed')
-    showAlert('Status updated', 'success')
-    closeSupportModal()
-    refreshSupportTickets()
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      const msg = text || 'Failed to update'
+      if (feedbackEl) {
+        feedbackEl.style.display = 'block'
+        feedbackEl.style.color = '#b91c1c'
+        feedbackEl.textContent = `Error: ${msg}`
+      } else {
+        showAlert('Unable to update status', 'error')
+      }
+      return { ok: false, error: msg }
+    }
+    // success
+    if (feedbackEl) {
+      feedbackEl.style.display = 'block'
+      feedbackEl.style.color = '#16a34a'
+      feedbackEl.textContent = 'Status updated'
+    } else {
+      showAlert('Status updated', 'success')
+    }
+    // small delay so user sees the message
+    setTimeout(() => {
+      try {
+        closeSupportModal()
+      } catch (e) {}
+      refreshSupportTickets()
+    }, 650)
+    return { ok: true }
   } catch (e) {
-    showAlert('Unable to update status', 'error')
+    if (feedbackEl) {
+      feedbackEl.style.display = 'block'
+      feedbackEl.style.color = '#b91c1c'
+      feedbackEl.textContent = 'Network error while updating status'
+    } else {
+      showAlert('Unable to update status', 'error')
+    }
+    return { ok: false, error: e }
+  } finally {
+    // cleanup UI
+    try {
+      const spinner = document.getElementById('support-save-spinner')
+      spinner && spinner.remove()
+      if (saveBtn) {
+        saveBtn.disabled = false
+        saveBtn.removeAttribute('aria-disabled')
+      }
+    } catch (e) {}
   }
 }
 window.refreshSupportTickets = refreshSupportTickets

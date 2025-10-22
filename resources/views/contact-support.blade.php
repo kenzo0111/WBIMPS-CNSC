@@ -96,18 +96,20 @@
                                     required></textarea>
                             </div>
 
-                            <div class="form-group">
-                                <label class="form-label" for="screenshot">Screenshots (Optional)</label>
-                                <div class="upload-area" id="uploadArea">
-                                    <div class="upload-icon">📎</div>
-                                    <div class="upload-text">
-                                        <span class="upload-primary">Drop files here or click to browse</span>
-                                        <span class="upload-secondary">Supports: JPG, PNG, PDF (Max 10MB)</span>
+                                <div class="form-group">
+                                    <label class="form-label" for="screenshot">Screenshots (Optional)</label>
+                                    <div class="upload-area" id="uploadArea" role="button" tabindex="0" aria-label="Upload attachments">
+                                        <div class="upload-icon">📎</div>
+                                        <div class="upload-text">
+                                            <span class="upload-primary">Drop files here or click to browse</span>
+                                            <span class="upload-secondary">Supports: JPG, PNG, PDF (Max 10MB)</span>
+                                        </div>
+                                        <input type="file" id="screenshot" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.pdf"
+                                            style="display: none;">
                                     </div>
-                                    <input type="file" id="screenshot" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.pdf"
-                                        style="display: none;">
+                                    <div id="upload-previews" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;"></div>
+                                    <div id="upload-error" style="color:#b91c1c;font-size:13px;margin-top:6px;display:none;"></div>
                                 </div>
-                            </div>
                         </div>
                     </div>
 
@@ -171,7 +173,10 @@
             const email = (emailEl.value || '').trim();
             const message = (msgEl.value || '').trim();
             if (!name || !email || !message) {
-                alert('Please fill in all required fields.');
+                // show inline message
+                const err = document.getElementById('upload-error')
+                err.style.display = 'block'
+                err.textContent = 'Please fill in all required fields.'
                 return;
             }
 
@@ -189,6 +194,7 @@
             const originalText = submitBtn.innerHTML;
             submitBtn.innerHTML = '<span class="btn-text">Sending...</span>';
             submitBtn.disabled = true;
+            submitBtn.setAttribute('aria-busy', 'true')
 
             try {
                 const token = document.querySelector('input[name="_token"]').value;
@@ -202,15 +208,73 @@
                 setTimeout(() => {
                     submitBtn.innerHTML = originalText;
                     submitBtn.disabled = false;
+                    submitBtn.removeAttribute('aria-busy')
                     supportForm.reset();
                     document.querySelector('.upload-primary').textContent = 'Drop files here or click to browse';
+                    document.getElementById('upload-previews').innerHTML = '';
+                    document.getElementById('upload-error').style.display = 'none';
                 }, 1500);
             } catch (err) {
-                alert('Unable to submit ticket. Please try again or contact support.');
+                const errEl = document.getElementById('upload-error')
+                if (errEl) {
+                    errEl.style.display = 'block'
+                    errEl.textContent = 'Unable to submit ticket. Please try again or contact support.'
+                } else {
+                    alert('Unable to submit ticket. Please try again or contact support.');
+                }
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
+                submitBtn.removeAttribute('aria-busy')
             }
         });
+
+        // show preview thumbnails for selected files
+        const uploadPreviews = document.getElementById('upload-previews')
+        function renderPreviews(list) {
+            uploadPreviews.innerHTML = ''
+            Array.from(list).forEach((file) => {
+                const name = file.name
+                const ext = name.split('.').pop().toLowerCase()
+                const item = document.createElement('div')
+                item.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:84px;'
+                if (['png','jpg','jpeg','gif','webp'].includes(ext)) {
+                    const img = document.createElement('img')
+                    img.style.cssText = 'width:72px;height:54px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb;'
+                    img.src = URL.createObjectURL(file)
+                    img.onload = () => URL.revokeObjectURL(img.src)
+                    item.appendChild(img)
+                } else {
+                    const box = document.createElement('div')
+                    box.style.cssText = 'width:72px;height:54px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px solid #e5e7eb;background:#fff;font-size:12px;color:#6b7280;'
+                    box.textContent = ext.toUpperCase()
+                    item.appendChild(box)
+                }
+                const label = document.createElement('div')
+                label.style.cssText = 'font-size:11px;color:#374151;margin-top:6px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:84px;'
+                label.textContent = name
+                item.appendChild(label)
+                uploadPreviews.appendChild(item)
+            })
+        }
+
+        // update previews when files selected
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length) {
+                renderPreviews(e.target.files)
+                document.querySelector('.upload-primary').textContent = `${e.target.files.length} file(s) selected`
+            } else {
+                uploadPreviews.innerHTML = ''
+                document.querySelector('.upload-primary').textContent = 'Drop files here or click to browse'
+            }
+        })
+
+        // keyboard activation for upload area
+        uploadArea.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                fileInput.click();
+            }
+        })
 
         // Pre-fill name/email from session if available
         try {

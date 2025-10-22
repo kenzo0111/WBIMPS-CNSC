@@ -2469,6 +2469,57 @@ textarea:focus {
   color: #374151;
 }
 
+/* In-UI confirm (used by showInUiConfirm) - themeable */
+.ui-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 16px;
+}
+
+.ui-confirm-dialog {
+  width: 420px;
+  max-width: calc(100% - 32px);
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(2, 6, 23, 0.4);
+  padding: 18px;
+  text-align: left;
+}
+
+.ui-confirm-title {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: #111827;
+  font-weight: 600;
+}
+
+.ui-confirm-desc {
+  font-size: 14px;
+  color: #374151;
+  margin-bottom: 16px;
+  white-space: pre-wrap;
+}
+
+.ui-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* small responsive tweak */
+@media (max-width: 420px) {
+  .ui-confirm-dialog {
+    width: 100%;
+    padding: 14px;
+    border-radius: 6px;
+  }
+}
+
 /* Cards Row */
 .status-cards {
   display: grid;
