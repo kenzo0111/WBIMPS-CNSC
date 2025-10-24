@@ -2493,21 +2493,7 @@ function generateDashboardPage() {
             
             <!-- Quick Actions & Recent Activity -->
             <div class="dashboard-grid">
-                <!-- Swapped: Recent Activity first -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Recent Activity</h3>
-                    </div>
-              <div class="activity-list" id="recent-activity-list">
-                <!-- Recent activities will be injected here by dashboard script -->
-                <div class="activity-loading" style="padding:16px;color:#6b7280;font-size:14px;">Loading recent activity…</div>
-              </div>
-                    <div class="activity-footer">
-                        <a href="#" class="link">View all activity →</a>
-                    </div>
-                </div>
-
-                <!-- Quick Actions moved to second column -->
+                <!-- Quick Actions first -->
                 <div class="card quick-actions">
                     <div class="card-header">
                         <h3 class="card-title">Quick Actions</h3>
@@ -2549,6 +2535,20 @@ function generateDashboardPage() {
                                 <p>Generate inventory reports</p>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity second -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Recent Activity</h3>
+                    </div>
+              <div class="activity-list" id="recent-activity-list">
+                <!-- Recent activities will be injected here by dashboard script -->
+                <div class="activity-loading" style="padding:16px;color:#6b7280;font-size:14px;">Loading recent activity…</div>
+              </div>
+                    <div class="activity-footer">
+                        <a href="#" class="link">View all activity →</a>
                     </div>
                 </div>
             </div>
