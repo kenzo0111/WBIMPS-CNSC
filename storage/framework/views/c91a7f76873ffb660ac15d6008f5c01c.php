@@ -23,7 +23,7 @@
         .appendix {
             position: absolute;
             right: 18px;
-            top: {{ $appendix_top ?? '1px' }};
+            top: <?php echo e($appendix_top ?? '1px'); ?>;
             font-size: 12px;
             font-weight: bold;
         }
@@ -33,15 +33,15 @@
         <div style="text-align:center; flex:2"><span class="title">PURCHASE REQUEST</span></div>
         <div style="flex:1"></div>
     </div>
-    <div class="appendix">{{ $appendix ?? 'Appendix 60' }}</div>
+    <div class="appendix"><?php echo e($appendix ?? 'Appendix 60'); ?></div>
 
     <table class="no-border" style="margin-bottom:6px; width:100%;">
         <tr>
-            <td style="width:12%;"><strong>Entity Name:</strong> {{ $entity_name }}</td>
+            <td style="width:12%;"><strong>Entity Name:</strong> <?php echo e($entity_name); ?></td>
             <td style="width:8%;"></td>
             <td style="width:40%;"></td>
             <td style="width:8%;"></td>
-            <td style="width:16%; text-align:left;"><strong>Fund Cluster:</strong> {{ $fund_cluster ?? '' }}</td>
+            <td style="width:16%; text-align:left;"><strong>Fund Cluster:</strong> <?php echo e($fund_cluster ?? ''); ?></td>
             <td style="width:16%;"></td>
         </tr>
     </table>
@@ -51,10 +51,10 @@
             <tr>
                 <th colspan="2" style="width:33%"></th>
                 <th colspan="2" style="width:34%; text-align:left;">
-                    <div><strong>PR No.:</strong> {{ $pr_no }}</div>
-                    <div style="margin-top:4px;"><strong>Responsibility Center Code:</strong> {{ $responsibility_center_code ?? '' }}</div>
+                    <div><strong>PR No.:</strong> <?php echo e($pr_no); ?></div>
+                    <div style="margin-top:4px;"><strong>Responsibility Center Code:</strong> <?php echo e($responsibility_center_code ?? ''); ?></div>
                 </th>
-                <th colspan="2" style="width:33%; text-align:left;"><strong>Date:</strong> {{ $date ?? '' }}</th>
+                <th colspan="2" style="width:33%; text-align:left;"><strong>Date:</strong> <?php echo e($date ?? ''); ?></th>
             </tr>
             <tr>
                 <th style="width:12%">Stock/<br>Property No.</th>
@@ -66,24 +66,24 @@
             </tr>
         </thead>
         <tbody>
-            {{-- Render existing items first --}}
-            @foreach($items as $index => $item)
+            
+            <?php $__currentLoopData = $items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $index => $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
             <tr>
-                <td class="center">{{ $item['stock_no'] ?? ($index + 1) }}</td>
-                <td class="center">{{ $item['unit'] ?? '' }}</td>
-                <td>{{ $item['item_description'] }}</td>
-                <td class="center">{{ $item['quantity'] }}</td>
-                <td class="right">{{ number_format($item['unit_cost'] ?? 0, 2) }}</td>
-                <td class="right">{{ number_format($item['total_cost'] ?? 0, 2) }}</td>
+                <td class="center"><?php echo e($item['stock_no'] ?? ($index + 1)); ?></td>
+                <td class="center"><?php echo e($item['unit'] ?? ''); ?></td>
+                <td><?php echo e($item['item_description']); ?></td>
+                <td class="center"><?php echo e($item['quantity']); ?></td>
+                <td class="right"><?php echo e(number_format($item['unit_cost'] ?? 0, 2)); ?></td>
+                <td class="right"><?php echo e(number_format($item['total_cost'] ?? 0, 2)); ?></td>
             </tr>
-            @endforeach
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
 
-            {{-- Add empty rows to match printed layout (total ~25 rows) --}}
-            @php
+            
+            <?php
                 $filled = count($items);
                 $rowsToAdd = max(0, 25 - $filled);
-            @endphp
-            @for($i = 0; $i < $rowsToAdd; $i++)
+            ?>
+            <?php for($i = 0; $i < $rowsToAdd; $i++): ?>
             <tr>
                 <td>&nbsp;</td>
                 <td>&nbsp;</td>
@@ -92,19 +92,19 @@
                 <td>&nbsp;</td>
                 <td>&nbsp;</td>
             </tr>
-            @endfor
+            <?php endfor; ?>
 
             <tr>
                 <td colspan="5" class="right"><strong>TOTAL</strong></td>
-                <td class="right"><strong>{{ number_format(collect($items)->sum(function($it){ return $it['total_cost'] ?? 0; }), 2) }}</strong></td>
+                <td class="right"><strong><?php echo e(number_format(collect($items)->sum(function($it){ return $it['total_cost'] ?? 0; }), 2)); ?></strong></td>
             </tr>
 
-            {{-- Purpose and signatures merged into the same table --}}
+            
             <tr>
                 <td colspan="6" style="vertical-align:top;"><strong>Purpose:</strong></td>
             </tr>
             <tr>
-                <td colspan="6" class="purpose">{{ $purpose }}</td>
+                <td colspan="6" class="purpose"><?php echo e($purpose); ?></td>
             </tr>
             <tr>
                 <td colspan="3" style="text-align:center; padding-top:18px;">
@@ -119,10 +119,10 @@
                             <td style="text-align:center; border:none; padding:6px 2px 2px 2px;">&nbsp;</td>
                         </tr>
                         <tr>
-                            <td style="text-align:center; border:none; padding:2px;"><strong>{{ $requested_by }}</strong></td>
+                            <td style="text-align:center; border:none; padding:2px;"><strong><?php echo e($requested_by); ?></strong></td>
                         </tr>
                         <tr>
-                            <td style="text-align:center; border:none; padding:2px;" class="small">{{ $designation }}</td>
+                            <td style="text-align:center; border:none; padding:2px;" class="small"><?php echo e($designation); ?></td>
                         </tr>
                     </table>
                 </td>
@@ -138,10 +138,10 @@
                             <td style="text-align:center; border:none; padding:6px 2px 2px 2px;">&nbsp;</td>
                         </tr>
                         <tr>
-                            <td style="text-align:center; border:none; padding:2px;"><strong>{{ $approved_by }}</strong></td>
+                            <td style="text-align:center; border:none; padding:2px;"><strong><?php echo e($approved_by); ?></strong></td>
                         </tr>
                         <tr>
-                            <td style="text-align:center; border:none; padding:2px;" class="small">{{ $approved_position }}</td>
+                            <td style="text-align:center; border:none; padding:2px;" class="small"><?php echo e($approved_position); ?></td>
                         </tr>
                     </table>
                 </td>
@@ -151,3 +151,4 @@
 
 </body>
 </html>
+<?php /**PATH C:\xampp\htdocs\SupplySystem\resources\views/pdf/purchase_request_pdf.blade.php ENDPATH**/ ?>

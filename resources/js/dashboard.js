@@ -2142,6 +2142,52 @@ function generateDashboardPage() {
     ? MockData.products.reduce((sum, p) => sum + (p.totalValue || 0), 0)
     : 0
 
+  // Calculate trend indicators (mock data for demonstration - in real app, compare with previous period)
+  const getTrendData = (currentValue, previousValue) => {
+    if (!previousValue || previousValue === 0)
+      return { change: 0, percentage: 0, direction: 'neutral' }
+    const change = currentValue - previousValue
+    const percentage = Math.round((change / previousValue) * 100)
+    const direction = change > 0 ? 'up' : change < 0 ? 'down' : 'neutral'
+    return { change, percentage, direction }
+  }
+
+  // Mock previous values (in real app, these would come from historical data)
+  const previousTotalProducts = Math.max(
+    0,
+    totalProducts - Math.floor(Math.random() * 10)
+  )
+  const previousLowStockItems = Math.max(
+    0,
+    lowStockItems - Math.floor(Math.random() * 3)
+  )
+  const previousIncomingRequests = Math.max(
+    0,
+    incomingRequests - Math.floor(Math.random() * 5)
+  )
+  const previousReceivedToday = Math.max(
+    0,
+    receivedToday - Math.floor(Math.random() * 2)
+  )
+  const previousTotalUsers = Math.max(
+    0,
+    totalUsers - Math.floor(Math.random() * 2)
+  )
+  const previousInventoryValue = Math.max(
+    0,
+    totalInventoryValue - Math.random() * 10000
+  )
+
+  const productsTrend = getTrendData(totalProducts, previousTotalProducts)
+  const lowStockTrend = getTrendData(lowStockItems, previousLowStockItems)
+  const incomingTrend = getTrendData(incomingRequests, previousIncomingRequests)
+  const receivedTrend = getTrendData(receivedToday, previousReceivedToday)
+  const usersTrend = getTrendData(totalUsers, previousTotalUsers)
+  const inventoryTrend = getTrendData(
+    totalInventoryValue,
+    previousInventoryValue
+  )
+
   return `
     <div class="page-header">
       <div class="page-header-content" style="display:flex;align-items:center;justify-content:space-between;">
@@ -2257,7 +2303,20 @@ function generateDashboardPage() {
                         <div class="metric-info">
                             <h3>Items</h3>
                             <p class="value">${totalProducts}</p>
-                            <p class="change">In inventory</p>
+                            <div class="trend-indicator ${
+                              productsTrend.direction
+                            }">
+                                <i data-lucide="${
+                                  productsTrend.direction === 'up'
+                                    ? 'trending-up'
+                                    : productsTrend.direction === 'down'
+                                    ? 'trending-down'
+                                    : 'minus'
+                                }" class="trend-icon"></i>
+                                <span class="trend-text">${
+                                  productsTrend.percentage > 0 ? '+' : ''
+                                }${productsTrend.percentage}%</span>
+                            </div>
                         </div>
                         <div class="metric-icon blue">
                             <i data-lucide="package" class="icon"></i>
@@ -2270,7 +2329,20 @@ function generateDashboardPage() {
                         <div class="metric-info">
                             <h3>Low Stock</h3>
                             <p class="value">${lowStockItems}</p>
-                            <p class="change">< ${lowStockThreshold} units</p>
+                            <div class="trend-indicator ${
+                              lowStockTrend.direction
+                            }">
+                                <i data-lucide="${
+                                  lowStockTrend.direction === 'up'
+                                    ? 'trending-up'
+                                    : lowStockTrend.direction === 'down'
+                                    ? 'trending-down'
+                                    : 'minus'
+                                }" class="trend-icon"></i>
+                                <span class="trend-text">${
+                                  lowStockTrend.percentage > 0 ? '+' : ''
+                                }${lowStockTrend.percentage}%</span>
+                            </div>
                         </div>
                         <div class="metric-icon orange">
                             <i data-lucide="alert-triangle" class="icon"></i>
@@ -2283,7 +2355,20 @@ function generateDashboardPage() {
                         <div class="metric-info">
                             <h3>Incoming</h3>
                             <p class="value">${incomingRequests}</p>
-                            <p class="change">Pending flow</p>
+                            <div class="trend-indicator ${
+                              incomingTrend.direction
+                            }">
+                                <i data-lucide="${
+                                  incomingTrend.direction === 'up'
+                                    ? 'trending-up'
+                                    : incomingTrend.direction === 'down'
+                                    ? 'trending-down'
+                                    : 'minus'
+                                }" class="trend-icon"></i>
+                                <span class="trend-text">${
+                                  incomingTrend.percentage > 0 ? '+' : ''
+                                }${incomingTrend.percentage}%</span>
+                            </div>
                         </div>
                         <div class="metric-icon yellow">
                             <i data-lucide="clock" class="icon"></i>
@@ -2292,12 +2377,24 @@ function generateDashboardPage() {
                 </div>
                 
                 <div class="metric-card">
-
                     <div class="metric-content">
                         <div class="metric-info">
                             <h3>Received Today</h3>
                             <p class="value">${receivedToday}</p>
-                            <p class="change">Marked received</p>
+                            <div class="trend-indicator ${
+                              receivedTrend.direction
+                            }">
+                                <i data-lucide="${
+                                  receivedTrend.direction === 'up'
+                                    ? 'trending-up'
+                                    : receivedTrend.direction === 'down'
+                                    ? 'trending-down'
+                                    : 'minus'
+                                }" class="trend-icon"></i>
+                                <span class="trend-text">${
+                                  receivedTrend.percentage > 0 ? '+' : ''
+                                }${receivedTrend.percentage}%</span>
+                            </div>
                         </div>
                         <div class="metric-icon green">
                             <i data-lucide="check-circle" class="icon"></i>
@@ -2310,7 +2407,20 @@ function generateDashboardPage() {
                         <div class="metric-info">
                             <h3>Users</h3>
                             <p class="value">${totalUsers}</p>
-                            <p class="change">${activeUsers} active</p>
+                            <div class="trend-indicator ${
+                              usersTrend.direction
+                            }">
+                                <i data-lucide="${
+                                  usersTrend.direction === 'up'
+                                    ? 'trending-up'
+                                    : usersTrend.direction === 'down'
+                                    ? 'trending-down'
+                                    : 'minus'
+                                }" class="trend-icon"></i>
+                                <span class="trend-text">${
+                                  usersTrend.percentage > 0 ? '+' : ''
+                                }${usersTrend.percentage}%</span>
+                            </div>
                         </div>
                         <div class="metric-icon purple">
                             <i data-lucide="users" class="icon"></i>
@@ -2325,7 +2435,20 @@ function generateDashboardPage() {
                             <p class="value currency-value">${formatCurrency(
                               totalInventoryValue
                             )}</p>
-                            <p class="change">Total value</p>
+                            <div class="trend-indicator ${
+                              inventoryTrend.direction
+                            }">
+                                <i data-lucide="${
+                                  inventoryTrend.direction === 'up'
+                                    ? 'trending-up'
+                                    : inventoryTrend.direction === 'down'
+                                    ? 'trending-down'
+                                    : 'minus'
+                                }" class="trend-icon"></i>
+                                <span class="trend-text">${
+                                  inventoryTrend.percentage > 0 ? '+' : ''
+                                }${inventoryTrend.percentage}%</span>
+                            </div>
                         </div>
                         <div class="metric-icon indigo">
                             <i data-lucide="bar-chart-3" class="icon"></i>
@@ -4452,8 +4575,11 @@ function generateCompletedRequestPage() {
 // -----------------------------
 
 function generateInventoryReportsPage() {
-  // Filters: date range (not used for inventory mock) and department
-  const departments = ['All', 'IT', 'Procurement', 'Finance', 'HR', 'Admin']
+  // Filters: date range (not used for inventory mock) and categories
+  const categories = [
+    'All',
+    ...(MockData.categories || []).map((c) => c.name || c.code || c.id),
+  ]
 
   return `
         <div class="page-header">
@@ -4486,12 +4612,12 @@ function generateInventoryReportsPage() {
                 <div class="filter-grid">
                     <div class="filter-item">
                         <label class="form-label">
-                            <i data-lucide="building-2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>
-                            Department
+                            <i data-lucide="folder" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>
+                            Categories
                         </label>
-                        <select id="inventory-department-filter" class="form-select">
-                            ${departments
-                              .map((d) => `<option value="${d}">${d}</option>`)
+                        <select id="inventory-category-filter" class="form-select">
+                            ${categories
+                              .map((c) => `<option value="${c}">${c}</option>`)
                               .join('')}
                         </select>
                     </div>
@@ -4605,7 +4731,20 @@ function generateInventoryReportsPage() {
 }
 
 function generateRequisitionReportsPage() {
-  const departments = ['All', 'IT', 'Procurement', 'Finance', 'HR', 'Admin']
+  const uniqueSuppliers = [
+    'All',
+    ...[
+      ...new Set(
+        [
+          ...(AppState.newRequests || []),
+          ...(AppState.pendingRequests || []),
+          ...(AppState.completedRequests || []),
+        ]
+          .map((r) => r.supplier)
+          .filter(Boolean)
+      ),
+    ],
+  ]
 
   return `
         <div class="page-header">
@@ -4638,12 +4777,12 @@ function generateRequisitionReportsPage() {
                 <div class="filter-grid">
                     <div class="filter-item">
                         <label class="form-label">
-                            <i data-lucide="building-2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>
-                            Department
+                            <i data-lucide="truck" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>
+                            Supplier
                         </label>
-                        <select id="requisition-department-filter" class="form-select">
-                            ${departments
-                              .map((d) => `<option value="${d}">${d}</option>`)
+                        <select id="requisition-supplier-filter" class="form-select">
+                            ${uniqueSuppliers
+                              .map((s) => `<option value="${s}">${s}</option>`)
                               .join('')}
                         </select>
                     </div>
@@ -4801,7 +4940,7 @@ function generateStatusReportsPage() {
             </div>
 
             <!-- Chart Card -->
-            <div class="card chart-card">
+            <div class="card chart-card status-chart-card">
                 <div class="card-header-inline">
                     <h3 class="card-title-small">
                         <i data-lucide="pie-chart" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;"></i>
@@ -4937,19 +5076,19 @@ function renderInventoryReport() {
   const tbody = document.querySelector('#inventory-report-table tbody')
   if (!tbody) return
 
-  // Filters (department placeholder & future date filters). Products currently lack dept & date metadata.
-  const dept =
-    document.getElementById('inventory-department-filter')?.value || 'All'
+  // Filters (category placeholder & future date filters). Products currently lack category & date metadata.
+  const category =
+    document.getElementById('inventory-category-filter')?.value || 'All'
   const from = document.getElementById('inventory-date-from')?.value
   const to = document.getElementById('inventory-date-to')?.value
 
   // Source of truth: live products mutated by Stock In/Out
   let products = (MockData.products || []).map((p) => ({ ...p }))
 
-  // (Future) Department/date filters could be applied here when fields exist
-  if (dept && dept !== 'All') {
+  // (Future) Category/date filters could be applied here when fields exist
+  if (category && category !== 'All') {
     products = products.filter((p) =>
-      (p.department || '').toLowerCase().includes(dept.toLowerCase())
+      (p.category || '').toLowerCase().includes(category.toLowerCase())
     )
   }
   // if products had dateAdded or lastMovementDate we would filter via from/to
@@ -5080,8 +5219,8 @@ function renderRequisitionReport() {
   const tbody = document.querySelector('#requisition-report-table tbody')
   if (!tbody) return
 
-  const dept =
-    document.getElementById('requisition-department-filter')?.value || 'All'
+  const supplier =
+    document.getElementById('requisition-supplier-filter')?.value || 'All'
   const from = document.getElementById('requisition-date-from')?.value
   const to = document.getElementById('requisition-date-to')?.value
 
@@ -5101,10 +5240,10 @@ function renderRequisitionReport() {
       r.requestDate ? new Date(r.requestDate) <= new Date(to) : true
     )
 
-  // dept filter: assume r.department stores dept code or name
-  if (dept && dept !== 'All')
+  // supplier filter
+  if (supplier && supplier !== 'All')
     all = all.filter((r) =>
-      (r.department || '').toLowerCase().includes(dept.toLowerCase())
+      (r.supplier || '').toLowerCase().includes(supplier.toLowerCase())
     )
 
   window.__requisitionFilteredRows = all
@@ -5143,6 +5282,45 @@ function renderRequisitionChart(labels, data) {
   if (!ctx) return
   if (typeof Chart === 'undefined') return
   if (__requisitionChartInstance) __requisitionChartInstance.destroy()
+
+  // Create dynamic gradients based on data values
+  const gradients = labels.map((label, index) => {
+    const value = data[index] || 0
+    const maxValue = Math.max(...data)
+    const intensity = maxValue > 0 ? value / maxValue : 0
+
+    return (context) => {
+      const { chart } = context
+      const { ctx: c, chartArea } = chart
+      if (!chartArea) return '#6366f1'
+      const g = c.createLinearGradient(0, chartArea.bottom, 0, chartArea.top)
+
+      // Dynamic color based on value intensity
+      if (intensity > 0.8) {
+        g.addColorStop(0, '#dc2626') // red-600
+        g.addColorStop(0.5, '#ef4444') // red-500
+        g.addColorStop(1, '#f87171') // red-400
+      } else if (intensity > 0.6) {
+        g.addColorStop(0, '#ea580c') // orange-600
+        g.addColorStop(0.5, '#f97316') // orange-500
+        g.addColorStop(1, '#fb923c') // orange-400
+      } else if (intensity > 0.4) {
+        g.addColorStop(0, '#ca8a04') // yellow-600
+        g.addColorStop(0.5, '#eab308') // yellow-500
+        g.addColorStop(1, '#facc15') // yellow-400
+      } else if (intensity > 0.2) {
+        g.addColorStop(0, '#16a34a') // green-600
+        g.addColorStop(0.5, '#22c55e') // green-500
+        g.addColorStop(1, '#4ade80') // green-400
+      } else {
+        g.addColorStop(0, '#0891b2') // cyan-600
+        g.addColorStop(0.5, '#06b6d4') // cyan-500
+        g.addColorStop(1, '#22d3ee') // cyan-400
+      }
+      return g
+    }
+  })
+
   __requisitionChartInstance = new Chart(ctx.getContext('2d'), {
     type: 'bar',
     data: {
@@ -5155,18 +5333,34 @@ function renderRequisitionChart(labels, data) {
           borderSkipped: false,
           maxBarThickness: 48,
           backgroundColor: (context) => {
-            const { chart } = context
-            const { ctx: c, chartArea } = chart
-            if (!chartArea) return '#6366f1'
-            const g = c.createLinearGradient(
-              0,
-              chartArea.bottom,
-              0,
-              chartArea.top
-            )
-            g.addColorStop(0, '#f59e0b') // amber-500
-            g.addColorStop(1, '#6366f1') // indigo-500
-            return g
+            const idx = context.dataIndex
+            return gradients[idx] ? gradients[idx](context) : '#6366f1'
+          },
+          borderColor: (context) => {
+            const idx = context.dataIndex
+            const value = data[idx] || 0
+            const maxValue = Math.max(...data)
+            const intensity = maxValue > 0 ? value / maxValue : 0
+
+            if (intensity > 0.8) return '#dc2626'
+            if (intensity > 0.6) return '#ea580c'
+            if (intensity > 0.4) return '#ca8a04'
+            if (intensity > 0.2) return '#16a34a'
+            return '#0891b2'
+          },
+          borderWidth: 2,
+          hoverBorderWidth: 3,
+          hoverBorderColor: (context) => {
+            const idx = context.dataIndex
+            const value = data[idx] || 0
+            const maxValue = Math.max(...data)
+            const intensity = maxValue > 0 ? value / maxValue : 0
+
+            if (intensity > 0.8) return '#b91c1c'
+            if (intensity > 0.6) return '#c2410c'
+            if (intensity > 0.4) return '#a16207'
+            if (intensity > 0.2) return '#15803d'
+            return '#0e7490'
           },
         },
       ],
@@ -5174,42 +5368,260 @@ function renderRequisitionChart(labels, data) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: 8 },
+      layout: { padding: { top: 20, bottom: 20, left: 10, right: 10 } },
       scales: {
         x: {
           grid: { display: false },
-          ticks: { color: '#6b7280', font: { size: 12 } },
+          ticks: {
+            color: '#6b7280',
+            font: { size: 11, weight: '500' },
+            maxRotation: 45,
+            minRotation: 0,
+          },
         },
         y: {
           beginAtZero: true,
-          grid: { color: 'rgba(0,0,0,0.06)' },
+          grid: { color: 'rgba(0,0,0,0.04)', lineWidth: 1 },
           ticks: {
             color: '#6b7280',
-            font: { size: 12 },
+            font: { size: 11, weight: '500' },
             callback: (v) => formatCurrency(v),
+            padding: 8,
           },
+          border: { display: false },
         },
       },
       plugins: {
         legend: {
           display: true,
-          labels: { color: '#111827', font: { weight: '600' } },
+          labels: {
+            color: '#111827',
+            font: { weight: '600', size: 12 },
+            usePointStyle: true,
+            pointStyle: 'rectRounded',
+          },
+          position: 'top',
         },
         tooltip: {
-          callbacks: { label: (ctx) => ` ${formatCurrency(ctx.raw)}` },
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleColor: '#ffffff',
+          bodyColor: '#ffffff',
+          borderColor: 'rgba(255, 255, 255, 0.2)',
+          borderWidth: 1,
+          cornerRadius: 8,
+          displayColors: true,
+          callbacks: {
+            title: (context) => {
+              const idx = context[0].dataIndex
+              const value = data[idx] || 0
+              const maxValue = Math.max(...data)
+              const intensity = maxValue > 0 ? value / maxValue : 0
+              let status = 'Low'
+              if (intensity > 0.8) status = 'Very High'
+              else if (intensity > 0.6) status = 'High'
+              else if (intensity > 0.4) status = 'Medium-High'
+              else if (intensity > 0.2) status = 'Medium'
+              return `${context[0].label} (${status} Value)`
+            },
+            label: (context) => {
+              const value = context.raw
+              const maxValue = Math.max(...data)
+              const percentage =
+                maxValue > 0 ? ((value / maxValue) * 100).toFixed(1) : '0.0'
+              return [
+                `Amount: ${formatCurrency(value)}`,
+                `Percentage: ${percentage}% of max`,
+                `Rank: ${data.filter((v) => v > value).length + 1} of ${
+                  data.length
+                } suppliers`,
+              ]
+            },
+          },
         },
         title: {
           display: true,
           text: 'Requisition Totals by Supplier',
           color: '#111827',
-          font: { weight: '600', size: 14 },
+          font: { weight: '700', size: 16 },
+          padding: { top: 10, bottom: 20 },
         },
-        valueDataLabels: { display: true, format: 'currency' },
+        valueDataLabels: {
+          display: true,
+          format: 'currency',
+          color: '#ffffff',
+          font: { weight: 'bold', size: 11 },
+          anchor: 'center',
+          align: 'center',
+          backgroundColor: 'rgba(0, 0, 0, 0.1)',
+          borderRadius: 4,
+        },
       },
-      animation: { duration: 600, easing: 'easeOutQuart' },
+      animation: {
+        duration: 800,
+        easing: 'easeOutQuart',
+        delay: (context) => context.dataIndex * 50, // Staggered animation
+      },
+      onHover: (event, activeElements) => {
+        event.native.target.style.cursor =
+          activeElements.length > 0 ? 'pointer' : 'default'
+        if (activeElements.length > 0) {
+          const dataIndex = activeElements[0].index
+          const bar = activeElements[0].element
+          // Add subtle glow effect on hover
+          if (bar && bar.options) {
+            bar.options.borderWidth = 4
+            bar.options.shadowBlur = 15
+            bar.options.shadowColor = (() => {
+              const value = data[dataIndex] || 0
+              const maxValue = Math.max(...data)
+              const intensity = maxValue > 0 ? value / maxValue : 0
+
+              if (intensity > 0.8) return '#dc2626'
+              if (intensity > 0.6) return '#ea580c'
+              if (intensity > 0.4) return '#ca8a04'
+              if (intensity > 0.2) return '#16a34a'
+              return '#0891b2'
+            })()
+          }
+        }
+      },
+      onLeave: (event, activeElements) => {
+        // Reset glow effect when leaving
+        if (activeElements.length === 0) {
+          event.native.target.style.cursor = 'default'
+        }
+      },
+      onClick: (event, elements) => {
+        if (elements.length > 0) {
+          const dataIndex = elements[0].index
+          const supplierName = labels[dataIndex]
+          const totalAmount = data[dataIndex]
+
+          // Create a detailed supplier info popup
+          showSupplierDetailPopup(
+            supplierName,
+            totalAmount,
+            dataIndex + 1,
+            data.length
+          )
+        }
+      },
     },
     plugins: [ValueDataLabelsPlugin],
   })
+}
+
+// Function to show detailed supplier information popup
+function showSupplierDetailPopup(
+  supplierName,
+  totalAmount,
+  rank,
+  totalSuppliers
+) {
+  // Remove existing popup if any
+  const existing = document.getElementById('supplier-detail-popup')
+  if (existing) existing.remove()
+
+  const popup = document.createElement('div')
+  popup.id = 'supplier-detail-popup'
+  popup.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    z-index: 1000;
+    max-width: 450px;
+    width: 90%;
+    padding: 24px;
+    border: 1px solid #e5e7eb;
+  `
+
+  // Determine color based on rank
+  const rankPercentage = (rank / totalSuppliers) * 100
+  let statusColor, statusBg, statusText, iconName
+  if (rankPercentage <= 25) {
+    statusColor = '#dc2626'
+    statusBg = '#fef2f2'
+    statusText = 'Top Performer'
+    iconName = 'trophy'
+  } else if (rankPercentage <= 50) {
+    statusColor = '#ea580c'
+    statusBg = '#fff7ed'
+    statusText = 'High Performer'
+    iconName = 'star'
+  } else if (rankPercentage <= 75) {
+    statusColor = '#ca8a04'
+    statusBg = '#fffbeb'
+    statusText = 'Medium Performer'
+    iconName = 'trending-up'
+  } else {
+    statusColor = '#16a34a'
+    statusBg = '#f0fdf4'
+    statusText = 'Growing Supplier'
+    iconName = 'trending-up'
+  }
+
+  popup.innerHTML = `
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+      <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #111827;">Supplier Details</h3>
+      <button onclick="this.closest('#supplier-detail-popup').remove()" style="background: none; border: none; color: #6b7280; cursor: pointer; padding: 4px;">
+        <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+      </button>
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <div style="font-size: 16px; font-weight: 600; color: #111827; margin-bottom: 4px;">${supplierName}</div>
+      <div style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; background: ${statusBg}; color: ${statusColor}; font-size: 12px; font-weight: 500;">
+        <i data-lucide="${iconName}" style="width: 14px; height: 14px;"></i>
+        ${statusText}
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+      <div>
+        <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Total Amount</div>
+        <div style="font-size: 24px; font-weight: 700; color: #111827;">${formatCurrency(
+          totalAmount
+        )}</div>
+        <div style="font-size: 12px; color: #6b7280;">₱ Philippine Peso</div>
+      </div>
+      <div>
+        <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Ranking</div>
+        <div style="font-size: 24px; font-weight: 700; color: #111827;">#${rank}</div>
+        <div style="font-size: 12px; color: #6b7280;">of ${totalSuppliers} suppliers</div>
+      </div>
+    </div>
+
+    <div style="background: #f9fafb; padding: 12px; border-radius: 8px; border: 1px solid #e5e7eb;">
+      <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Performance Summary</div>
+      <div style="font-size: 14px; color: #111827;">
+        This supplier ranks ${rank} out of ${totalSuppliers} suppliers by total requisition amount.
+        ${
+          rank === 1
+            ? 'They are the top supplier by volume.'
+            : `They are performing ${
+                rankPercentage <= 50 ? 'above' : 'below'
+              } average compared to other suppliers.`
+        }
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(popup)
+  lucide.createIcons()
+
+  // Add click outside to close
+  setTimeout(() => {
+    document.addEventListener('click', function closePopup(e) {
+      if (!popup.contains(e.target)) {
+        popup.remove()
+        document.removeEventListener('click', closePopup)
+      }
+    })
+  }, 0)
 }
 
 function renderStatusReport() {
@@ -5404,7 +5816,7 @@ function numberWithCommas(x) {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
-// Lightweight plugin to draw values above bars
+// Enhanced Value Data Labels Plugin with better styling
 const ValueDataLabelsPlugin = {
   id: 'valueDataLabels',
   afterDatasetsDraw(chart, args, pluginOptions) {
@@ -5415,18 +5827,43 @@ const ValueDataLabelsPlugin = {
     const meta = chart.getDatasetMeta(datasetIndex)
     if (!meta?.data) return
     ctx.save()
-    ctx.fillStyle = pluginOptions?.color || '#111827'
-    ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial'
     ctx.textAlign = 'center'
-    ctx.textBaseline = 'bottom'
+    ctx.textBaseline = 'middle'
+    ctx.font =
+      pluginOptions?.font ||
+      'bold 11px system-ui, -apple-system, Segoe UI, Roboto, Arial'
+
     meta.data.forEach((el, i) => {
       const raw = chart.data?.datasets?.[datasetIndex]?.data?.[i]
       if (raw === undefined || raw === null) return
       const format = chart.options?.plugins?.valueDataLabels?.format
       const text =
         format === 'currency' ? formatCurrency(raw) : numberWithCommas(raw)
+
+      // Position at center of bar
       const x = el.x
-      const y = el.y - 6
+      const y = el.y + el.height / 2
+
+      // Draw background for better readability
+      const padding = 4
+      const textWidth = ctx.measureText(text).width
+      const bgColor = pluginOptions?.backgroundColor || 'rgba(0, 0, 0, 0.15)'
+      const borderRadius = pluginOptions?.borderRadius || 3
+
+      // Draw rounded background
+      ctx.fillStyle = bgColor
+      ctx.beginPath()
+      ctx.roundRect(
+        x - textWidth / 2 - padding,
+        y - 8,
+        textWidth + padding * 2,
+        16,
+        borderRadius
+      )
+      ctx.fill()
+
+      // Draw text
+      ctx.fillStyle = pluginOptions?.color || '#ffffff'
       ctx.fillText(text, x, y)
     })
     ctx.restore()
@@ -5458,6 +5895,103 @@ const DoughnutCenterTextPlugin = {
 }
 
 // Chart renderers
+// Function to show detailed product information popup
+function showProductDetailPopup(
+  productName,
+  stockLevel,
+  isLowStock,
+  threshold
+) {
+  // Remove existing popup if any
+  const existing = document.getElementById('product-detail-popup')
+  if (existing) existing.remove()
+
+  const popup = document.createElement('div')
+  popup.id = 'product-detail-popup'
+  popup.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    z-index: 1000;
+    max-width: 400px;
+    width: 90%;
+    padding: 24px;
+    border: 1px solid #e5e7eb;
+  `
+
+  const statusColor = isLowStock ? '#dc2626' : '#059669'
+  const statusBg = isLowStock ? '#fef2f2' : '#f0fdf4'
+  const statusText = isLowStock ? 'Low Stock Alert' : 'Adequate Stock'
+
+  popup.innerHTML = `
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+      <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #111827;">Product Details</h3>
+      <button onclick="this.closest('#product-detail-popup').remove()" style="background: none; border: none; color: #6b7280; cursor: pointer; padding: 4px;">
+        <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+      </button>
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <div style="font-size: 16px; font-weight: 600; color: #111827; margin-bottom: 4px;">${productName}</div>
+      <div style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; background: ${statusBg}; color: ${statusColor}; font-size: 12px; font-weight: 500;">
+        <i data-lucide="${
+          isLowStock ? 'alert-triangle' : 'check-circle'
+        }" style="width: 14px; height: 14px;"></i>
+        ${statusText}
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+      <div>
+        <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Current Stock</div>
+        <div style="font-size: 24px; font-weight: 700; color: #111827;">${numberWithCommas(
+          stockLevel
+        )}</div>
+        <div style="font-size: 12px; color: #6b7280;">units</div>
+      </div>
+      <div>
+        <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Threshold</div>
+        <div style="font-size: 24px; font-weight: 700; color: #111827;">${numberWithCommas(
+          threshold
+        )}</div>
+        <div style="font-size: 12px; color: #6b7280;">units</div>
+      </div>
+    </div>
+
+    <div style="background: #f9fafb; padding: 12px; border-radius: 8px; border: 1px solid #e5e7eb;">
+      <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Stock Status</div>
+      <div style="font-size: 14px; color: #111827;">
+        ${
+          stockLevel <= threshold
+            ? `⚠️ Stock level is below the minimum threshold of ${numberWithCommas(
+                threshold
+              )} units. Consider restocking soon.`
+            : `✅ Stock level is adequate with ${numberWithCommas(
+                stockLevel - threshold
+              )} units above the minimum threshold.`
+        }
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(popup)
+  lucide.createIcons()
+
+  // Add click outside to close
+  setTimeout(() => {
+    document.addEventListener('click', function closePopup(e) {
+      if (!popup.contains(e.target)) {
+        popup.remove()
+        document.removeEventListener('click', closePopup)
+      }
+    })
+  }, 0)
+}
+
 let __inventoryChartInstance = null
 function renderInventoryChart(labels, data, opts = {}) {
   const ctx = document.getElementById('inventory-chart')
@@ -5468,6 +6002,8 @@ function renderInventoryChart(labels, data, opts = {}) {
   const lowMask = Array.isArray(opts.lowMask)
     ? opts.lowMask
     : labels.map(() => false)
+
+  // Enhanced Threshold Line Plugin with better styling
   const ThresholdLinePlugin = {
     id: 'thresholdLine',
     afterDatasetsDraw(chart) {
@@ -5476,22 +6012,46 @@ function renderInventoryChart(labels, data, opts = {}) {
       if (!chartArea || !scales?.y) return
       const y = scales.y.getPixelForValue(threshold)
       ctx.save()
-      ctx.strokeStyle = '#ef4444'
-      ctx.setLineDash([4, 4])
-      ctx.lineWidth = 1.5
+
+      // Draw threshold line with gradient effect
+      const gradient = ctx.createLinearGradient(
+        chartArea.left,
+        y,
+        chartArea.right,
+        y
+      )
+      gradient.addColorStop(0, 'rgba(239, 68, 68, 0)')
+      gradient.addColorStop(0.5, 'rgba(239, 68, 68, 0.8)')
+      gradient.addColorStop(1, 'rgba(239, 68, 68, 0)')
+
+      ctx.strokeStyle = gradient
+      ctx.setLineDash([8, 4])
+      ctx.lineWidth = 2
       ctx.beginPath()
       ctx.moveTo(chartArea.left, y)
       ctx.lineTo(chartArea.right, y)
       ctx.stroke()
+
+      // Add threshold label with background
       ctx.setLineDash([])
-      ctx.fillStyle = '#ef4444'
-      ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial'
-      ctx.textAlign = 'right'
-      ctx.fillText(
-        `Threshold: ${numberWithCommas(threshold)}`,
-        chartArea.right - 4,
-        y - 6
-      )
+      ctx.fillStyle = '#dc2626'
+      ctx.font = 'bold 12px system-ui, -apple-system, Segoe UI, Roboto, Arial'
+      const label = `Low Stock Threshold: ${numberWithCommas(threshold)}`
+      const labelWidth = ctx.measureText(label).width
+      const labelX = chartArea.right - labelWidth - 8
+      const labelY = y - 8
+
+      // Draw label background
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
+      ctx.fillRect(labelX - 4, labelY - 14, labelWidth + 8, 18)
+      ctx.strokeStyle = '#dc2626'
+      ctx.lineWidth = 1
+      ctx.strokeRect(labelX - 4, labelY - 14, labelWidth + 8, 18)
+
+      // Draw label text
+      ctx.fillStyle = '#dc2626'
+      ctx.fillText(label, labelX, labelY)
+
       ctx.restore()
     },
   }
@@ -5504,16 +6064,16 @@ function renderInventoryChart(labels, data, opts = {}) {
         {
           label: 'Current Stock',
           data,
-          borderRadius: 8,
+          borderRadius: 6,
           borderSkipped: false,
-          maxBarThickness: 48,
+          maxBarThickness: 50,
           backgroundColor: (context) => {
             const idx = context?.dataIndex ?? 0
-            // Low items get warm gradient, others cool gradient
             const low = !!lowMask[idx]
             const { chart } = context
             const { ctx: c, chartArea } = chart
-            if (!chartArea) return low ? '#f97316' : '#3b82f6'
+            if (!chartArea) return low ? '#f87171' : '#10b981'
+
             const g = c.createLinearGradient(
               0,
               chartArea.bottom,
@@ -5521,13 +6081,27 @@ function renderInventoryChart(labels, data, opts = {}) {
               chartArea.top
             )
             if (low) {
-              g.addColorStop(0, '#f97316') // orange-500
-              g.addColorStop(1, '#ef4444') // red-500
+              // Enhanced low stock gradient (red to orange)
+              g.addColorStop(0, '#f87171') // red-400
+              g.addColorStop(0.5, '#fb923c') // orange-400
+              g.addColorStop(1, '#dc2626') // red-600
             } else {
-              g.addColorStop(0, '#22c55e') // green-500
-              g.addColorStop(1, '#3b82f6') // blue-500
+              // Enhanced normal stock gradient (green to teal)
+              g.addColorStop(0, '#10b981') // emerald-500
+              g.addColorStop(0.5, '#14b8a6') // teal-500
+              g.addColorStop(1, '#059669') // emerald-600
             }
             return g
+          },
+          borderColor: (context) => {
+            const idx = context?.dataIndex ?? 0
+            return !!lowMask[idx] ? '#dc2626' : '#059669'
+          },
+          borderWidth: 1,
+          hoverBorderWidth: 2,
+          hoverBorderColor: (context) => {
+            const idx = context?.dataIndex ?? 0
+            return !!lowMask[idx] ? '#b91c1c' : '#047857'
           },
         },
       ],
@@ -5535,42 +6109,127 @@ function renderInventoryChart(labels, data, opts = {}) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: 8 },
+      layout: { padding: { top: 20, bottom: 20, left: 10, right: 10 } },
       scales: {
         x: {
           grid: { display: false },
-          ticks: { color: '#6b7280', font: { size: 12 } },
+          ticks: {
+            color: '#6b7280',
+            font: { size: 11, weight: '500' },
+            maxRotation: 45,
+            minRotation: 0,
+          },
         },
         y: {
           beginAtZero: true,
-          grid: { color: 'rgba(0,0,0,0.06)' },
+          grid: { color: 'rgba(0,0,0,0.04)', lineWidth: 1 },
           ticks: {
             color: '#6b7280',
-            font: { size: 12 },
+            font: { size: 11, weight: '500' },
             callback: (v) => numberWithCommas(v),
+            padding: 8,
           },
+          border: { display: false },
         },
       },
       plugins: {
         legend: {
           display: true,
-          labels: { color: '#111827', font: { weight: '600' } },
+          labels: {
+            color: '#111827',
+            font: { weight: '600', size: 12 },
+            usePointStyle: true,
+            pointStyle: 'rectRounded',
+          },
+          position: 'top',
         },
         tooltip: {
-          callbacks: { label: (ctx) => ` ${numberWithCommas(ctx.raw)}` },
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleColor: '#ffffff',
+          bodyColor: '#ffffff',
+          borderColor: 'rgba(255, 255, 255, 0.2)',
+          borderWidth: 1,
+          cornerRadius: 8,
+          displayColors: true,
+          callbacks: {
+            title: (context) => {
+              const idx = context[0].dataIndex
+              const low = !!lowMask[idx]
+              return `${context[0].label} ${low ? '(Low Stock)' : ''}`
+            },
+            label: (context) => {
+              const value = context.raw
+              const threshold = opts.threshold || 0
+              const status =
+                value <= threshold ? '⚠️ Low Stock' : '✅ Adequate Stock'
+              return [
+                `Stock: ${numberWithCommas(value)} units`,
+                `Status: ${status}`,
+                `Threshold: ${numberWithCommas(threshold)} units`,
+              ]
+            },
+          },
         },
         title: {
           display: true,
           text:
             opts?.totalItems && opts?.topN && opts.totalItems > opts.topN
-              ? `Inventory Stock (Top ${opts.topN} of ${opts.totalItems})`
-              : 'Inventory Stock by Product',
+              ? `Top ${opts.topN} Products by Stock (${opts.totalItems} total products)`
+              : 'Product Stock Levels',
           color: '#111827',
-          font: { weight: '600', size: 14 },
+          font: { weight: '700', size: 16 },
+          padding: { top: 10, bottom: 20 },
         },
-        valueDataLabels: { display: true, format: 'number' },
+        valueDataLabels: {
+          display: true,
+          format: 'number',
+          color: '#ffffff',
+          font: { weight: 'bold', size: 11 },
+          anchor: 'center',
+          align: 'center',
+          backgroundColor: 'rgba(0, 0, 0, 0.1)',
+          borderRadius: 4,
+        },
       },
-      animation: { duration: 600, easing: 'easeOutQuart' },
+      animation: {
+        duration: 800,
+        easing: 'easeOutQuart',
+        delay: (context) => context.dataIndex * 50, // Staggered animation
+      },
+      onHover: (event, activeElements) => {
+        event.native.target.style.cursor =
+          activeElements.length > 0 ? 'pointer' : 'default'
+        if (activeElements.length > 0) {
+          const dataIndex = activeElements[0].index
+          const bar = activeElements[0].element
+          // Add subtle glow effect on hover
+          if (bar && bar.options) {
+            bar.options.borderWidth = 3
+            bar.options.shadowBlur = 10
+            bar.options.shadowColor = !!lowMask[dataIndex]
+              ? '#dc2626'
+              : '#059669'
+          }
+        }
+      },
+      onLeave: (event, activeElements) => {
+        // Reset glow effect when leaving
+        if (activeElements.length === 0) {
+          event.native.target.style.cursor = 'default'
+        }
+      },
+      onClick: (event, elements) => {
+        if (elements.length > 0) {
+          const dataIndex = elements[0].index
+          const productName = labels[dataIndex]
+          const stockLevel = data[dataIndex]
+          const isLowStock = !!lowMask[dataIndex]
+          const threshold = opts.threshold || 0
+
+          // Create a detailed info popup
+          showProductDetailPopup(productName, stockLevel, isLowStock, threshold)
+        }
+      },
     },
     plugins: [ValueDataLabelsPlugin, ThresholdLinePlugin],
   })
@@ -5583,10 +6242,101 @@ function renderStatusChart(labels, data) {
   if (typeof Chart === 'undefined') return
   if (__statusChartInstance) __statusChartInstance.destroy()
 
-  // Generate colors based on actual status labels
-  const backgroundColors = labels.map((label) =>
-    getStatusColor(label.toLowerCase())
-  )
+  // Generate enhanced colors and gradients based on status labels
+  const statusConfigs = labels.map((label) => {
+    const status = label.toLowerCase()
+    const baseColor = getStatusColor(status)
+
+    // Create gradient for each status
+    const gradient = (context) => {
+      const { chart } = context
+      const { ctx: c, chartArea } = chart
+      if (!chartArea) return baseColor
+
+      const g = c.createLinearGradient(
+        chartArea.left,
+        chartArea.top,
+        chartArea.right,
+        chartArea.bottom
+      )
+
+      // Different gradient patterns for different statuses
+      if (
+        status.includes('active') ||
+        status.includes('completed') ||
+        status.includes('approved')
+      ) {
+        g.addColorStop(0, baseColor)
+        g.addColorStop(0.5, lightenColor(baseColor, 20))
+        g.addColorStop(1, baseColor)
+      } else if (
+        status.includes('pending') ||
+        status.includes('under-review')
+      ) {
+        g.addColorStop(0, baseColor)
+        g.addColorStop(0.5, baseColor)
+        g.addColorStop(1, lightenColor(baseColor, 30))
+      } else if (status.includes('cancelled') || status.includes('returned')) {
+        g.addColorStop(0, darkenColor(baseColor, 20))
+        g.addColorStop(0.5, baseColor)
+        g.addColorStop(1, lightenColor(baseColor, 10))
+      } else {
+        g.addColorStop(0, baseColor)
+        g.addColorStop(1, lightenColor(baseColor, 15))
+      }
+
+      return g
+    }
+
+    return {
+      baseColor,
+      gradient,
+      borderColor: darkenColor(baseColor, 30),
+      hoverColor: lightenColor(baseColor, 10),
+    }
+  })
+
+  // Enhanced Doughnut Center Text Plugin with better styling
+  const EnhancedDoughnutCenterTextPlugin = {
+    id: 'enhancedDoughnutCenterText',
+    afterDraw(chart, args, opts) {
+      if (chart.config.type !== 'doughnut') return
+      const dataset = chart.config.data?.datasets?.[0]
+      if (!dataset || !Array.isArray(dataset.data)) return
+      const total = dataset.data.reduce((a, b) => a + (Number(b) || 0), 0)
+      const { ctx, chartArea } = chart
+      if (!chartArea) return
+      const cx = (chartArea.left + chartArea.right) / 2
+      const cy = (chartArea.top + chartArea.bottom) / 2
+      ctx.save()
+
+      // Draw outer circle background
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+      ctx.beginPath()
+      ctx.arc(cx, cy, 45, 0, 2 * Math.PI)
+      ctx.fill()
+
+      // Draw inner circle border
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.arc(cx, cy, 40, 0, 2 * Math.PI)
+      ctx.stroke()
+
+      // Draw total number
+      ctx.textAlign = 'center'
+      ctx.fillStyle = opts?.color || '#111827'
+      ctx.font = 'bold 24px system-ui, -apple-system, Segoe UI, Roboto, Arial'
+      ctx.fillText(numberWithCommas(total), cx, cy - 5)
+
+      // Draw "Total" label
+      ctx.font = '600 12px system-ui, -apple-system, Segoe UI, Roboto, Arial'
+      ctx.fillStyle = '#6b7280'
+      ctx.fillText('Total Requests', cx, cy + 15)
+
+      ctx.restore()
+    },
+  }
 
   __statusChartInstance = new Chart(ctx.getContext('2d'), {
     type: 'doughnut',
@@ -5595,54 +6345,326 @@ function renderStatusChart(labels, data) {
       datasets: [
         {
           data,
-          backgroundColor: backgroundColors,
-          borderWidth: 2,
-          borderColor: '#ffffff',
+          backgroundColor: (context) => {
+            const idx = context.dataIndex
+            return statusConfigs[idx]?.gradient(context) || '#6366f1'
+          },
+          borderColor: statusConfigs.map((config) => config.borderColor),
+          borderWidth: 3,
+          borderRadius: 8,
+          hoverBorderWidth: 4,
+          hoverBorderColor: statusConfigs.map((config) => config.hoverColor),
+          hoverOffset: 8,
+          shadowOffsetX: 0,
+          shadowOffsetY: 4,
+          shadowBlur: 12,
+          shadowColor: 'rgba(0, 0, 0, 0.15)',
         },
       ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      cutout: '62%',
-      layout: { padding: 8 },
+      cutout: '70%',
+      layout: { padding: { top: 20, bottom: 20, left: 20, right: 20 } },
       plugins: {
         legend: {
-          position: 'top',
-          labels: { color: '#111827', boxWidth: 12, usePointStyle: true },
+          position: 'bottom',
+          align: 'center',
+          labels: {
+            color: '#111827',
+            font: { weight: '600', size: 13 },
+            usePointStyle: true,
+            pointStyle: 'rectRounded',
+            padding: 20,
+            generateLabels: (chart) => {
+              const data = chart.data
+              if (data.labels.length && data.datasets.length) {
+                return data.labels.map((label, i) => {
+                  const value = data.datasets[0].data[i]
+                  const total = data.datasets[0].data.reduce((a, b) => a + b, 0)
+                  const percentage = total
+                    ? ((value / total) * 100).toFixed(1)
+                    : '0.0'
+
+                  return {
+                    text: `${label}: ${numberWithCommas(
+                      value
+                    )} (${percentage}%)`,
+                    fillStyle: statusConfigs[i]?.baseColor || '#6366f1',
+                    strokeStyle: statusConfigs[i]?.borderColor || '#6366f1',
+                    lineWidth: 2,
+                    hidden: false,
+                    index: i,
+                  }
+                })
+              }
+              return []
+            },
+          },
         },
         tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.9)',
+          titleColor: '#ffffff',
+          bodyColor: '#ffffff',
+          borderColor: 'rgba(255, 255, 255, 0.2)',
+          borderWidth: 1,
+          cornerRadius: 12,
+          displayColors: true,
+          padding: 16,
+          titleFont: { size: 14, weight: '600' },
+          bodyFont: { size: 13 },
           callbacks: {
-            label: (ctx) => {
-              const total = ctx.dataset.data.reduce(
+            title: (context) => {
+              return context[0].label
+            },
+            label: (context) => {
+              const total = context.dataset.data.reduce(
                 (a, b) => a + (Number(b) || 0),
                 0
               )
-              const val = Number(ctx.raw) || 0
+              const val = Number(context.raw) || 0
               const pct = total ? ((val / total) * 100).toFixed(1) : '0.0'
-              return ` ${ctx.label}: ${numberWithCommas(val)} (${pct}%)`
+              const status = context.label.toLowerCase()
+
+              let statusEmoji = '📋'
+              if (status.includes('completed') || status.includes('approved'))
+                statusEmoji = '✅'
+              else if (
+                status.includes('pending') ||
+                status.includes('under-review')
+              )
+                statusEmoji = '⏳'
+              else if (status.includes('cancelled')) statusEmoji = '❌'
+              else if (status.includes('active')) statusEmoji = '🔄'
+
+              return [
+                `${statusEmoji} Count: ${numberWithCommas(val)}`,
+                `📊 Percentage: ${pct}%`,
+                `🎯 Status: ${context.label}`,
+              ]
             },
           },
         },
         title: {
           display: true,
-          text: 'Requests by Status',
+          text: 'Request Status Distribution',
           color: '#111827',
-          font: { weight: '600', size: 14 },
+          font: { weight: '700', size: 18 },
+          padding: { top: 10, bottom: 30 },
         },
-        doughnutCenterText: { color: '#111827' },
+        enhancedDoughnutCenterText: { color: '#111827' },
       },
-      animation: { animateScale: true, animateRotate: true },
+      animation: {
+        animateScale: true,
+        animateRotate: true,
+        duration: 1200,
+        easing: 'easeOutQuart',
+        delay: (context) => context.dataIndex * 100, // Staggered animation
+      },
+      onHover: (event, activeElements) => {
+        event.native.target.style.cursor =
+          activeElements.length > 0 ? 'pointer' : 'default'
+
+        if (activeElements.length > 0) {
+          const dataIndex = activeElements[0].index
+          const segment = activeElements[0].element
+
+          // Add glow effect on hover
+          if (segment && segment.options) {
+            segment.options.borderWidth = 5
+            segment.options.shadowBlur = 20
+            segment.options.shadowColor =
+              statusConfigs[dataIndex]?.hoverColor || '#6366f1'
+          }
+
+          // Show detailed popup
+          showStatusDetailPopup(
+            labels[dataIndex],
+            data[dataIndex],
+            dataIndex,
+            data
+          )
+        }
+      },
+      onLeave: (event, activeElements) => {
+        // Reset glow effect when leaving
+        if (activeElements.length === 0) {
+          event.native.target.style.cursor = 'default'
+        }
+      },
+      onClick: (event, elements) => {
+        if (elements.length > 0) {
+          const dataIndex = elements[0].index
+          const status = labels[dataIndex]
+          const count = data[dataIndex]
+
+          // Trigger status details modal
+          showStatusDetails(status)
+        }
+      },
     },
-    plugins: [DoughnutCenterTextPlugin],
+    plugins: [EnhancedDoughnutCenterTextPlugin],
   })
+}
+
+// Helper functions for color manipulation
+function lightenColor(color, percent) {
+  // Convert hex to RGB
+  const num = parseInt(color.replace('#', ''), 16)
+  const amt = Math.round(2.55 * percent)
+  const R = (num >> 16) + amt
+  const G = ((num >> 8) & 0x00ff) + amt
+  const B = (num & 0x0000ff) + amt
+  return (
+    '#' +
+    (
+      0x1000000 +
+      (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
+      (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 +
+      (B < 255 ? (B < 1 ? 0 : B) : 255)
+    )
+      .toString(16)
+      .slice(1)
+  )
+}
+
+function darkenColor(color, percent) {
+  const num = parseInt(color.replace('#', ''), 16)
+  const amt = Math.round(2.55 * percent)
+  const R = (num >> 16) - amt
+  const G = ((num >> 8) & 0x00ff) - amt
+  const B = (num & 0x0000ff) - amt
+  return (
+    '#' +
+    (
+      0x1000000 +
+      (R > 255 ? 255 : R < 0 ? 0 : R) * 0x10000 +
+      (G > 255 ? 255 : G < 0 ? 0 : G) * 0x100 +
+      (B > 255 ? 255 : B < 0 ? 0 : B)
+    )
+      .toString(16)
+      .slice(1)
+  )
+}
+
+// Function to show detailed status information popup
+function showStatusDetailPopup(status, count, index, allData) {
+  // Remove existing popup if any
+  const existing = document.getElementById('status-detail-popup')
+  if (existing) existing.remove()
+
+  const total = allData.reduce((a, b) => a + b, 0)
+  const percentage = total ? ((count / total) * 100).toFixed(1) : '0.0'
+  const statusColor = getStatusColor(status.toLowerCase())
+
+  const popup = document.createElement('div')
+  popup.id = 'status-detail-popup'
+  popup.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    z-index: 1000;
+    max-width: 380px;
+    width: 90%;
+    padding: 24px;
+    border: 1px solid #e5e7eb;
+  `
+
+  let statusEmoji = '📋'
+  let statusDescription = 'Standard status'
+  if (
+    status.toLowerCase().includes('completed') ||
+    status.toLowerCase().includes('approved')
+  ) {
+    statusEmoji = '✅'
+    statusDescription = 'Successfully processed requests'
+  } else if (
+    status.toLowerCase().includes('pending') ||
+    status.toLowerCase().includes('under-review')
+  ) {
+    statusEmoji = '⏳'
+    statusDescription = 'Awaiting further action'
+  } else if (status.toLowerCase().includes('cancelled')) {
+    statusEmoji = '❌'
+    statusDescription = 'Requests that were cancelled'
+  } else if (status.toLowerCase().includes('active')) {
+    statusEmoji = '🔄'
+    statusDescription = 'Currently active requests'
+  }
+
+  popup.innerHTML = `
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+      <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #111827;">Status Details</h3>
+      <button onclick="this.closest('#status-detail-popup').remove()" style="background: none; border: none; color: #6b7280; cursor: pointer; padding: 4px;">
+        <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+      </button>
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <div style="font-size: 16px; font-weight: 600; color: #111827; margin-bottom: 4px;">${status}</div>
+      <div style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; background: ${lightenColor(
+        statusColor,
+        40
+      )}; color: ${statusColor}; font-size: 12px; font-weight: 500;">
+        <span style="font-size: 14px;">${statusEmoji}</span>
+        ${statusDescription}
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+      <div>
+        <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Total Count</div>
+        <div style="font-size: 28px; font-weight: 700; color: #111827;">${numberWithCommas(
+          count
+        )}</div>
+        <div style="font-size: 12px; color: #6b7280;">requests</div>
+      </div>
+      <div>
+        <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Percentage</div>
+        <div style="font-size: 28px; font-weight: 700; color: ${statusColor};">${percentage}%</div>
+        <div style="font-size: 12px; color: #6b7280;">of all requests</div>
+      </div>
+    </div>
+
+    <div style="background: #f9fafb; padding: 16px; border-radius: 12px; border: 1px solid #e5e7eb;">
+      <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Quick Stats</div>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 14px; color: #111827;">Rank among statuses:</span>
+        <span style="font-size: 14px; font-weight: 600; color: ${statusColor};">#${
+    index + 1
+  } of ${allData.length}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+        <span style="font-size: 14px; color: #111827;">Click to view details</span>
+        <span style="font-size: 14px; font-weight: 600; color: #6b7280;">→</span>
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(popup)
+  lucide.createIcons()
+
+  // Add click outside to close
+  setTimeout(() => {
+    document.addEventListener('click', function closePopup(e) {
+      if (!popup.contains(e.target)) {
+        popup.remove()
+        document.removeEventListener('click', closePopup)
+      }
+    })
+  }, 0)
 }
 
 // Hook filters and export buttons after page load
 function initializeReportPageEvents(pageId) {
   if (pageId === 'inventory-reports') {
     document
-      .getElementById('inventory-department-filter')
+      .getElementById('inventory-category-filter')
       ?.addEventListener('change', renderInventoryReport)
     document
       .getElementById('inventory-date-from')
@@ -5670,7 +6692,7 @@ function initializeReportPageEvents(pageId) {
   }
   if (pageId === 'requisition-reports') {
     document
-      .getElementById('requisition-department-filter')
+      .getElementById('requisition-supplier-filter')
       ?.addEventListener('change', renderRequisitionReport)
     document
       .getElementById('requisition-date-from')
@@ -13722,24 +14744,26 @@ async function initStatusManagement(filter = 'all') {
       </div>
 
             <!-- Table -->
-            <table class="request-table">
-                <thead>
-                    <tr>
-                        <th>Request ID</th>
-                        <th>Requester</th>
-                        <th>Department</th>
-                        <th>Item</th>
-                        <th>Priority</th>
-                        <th>Date Updated</th>
-                        <th>Action</th>
-                        <th>Cost</th>
-                        <th>Remarks</th>
-                    </tr>
-                </thead>
-                <tbody id="status-table-body">
-                    ${renderStatusRows(filter)}
-                </tbody>
-            </table>
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Request ID</th>
+                            <th>Requester</th>
+                            <th>Department</th>
+                            <th>Item</th>
+                            <th>Priority</th>
+                            <th>Date Updated</th>
+                            <th>Action</th>
+                            <th>Cost</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody id="status-table-body">
+                        ${renderStatusRows(filter)}
+                    </tbody>
+                </table>
+            </div>
             </div>
         </div>
     `
