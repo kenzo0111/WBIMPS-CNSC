@@ -2296,6 +2296,40 @@ function generateDashboardPage() {
         </div>
         
         <div class="page-content">
+            <!-- Hero Section -->
+            <div class="hero-section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 32px; margin-bottom: 24px; color: white; box-shadow: 0 8px 24px rgba(102, 126, 234, 0.25); position: relative; overflow: hidden;">
+                <div style="background: url('data:image/svg+xml,%3csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3e%3ccircle cx=%2220%22 cy=%2220%22 r=%222%22 fill=%22rgba(255,255,255,0.1)%22/%3e%3ccircle cx=%2280%22 cy=%2280%22 r=%222%22 fill=%22rgba(255,255,255,0.1)%22/%3e%3ccircle cx=%2260%22 cy=%2230%22 r=%221%22 fill=%22rgba(255,255,255,0.1)%22/%3e%3ccircle cx=%2230%22 cy=%2270%22 r=%221.5%22 fill=%22rgba(255,255,255,0.1)%22/%3e%3c/svg%3e') no-repeat center; background-size: cover; position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0.1;"></div>
+                <div style="position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="flex: 1;">
+                        <h2 style="margin: 0 0 8px 0; font-size: 28px; font-weight: 700; display: flex; align-items: center; gap: 12px;">
+                            <i data-lucide="sun" style="width: 32px; height: 32px; opacity: 0.9;"></i>
+                            Good ${(() => {
+                              const hour = new Date().getHours()
+                              if (hour < 12) return 'morning'
+                              if (hour < 17) return 'afternoon'
+                              return 'evening'
+                            })()}, ${AppState.currentUser.name.split(' ')[0]}!
+                        </h2>
+                        <p style="margin: 0; font-size: 16px; opacity: 0.9;">Welcome to your Supply System dashboard. Here's what's happening today.</p>
+                    </div>
+                    <div style="text-align: right; background: rgba(255,255,255,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2);">
+                        <div style="font-size: 18px; font-weight: 600; margin-bottom: 4px;">${new Date().toLocaleDateString(
+                          'en-US',
+                          {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          }
+                        )}</div>
+                        <div style="font-size: 14px; opacity: 0.8;">${new Date().toLocaleTimeString(
+                          'en-US',
+                          { hour: '2-digit', minute: '2-digit', hour12: true }
+                        )}</div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Metrics Cards -->
             <div class="metrics-grid">
                 <div class="metric-card">
