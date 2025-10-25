@@ -280,6 +280,19 @@
                         </div>
                     </div>
 
+                    <div class="two-col">
+                        <div class="form-group">
+                            <label class="form-label" for="quantity">Quantity</label>
+                            <input class="form-input" id="quantity" name="quantity" type="number" min="1" step="1"
+                                placeholder="e.g., 10" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="unitCost">Unit Cost (₱)</label>
+                            <input class="form-input" id="unitCost" name="unitCost" type="number" min="0" step="0.01"
+                                placeholder="e.g., 1500.00" />
+                        </div>
+                    </div>
+
                     <div class="form-group">
                         <label class="form-label">Priority</label>
                         <div class="priority-badge-group">
@@ -454,6 +467,23 @@
                 console.log(message);
             }
         }
+        
+        // Format a numeric value as Philippine Peso currency (e.g. ₱1,234.56).
+        // Accepts numbers or numeric strings. Returns '—' for empty/invalid values.
+        function formatCurrency(value) {
+            if (value === null || value === undefined || String(value).trim() === '') return '—';
+            // normalize comma thousand separators if user pasted formatted value
+            const raw = String(value).replace(/,/g, '').trim();
+            const num = Number(raw);
+            if (Number.isNaN(num)) return value;
+            try {
+                return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 2 }).format(num);
+            } catch (e) {
+                // fallback simple formatter
+                const fixed = num.toFixed(2);
+                return '₱' + fixed.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            }
+        }
         function onResetForm() {
             // slight defer because type=reset triggers before custom code sometimes
             setTimeout(() => toast('Form cleared'), 50);
@@ -475,7 +505,7 @@
             const d = harvestForm();
             const dlg = document.getElementById('requestDialog');
             const txt = document.getElementById('dialogText');
-            txt.textContent = `Submit request for ${d.items?.slice(0, 60) || ''} (${d.priority || 'No priority'})?`;
+            txt.textContent = `Submit request for ${d.items?.slice(0, 60) || ''} (${d.priority || 'No priority'}) — Qty: ${d.quantity || '—'} Unit cost: ${formatCurrency(d.unitCost)}?`;
             const proceed = await new Promise((res) => {
                 if (typeof dlg.showModal === 'function') {
                     dlg.showModal();
@@ -555,6 +585,8 @@
                 department: d.department,
                 items: d.items,
                 unit: d.unit,
+                quantity: d.quantity || null,
+                unitCost: d.unitCost || null,
                 neededDate: d.neededDate || 'Not specified',
                 priority: d.priority,
                 status: 'Incoming',
@@ -574,6 +606,15 @@
             const txt = document.getElementById('successText');
             txt.textContent = `Request ${requestId} saved locally and will be visible in the dashboard. Please contact admin if you need confirmation.`;
             if (typeof s.showModal === 'function') { s.showModal(); } else showToast({ message: `Request ${requestId} saved locally.`, type: 'success' });
+            // Also show a brief toast summarizing quantity and unit cost (formatted)
+            try {
+                const qty = request.quantity ? `Qty ${request.quantity}` : '';
+                const cost = request.unitCost ? `${formatCurrency(request.unitCost)}` : '';
+                const summary = [qty, cost].filter(Boolean).join(' • ');
+                if (summary) showToast({ message: `${requestId} — ${summary}`, type: 'success', duration: 4200 });
+            } catch (e) {
+                // ignore formatting errors
+            }
             document.getElementById('purchaseRequestForm').reset();
         }
     </script>

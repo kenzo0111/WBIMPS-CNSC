@@ -18,6 +18,8 @@ class PurchaseRequest extends Model
         'department',
         'items',
         'unit',
+        'quantity',
+        'unit_cost',
         'needed_date',
         'priority',
         'status',

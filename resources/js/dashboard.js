@@ -4995,15 +4995,19 @@ function generateStatusReportsPage() {
                     </h3>
                 </div>
                 <div class="table-container">
-                    <table class="table" id="status-report-table">
-                        <thead>
-                            <tr>
-                                <th>Status</th>
-                                <th>Count</th>
-                                <th>Department</th>
-                                <th>Details</th>
-                            </tr>
-                        </thead>
+          <table class="table" id="status-report-table">
+            <thead>
+              <tr>
+                <th>Request ID</th>
+                <th>Item</th>
+                <th>Priority</th>
+                <th>Requester</th>
+                <th>Cost</th>
+                <th>Status</th>
+                <th>Department</th>
+                <th>Updated</th>
+              </tr>
+            </thead>
                         <tbody>
                             <!-- rows injected by renderStatusReport() -->
                         </tbody>
@@ -5702,82 +5706,40 @@ function renderStatusReport() {
   }, {})
   window.__statusSummary = summary
 
-  tbody.innerHTML = Object.keys(summary)
+  // render status chart (summary still used for chart)
+  renderStatusChart(Object.keys(summary), Object.values(summary))
+
+  // Render each matching request as its own row so table has separate columns
+  const rowsHtml = all
     .map(
-      (k) => `
+      (r) => `
         <tr>
-            <td>${k}</td>
-            <td>${summary[k]}</td>
+            <td><a href="#" onclick="viewStatusRequestDetails('${
+              r.id
+            }'); return false;" style="color:#dc2626; text-decoration:underline;">${
+        r.id || ''
+      }</a></td>
+            <td>${r.item || '-'}</td>
+            <td><span class="${getBadgeClass(
+              r.priority || 'low',
+              'priority'
+            )}" style="padding:2px 8px; border-radius:6px; font-size:12px;">${capitalize(
+        r.priority || 'low'
+      )}</span></td>
+            <td>${r.requester || '-'}</td>
+            <td>${r.cost ? formatCurrency(r.cost) : '-'}</td>
+            <td style="text-transform: capitalize; font-weight: 500;">${
+              r.status || '-'
+            }</td>
+            <td>${r.department || '-'}</td>
+            <td>${r.updatedAt || '-'}</td>
         </tr>
     `
     )
     .join('')
 
-  // render status chart
-  renderStatusChart(Object.keys(summary), Object.values(summary))
-
-  // Replace tbody HTML with separate rows for each status-department combination
-  const rowsHtml = []
-
-  Object.keys(summary).forEach((k) => {
-    const matches = all.filter((r) => (r.status || 'unknown') === k)
-
-    // Group by department
-    const byDepartment = {}
-    matches.forEach((r) => {
-      const dept = r.department || 'Unassigned'
-      if (!byDepartment[dept]) byDepartment[dept] = []
-      byDepartment[dept].push(r)
-    })
-
-    // Create a row for each department
-    const departments = Object.keys(byDepartment)
-
-    if (departments.length === 0) {
-      // No departments, show one row with no department
-      rowsHtml.push(`
-                <tr>
-                    <td style="text-transform: capitalize; font-weight: 500;">${k}</td>
-                    <td style="font-weight: 600;">${summary[k]}</td>
-                    <td>—</td>
-                    <td style="max-width:420px;"><span style="color:#6b7280;">—</span></td>
-                </tr>
-            `)
-    } else {
-      departments.forEach((dept, index) => {
-        const deptRequests = byDepartment[dept]
-        const detailHtml = deptRequests
-          .map(
-            (r) => `
-                    <div style="margin-bottom:6px;">
-                        <a href="#" onclick="viewStatusRequestDetails('${
-                          r.id
-                        }'); return false;" style="color:#dc2626; text-decoration:underline;">${
-              r.id
-            }</a>
-                        ${r.requester ? ` - ${r.requester}` : ''}
-                        ${r.item ? ` (${r.item})` : ''}
-                        <span style="margin-left:8px; color:#6b7280;">${
-                          r.cost ? formatCurrency(r.cost) : ''
-                        }</span>
-                    </div>
-                `
-          )
-          .join('')
-
-        rowsHtml.push(`
-                    <tr>
-                        <td style="text-transform: capitalize; font-weight: 500;">${k}</td>
-                        <td style="font-weight: 600;">${deptRequests.length}</td>
-                        <td>${dept}</td>
-                        <td style="max-width:420px;">${detailHtml}</td>
-                    </tr>
-                `)
-      })
-    }
-  })
-
-  tbody.innerHTML = rowsHtml.join('')
+  tbody.innerHTML =
+    rowsHtml || '<tr><td colspan="8">No requests found</td></tr>'
 }
 
 function showStatusDetails(status) {
@@ -14780,19 +14742,21 @@ async function initStatusManagement(filter = 'all') {
             <!-- Table -->
             <div class="table-container">
                 <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Request ID</th>
-                            <th>Requester</th>
-                            <th>Department</th>
-                            <th>Item</th>
-                            <th>Priority</th>
-                            <th>Date Updated</th>
-                            <th>Action</th>
-                            <th>Cost</th>
-                            <th>Remarks</th>
-                        </tr>
-                    </thead>
+                  <thead>
+                    <tr>
+                      <th>Request ID</th>
+                      <th>Requester</th>
+                      <th>Department</th>
+                      <th>Item</th>
+                      <th>Quantity</th>
+                      <th>Unit</th>
+                      <th>Priority</th>
+                      <th>Date Updated</th>
+                      <th>Action</th>
+                      <th>Cost</th>
+                      <th>Remarks</th>
+                    </tr>
+                  </thead>
                     <tbody id="status-table-body">
                         ${renderStatusRows(filter)}
                     </tbody>
@@ -14843,6 +14807,10 @@ async function initStatusManagement(filter = 'all') {
             obj.item = r.items || r.items_text || r.items_string || ''
           }
           obj.unit = r.unit || ''
+          // map quantity from various possible server fields
+          obj.quantity = Number(
+            r.quantity || r.qty || (r.metadata && r.metadata.quantity) || 0
+          )
           obj.priority = (r.priority || r.priority_level || 'low')
             .toString()
             .toLowerCase()
@@ -14933,7 +14901,7 @@ function renderStatusRows(status) {
     status === 'all' ? true : r.status === status
   )
   if (!list.length)
-    return `<tr><td colspan="9" style="text-align:center;padding:16px;color:#6b7280;">No records</td></tr>`
+    return `<tr><td colspan="11" style="text-align:center;padding:16px;color:#6b7280;">No records</td></tr>`
   const html = list
     .map((r) => {
       const priorityColor =
@@ -15018,6 +14986,14 @@ function renderStatusRows(status) {
                 <td>${r.requester}</td>
                 <td>${r.department}</td>
                 <td>${r.item}</td>
+                <td>${
+                  typeof r.quantity !== 'undefined'
+                    ? r.quantity || r.quantity === 0
+                      ? r.quantity
+                      : '-'
+                    : '-'
+                }</td>
+                <td>${r.unit || '-'}</td>
                 <td><span style="color:${priorityColor};font-weight:bold;">${
         r.priority.charAt(0).toUpperCase() + r.priority.slice(1)
       }</span></td>
@@ -15089,7 +15065,8 @@ function applyFilters() {
   rows.forEach((row) => {
     const text = row.innerText.toLowerCase()
     const department = row.cells[2].innerText.toLowerCase()
-    const rowPriority = row.cells[4].innerText.toLowerCase()
+    // After adding Quantity and Unit columns, Priority is now at cell index 6
+    const rowPriority = row.cells[6].innerText.toLowerCase()
 
     let match = true
     if (search && !text.includes(search)) match = false

@@ -84,6 +84,7 @@
                                     <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-weight:600;color:#444;">Priority</td>
                                     <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;color:#333;"><?php echo e($pr->priority); ?></td>
                                 </tr>
+                                    <!-- Removed summary-level Quantity/Unit: quantities and units are shown per-item in the items table -->
                                 <tr>
                                     <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-weight:600;color:#444;">Needed Date</td>
                                     <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;color:#333;">

@@ -33,6 +33,10 @@ class PurchaseRequestController extends Controller
             'department' => 'required|string',
             'items' => 'required',
             'unit' => 'nullable|string',
+            // support either camelCase (unitCost) from the JS form or snake_case (unit_cost)
+            'unitCost' => 'nullable|numeric|min:0',
+            'unit_cost' => 'nullable|numeric|min:0',
+            'quantity' => 'nullable|integer|min:1',
             'neededDate' => 'nullable|date',
             'priority' => 'nullable|string',
         ]);
@@ -45,7 +49,7 @@ class PurchaseRequestController extends Controller
             $items = array_values(array_filter(array_map('trim', $items)));
         }
 
-        $currentYear = now()->year;
+    $currentYear = now()->year;
 
         // Determine the next sequence number for the current year by inspecting
         // existing request_id values of the form "REQ-<year>-<nnn>". Using
@@ -73,6 +77,9 @@ class PurchaseRequestController extends Controller
             'department' => $data['department'],
             'items' => $items,
             'unit' => $data['unit'] ?? null,
+            // normalize quantity and unit_cost names from JS (unitCost) or API clients (unit_cost)
+            'quantity' => isset($data['quantity']) ? (int) $data['quantity'] : (isset($data['qty']) ? (int) $data['qty'] : null),
+            'unit_cost' => isset($data['unit_cost']) ? $data['unit_cost'] : (isset($data['unitCost']) ? $data['unitCost'] : null),
             'needed_date' => $data['neededDate'] ?? null,
             'priority' => $data['priority'] ?? 'Low',
             'status' => 'Incoming',
