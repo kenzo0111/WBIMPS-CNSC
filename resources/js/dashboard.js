@@ -2591,7 +2591,6 @@ function generateDashboardPage() {
                           .map((n) => n[0])
                           .slice(0, 2)
                           .join('')}</div>
-                        <i data-lucide="chevron-down" style="width: 16px; height: 16px; color: #6b7280;"></i>
 
                         <!-- Popup menu (hidden by default) - absolute inside header block -->
                         <div id="user-menu" style="position:absolute;top:calc(100% + 8px);right:0;width:320px;display:none;background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);z-index:1000;overflow:hidden;">
@@ -10078,8 +10077,58 @@ window.openModal = openModal
 function toggleUserMenu(event) {
   const menu = document.getElementById('user-menu')
   if (!menu) return
-  const isVisible = menu.style.display === 'block'
-  menu.style.display = isVisible ? 'none' : 'block'
+  const isVisible =
+    menu.style.display === 'block' ||
+    menu.classList.contains('user-menu-active')
+  if (!isVisible) {
+    // Show menu with smooth animation
+    menu.style.display = 'block'
+    menu.style.opacity = '0'
+    menu.style.transform = 'translateY(-10px)'
+    menu.style.transition = 'opacity 0.3s ease, transform 0.3s ease'
+    // Force reflow
+    menu.offsetHeight
+    menu.style.opacity = '1'
+    menu.style.transform = 'translateY(0)'
+    menu.classList.add('user-menu-active')
+
+    // Rotate chevron icon AFTER Lucide recreates icons
+    setTimeout(() => {
+      const chevronIcon = document.querySelector(
+        '#header-user-block i[data-lucide="chevron-down"]'
+      )
+      console.log('Opening menu - chevronIcon found:', chevronIcon)
+      if (chevronIcon) {
+        console.log('Rotating chevron to 180deg')
+        chevronIcon.style.transform = 'rotate(180deg)'
+        chevronIcon.style.transition = 'transform 0.3s ease'
+      } else {
+        console.log('Chevron icon not found for opening!')
+      }
+    }, 60) // After Lucide.createIcons() completes
+  } else {
+    // Hide menu with smooth animation
+    menu.style.opacity = '0'
+    menu.style.transform = 'translateY(-10px)'
+    menu.classList.remove('user-menu-active')
+    setTimeout(() => {
+      menu.style.display = 'none'
+    }, 300)
+
+    // Reset chevron icon rotation AFTER Lucide recreates icons
+    setTimeout(() => {
+      const chevronIcon = document.querySelector(
+        '#header-user-block i[data-lucide="chevron-down"]'
+      )
+      console.log('Closing menu - chevronIcon found:', chevronIcon)
+      if (chevronIcon) {
+        console.log('Resetting chevron to 0deg')
+        chevronIcon.style.transform = 'rotate(0deg)'
+      } else {
+        console.log('Chevron icon not found for closing!')
+      }
+    }, 60) // After Lucide.createIcons() completes
+  }
 
   // Reinitialize Lucide icons when menu is opened
   if (!isVisible) {
@@ -10093,7 +10142,32 @@ function toggleUserMenu(event) {
 
 function closeUserMenu() {
   const menu = document.getElementById('user-menu')
-  if (menu) menu.style.display = 'none'
+  if (
+    menu &&
+    (menu.style.display === 'block' ||
+      menu.classList.contains('user-menu-active'))
+  ) {
+    menu.style.opacity = '0'
+    menu.style.transform = 'translateY(-10px)'
+    menu.classList.remove('user-menu-active')
+    setTimeout(() => {
+      menu.style.display = 'none'
+    }, 300)
+
+    // Reset chevron icon rotation AFTER potential Lucide re-rendering
+    setTimeout(() => {
+      const chevronIcon = document.querySelector(
+        '#header-user-block i[data-lucide="chevron-down"]'
+      )
+      console.log('closeUserMenu called - chevronIcon found:', chevronIcon)
+      if (chevronIcon) {
+        console.log('Resetting chevron to 0deg in closeUserMenu')
+        chevronIcon.style.transform = 'rotate(0deg)'
+      } else {
+        console.log('Chevron icon not found in closeUserMenu!')
+      }
+    }, 60) // After potential Lucide re-rendering
+  }
 }
 
 // Helper: resolve the correct path to AccessSystem (login) page from any current nested location
@@ -10203,7 +10277,7 @@ document.addEventListener('click', function (e) {
   if (menuDisplay === 'none') return
 
   if (!menu.contains(e.target) && !block.contains(e.target)) {
-    menu.style.display = 'none'
+    closeUserMenu()
   }
 })
 
