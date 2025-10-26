@@ -91,7 +91,6 @@ const AppState = {
     name: 'John Doe',
     email: 'john.doe@cnsc.edu.ph',
     role: 'Student Assistant',
-    department: 'IT',
     status: 'Active',
     created: new Date().toISOString().split('T')[0],
   },
@@ -1411,7 +1410,6 @@ function loadUserSession() {
         name: window.CURRENT_USER.name || 'Guest User',
         email: window.CURRENT_USER.email || '',
         role: window.CURRENT_USER.role || 'User',
-        department: window.CURRENT_USER.department || 'N/A',
         loginTime: new Date().toISOString(),
       }
 
@@ -1420,7 +1418,6 @@ function loadUserSession() {
         name: session.name,
         email: session.email,
         role: session.role,
-        department: session.department,
         status: 'Active',
         created: session.loginTime.split('T')[0],
       }
@@ -1536,10 +1533,19 @@ function loadUserRequests() {
   return []
 }
 
-function renderNotifications() {
+// Global variable to track current notification filter
+let currentNotificationFilter = 'all'
+
+function renderNotifications(filter = 'all') {
+  // Update current filter
+  currentNotificationFilter = filter
+
   const listEl = document.getElementById('notifications-list')
   const badge = document.getElementById('notifications-badge')
   if (!listEl || !badge) return
+
+  // Update filter button states
+  updateFilterButtons(filter)
 
   listEl.innerHTML = ''
   const unread = (AppState.notifications || []).filter((n) => !n.read).length
@@ -1555,117 +1561,351 @@ function renderNotifications() {
     }
   )
 
-  if (sortedNotifications.length === 0) {
+  // Apply filter
+  let filteredNotifications = sortedNotifications
+  if (filter === 'unread') {
+    filteredNotifications = sortedNotifications.filter((n) => !n.read)
+  } else if (filter !== 'all') {
+    // Filter by type: success, warning, error, info
+    filteredNotifications = sortedNotifications.filter((n) => n.type === filter)
+  }
+
+  if (filteredNotifications.length === 0) {
     listEl.innerHTML = `
-            <div style="padding: 40px 20px; text-align: center; color: #9ca3af;">
-                <i data-lucide="bell-off" style="width: 48px; height: 48px; margin: 0 auto 12px; opacity: 0.5;"></i>
-                <p style="margin: 0; font-size: 14px;">No notifications</p>
+            <div style="padding: 48px 20px; text-align: center; color: #9ca3af;">
+                <div style="width: 64px; height: 64px; background: #f3f4f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                    <i data-lucide="bell-off" style="width: 32px; height: 32px; opacity: 0.5;"></i>
+                </div>
+                <p style="margin: 0; font-size: 14px; font-weight: 500;">No notifications found</p>
+                <p style="margin: 8px 0 0 0; font-size: 12px; opacity: 0.7;">Try adjusting your filter</p>
             </div>
         `
     lucide.createIcons()
     return
   }
 
-  sortedNotifications.forEach((n) => {
+  // Group notifications by type if filter is 'all'
+  let groupedNotifications = {}
+  if (filter === 'all') {
+    groupedNotifications = {
+      error: filteredNotifications.filter((n) => n.type === 'error'),
+      warning: filteredNotifications.filter((n) => n.type === 'warning'),
+      success: filteredNotifications.filter((n) => n.type === 'success'),
+      info: filteredNotifications.filter((n) => n.type === 'info'),
+    }
+  } else {
+    // For specific filters, put all in one group
+    groupedNotifications = {
+      [filter]: filteredNotifications,
+    }
+  }
+
+  const typeLabels = {
+    error: 'Alerts',
+    warning: 'Warnings',
+    success: 'Success',
+    info: 'Updates',
+  }
+
+  const typeIcons = {
+    error: 'alert-triangle',
+    warning: 'alert-circle',
+    success: 'check-circle',
+    info: 'info',
+  }
+
+  // Render each group
+  Object.entries(groupedNotifications).forEach(([type, notifications]) => {
+    if (notifications.length === 0) return
+
     const typeConfig = {
-      success: { bg: '#ecfdf5', iconColor: '#10b981', borderColor: '#6ee7b7' },
-      warning: { bg: '#fef3c7', iconColor: '#f59e0b', borderColor: '#fcd34d' },
-      error: { bg: '#fee2e2', iconColor: '#ef4444', borderColor: '#fca5a5' },
-      info: { bg: '#dbeafe', iconColor: '#3b82f6', borderColor: '#93c5fd' },
+      success: {
+        bg: '#ecfdf5',
+        iconColor: '#10b981',
+        borderColor: '#6ee7b7',
+        headerBg: '#f0fdf4',
+      },
+      warning: {
+        bg: '#fef3c7',
+        iconColor: '#f59e0b',
+        borderColor: '#fcd34d',
+        headerBg: '#fffbeb',
+      },
+      error: {
+        bg: '#fee2e2',
+        iconColor: '#ef4444',
+        borderColor: '#fca5a5',
+        headerBg: '#fef2f2',
+      },
+      info: {
+        bg: '#dbeafe',
+        iconColor: '#3b82f6',
+        borderColor: '#93c5fd',
+        headerBg: '#eff6ff',
+      },
     }
 
-    const config = typeConfig[n.type] || typeConfig.info
-    const isUnread = !n.read
+    const config = typeConfig[type] || typeConfig.info
 
-    const item = document.createElement('div')
-    item.className = 'notification-item'
-    item.style.cssText = `
-            padding: 12px;
-            border-radius: 8px;
-            cursor: pointer;
+    // Add section header
+    const sectionHeader = document.createElement('div')
+    sectionHeader.style.cssText = `
+            padding: 8px 16px;
+            background: ${config.headerBg};
+            border-bottom: 1px solid ${config.borderColor}20;
             display: flex;
-            gap: 12px;
-            align-items: flex-start;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            background: ${isUnread ? config.bg : '#ffffff'};
-            border-left: 3px solid ${
-              isUnread ? config.borderColor : 'transparent'
-            };
-            position: relative;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
         `
+    sectionHeader.innerHTML = `
+            <i data-lucide="${typeIcons[type]}" style="width: 16px; height: 16px; color: ${config.iconColor};"></i>
+            <span style="font-size: 12px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px;">${typeLabels[type]}</span>
+            <span style="font-size: 11px; color: #6b7280; margin-left: auto;">${notifications.length}</span>
+        `
+    listEl.appendChild(sectionHeader)
 
-    item.innerHTML = `
-            <div style="flex-shrink: 0; width: 36px; height: 36px; background: ${
-              config.bg
-            }; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid ${
-      config.borderColor
-    };">
-                <i data-lucide="${
-                  n.icon || 'bell'
-                }" style="width: 18px; height: 18px; color: ${
-      config.iconColor
-    };"></i>
-            </div>
-            <div style="flex: 1; min-width: 0;">
-                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 4px;">
-                    <div style="font-size: 13px; font-weight: 600; color: #111827; line-height: 1.4;">${escapeHtml(
-                      n.title
-                    )}</div>
+    // Render notifications in this group
+    notifications.forEach((n) => {
+      const isUnread = !n.read
+
+      const item = document.createElement('div')
+      item.className = 'notification-item-enhanced'
+      item.style.cssText = `
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                padding: 16px 20px;
+                margin: 0 4px 12px 4px;
+                background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
+                border: 1px solid ${
+                  isUnread ? config.borderColor + '40' : '#e5e7eb'
+                };
+                border-radius: 12px;
+                box-shadow: ${
+                  isUnread
+                    ? '0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06)'
+                    : 'none'
+                };
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                cursor: pointer;
+                position: relative;
+                overflow: hidden;
+            `
+
+      // Add subtle gradient overlay for unread items
+      if (isUnread) {
+        item.style.background = `linear-gradient(135deg, ${config.bg} 0%, ${config.bg} 85%, rgba(255,255,255,0.9) 100%)`
+      }
+
+      item.innerHTML = `
+                <!-- Subtle gradient overlay -->
+                <div style="
+                  position: absolute;
+                  top: 0;
+                  left: 0;
+                  right: 0;
+                  bottom: 0;
+                  background: linear-gradient(135deg, ${
+                    config.bg
+                  }20 0%, transparent 70%);
+                  opacity: 0;
+                  transition: opacity 0.3s ease;
+                  pointer-events: none;
+                "></div>
+
+                <!-- Icon Container -->
+                <div class="notification-icon-enhanced" style="
+                  width: 48px;
+                  height: 48px;
+                  background: linear-gradient(135deg, ${config.bg} 0%, ${
+        config.bg
+      } 100%);
+                  border: 2px solid ${config.borderColor}30;
+                  border-radius: 12px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  flex-shrink: 0;
+                  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                  transition: all 0.3s ease;
+                  position: relative;
+                  z-index: 1;
+                ">
+                  <i data-lucide="${n.icon || 'bell'}" style="
+                    width: 24px;
+                    height: 24px;
+                    color: ${config.iconColor};
+                    transition: all 0.3s ease;
+                  "></i>
+                </div>
+
+                <!-- Content -->
+                <div class="notification-content-enhanced" style="
+                  flex: 1;
+                  min-width: 0;
+                  position: relative;
+                  z-index: 1;
+                ">
+                  <div style="
+                    display: flex;
+                    align-items: flex-start;
+                    justify-content: space-between;
+                    gap: 8px;
+                    margin-bottom: 6px;
+                  ">
+                    <div style="
+                      font-size: 14px;
+                      font-weight: 600;
+                      color: #111827;
+                      line-height: 1.4;
+                      flex: 1;
+                      word-wrap: break-word;
+                      display: -webkit-box;
+                      -webkit-line-clamp: 2;
+                      -webkit-box-orient: vertical;
+                      overflow: hidden;
+                    ">${escapeHtml(n.title)}</div>
                     ${
                       isUnread
-                        ? '<div style="width: 8px; height: 8px; background: #3b82f6; border-radius: 50%; flex-shrink: 0; margin-top: 3px;"></div>'
+                        ? '<div style="width: 10px; height: 10px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 50%; flex-shrink: 0; margin-top: 2px; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);"></div>'
                         : ''
                     }
-                </div>
-                ${
-                  n.message
-                    ? `<div style="font-size: 12px; color: #6b7280; line-height: 1.4; margin-bottom: 6px;">${escapeHtml(
-                        n.message
-                      )}</div>`
-                    : ''
-                }
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                    <div style="font-size: 11px; color: #9ca3af; display: flex; align-items: center; gap: 4px;">
-                        <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
-                        ${escapeHtml(n.time)}
+                  </div>
+                  ${
+                    n.message
+                      ? `<div style="
+                          font-size: 13px;
+                          color: #6b7280;
+                          line-height: 1.5;
+                          margin-bottom: 8px;
+                          word-wrap: break-word;
+                          display: -webkit-box;
+                          -webkit-line-clamp: 2;
+                          -webkit-box-orient: vertical;
+                          overflow: hidden;
+                        ">${escapeHtml(n.message)}</div>`
+                      : ''
+                  }
+                  <div style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 8px;
+                  ">
+                    <div style="
+                      font-size: 12px;
+                      color: #6b7280;
+                      font-weight: 500;
+                      display: flex;
+                      align-items: center;
+                      gap: 6px;
+                    ">
+                      <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
+                      ${escapeHtml(n.time)}
                     </div>
                     <button class="notification-action-btn" onclick="event.stopPropagation(); toggleNotificationRead('${
                       n.id
-                    }');" style="font-size: 11px; color: ${
-      config.iconColor
-    }; border: none; background: none; cursor: pointer; padding: 4px 8px; border-radius: 4px; font-weight: 500; transition: all 0.2s;">
-                        ${
-                          isUnread
-                            ? '<i data-lucide="check" style="width: 12px; height: 12px;"></i>'
-                            : '<i data-lucide="rotate-ccw" style="width: 12px; height: 12px;"></i>'
-                        }
+                    }');" style="
+                      font-size: 12px;
+                      color: ${config.iconColor};
+                      border: none;
+                      background: none;
+                      cursor: pointer;
+                      padding: 6px 12px;
+                      border-radius: 8px;
+                      font-weight: 500;
+                      transition: all 0.2s;
+                      background: ${config.bg};
+                      border: 1px solid ${config.borderColor};
+                      display: flex;
+                      align-items: center;
+                      gap: 4px;
+                    ">
+                      ${
+                        isUnread
+                          ? '<i data-lucide="check" style="width: 14px; height: 14px;"></i>Mark read'
+                          : '<i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i>Mark unread'
+                      }
                     </button>
+                  </div>
                 </div>
-            </div>
-        `
 
-    // Hover effects
-    item.addEventListener('mouseenter', function () {
-      this.style.transform = 'translateX(4px)'
-      this.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.08)'
+                <!-- Action indicator -->
+                <div style="
+                  width: 8px;
+                  height: 8px;
+                  background: linear-gradient(135deg, ${config.iconColor} 0%, ${
+        config.iconColor
+      } 100%);
+                  border-radius: 50%;
+                  flex-shrink: 0;
+                  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
+                  position: relative;
+                  z-index: 1;
+                "></div>
+            `
+
+      // Enhanced hover effects
+      item.addEventListener('mouseenter', function () {
+        this.style.transform = 'translateY(-2px) scale(1.01)'
+        this.style.boxShadow = isUnread
+          ? '0 8px 25px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1)'
+          : '0 8px 25px rgba(0, 0, 0, 0.08)'
+        this.style.borderColor = isUnread ? config.borderColor : '#d1d5db'
+
+        // Show gradient overlay
+        const overlay = this.querySelector('div[style*="position: absolute"]')
+        if (overlay) overlay.style.opacity = '1'
+      })
+
+      item.addEventListener('mouseleave', function () {
+        this.style.transform = 'translateY(0) scale(1)'
+        this.style.boxShadow = isUnread
+          ? '0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06)'
+          : 'none'
+        this.style.borderColor = isUnread
+          ? config.borderColor + '40'
+          : '#e5e7eb'
+
+        // Hide gradient overlay
+        const overlay = this.querySelector('div[style*="position: absolute"]')
+        if (overlay) overlay.style.opacity = '0'
+      })
+
+      item.addEventListener('click', function (e) {
+        if (!e.target.closest('.notification-action-btn')) {
+          toggleNotificationRead(n.id)
+        }
+      })
+
+      listEl.appendChild(item)
     })
-
-    item.addEventListener('mouseleave', function () {
-      this.style.transform = 'translateX(0)'
-      this.style.boxShadow = 'none'
-    })
-
-    item.addEventListener('click', function (e) {
-      if (!e.target.closest('.notification-action-btn')) {
-        toggleNotificationRead(n.id)
-      }
-    })
-
-    listEl.appendChild(item)
   })
 
   // Reinitialize Lucide icons
   lucide.createIcons()
+}
+
+function updateFilterButtons(activeFilter) {
+  // Remove active class from all filter buttons
+  document.querySelectorAll('.filter-btn').forEach((btn) => {
+    btn.classList.remove('active')
+    btn.style.background = 'white'
+    btn.style.color = '#374151'
+    btn.style.borderColor = '#e5e7eb'
+  })
+
+  // Add active class to the selected filter button
+  const activeBtn = document.querySelector(
+    `.filter-btn[data-filter="${activeFilter}"]`
+  )
+  if (activeBtn) {
+    activeBtn.classList.add('active')
+    activeBtn.style.background = '#3b82f6'
+    activeBtn.style.color = 'white'
+    activeBtn.style.borderColor = '#3b82f6'
+  }
 }
 
 function toggleNotifications(e) {
@@ -1677,7 +1917,7 @@ function toggleNotifications(e) {
   if (isOpen) {
     closeNotifications()
   } else {
-    renderNotifications()
+    renderNotifications(currentNotificationFilter)
     menu.style.display = 'block'
     btn.setAttribute('aria-expanded', 'true')
 
@@ -1725,7 +1965,7 @@ function toggleNotificationRead(id) {
   const n = (AppState.notifications || []).find((x) => x.id === id)
   if (!n) return
   n.read = !n.read // Toggle instead of always setting to true
-  renderNotifications()
+  renderNotifications(currentNotificationFilter)
   try {
     if (typeof saveNotifications === 'function') saveNotifications()
   } catch (e) {}
@@ -1733,7 +1973,7 @@ function toggleNotificationRead(id) {
 
 function markAllNotificationsRead() {
   ;(AppState.notifications || []).forEach((n) => (n.read = true))
-  renderNotifications()
+  renderNotifications(currentNotificationFilter)
   try {
     if (typeof saveNotifications === 'function') saveNotifications()
   } catch (e) {}
@@ -1743,7 +1983,7 @@ function deleteNotification(id) {
   AppState.notifications = (AppState.notifications || []).filter(
     (n) => n.id !== id
   )
-  renderNotifications()
+  renderNotifications(currentNotificationFilter)
   try {
     if (typeof saveNotifications === 'function') saveNotifications()
   } catch (e) {}
@@ -1757,7 +1997,7 @@ function clearAllNotifications() {
       // Remove persisted notifications key
       if (lsAvailable()) localStorage.removeItem('AppNotifications')
     } catch (e) {}
-    renderNotifications()
+    renderNotifications(currentNotificationFilter)
   }
 }
 
@@ -1799,7 +2039,7 @@ async function clearMockLocalData() {
     AppState.statusRequests = []
     AppState.newRequests = []
     AppState.lowStockAlertedIds = []
-    renderNotifications()
+    renderNotifications(currentNotificationFilter)
     try {
       if (typeof saveNotifications === 'function') saveNotifications()
     } catch (e) {}
@@ -1827,7 +2067,7 @@ function addNotification(title, message, type = 'info', icon = 'bell') {
   }
 
   AppState.notifications.unshift(newNotification)
-  renderNotifications()
+  renderNotifications(currentNotificationFilter)
 
   // Show animation on badge
   const badge = document.getElementById('notifications-badge')
@@ -1999,7 +2239,7 @@ function loadPageContent(pageId) {
       mainContent.innerHTML = generateDashboardPage()
       // ensure notifications badge/menu is in sync
       try {
-        renderNotifications()
+        renderNotifications(currentNotificationFilter)
       } catch (e) {
         /* ignore if not ready */
       }
@@ -2070,6 +2310,10 @@ function loadPageContent(pageId) {
       break
     case 'activity': // Activity & Notifications
       mainContent.innerHTML = generateActivityPage()
+      break
+    case 'settings':
+      // App Settings page (moved from modal to full-page)
+      mainContent.innerHTML = generateSettingsPage()
       break
     case 'about':
       mainContent.innerHTML = generateAboutPage()
@@ -2261,33 +2505,80 @@ function generateDashboardPage() {
           </button>
 
           <!-- Notifications popup (absolute inside header-actions) -->
-          <div id="notifications-menu" style="position:absolute;top:calc(100% + 8px);right:56px;width:340px;display:none;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,0.08);z-index:1000;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #e5e7eb;">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <i data-lucide="bell" style="width: 18px; height: 18px; color: #111827;"></i>
-                                <strong style="font-size: 15px; color: #111827;">Notifications</strong>
+          <div id="notifications-menu" style="position:absolute;top:calc(100% + 8px);right:56px;width:380px;display:none;background:#fff;border:1px solid #e5e7eb;border-radius:20px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.05);z-index:1000;overflow:hidden;backdrop-filter:blur(20px);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid #f1f5f9; background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%); position: relative;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 44px; height: 44px; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); border-radius: 14px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);">
+                                    <i data-lucide="bell" style="width: 22px; height: 22px; color: white;"></i>
+                                </div>
+                                <div>
+                                    <strong style="font-size: 18px; color: #111827; font-weight: 700; display: block; margin-bottom: 2px;">Notifications</strong>
+                                    <div style="font-size: 13px; color: #6b7280; font-weight: 500;">Stay updated with your activity</div>
+                                </div>
                             </div>
-                            <div style="display: flex; align-items: center; gap: 6px;">
-                                <button class="notification-header-btn" onclick="markAllNotificationsRead();" title="Mark all as read">
-                                    <i data-lucide="check-check" style="width: 16px; height: 16px;"></i>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <button class="notification-header-btn" onclick="markAllNotificationsRead();" title="Mark all as read" style="width: 36px; height: 36px; border-radius: 12px; border: none; background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); color: #6b7280; display: flex; align-items: center; justify-content: center; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);"
+                                  onmouseover="this.style.background='linear-gradient(135deg, #10b981 0%, #059669 100%)'; this.style.color='white'; this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.3)';"
+                                  onmouseout="this.style.background='linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)'; this.style.color='#6b7280'; this.style.transform='scale(1)'; this.style.boxShadow='0 2px 4px rgba(0, 0, 0, 0.1)';">
+                                    <i data-lucide="check-check" style="width: 18px; height: 18px;"></i>
                                 </button>
-                                <button class="notification-header-btn" onclick="clearAllNotifications();" title="Clear all">
-                                    <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                                <button class="notification-header-btn" onclick="clearAllNotifications();" title="Clear all" style="width: 36px; height: 36px; border-radius: 12px; border: none; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); color: #dc2626; display: flex; align-items: center; justify-content: center; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);"
+                                  onmouseover="this.style.background='linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'; this.style.color='white'; this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(220, 38, 38, 0.4)';"
+                                  onmouseout="this.style.background='linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'; this.style.color='#dc2626'; this.style.transform='scale(1)'; this.style.boxShadow='0 2px 4px rgba(220, 38, 38, 0.2)';">
+                                    <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
                                 </button>
                             </div>
                         </div>
-                        <div id="notifications-list" style="max-height: 360px; overflow-y: auto; overflow-x: hidden;">
+                        <!-- Filter Buttons -->
+                        <div style="padding: 16px 24px; border-bottom: 1px solid #f1f5f9; background: linear-gradient(135deg, #fafbfc 0%, #f1f5f9 100%);">
+                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                <span style="font-size: 13px; font-weight: 600; color: #6b7280; margin-right: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Filter:</span>
+                                <button class="filter-btn active" onclick="renderNotifications('all')" data-filter="all" style="padding: 8px 16px; border-radius: 10px; border: 2px solid #3b82f6; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3); display: flex; align-items: center; gap: 6px;"
+                                  onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.4)';"
+                                  onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(59, 130, 246, 0.3)';">
+                                    <i data-lucide="list" style="width: 14px; height: 14px;"></i>All
+                                </button>
+                                <button class="filter-btn" onclick="renderNotifications('unread')" data-filter="unread" style="padding: 8px 16px; border-radius: 10px; border: 2px solid #e5e7eb; background: white; color: #374151; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; gap: 6px;"
+                                  onmouseover="this.style.borderColor='#10b981'; this.style.background='linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)'; this.style.color='#059669'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 2px 8px rgba(16, 185, 129, 0.2)';"
+                                  onmouseout="this.style.borderColor='#e5e7eb'; this.style.background='white'; this.style.color='#374151'; this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                                    <i data-lucide="eye-off" style="width: 14px; height: 14px;"></i>Unread
+                                </button>
+                                <button class="filter-btn" onclick="renderNotifications('success')" data-filter="success" style="padding: 8px 16px; border-radius: 10px; border: 2px solid #e5e7eb; background: white; color: #374151; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; gap: 6px;"
+                                  onmouseover="this.style.borderColor='#10b981'; this.style.background='linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)'; this.style.color='#059669'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 2px 8px rgba(16, 185, 129, 0.2)';"
+                                  onmouseout="this.style.borderColor='#e5e7eb'; this.style.background='white'; this.style.color='#374151'; this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                                    <i data-lucide="check-circle" style="width: 14px; height: 14px;"></i>Success
+                                </button>
+                                <button class="filter-btn" onclick="renderNotifications('warning')" data-filter="warning" style="padding: 8px 16px; border-radius: 10px; border: 2px solid #e5e7eb; background: white; color: #374151; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; gap: 6px;"
+                                  onmouseover="this.style.borderColor='#f59e0b'; this.style.background='linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)'; this.style.color='#d97706'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 2px 8px rgba(245, 158, 11, 0.2)';"
+                                  onmouseout="this.style.borderColor='#e5e7eb'; this.style.background='white'; this.style.color='#374151'; this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                                    <i data-lucide="alert-triangle" style="width: 14px; height: 14px;"></i>Warning
+                                </button>
+                                <button class="filter-btn" onclick="renderNotifications('error')" data-filter="error" style="padding: 8px 16px; border-radius: 10px; border: 2px solid #e5e7eb; background: white; color: #374151; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; gap: 6px;"
+                                  onmouseover="this.style.borderColor='#ef4444'; this.style.background='linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)'; this.style.color='#dc2626'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 2px 8px rgba(239, 68, 68, 0.2)';"
+                                  onmouseout="this.style.borderColor='#e5e7eb'; this.style.background='white'; this.style.color='#374151'; this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                                    <i data-lucide="alert-circle" style="width: 14px; height: 14px;"></i>Error
+                                </button>
+                                <button class="filter-btn" onclick="renderNotifications('info')" data-filter="info" style="padding: 8px 16px; border-radius: 10px; border: 2px solid #e5e7eb; background: white; color: #374151; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; gap: 6px;"
+                                  onmouseover="this.style.borderColor='#3b82f6'; this.style.background='linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)'; this.style.color='#1d4ed8'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 2px 8px rgba(59, 130, 246, 0.2)';"
+                                  onmouseout="this.style.borderColor='#e5e7eb'; this.style.background='white'; this.style.color='#374151'; this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                                    <i data-lucide="info" style="width: 14px; height: 14px;"></i>Info
+                                </button>
+                            </div>
+                        </div>
+                        <div id="notifications-list" style="max-height: 420px; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: #cbd5e1 #f8fafc;">
                             <!-- notifications injected here -->
                         </div>
-                        <div style="padding: 10px 16px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; gap: 12px;">
-                            <a href="#" onclick="viewAllNotifications(); return false;" style="color: #667eea; font-size: 13px; font-weight: 500; text-decoration: none; display: flex; align-items: center; gap: 6px; transition: all 0.2s;"
-                               onmouseover="this.style.color='#5568d3'; this.style.gap='8px';"
-                               onmouseout="this.style.color='#667eea'; this.style.gap='6px';">
-                                <i data-lucide="list" style="width: 14px; height: 14px;"></i>
+                        <div style="padding: 16px 24px; border-top: 1px solid #f1f5f9; background: linear-gradient(135deg, #fafbfc 0%, #f1f5f9 100%); display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+                            <a href="#" onclick="viewAllNotifications(); return false;" style="color: #3b82f6; font-size: 14px; font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 8px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); padding: 8px 12px; border-radius: 8px;"
+                               onmouseover="this.style.color='#1d4ed8'; this.style.background='linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)'; this.style.gap='10px'; this.style.transform='translateX(2px)';"
+                               onmouseout="this.style.color='#3b82f6'; this.style.background='transparent'; this.style.gap='8px'; this.style.transform='translateX(0)';">
+                                <i data-lucide="list" style="width: 16px; height: 16px;"></i>
                                 View all notifications
                             </a>
-                            <button class="btn-secondary" style="padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500;" onclick="closeNotifications()">
-                                <i data-lucide="x" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                            <button class="btn-secondary" style="padding: 10px 20px; border-radius: 12px; font-size: 14px; font-weight: 600; border: 2px solid #d1d5db; background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%); color: #374151; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);" onclick="closeNotifications()"
+                               onmouseover="this.style.background='linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)'; this.style.borderColor='#9ca3af'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(0, 0, 0, 0.15)';"
+                               onmouseout="this.style.background='linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)'; this.style.borderColor='#d1d5db'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0, 0, 0, 0.1)';">
+                                <i data-lucide="x" style="width: 16px; height: 16px; margin-right: 6px;"></i>
                                 Close
                             </button>
                         </div>
@@ -2303,11 +2594,11 @@ function generateDashboardPage() {
                         <i data-lucide="chevron-down" style="width: 16px; height: 16px; color: #6b7280;"></i>
 
                         <!-- Popup menu (hidden by default) - absolute inside header block -->
-                        <div id="user-menu">
+                        <div id="user-menu" style="position:absolute;top:calc(100% + 8px);right:0;width:320px;display:none;background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);z-index:1000;overflow:hidden;">
                             <!-- User Info Section -->
-                            <div style="padding: 12px; border-bottom: 1px solid #e5e7eb; background: #f9fafb;">
-                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                                    <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 18px;">
+                            <div style="padding: 16px 20px; border-bottom: 1px solid #e5e7eb; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);">
+                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                                    <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 18px; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.25);">
                                         ${AppState.currentUser.name
                                           .split(' ')
                                           .map((n) => n[0])
@@ -2324,21 +2615,60 @@ function generateDashboardPage() {
                                     </div>
                                 </div>
                                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                    <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: #ede9fe; color: #6b21a8; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                                    <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: #ede9fe; color: #6b21a8; border-radius: 12px; font-size: 11px; font-weight: 600; border: 1px solid #ddd6fe;">
                                         <i data-lucide="shield" style="width: 10px; height: 10px;"></i>
                                         ${AppState.currentUser.role}
+                                    </span>
+                                    <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: #dbeafe; color: #1e40af; border-radius: 12px; font-size: 11px; font-weight: 600; border: 1px solid #bfdbfe;">
+                                        <i data-lucide="check-circle" style="width: 10px; height: 10px;"></i>
+                                        ${AppState.currentUser.status}
                                     </span>
                                 </div>
                             </div>
                             <!-- Menu Actions -->
-                            <button class="btn-menu" style="display:block;width:100%;text-align:left;padding:10px 12px;border:none;background:none;cursor:pointer;border-radius:6px;display:flex;align-items:center;gap:8px;color:#374151;font-size:14px;" onclick="openUserModal('edit','current'); closeUserMenu();">
-                                <i data-lucide="settings" style="width:16px;height:16px;"></i>
-                                Settings
-                            </button>
-                            <button class="btn-menu" style="display:block;width:100%;text-align:left;padding:10px 12px;border:none;background:none;cursor:pointer;border-radius:6px;display:flex;align-items:center;gap:8px;color:#dc2626;font-size:14px;" onclick="logout()">
-                                <i data-lucide="log-out" style="width:16px;height:16px;"></i>
-                                Logout
-                            </button>
+                            <div style="padding: 8px;">
+                                <button class="user-menu-item" style="display:block;width:100%;text-align:left;padding:12px 16px;border:none;background:none;cursor:pointer;border-radius:8px;display:flex;align-items:center;gap:10px;color:#374151;font-size:14px;font-weight:500;margin-bottom:2px;transition:all 0.2s;" onmouseover="this.style.background='#f3f4f6'; this.style.transform='translateX(2px)';" onmouseout="this.style.background='none'; this.style.transform='translateX(0)';" onclick="openUserModal('edit','current'); closeUserMenu();">
+                                    <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                        <i data-lucide="user" style="width: 16px; height: 16px; color: white;"></i>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600;">Profile</div>
+                                        <div style="font-size: 12px; color: #6b7280;">Manage your account</div>
+                                    </div>
+                                    <i data-lucide="chevron-right" style="width: 14px; height: 14px; color: #9ca3af;"></i>
+                                </button>
+                                <button class="user-menu-item" style="display:block;width:100%;text-align:left;padding:12px 16px;border:none;background:none;cursor:pointer;border-radius:8px;display:flex;align-items:center;gap:10px;color:#374151;font-size:14px;font-weight:500;margin-bottom:2px;transition:all 0.2s;" onmouseover="this.style.background='#f3f4f6'; this.style.transform='translateX(2px)';" onmouseout="this.style.background='none'; this.style.transform='translateX(0)';" onclick="navigateToPage('activity'); closeUserMenu();">
+                                    <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                        <i data-lucide="activity" style="width: 16px; height: 16px; color: white;"></i>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600;">Activity Log</div>
+                                        <div style="font-size: 12px; color: #6b7280;">View your recent activity</div>
+                                    </div>
+                                    <i data-lucide="chevron-right" style="width: 14px; height: 14px; color: #9ca3af;"></i>
+                                </button>
+                                <button class="user-menu-item" style="display:block;width:100%;text-align:left;padding:12px 16px;border:none;background:none;cursor:pointer;border-radius:8px;display:flex;align-items:center;gap:10px;color:#374151;font-size:14px;font-weight:500;margin-bottom:2px;transition:all 0.2s;" onmouseover="this.style.background='#f3f4f6'; this.style.transform='translateX(2px)';" onmouseout="this.style.background='none'; this.style.transform='translateX(0)';" onclick="navigateToPage('settings'); closeUserMenu();">
+                                    <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                        <i data-lucide="settings" style="width: 16px; height: 16px; color: white;"></i>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600;">Settings</div>
+                                        <div style="font-size: 12px; color: #6b7280;">App preferences</div>
+                                    </div>
+                                    <i data-lucide="chevron-right" style="width: 14px; height: 14px; color: #9ca3af;"></i>
+                                </button>
+                                <div style="height: 1px; background: #e5e7eb; margin: 8px 0;"></div>
+                                <button class="user-menu-item" style="display:block;width:100%;text-align:left;padding:12px 16px;border:none;background:none;cursor:pointer;border-radius:8px;display:flex;align-items:center;gap:10px;color:#dc2626;font-size:14px;font-weight:500;transition:all 0.2s;" onmouseover="this.style.background='#fef2f2'; this.style.transform='translateX(2px)';" onmouseout="this.style.background='none'; this.style.transform='translateX(0)';" onclick="logout()">
+                                    <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #dc2626, #b91c1c); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                        <i data-lucide="log-out" style="width: 16px; height: 16px; color: white;"></i>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600;">Logout</div>
+                                        <div style="font-size: 12px; color: #dc2626;">Sign out of your account</div>
+                                    </div>
+                                    <i data-lucide="chevron-right" style="width: 14px; height: 14px; color: #dc2626;"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2611,45 +2941,242 @@ function renderActivityList(activities) {
   const container = document.getElementById('recent-activity-list')
   if (!container) return
   if (!activities || activities.length === 0) {
-    container.innerHTML = `<div style="padding:16px;color:#6b7280;">No recent activity</div>`
+    container.innerHTML = `
+      <div style="padding: 32px 20px; text-align: center; color: #6b7280; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 12px; border: 2px dashed #e2e8f0;">
+        <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          <i data-lucide="activity" style="width: 32px; height: 32px; opacity: 0.6;"></i>
+        </div>
+        <p style="margin: 0; font-size: 16px; font-weight: 600; color: #374151;">No recent activity</p>
+        <p style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.8;">Activity will appear here as you use the system</p>
+      </div>
+    `
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 10)
     return
   }
+
   container.innerHTML = activities
-    .map((a) => {
-      // choose icon by simple heuristics
+    .map((a, index) => {
+      // Enhanced icon selection with more variety
       let icon = 'activity'
-      let color = 'gray'
+      let color = '#6b7280'
+      let bgColor = '#f3f4f6'
+      let borderColor = '#e5e7eb'
       const text = (a.action || '').toLowerCase()
-      if (text.includes('approve') || text.includes('approved')) {
-        icon = 'check'
-        color = 'green'
-      } else if (text.includes('stock') || text.includes('received')) {
+
+      if (
+        text.includes('approve') ||
+        text.includes('approved') ||
+        text.includes('completed')
+      ) {
+        icon = 'check-circle'
+        color = '#10b981'
+        bgColor = '#ecfdf5'
+        borderColor = '#d1fae5'
+      } else if (
+        text.includes('stock') ||
+        text.includes('received') ||
+        text.includes('inventory')
+      ) {
         icon = 'package'
-        color = 'blue'
-      } else if (text.includes('low stock') || text.includes('alert')) {
+        color = '#3b82f6'
+        bgColor = '#eff6ff'
+        borderColor = '#dbeafe'
+      } else if (
+        text.includes('low stock') ||
+        text.includes('alert') ||
+        text.includes('warning')
+      ) {
         icon = 'alert-triangle'
-        color = 'orange'
-      } else if (text.includes('user') || text.includes('added')) {
+        color = '#f59e0b'
+        bgColor = '#fffbeb'
+        borderColor = '#fef3c7'
+      } else if (
+        text.includes('user') ||
+        text.includes('added') ||
+        text.includes('created')
+      ) {
         icon = 'user-plus'
-        color = 'purple'
-      } else if (text.includes('request') || text.includes('submitted')) {
+        color = '#8b5cf6'
+        bgColor = '#f3e8ff'
+        borderColor = '#e9d5ff'
+      } else if (
+        text.includes('request') ||
+        text.includes('submitted') ||
+        text.includes('pending')
+      ) {
         icon = 'file-text'
-        color = 'red'
+        color = '#ef4444'
+        bgColor = '#fef2f2'
+        borderColor = '#fee2e2'
+      } else if (
+        text.includes('update') ||
+        text.includes('edit') ||
+        text.includes('modified')
+      ) {
+        icon = 'edit'
+        color = '#06b6d4'
+        bgColor = '#ecfeff'
+        borderColor = '#cffafe'
+      } else if (
+        text.includes('delete') ||
+        text.includes('remove') ||
+        text.includes('cancelled')
+      ) {
+        icon = 'trash-2'
+        color = '#dc2626'
+        bgColor = '#fef2f2'
+        borderColor = '#fee2e2'
       }
 
       return `
-            <div class="activity-item">
-                <div class="activity-icon ${color}">
-                    <i data-lucide="${icon}" class="icon"></i>
-                </div>
-                <div class="activity-content">
-                    <p>${escapeHtml(a.action || '')}</p>
-                    <span class="time">${timeAgo(a.created_at)}</span>
-                </div>
+        <div class="activity-item-enhanced" style="
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 16px 20px;
+          margin-bottom: 12px;
+          background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
+          border: 1px solid ${borderColor};
+          border-radius: 12px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          cursor: pointer;
+          position: relative;
+          overflow: hidden;
+        "
+        onmouseover="
+          this.style.transform = 'translateY(-2px) scale(1.01)';
+          this.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1)';
+          this.style.borderColor = '${color}40';
+        "
+        onmouseout="
+          this.style.transform = 'translateY(0) scale(1)';
+          this.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06)';
+          this.style.borderColor = '${borderColor}';
+        ">
+          <!-- Subtle gradient overlay -->
+          <div style="
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, ${bgColor}20 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+          "></div>
+
+          <!-- Icon Container -->
+          <div class="activity-icon-enhanced" style="
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, ${bgColor} 0%, ${bgColor} 100%);
+            border: 2px solid ${color}30;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+          ">
+            <i data-lucide="${icon}" style="
+              width: 24px;
+              height: 24px;
+              color: ${color};
+              transition: all 0.3s ease;
+            "></i>
+          </div>
+
+          <!-- Content -->
+          <div class="activity-content-enhanced" style="
+            flex: 1;
+            min-width: 0;
+            position: relative;
+            z-index: 1;
+          ">
+            <p style="
+              margin: 0 0 6px 0;
+              font-size: 14px;
+              font-weight: 500;
+              color: #111827;
+              line-height: 1.5;
+              word-wrap: break-word;
+              display: -webkit-box;
+              -webkit-line-clamp: 2;
+              -webkit-box-orient: vertical;
+              overflow: hidden;
+            ">${escapeHtml(a.action || '')}</p>
+            <div style="
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            ">
+              <span class="activity-time" style="
+                font-size: 12px;
+                color: #6b7280;
+                font-weight: 500;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+              ">
+                <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
+                ${timeAgo(a.created_at)}
+              </span>
+              <span style="
+                width: 4px;
+                height: 4px;
+                background: #d1d5db;
+                border-radius: 50%;
+                flex-shrink: 0;
+              "></span>
+              <span style="
+                font-size: 11px;
+                color: ${color};
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                background: ${bgColor};
+                padding: 2px 8px;
+                border-radius: 8px;
+                border: 1px solid ${color}20;
+              ">${icon.replace('-', ' ')}</span>
             </div>
-        `
+          </div>
+
+          <!-- Action indicator -->
+          <div style="
+            width: 8px;
+            height: 8px;
+            background: linear-gradient(135deg, ${color} 0%, ${color} 100%);
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
+            position: relative;
+            z-index: 1;
+          "></div>
+        </div>
+      `
     })
     .join('')
+
+  // Add hover effect for the gradient overlay
+  setTimeout(() => {
+    const items = container.querySelectorAll('.activity-item-enhanced')
+    items.forEach((item) => {
+      const overlay = item.querySelector('div[style*="position: absolute"]')
+      item.addEventListener('mouseenter', () => {
+        if (overlay) overlay.style.opacity = '1'
+      })
+      item.addEventListener('mouseleave', () => {
+        if (overlay) overlay.style.opacity = '0'
+      })
+    })
+  }, 100)
+
   if (window.lucide) setTimeout(() => lucide.createIcons(), 10)
 }
 
@@ -9238,6 +9765,289 @@ function openModal(type) {
   showAlert(`${type} modal not yet implemented`, 'info')
 }
 
+// Settings Modal Function
+function openSettingsModal() {
+  const modal = document.createElement('div')
+  modal.id = 'settings-modal'
+  modal.innerHTML = `
+    <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(17,24,39,0.6);backdrop-filter:blur(4px);z-index:2000;">
+      <div style="background:#ffffff;border-radius:20px;max-width:500px;width:90%;max-height:90vh;overflow-y:auto;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
+        <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:32px 32px 24px;border-radius:20px 20px 0 0;">
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:8px;">
+            <div style="width:56px;height:56px;background:rgba(255,255,255,0.2);border-radius:14px;display:flex;align-items:center;justify-content:center;">
+              <i data-lucide="settings" style="width:28px;height:28px;"></i>
+            </div>
+            <div>
+              <h2 style="margin:0;font-size:24px;font-weight:700;">App Settings</h2>
+              <p style="margin:4px 0 0 0;opacity:0.9;font-size:14px;">Customize your dashboard experience</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="padding:32px;">
+          <div style="display:flex;flex-direction:column;gap:24px;">
+            <!-- Theme Settings -->
+            <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:20px;">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                <div style="width:40px;height:40px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                  <i data-lucide="palette" style="width:20px;height:20px;color:white;"></i>
+                </div>
+                <div>
+                  <h3 style="margin:0;font-size:16px;font-weight:600;color:#111827;">Theme & Appearance</h3>
+                  <p style="margin:4px 0 0 0;font-size:13px;color:#6b7280;">Customize the look and feel</p>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;">
+                <button class="theme-btn active" data-theme="light" style="padding:10px 16px;border:2px solid #3b82f6;background:#3b82f6;color:white;border-radius:8px;font-size:14px;font-weight:500;">Light Mode</button>
+                <button class="theme-btn" data-theme="dark" style="padding:10px 16px;border:2px solid #e5e7eb;background:white;color:#374151;border-radius:8px;font-size:14px;font-weight:500;">Dark Mode</button>
+                <button class="theme-btn" data-theme="auto" style="padding:10px 16px;border:2px solid #e5e7eb;background:white;color:#374151;border-radius:8px;font-size:14px;font-weight:500;">Auto</button>
+              </div>
+            </div>
+
+            <!-- Notification Settings -->
+            <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:20px;">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                <div style="width:40px;height:40px;background:linear-gradient(135deg,#10b981,#059669);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                  <i data-lucide="bell" style="width:20px;height:20px;color:white;"></i>
+                </div>
+                <div>
+                  <h3 style="margin:0;font-size:16px;font-weight:600;color:#111827;">Notifications</h3>
+                  <p style="margin:4px 0 0 0;font-size:13px;color:#6b7280;">Manage notification preferences</p>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <label style="display:flex;align-items:center;gap:12px;cursor:pointer;">
+                  <input type="checkbox" checked style="width:18px;height:18px;accent-color:#3b82f6;">
+                  <span style="font-size:14px;color:#374151;">Email notifications for important updates</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:12px;cursor:pointer;">
+                  <input type="checkbox" checked style="width:18px;height:18px;accent-color:#3b82f6;">
+                  <span style="font-size:14px;color:#374151;">Browser notifications for new activities</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:12px;cursor:pointer;">
+                  <input type="checkbox" style="width:18px;height:18px;accent-color:#3b82f6;">
+                  <span style="font-size:14px;color:#374151;">Sound alerts for urgent notifications</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Dashboard Settings -->
+            <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:20px;">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                <div style="width:40px;height:40px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                  <i data-lucide="layout-dashboard" style="width:20px;height:20px;color:white;"></i>
+                </div>
+                <div>
+                  <h3 style="margin:0;font-size:16px;font-weight:600;color:#111827;">Dashboard Preferences</h3>
+                  <p style="margin:4px 0 0 0;font-size:13px;color:#6b7280;">Customize your dashboard layout</p>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <label style="display:flex;align-items:center;gap:12px;cursor:pointer;">
+                  <input type="checkbox" checked style="width:18px;height:18px;accent-color:#3b82f6;">
+                  <span style="font-size:14px;color:#374151;">Show quick stats on dashboard</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:12px;cursor:pointer;">
+                  <input type="checkbox" checked style="width:18px;height:18px;accent-color:#3b82f6;">
+                  <span style="font-size:14px;color:#374151;">Display recent activity feed</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:12px;cursor:pointer;">
+                  <input type="checkbox" style="width:18px;height:18px;accent-color:#3b82f6;">
+                  <span style="font-size:14px;color:#374151;">Auto-refresh dashboard data</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Data & Privacy -->
+            <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:20px;">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                <div style="width:40px;height:40px;background:linear-gradient(135deg,#ef4444,#dc2626);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                  <i data-lucide="shield" style="width:20px;height:20px;color:white;"></i>
+                </div>
+                <div>
+                  <h3 style="margin:0;font-size:16px;font-weight:600;color:#111827;">Data & Privacy</h3>
+                  <p style="margin:4px 0 0 0;font-size:13px;color:#6b7280;">Manage your data and privacy settings</p>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;">
+                <button class="btn-secondary" style="padding:10px 16px;border:1px solid #d1d5db;background:white;color:#374151;border-radius:8px;font-size:14px;">Export Data</button>
+                <button class="btn-secondary" style="padding:10px 16px;border:1px solid #d1d5db;background:white;color:#374151;border-radius:8px;font-size:14px;">Clear Cache</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;margin-top:32px;padding-top:24px;border-top:1px solid #e5e7eb;">
+            <button class="btn-secondary" onclick="closeSettingsModal()" style="flex:1;padding:14px;border:2px solid #d1d5db;background:white;color:#374151;border-radius:10px;font-size:15px;font-weight:500;">Cancel</button>
+            <button class="btn-primary" onclick="saveSettings()" style="flex:1;padding:14px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border:none;color:white;border-radius:10px;font-size:15px;font-weight:500;">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(modal)
+
+  // Add event listeners for theme buttons
+  modal.querySelectorAll('.theme-btn').forEach((btn) => {
+    btn.addEventListener('click', function () {
+      modal
+        .querySelectorAll('.theme-btn')
+        .forEach((b) => b.classList.remove('active'))
+      this.classList.add('active')
+      // Remove active styling from others
+      modal.querySelectorAll('.theme-btn').forEach((b) => {
+        if (b !== this) {
+          b.style.borderColor = '#e5e7eb'
+          b.style.background = 'white'
+          b.style.color = '#374151'
+        }
+      })
+      // Add active styling to clicked button
+      this.style.borderColor = '#3b82f6'
+      this.style.background = '#3b82f6'
+      this.style.color = 'white'
+    })
+  })
+
+  // Close modal when clicking outside
+  modal.addEventListener('click', function (e) {
+    if (e.target === modal) {
+      closeSettingsModal()
+    }
+  })
+
+  // Close on escape key
+  document.addEventListener('keydown', function escHandler(e) {
+    if (e.key === 'Escape') {
+      closeSettingsModal()
+      document.removeEventListener('keydown', escHandler)
+    }
+  })
+
+  // Initialize Lucide icons
+  setTimeout(() => {
+    if (window.lucide) lucide.createIcons()
+  }, 10)
+}
+
+function closeSettingsModal() {
+  const modal = document.getElementById('settings-modal')
+  if (modal) {
+    modal.remove()
+  }
+}
+
+function saveSettings() {
+  // Here you would typically save the settings to localStorage or send to server
+  showAlert('Settings saved successfully!', 'success')
+  closeSettingsModal()
+}
+
+// Generate full-page Settings view (same sections as the modal, but full-page)
+function generateSettingsPage() {
+  return `
+    <div class="page-header">
+      <div class="page-header-content">
+        <div>
+          <h1 class="page-title">
+            <i data-lucide="settings" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>
+            Settings
+          </h1>
+          <p class="page-subtitle">Customize your application preferences</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="btn-secondary" onclick="navigateToPage('dashboard')" aria-label="Back to dashboard" style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;font-size:13px;font-weight:600;line-height:1;border-radius:8px;">
+            <i data-lucide="arrow-left" style="width:16px;height:16px;margin:-1px 0 0 0;"></i>
+            <span style="pointer-events:none;">Back</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div style="max-width:980px;margin:0 auto;">
+        <div style="display:flex;flex-direction:column;gap:20px;">
+          <!-- Theme & Appearance -->
+          <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+              <div style="width:44px;height:44px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;">
+                <i data-lucide="palette" style="width:20px;height:20px;color:white;"></i>
+              </div>
+              <div>
+                <h3 style="margin:0;font-size:16px;font-weight:600;color:#111827;">Theme & Appearance</h3>
+                <p style="margin:4px 0 0 0;font-size:13px;color:#6b7280;">Customize the look and feel</p>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;">
+              <button class="theme-btn active" data-theme="light" onclick="document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active');" style="padding:10px 16px;border:2px solid #3b82f6;background:#3b82f6;color:white;border-radius:8px;font-size:14px;font-weight:500;">Light Mode</button>
+              <button class="theme-btn" data-theme="dark" onclick="document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active');" style="padding:10px 16px;border:2px solid #e5e7eb;background:white;color:#374151;border-radius:8px;font-size:14px;font-weight:500;">Dark Mode</button>
+              <button class="theme-btn" data-theme="auto" onclick="document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active');" style="padding:10px 16px;border:2px solid #e5e7eb;background:white;color:#374151;border-radius:8px;font-size:14px;font-weight:500;">Auto</button>
+            </div>
+          </div>
+
+          <!-- Notifications -->
+          <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+              <div style="width:44px;height:44px;background:linear-gradient(135deg,#10b981,#059669);border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;">
+                <i data-lucide="bell" style="width:20px;height:20px;color:white;"></i>
+              </div>
+              <div>
+                <h3 style="margin:0;font-size:16px;font-weight:600;color:#111827;">Notifications</h3>
+                <p style="margin:4px 0 0 0;font-size:13px;color:#6b7280;">Manage notification preferences</p>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <label style="display:flex;align-items:center;gap:12px;cursor:pointer;"><input type="checkbox" checked style="width:18px;height:18px;accent-color:#3b82f6;"><span style="font-size:14px;color:#374151;">Email notifications for important updates</span></label>
+              <label style="display:flex;align-items:center;gap:12px;cursor:pointer;"><input type="checkbox" checked style="width:18px;height:18px;accent-color:#3b82f6;"><span style="font-size:14px;color:#374151;">Browser notifications for new activities</span></label>
+              <label style="display:flex;align-items:center;gap:12px;cursor:pointer;"><input type="checkbox" style="width:18px;height:18px;accent-color:#3b82f6;"><span style="font-size:14px;color:#374151;">Sound alerts for urgent notifications</span></label>
+            </div>
+          </div>
+
+          <!-- Dashboard Preferences -->
+          <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+              <div style="width:44px;height:44px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;">
+                <i data-lucide="layout-dashboard" style="width:20px;height:20px;color:white;"></i>
+              </div>
+              <div>
+                <h3 style="margin:0;font-size:16px;font-weight:600;color:#111827;">Dashboard Preferences</h3>
+                <p style="margin:4px 0 0 0;font-size:13px;color:#6b7280;">Customize your dashboard layout</p>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <label style="display:flex;align-items:center;gap:12px;cursor:pointer;"><input type="checkbox" checked style="width:18px;height:18px;accent-color:#3b82f6;"><span style="font-size:14px;color:#374151;">Show quick stats on dashboard</span></label>
+              <label style="display:flex;align-items:center;gap:12px;cursor:pointer;"><input type="checkbox" checked style="width:18px;height:18px;accent-color:#3b82f6;"><span style="font-size:14px;color:#374151;">Display recent activity feed</span></label>
+              <label style="display:flex;align-items:center;gap:12px;cursor:pointer;"><input type="checkbox" style="width:18px;height:18px;accent-color:#3b82f6;"><span style="font-size:14px;color:#374151;">Auto-refresh dashboard data</span></label>
+            </div>
+          </div>
+
+          <!-- Data & Privacy -->
+          <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+              <div style="width:44px;height:44px;background:linear-gradient(135deg,#ef4444,#dc2626);border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;">
+                <i data-lucide="shield" style="width:20px;height:20px;color:white;"></i>
+              </div>
+              <div>
+                <h3 style="margin:0;font-size:16px;font-weight:600;color:#111827;">Data & Privacy</h3>
+                <p style="margin:4px 0 0 0;font-size:13px;color:#6b7280;">Manage your data and privacy settings</p>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;">
+              <button class="btn-secondary" style="padding:10px 16px;border:1px solid #d1d5db;background:white;color:#374151;border-radius:8px;font-size:14px;">Export Data</button>
+              <button class="btn-secondary" style="padding:10px 16px;border:1px solid #d1d5db;background:white;color:#374151;border-radius:8px;font-size:14px;">Clear Cache</button>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;margin-top:20px;justify-content:flex-end;">
+            <button class="btn-secondary" onclick="navigateToPage('dashboard')" style="padding:12px 20px;border:2px solid #d1d5db;background:white;color:#374151;border-radius:10px;font-size:15px;font-weight:500;">Cancel</button>
+            <button class="btn-primary" onclick="saveSettings();" style="padding:12px 20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border:none;color:white;border-radius:10px;font-size:15px;font-weight:500;">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+}
+
 // Modal close on outside click
 document.addEventListener('click', function (e) {
   const modal = document.getElementById('purchase-order-modal')
@@ -9529,7 +10339,6 @@ function generateRolesManagementPage() {
         name: user.name || 'Unknown',
         role: user.role || 'User',
         email: user.email || '',
-        department: 'IT', // Default department
         status:
           user.status === 'pending_activation'
             ? 'Pending'
@@ -10058,187 +10867,411 @@ function generateUserModal(mode = 'view', userData = null) {
     <style>
       /* Hide empty icon placeholders until lucide replaces them with SVGs */
       .modal-header .icon-container i:empty { display: none; }
+
+      /* Enhanced modal styles */
+      .user-modal-header {
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        color: white;
+        border-bottom: none;
+        padding: 40px 32px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .user-modal-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.03)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.03)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.02)"/><circle cx="10" cy="50" r="0.5" fill="rgba(255,255,255,0.02)"/><circle cx="90" cy="30" r="0.5" fill="rgba(255,255,255,0.02)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+        pointer-events: none;
+      }
+
+      .user-avatar-container {
+        width: 80px;
+        height: 80px;
+        background: rgba(255,255,255,0.15);
+        border: 4px solid rgba(255,255,255,0.3);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(20px);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+      }
+
+      .user-avatar-container:hover {
+        transform: scale(1.05);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+      }
+
+      .user-avatar-initials {
+        color: white;
+        font-weight: 800;
+        font-size: 24px;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        letter-spacing: 1px;
+      }
+
+      .user-modal-title {
+        color: white;
+        font-size: 28px;
+        margin-bottom: 8px;
+        font-weight: 700;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        letter-spacing: -0.5px;
+      }
+
+      .user-modal-subtitle {
+        color: rgba(255,255,255,0.95);
+        font-size: 16px;
+        margin: 0;
+        font-weight: 400;
+        opacity: 0.9;
+      }
+
+      .modal-close-enhanced {
+        color: white;
+        background: rgba(255,255,255,0.1);
+        border: 2px solid rgba(255,255,255,0.2);
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        backdrop-filter: blur(10px);
+        position: relative;
+        z-index: 1;
+      }
+
+      .modal-close-enhanced:hover {
+        background: rgba(255,255,255,0.2);
+        border-color: rgba(255,255,255,0.4);
+        transform: rotate(90deg);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      }
+
+      /* Form enhancements */
+      .form-input:focus, .form-select:focus {
+        outline: none;
+        border-color: #3b82f6;
+        background: white;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        transform: translateY(-1px);
+      }
+
+      .form-input:hover, .form-select:hover {
+        border-color: #9ca3af;
+        background: white;
+      }
+
+      .form-section-card {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .form-section-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.06), 0 20px 40px rgba(0,0,0,0.08);
+      }
+
+      .section-icon {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .form-section-card:hover .section-icon {
+        transform: scale(1.1);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+      }
+
+      .readonly-field {
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .readonly-field:hover {
+        background: #f8fafc;
+        border-color: #d1d5db;
+      }
+
+      .status-badge-large {
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .status-badge-large:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      }
+
+      /* Smooth animations for form elements */
+      .form-input, .form-select {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* Enhanced select dropdown styling */
+      .form-select {
+        appearance: none;
+        background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6,9 12,15 18,9"></polyline></svg>');
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        background-size: 16px;
+        padding-right: 40px;
+      }
+
+      /* Loading animation for inputs */
+      @keyframes shimmer {
+        0% { background-position: -200px 0; }
+        100% { background-position: calc(200px + 100%) 0; }
+      }
+
+      .input-loading {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200px 100%;
+        animation: shimmer 1.5s infinite;
+      }
     </style>
-  <div class="modal-header" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; border-bottom: none; padding: 32px 24px;">
-      <div style="display: flex; align-items: center; gap: 16px;">
-        <div class="icon-container" style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
-          <span style="color: white; font-weight: 700; font-size: 18px;">${initials}</span>
+  <div class="modal-header user-modal-header" style="position: relative;">
+      <div style="display: flex; align-items: center; gap: 24px; position: relative; z-index: 1;">
+        <div class="user-avatar-container">
+          <span class="user-avatar-initials">${initials}</span>
         </div>
         <div style="flex: 1;">
-          <h2 class="modal-title" style="color: white; font-size: 24px; margin-bottom: 4px;">${title}</h2>
-          <p class="modal-subtitle" style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0;">${subtitle}</p>
+          <h2 class="modal-title user-modal-title">${title}</h2>
+          <p class="modal-subtitle user-modal-subtitle">${subtitle}</p>
         </div>
       </div>
-            <button class="modal-close" onclick="closeUserModal()" style="color: white; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
-                <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+            <button class="modal-close modal-close-enhanced" onclick="closeUserModal()" style="position: absolute; top: 24px; right: 24px;">
+                <i data-lucide="x" style="width: 24px; height: 24px;"></i>
             </button>
         </div>
 
-        <div class="modal-body" style="padding: 32px 24px; background: #f9fafb;">
+        <div class="modal-body" style="padding: 32px 32px; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);">
             <!-- Personal Information Section -->
-            <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 8px;">
-                    <i data-lucide="user" style="width: 18px; height: 18px; color: #dc2626;"></i>
-                    Personal Information
-                </h3>
-                
-                <div class="grid-2">
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                            <i data-lucide="user-circle" style="width: 14px; height: 14px; color: #6b7280;"></i>
+            <div class="form-section-card" style="background: white; border-radius: 16px; padding: 32px; margin-bottom: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.03), 0 10px 25px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.04); position: relative; overflow: hidden;">
+                <div class="section-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #f1f5f9;">
+                    <div class="section-icon" style="width: 48px; height: 48px; background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);">
+                        <i data-lucide="user" style="width: 24px; height: 24px; color: white;"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin: 0 0 4px 0; font-size: 20px; font-weight: 700; color: #111827; letter-spacing: -0.5px;">Personal Information</h3>
+                        <p style="margin: 0; font-size: 14px; color: #6b7280; font-weight: 400;">Basic user details and contact information</p>
+                    </div>
+                </div>
+
+                <div class="grid-2" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
+                    <div class="form-group" style="position: relative;">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-weight: 600; color: #374151; font-size: 14px;">
+                            <i data-lucide="user-circle" style="width: 16px; height: 16px; color: #6b7280;"></i>
                             Full Name
                         </label>
-                        <input type="text" class="form-input" id="userName"
-                               value="${userData?.name || ''}"
-                               placeholder="Enter full name"
-                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                               ${isReadOnly ? 'readonly' : ''}>
+                        <div class="input-wrapper" style="position: relative;">
+                            <input type="text" class="form-input" id="userName"
+                                   value="${userData?.name || ''}"
+                                   placeholder="Enter full name"
+                                   style="width: 100%; border: 2px solid #e5e7eb; padding: 14px 16px; font-size: 15px; border-radius: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #fafbfc; font-weight: 400;"
+                                   ${isReadOnly ? 'readonly' : ''}>
+                            <div class="input-focus-ring" style="position: absolute; inset: 0; border-radius: 10px; border: 2px solid transparent; transition: border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none;"></div>
+                        </div>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                            <i data-lucide="mail" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                    <div class="form-group" style="position: relative;">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-weight: 600; color: #374151; font-size: 14px;">
+                            <i data-lucide="mail" style="width: 16px; height: 16px; color: #6b7280;"></i>
                             Email Address
                         </label>
-                        <input type="email" class="form-input" id="userEmail"
-                               value="${userData?.email || ''}"
-                               placeholder="user@cnsc.edu.ph"
-                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                               ${isReadOnly ? 'readonly' : ''}>
+                        <div class="input-wrapper" style="position: relative;">
+                            <input type="email" class="form-input" id="userEmail"
+                                   value="${userData?.email || ''}"
+                                   placeholder="user@cnsc.edu.ph"
+                                   style="width: 100%; border: 2px solid #e5e7eb; padding: 14px 16px; font-size: 15px; border-radius: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #fafbfc; font-weight: 400;"
+                                   ${isReadOnly ? 'readonly' : ''}>
+                            <div class="input-focus-ring" style="position: absolute; inset: 0; border-radius: 10px; border: 2px solid transparent; transition: border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none;"></div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Role & Department Section -->
-            <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 8px;">
-                    <i data-lucide="briefcase" style="width: 18px; height: 18px; color: #dc2626;"></i>
-                    Role
-                </h3>
-                
-                <div class="grid-2">
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                            <i data-lucide="shield" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                            Role
-                        </label>
-                        ${
-                          isReadOnly
-                            ? `
-                            <input type="text" class="form-input" value="${
-                              userData?.role || ''
-                            }" readonly style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; background: #f9fafb;">
-                        `
-                            : `
-                            <select class="form-select" id="userRole" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
-                                <option value="">Select role</option>
-                                <option ${
-                                  userData?.role === 'Admin' ? 'selected' : ''
-                                }>Admin</option>
-                                <option ${
-                                  userData?.role === 'Manager' ? 'selected' : ''
-                                }>Manager</option>
-                                <option ${
-                                  userData?.role === 'User' ? 'selected' : ''
-                                }>User</option>
-                                <option ${
-                                  userData?.role === 'Student Assistant'
-                                    ? 'selected'
-                                    : ''
-                                }>Student Assistant</option>
-                                <option ${
-                                  userData?.role === 'Viewer' ? 'selected' : ''
-                                }>Viewer</option>
-                            </select>
-                        `
-                        }
+            <div class="form-section-card" style="background: white; border-radius: 16px; padding: 32px; margin-bottom: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.03), 0 10px 25px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.04); position: relative; overflow: hidden;">
+                <div class="section-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #f1f5f9;">
+                    <div class="section-icon" style="width: 48px; height: 48px; background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);">
+                        <i data-lucide="briefcase" style="width: 24px; height: 24px; color: white;"></i>
                     </div>
+                    <div>
+                        <h3 style="margin: 0 0 4px 0; font-size: 20px; font-weight: 700; color: #111827; letter-spacing: -0.5px;">Role & Permissions</h3>
+                        <p style="margin: 0; font-size: 14px; color: #6b7280; font-weight: 400;">User role and system access level</p>
+                    </div>
+                </div>
 
-                    <!-- Department field removed per request -->
+                <div class="grid-2" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
+                    <div class="form-group" style="position: relative;">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-weight: 600; color: #374151; font-size: 14px;">
+                            <i data-lucide="shield" style="width: 16px; height: 16px; color: #6b7280;"></i>
+                            User Role
+                        </label>
+                        <div class="input-wrapper" style="position: relative;">
+                            ${
+                              isReadOnly
+                                ? `
+                                <div class="readonly-field" style="width: 100%; border: 2px solid #e5e7eb; padding: 14px 16px; font-size: 15px; border-radius: 10px; background: #fafbfc; color: #374151; font-weight: 500; display: flex; align-items: center; gap: 10px;">
+                                    <i data-lucide="shield-check" style="width: 18px; height: 18px; color: #7c3aed;"></i>
+                                    ${userData?.role || ''}
+                                </div>
+                            `
+                                : `
+                                <select class="form-select" id="userRole" style="width: 100%; border: 2px solid #e5e7eb; padding: 14px 16px; font-size: 15px; border-radius: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #fafbfc; font-weight: 400; cursor: pointer;">
+                                    <option value="">Select role</option>
+                                    <option ${
+                                      userData?.role === 'Admin'
+                                        ? 'selected'
+                                        : ''
+                                    }>Admin</option>
+                                    <option ${
+                                      userData?.role === 'Manager'
+                                        ? 'selected'
+                                        : ''
+                                    }>Manager</option>
+                                    <option ${
+                                      userData?.role === 'User'
+                                        ? 'selected'
+                                        : ''
+                                    }>User</option>
+                                    <option ${
+                                      userData?.role === 'Student Assistant'
+                                        ? 'selected'
+                                        : ''
+                                    }>Student Assistant</option>
+                                    <option ${
+                                      userData?.role === 'Viewer'
+                                        ? 'selected'
+                                        : ''
+                                    }>Viewer</option>
+                                </select>
+                            `
+                            }
+                            <div class="input-focus-ring" style="position: absolute; inset: 0; border-radius: 10px; border: 2px solid transparent; transition: border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none;"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- Account Status Section -->
-            <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 8px;">
-                    <i data-lucide="settings" style="width: 18px; height: 18px; color: #dc2626;"></i>
-                    Account Status
-                </h3>
-                
-                <div class="grid-2">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                            <i data-lucide="activity" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                            Status
+            <div class="form-section-card" style="background: white; border-radius: 16px; padding: 32px; box-shadow: 0 4px 6px rgba(0,0,0,0.03), 0 10px 25px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.04); position: relative; overflow: hidden;">
+                <div class="section-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #f1f5f9;">
+                    <div class="section-icon" style="width: 48px; height: 48px; background: linear-gradient(135deg, #059669 0%, #047857 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);">
+                        <i data-lucide="settings" style="width: 24px; height: 24px; color: white;"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin: 0 0 4px 0; font-size: 20px; font-weight: 700; color: #111827; letter-spacing: -0.5px;">Account Profile</h3>
+                        <p style="margin: 0; font-size: 14px; color: #6b7280; font-weight: 400;">Account status and registration details</p>
+                    </div>
+                </div>
+
+                <div class="grid-2" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
+                    <div class="form-group" style="position: relative;">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-weight: 600; color: #374151; font-size: 14px;">
+                            <i data-lucide="activity" style="width: 16px; height: 16px; color: #6b7280;"></i>
+                            Account Status
                         </label>
-                        ${
-                          isReadOnly
-                            ? `
-                            <span class="badge ${
-                              userData?.status === 'Active' ? 'green' : 'red'
-                            }" style="display: inline-flex; padding: 8px 16px; font-size: 14px;">
-                                <i data-lucide="${
+                        <div class="input-wrapper" style="position: relative;">
+                            ${
+                              isReadOnly
+                                ? `
+                                <div class="status-badge-large" style="width: 100%; border: 2px solid ${
                                   userData?.status === 'Active'
-                                    ? 'check-circle'
-                                    : 'x-circle'
-                                }" style="width: 16px; height: 16px; margin-right: 6px;"></i>
-                                ${userData?.status || 'Inactive'}
-                            </span>
-                        `
-                            : `
-                            <select class="form-select" id="userStatus" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
-                                <option value="Active" ${
-                                  userData?.status === 'Active'
-                                    ? 'selected'
-                                    : ''
-                                }>Active</option>
-                                <option value="Inactive" ${
-                                  userData?.status === 'Inactive'
-                                    ? 'selected'
-                                    : ''
-                                }>Inactive</option>
-                            </select>
-                        `
-                        }
+                                    ? '#10b981'
+                                    : '#ef4444'
+                                }; padding: 14px 16px; font-size: 15px; border-radius: 10px; background: ${
+                                    userData?.status === 'Active'
+                                      ? '#f0fdf4'
+                                      : '#fef2f2'
+                                  }; color: ${
+                                    userData?.status === 'Active'
+                                      ? '#047857'
+                                      : '#dc2626'
+                                  }; font-weight: 600; display: flex; align-items: center; gap: 12px;">
+                                    <i data-lucide="${
+                                      userData?.status === 'Active'
+                                        ? 'check-circle'
+                                        : 'x-circle'
+                                    }" style="width: 20px; height: 20px;"></i>
+                                    ${userData?.status || 'Inactive'}
+                                </div>
+                            `
+                                : `
+                                <select class="form-select" id="userStatus" style="width: 100%; border: 2px solid #e5e7eb; padding: 14px 16px; font-size: 15px; border-radius: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #fafbfc; font-weight: 400; cursor: pointer;">
+                                    <option value="Active" ${
+                                      userData?.status === 'Active'
+                                        ? 'selected'
+                                        : ''
+                                    }>Active</option>
+                                    <option value="Inactive" ${
+                                      userData?.status === 'Inactive'
+                                        ? 'selected'
+                                        : ''
+                                    }>Inactive</option>
+                                </select>
+                            `
+                            }
+                            <div class="input-focus-ring" style="position: absolute; inset: 0; border-radius: 10px; border: 2px solid transparent; transition: border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none;"></div>
+                        </div>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                            <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                            ${mode === 'create' ? 'Join Date' : 'Created Date'}
+                    <div class="form-group" style="position: relative;">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-weight: 600; color: #374151; font-size: 14px;">
+                            <i data-lucide="calendar" style="width: 16px; height: 16px; color: #6b7280;"></i>
+                            ${
+                              mode === 'create'
+                                ? 'Join Date'
+                                : 'Registration Date'
+                            }
                         </label>
-                        <input type="date" class="form-input" id="userCreated"
-                               value="${
-                                 userData?.created ||
-                                 new Date().toISOString().split('T')[0]
-                               }"
-                               min="${new Date().toISOString().split('T')[0]}"
-                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; ${
-                                 isReadOnly ? 'background: #f9fafb;' : ''
-                               }"
-                               ${isReadOnly ? 'readonly' : ''}>
+                        <div class="input-wrapper" style="position: relative;">
+                            <input type="date" class="form-input" id="userCreated"
+                                   value="${
+                                     userData?.created ||
+                                     new Date().toISOString().split('T')[0]
+                                   }"
+                                   min="${
+                                     new Date().toISOString().split('T')[0]
+                                   }"
+                                   style="width: 100%; border: 2px solid #e5e7eb; padding: 14px 16px; font-size: 15px; border-radius: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #fafbfc; font-weight: 400; ${
+                                     isReadOnly
+                                       ? 'cursor: not-allowed;'
+                                       : 'cursor: pointer;'
+                                   }"
+                                   ${isReadOnly ? 'readonly' : ''}>
+                            <div class="input-focus-ring" style="position: absolute; inset: 0; border-radius: 10px; border: 2px solid transparent; transition: border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none;"></div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="modal-footer" style="background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 20px 24px; display: flex; gap: 12px; justify-content: flex-end;">
-            <button class="btn-secondary" onclick="closeUserModal()" style="padding: 10px 24px; font-weight: 500; border: 2px solid #d1d5db; transition: all 0.2s;">
+        <div class="modal-footer" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-top: 2px solid #e5e7eb; padding: 32px 32px; display: flex; gap: 16px; justify-content: flex-end; align-items: center;">
+            <button class="btn-secondary-enhanced" onclick="closeUserModal()" style="padding: 14px 28px; font-weight: 600; border: 2px solid #d1d5db; background: white; color: #374151; border-radius: 12px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); font-size: 15px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                 <i data-lucide="${
                   isReadOnly ? 'x' : 'arrow-left'
-                }" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                }" style="width: 18px; height: 18px;"></i>
                 ${isReadOnly ? 'Close' : 'Cancel'}
             </button>
             ${
               !isReadOnly
                 ? `
-                <button class="btn btn-primary" onclick="saveUser('${
+                <button class="btn-primary-enhanced" onclick="saveUser('${
                   userData?.id || ''
-                }')" style="padding: 10px 24px; font-weight: 500; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); box-shadow: 0 4px 6px rgba(220, 38, 38, 0.25); transition: all 0.2s;">
+                }')" style="padding: 14px 28px; font-weight: 600; background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3), 0 2px 4px rgba(220, 38, 38, 0.1); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); font-size: 15px; display: flex; align-items: center; gap: 8px; position: relative; overflow: hidden;">
+                    <div class="btn-glow" style="position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%); opacity: 0; transition: opacity 0.3s;"></div>
                     <i data-lucide="${
                       mode === 'create' ? 'user-plus' : 'save'
-                    }" style="width: 16px; height: 16px; margin-right: 6px;"></i>
-                    ${mode === 'create' ? 'Add User' : 'Save Changes'}
+                    }" style="width: 18px; height: 18px; position: relative; z-index: 1;"></i>
+                    <span style="position: relative; z-index: 1;">${
+                      mode === 'create' ? 'Add User' : 'Save Changes'
+                    }</span>
                 </button>
             `
                 : ''
@@ -10263,7 +11296,6 @@ function generateUsersManagementPage() {
         name: 'Cherry Ann Quila',
         role: 'Leader',
         email: 'cherry@cnsc.edu.ph',
-        department: 'IT',
         status: 'Active',
         created: '2025-01-15',
       },
@@ -10273,7 +11305,6 @@ function generateUsersManagementPage() {
         name: 'Vince Balce',
         role: 'Member',
         email: 'vince@cnsc.edu.ph',
-        department: 'Finance',
         status: 'Inactive',
         created: '2025-02-01',
       },
@@ -10283,7 +11314,6 @@ function generateUsersManagementPage() {
         name: 'Marinel Ledesma',
         role: 'Member',
         email: 'marinel@cnsc.edu.ph',
-        department: 'HR',
         status: 'Active',
         created: '2025-03-10',
       },
@@ -10572,7 +11602,7 @@ function generateLoginActivityPage() {
         </div>
 
         <!-- Login Activity Table -->
-        <div class="card" style="padding: 0; overflow: hidden;">
+        <div class="card" style="padding: 0; overflow: visible;">
             <div style="padding: 20px 24px; border-bottom: 1px solid #e5e7eb; background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
                     <div>
@@ -10619,48 +11649,48 @@ function generateLoginActivityPage() {
                 </div>
             `
                 : `
-                <div style="overflow-x:auto;">
-                    <div style="max-height:420px; overflow-y:auto; overscroll-behavior:contain;">
-                    <table class="table sticky-header" style="margin:0;">
+                <div style="overflow-x: visible;">
+                    <div style="max-height: none; overflow-y: visible;">
+                    <table class="table sticky-header" style="margin:0; width: 100%; table-layout: auto;">
                         <thead>
                             <tr>
-                                <th style="padding-left: 24px; min-width: 180px;">
+                                <th style="padding-left: 24px; min-width: 220px;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         <i data-lucide="clock" style="width:14px;height:14px;"></i>
                                         Timestamp
                                     </div>
                                 </th>
-                                <th style="min-width: 180px;">
+                                <th style="min-width: 200px;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         <i data-lucide="user" style="width:14px;height:14px;"></i>
                                         User
                                     </div>
                                 </th>
-                                <th style="min-width: 220px;">
+                                <th style="min-width: 250px;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         <i data-lucide="mail" style="width:14px;height:14px;"></i>
                                         Email Address
                                     </div>
                                 </th>
-                                <th style="min-width: 120px;">
+                                <th style="min-width: 140px;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         <i data-lucide="zap" style="width:14px;height:14px;"></i>
                                         Action
                                     </div>
                                 </th>
-                                <th style="min-width: 160px;">
+                                <th style="min-width: 180px;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         <i data-lucide="monitor" style="width:14px;height:14px;"></i>
                                         Device Type
                                     </div>
                                 </th>
-                                <th style="min-width: 140px;">
+                                <th style="min-width: 160px;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         <i data-lucide="globe" style="width:14px;height:14px;"></i>
                                         IP Address
                                     </div>
                                 </th>
-                                <th style="padding-right: 24px; min-width: 120px;">
+                                <th style="padding-right: 24px; min-width: 140px;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         <i data-lucide="shield-check" style="width:14px;height:14px;"></i>
                                         Status
@@ -12243,116 +13273,519 @@ function generateActivityPage() {
 
   const unreadCount = combinedActivities.filter((n) => !n.read).length
 
-  return `
-        <div class="page-header">
-            <div class="page-header-content">
-                <div style="display:flex;align-items:center;gap:16px;">
-                    <button class="btn btn-secondary" onclick="navigateToPage('dashboard')" style="display:flex;align-items:center;gap:8px;padding:10px 16px;">
-                        <i data-lucide="arrow-left" style="width:18px;height:18px;"></i>
-                        Back
-                    </button>
-                    <div>
-                        <h1 class="page-title">
-                            <i data-lucide="bell" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>
-                            Activity & Notifications
-                        </h1>
-                        <p class="page-subtitle">View all system notifications and activity logs</p>
-                    </div>
-                </div>
-                <div style="display:flex;align-items:center;gap:12px;">
+  // Group activities by time periods
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const weekAgo = new Date(today)
+  weekAgo.setDate(weekAgo.getDate() - 7)
+
+  const groupedActivities = {
+    today: [],
+    yesterday: [],
+    thisWeek: [],
+    older: [],
+  }
+
+  combinedActivities.forEach((activity) => {
+    // Simple date parsing for demo - in real app, use proper date parsing
+    const activityDate = new Date(
+      activity.timestamp || activity.createdAt || now
+    )
+    if (activityDate >= today) {
+      groupedActivities.today.push(activity)
+    } else if (activityDate >= yesterday) {
+      groupedActivities.yesterday.push(activity)
+    } else if (activityDate >= weekAgo) {
+      groupedActivities.thisWeek.push(activity)
+    } else {
+      groupedActivities.older.push(activity)
+    }
+  })
+
+  // Activity type configurations
+  const activityTypes = {
+    system: { icon: 'settings', color: '#6b7280', bgColor: '#f9fafb' },
+    user: { icon: 'user', color: '#3b82f6', bgColor: '#eff6ff' },
+    inventory: { icon: 'package', color: '#10b981', bgColor: '#f0fdf4' },
+    alert: { icon: 'alert-triangle', color: '#f59e0b', bgColor: '#fffbeb' },
+    error: { icon: 'x-circle', color: '#ef4444', bgColor: '#fef2f2' },
+    success: { icon: 'check-circle', color: '#10b981', bgColor: '#f0fdf4' },
+    info: { icon: 'info', color: '#3b82f6', bgColor: '#eff6ff' },
+  }
+
+  function renderActivityGroup(title, activities, showHeader = true) {
+    if (activities.length === 0) return ''
+
+    return `
+      ${
+        showHeader
+          ? `<div class="activity-group-header" style="padding: 16px 24px 8px; border-bottom: 1px solid #e5e7eb; background: #f9fafb;">
+        <h4 style="margin: 0; font-size: 14px; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 8px;">
+          ${title} (${activities.length})
+        </h4>
+      </div>`
+          : ''
+      }
+      <div class="activity-group" style="display: flex; flex-direction: column;">
+        ${activities
+          .map((activity, index) => {
+            const typeConfig =
+              activityTypes[activity.type] || activityTypes.info
+            const iconName = activity.icon || typeConfig.icon
+            const iconColor = activity.color || typeConfig.color
+            const bgColor = activity.read ? '#ffffff' : typeConfig.bgColor
+            const borderLeft = activity.read ? 'transparent' : iconColor
+            const priority = activity.priority || 'normal'
+            const priorityStyles = {
+              high: 'border-left: 4px solid #ef4444; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.1);',
+              normal: '',
+              low: 'opacity: 0.8;',
+            }
+
+            return `
+            <div class="activity-item" style="display: flex; align-items: flex-start; gap: 16px; padding: 20px 24px; background: ${bgColor}; border-left: 3px solid ${borderLeft}; border-bottom: 1px solid #e5e7eb; transition: all 0.2s ease; cursor: pointer; position: relative; ${
+              priorityStyles[priority] || ''
+            }"
+                 onclick="handleActivityItemClick(event, '${activity.id}')"
+                 onmouseover="this.style.background='${
+                   activity.read ? '#f9fafb' : '#f0f9ff'
+                 }'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'"
+                 onmouseout="this.style.background='${bgColor}'; this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+
+              <!-- Priority indicator for high priority -->
+              ${
+                priority === 'high'
+                  ? `
+                <div style="position: absolute; top: 12px; right: 12px; width: 8px; height: 8px; background: #ef4444; border-radius: 50%; animation: pulse 2s infinite;"></div>
+              `
+                  : ''
+              }
+
+              <!-- Activity Content -->
+              <div class="activity-content" style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px;">
+                  <div style="flex: 1; min-width: 0;">
+                    <h4 class="activity-title" style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: #111827; line-height: 1.4;">${
+                      activity.title
+                    }</h4>
+                    <p class="activity-message" style="margin: 0; font-size: 14px; color: #6b7280; line-height: 1.5;">${
+                      activity.message
+                    }</p>
+                  </div>
+                  <div class="activity-meta" style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0;">
+                    <span class="activity-time" style="font-size: 12px; color: #9ca3af; white-space: nowrap;">${
+                      activity.time
+                    }</span>
                     ${
-                      unreadCount > 0
+                      !activity.read
                         ? `
-                        <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:8px 16px;display:flex;align-items:center;gap:8px;">
-                            <div style="width:8px;height:8px;background:#f59e0b;border-radius:50%;"></div>
-                            <span style="font-size:14px;font-weight:600;color:#b45309;">${unreadCount} unread</span>
-                        </div>
+                      <span class="activity-status" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: ${iconColor}; color: white; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                        <div style="width: 6px; height: 6px; background: white; border-radius: 50%;"></div>
+                        New
+                      </span>
                     `
                         : ''
                     }
-                    <button class="btn btn-secondary" onclick="markAllNotificationsRead()" style="display:flex;align-items:center;gap:8px;">
-                        <i data-lucide="check-check" style="width:16px;height:16px;"></i>
-                        Mark all as read
-                    </button>
-                    <button class="btn btn-secondary" onclick="clearAllNotifications()" style="display:flex;align-items:center;gap:8px;">
-                        <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
-                        Clear all
-                    </button>
+                  </div>
                 </div>
+
+                <!-- Action buttons -->
+                <div class="activity-actions" style="display: flex; align-items: center; gap: 8px; margin-top: 12px;">
+                  ${
+                    !activity.read
+                      ? `
+                    <button class="activity-action-btn" onclick="event.stopPropagation(); markNotificationAsRead('${activity.id}')"
+                            style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: ${iconColor}; color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s;"
+                            onmouseover="this.style.background='${iconColor}dd'; this.style.transform='translateY(-1px)'"
+                            onmouseout="this.style.background='${iconColor}'; this.style.transform='translateY(0)'">
+                      <i data-lucide="check" style="width: 14px; height: 14px;"></i>
+                      Mark Read
+                    </button>
+                  `
+                      : ''
+                  }
+                  <button class="activity-action-btn secondary" onclick="event.stopPropagation(); dismissActivity('${
+                    activity.id
+                  }')"
+                          style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: transparent; color: #6b7280; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s;"
+                          onmouseover="this.style.background='#f9fafb'; this.style.borderColor='#9ca3af'"
+                          onmouseout="this.style.background='transparent'; this.style.borderColor='#d1d5db'">
+                    <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+                    Dismiss
+                  </button>
+                </div>
+              </div>
             </div>
-        </div>
-
-        <div class="page-content">
-            ${
-              combinedActivities.length === 0
-                ? `
-                <div class="card" style="text-align:center;padding:64px 32px;">
-                    <div style="width:80px;height:80px;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;">
-                        <i data-lucide="bell-off" style="width:40px;height:40px;color:#9ca3af;"></i>
-                    </div>
-                    <h3 style="margin:0 0 8px 0;color:#111827;font-size:20px;">No notifications yet</h3>
-                    <p style="margin:0;color:#6b7280;font-size:14px;">When you receive notifications, they'll appear here</p>
-                </div>
-            `
-                : `
-                <div class="card" style="padding:0;overflow:hidden;">
-                    <div style="background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:16px 24px;">
-                        <h3 style="margin:0;font-size:16px;font-weight:600;color:#111827;">All Activity</h3>
-                    </div>
-                    <div style="display:flex;flex-direction:column;">
-                        ${combinedActivities
-                          .map((activity, index) => {
-                            const iconName = activity.icon || 'bell'
-                            const iconColor = activity.color || '#667eea'
-                            const bgColor = activity.read
-                              ? '#ffffff'
-                              : '#f0f9ff'
-                            const borderLeft = activity.read
-                              ? 'transparent'
-                              : '#3b82f6'
-
-                            return `
-                                <div style="display:flex;align-items:start;gap:16px;padding:20px 24px;background:${bgColor};border-left:3px solid ${borderLeft};border-bottom:1px solid #e5e7eb;transition:all 0.2s;cursor:pointer;" 
-                                     onmouseover="this.style.background='#f9fafb'" 
-                                     onmouseout="this.style.background='${bgColor}'">
-                                    <div style="width:48px;height:48px;background:${iconColor}15;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                        <i data-lucide="${iconName}" style="width:24px;height:24px;color:${iconColor};"></i>
-                                    </div>
-                                    <div style="flex:1;min-width:0;">
-                                        <div style="display:flex;align-items:start;justify-content:space-between;gap:12px;margin-bottom:4px;">
-                                            <h4 style="margin:0;font-size:15px;font-weight:600;color:#111827;">${
-                                              activity.title
-                                            }</h4>
-                                            <span style="font-size:13px;color:#6b7280;white-space:nowrap;">${
-                                              activity.time
-                                            }</span>
-                                        </div>
-                                        <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.5;">${
-                                          activity.message
-                                        }</p>
-                                        ${
-                                          !activity.read
-                                            ? `
-                                            <button onclick="markNotificationAsRead('${activity.id}')" 
-                                                    style="margin-top:12px;padding:6px 12px;background:#3b82f6;color:white;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.2s;"
-                                                    onmouseover="this.style.background='#2563eb'"
-                                                    onmouseout="this.style.background='#3b82f6'">
-                                                Mark as read
-                                            </button>
-                                        `
-                                            : ''
-                                        }
-                                    </div>
-                                </div>
-                            `
-                          })
-                          .join('')}
-                    </div>
-                </div>
-            `
-            }
-        </div>
+          `
+          })
+          .join('')}
+      </div>
     `
+  }
+
+  return `
+    <!-- Custom CSS for animations and enhanced styling -->
+    <style>
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+
+      @keyframes slideIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .activity-item {
+        animation: slideIn 0.3s ease-out;
+      }
+
+      .activity-item:nth-child(1) { animation-delay: 0.05s; }
+      .activity-item:nth-child(2) { animation-delay: 0.1s; }
+      .activity-item:nth-child(3) { animation-delay: 0.15s; }
+      .activity-item:nth-child(4) { animation-delay: 0.2s; }
+      .activity-item:nth-child(5) { animation-delay: 0.25s; }
+
+      .activity-group-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        backdrop-filter: blur(8px);
+        background: rgba(249, 250, 251, 0.95);
+      }
+
+      .filter-tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .filter-tab {
+        padding: 8px 16px;
+        border: none;
+        background: transparent;
+        color: #6b7280;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        border-radius: 8px 8px 0 0;
+        transition: all 0.2s;
+        position: relative;
+      }
+
+      .filter-tab.active {
+        color: #3b82f6;
+        background: #eff6ff;
+      }
+
+      .filter-tab:hover:not(.active) {
+        color: #374151;
+        background: #f9fafb;
+      }
+
+      .filter-tab.active::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: #3b82f6;
+      }
+
+      .search-container {
+        position: relative;
+        margin-bottom: 16px;
+      }
+
+      .search-input {
+        width: 100%;
+        padding: 12px 16px 12px 44px;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        font-size: 14px;
+        transition: all 0.2s;
+        background: white;
+      }
+
+      .search-input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+
+      .search-icon {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+        width: 18px;
+        height: 18px;
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+
+      .stat-card {
+        background: white;
+        padding: 16px;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        text-align: center;
+        transition: all 0.2s;
+      }
+
+      .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      }
+
+      .stat-number {
+        font-size: 24px;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 4px;
+      }
+
+      .stat-label {
+        font-size: 12px;
+        color: #6b7280;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .bulk-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 24px;
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .bulk-actions.hidden {
+        display: none;
+      }
+
+      /* Responsive header styles */
+      @media (max-width: 1024px) {
+        .page-header-content {
+          flex-direction: column !important;
+          align-items: stretch !important;
+          gap: 16px !important;
+        }
+
+        .stats-grid {
+          justify-content: center;
+        }
+
+        .page-subtitle {
+          margin-left: 0 !important;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .page-header-content {
+          gap: 12px !important;
+        }
+
+        .stats-grid {
+          flex-wrap: wrap;
+          justify-content: space-around;
+        }
+
+        .stat-card {
+          min-width: 70px !important;
+          flex: 1;
+          max-width: 80px;
+        }
+
+        .btn-text {
+          display: none;
+        }
+
+        .page-title {
+          font-size: 20px !important;
+        }
+
+        .page-subtitle {
+          font-size: 13px !important;
+          margin-top: 4px !important;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .page-header-content {
+          gap: 8px !important;
+        }
+
+        .stats-grid {
+          gap: 4px !important;
+        }
+
+        .stat-card {
+          padding: 6px 8px !important;
+          min-width: 50px !important;
+        }
+
+        .stat-number {
+          font-size: 16px !important;
+        }
+
+        .stat-label {
+          font-size: 10px !important;
+        }
+
+        .page-title {
+          font-size: 18px !important;
+        }
+
+        .page-title span {
+          display: block;
+        }
+      }
+    </style>
+
+    <div class="page-header">
+      <div class="page-header-content" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 16px; min-width: 0; flex: 1;">
+          <button class="btn btn-secondary" onclick="navigateToPage('dashboard')" style="display: flex; align-items: center; gap: 8px; padding: 10px 16px; transition: all 0.2s; flex-shrink: 0;"
+                  onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'"
+                  onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+            <i data-lucide="arrow-left" style="width: 18px; height: 18px;"></i>
+            Back
+          </button>
+          <div style="min-width: 0; flex: 1;">
+            <h1 class="page-title" style="display: flex; align-items: center; gap: 12px; margin: 0; word-break: break-word;">
+              <span style="flex: 1; min-width: 0;">Activity & Notifications</span>
+            </h1>
+            <p class="page-subtitle" style="margin: 8px 0 0 0; color: #6b7280; word-break: break-word;">Stay updated with system activities and important notifications</p>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; flex-shrink: 0;">
+          <!-- Quick Stats -->
+          <div class="stats-grid" style="display: flex; gap: 8px; margin: 0;">
+            <div class="stat-card" style="padding: 8px 12px; min-width: 60px;">
+              <div class="stat-number" style="font-size: 18px; color: #ef4444;">${unreadCount}</div>
+              <div class="stat-label">Unread</div>
+            </div>
+            <div class="stat-card" style="padding: 8px 12px; min-width: 60px;">
+              <div class="stat-number" style="font-size: 18px; color: #10b981;">${
+                combinedActivities.length
+              }</div>
+              <div class="stat-label">Total</div>
+            </div>
+            <div class="stat-card" style="padding: 8px 12px; min-width: 60px;">
+              <div class="stat-number" style="font-size: 18px; color: #f59e0b;">${
+                groupedActivities.today.length
+              }</div>
+              <div class="stat-label">Today</div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            ${
+              unreadCount > 0
+                ? `
+                <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #fde68a; border-radius: 12px; padding: 8px 16px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.1); flex-shrink: 0;">
+                  <div style="width: 8px; height: 8px; background: #f59e0b; border-radius: 50%; animation: pulse 2s infinite; flex-shrink: 0;"></div>
+                  <span style="font-size: 14px; font-weight: 600; color: #b45309; white-space: nowrap;">${unreadCount} unread</span>
+                </div>
+              `
+                : ''
+            }
+            <button class="btn btn-secondary" onclick="markAllNotificationsRead()" style="display: flex; align-items: center; gap: 8px; padding: 10px 16px; transition: all 0.2s; white-space: nowrap;"
+                    onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+              <i data-lucide="check-check" style="width: 16px; height: 16px;"></i>
+              <span class="btn-text">Mark all read</span>
+            </button>
+            <button class="btn btn-secondary" onclick="clearAllNotifications()" style="display: flex; align-items: center; gap: 8px; padding: 10px 16px; transition: all 0.2s; white-space: nowrap;"
+                    onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+              <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+              <span class="btn-text">Clear all</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <!-- Search and Filters -->
+      <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div class="search-container">
+          <i data-lucide="search" class="search-icon"></i>
+          <input type="text" class="search-input" placeholder="Search notifications..." oninput="filterActivities(this.value)">
+        </div>
+
+        <div class="filter-tabs">
+          <button class="filter-tab active" onclick="filterByType('all', this)">All</button>
+          <button class="filter-tab" onclick="filterByType('unread', this)">Unread</button>
+          <button class="filter-tab" onclick="filterByType('system', this)">System</button>
+          <button class="filter-tab" onclick="filterByType('alert', this)">Alerts</button>
+          <button class="filter-tab" onclick="filterByType('today', this)">Today</button>
+        </div>
+      </div>
+
+      <!-- Bulk Actions (hidden by default) -->
+      <div class="bulk-actions hidden" id="bulk-actions">
+        <span style="font-size: 14px; color: #374151; font-weight: 500;">0 selected</span>
+        <button class="btn btn-secondary" onclick="bulkMarkRead()" style="padding: 6px 12px; font-size: 12px;">
+          <i data-lucide="check" style="width: 14px; height: 14px;"></i>
+          Mark Read
+        </button>
+        <button class="btn btn-danger" onclick="bulkDismiss()" style="padding: 6px 12px; font-size: 12px;">
+          <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+          Dismiss
+        </button>
+      </div>
+
+      ${
+        combinedActivities.length === 0
+          ? `
+          <div class="card" style="text-align: center; padding: 80px 32px; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 2px dashed #e2e8f0;">
+            <div style="width: 120px; height: 120px; background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 32px; position: relative;">
+              <i data-lucide="bell-off" style="width: 60px; height: 60px; color: #94a3b8;"></i>
+              <div style="position: absolute; top: -8px; right: -8px; width: 32px; height: 32px; background: #3b82f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);">
+                <i data-lucide="plus" style="width: 16px; height: 16px; color: white;"></i>
+              </div>
+            </div>
+            <h3 style="margin: 0 0 16px 0; color: #1e293b; font-size: 24px; font-weight: 700;">All caught up!</h3>
+            <p style="margin: 0 0 24px 0; color: #64748b; font-size: 16px; line-height: 1.6;">No new notifications or activities at the moment. We'll notify you when something important happens.</p>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
+              <button class="btn btn-primary" onclick="refreshActivities()" style="display: flex; align-items: center; gap: 8px; padding: 12px 24px;">
+                <i data-lucide="refresh-cw" style="width: 18px; height: 18px;"></i>
+                Refresh
+              </button>
+              <button class="btn btn-secondary" onclick="navigateToPage('dashboard')" style="padding: 12px 24px;">
+                Back to Dashboard
+              </button>
+            </div>
+          </div>
+        `
+          : `
+          <div class="card" style="padding: 0; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-radius: 12px;">
+            ${renderActivityGroup('Today', groupedActivities.today)}
+            ${renderActivityGroup('Yesterday', groupedActivities.yesterday)}
+            ${renderActivityGroup('This Week', groupedActivities.thisWeek)}
+            ${renderActivityGroup('Older', groupedActivities.older)}
+          </div>
+        `
+      }
+    </div>
+  `
 }
 
 function markNotificationAsRead(notificationId) {
@@ -12370,7 +13803,7 @@ function markNotificationAsRead(notificationId) {
         if (activityList && AppState.currentPage === 'dashboard') {
           // Update notifications area only (recent activity may include notifications)
           try {
-            renderNotifications()
+            renderNotifications(currentNotificationFilter)
           } catch (e) {}
         } else if (AppState.currentPage === 'activity') {
           // If on the activity page, re-render the full activity area
@@ -12387,6 +13820,228 @@ function markNotificationAsRead(notificationId) {
       }
       updateNotificationBadge()
     }
+  }
+}
+
+function dismissActivity(activityId) {
+  if (AppState.notifications) {
+    const index = AppState.notifications.findIndex((n) => n.id === activityId)
+    if (index !== -1) {
+      AppState.notifications.splice(index, 1)
+      saveNotifications()
+      updateNotificationBadge()
+
+      // Update UI
+      if (AppState.currentPage === 'activity') {
+        const body = document.getElementById('main-content')
+        if (body) body.innerHTML = generateActivityPage()
+        lucide.createIcons()
+        initializePageEvents('activity')
+      }
+    }
+  }
+}
+
+function filterActivities(searchTerm) {
+  const activityItems = document.querySelectorAll('.activity-item')
+  const searchLower = searchTerm.toLowerCase()
+
+  activityItems.forEach((item) => {
+    const title =
+      item.querySelector('.activity-title')?.textContent.toLowerCase() || ''
+    const message =
+      item.querySelector('.activity-message')?.textContent.toLowerCase() || ''
+
+    if (
+      title.includes(searchLower) ||
+      message.includes(searchLower) ||
+      searchTerm === ''
+    ) {
+      item.style.display = 'flex'
+    } else {
+      item.style.display = 'none'
+    }
+  })
+
+  // Update group headers visibility
+  const activityGroups = document.querySelectorAll('.activity-group')
+  activityGroups.forEach((group) => {
+    const visibleItems = group.querySelectorAll(
+      '.activity-item[style*="display: flex"]'
+    )
+    const header = group.previousElementSibling
+    if (header && header.classList.contains('activity-group-header')) {
+      header.style.display = visibleItems.length > 0 ? 'block' : 'none'
+    }
+  })
+}
+
+function filterByType(type, buttonElement) {
+  // Update active tab
+  document
+    .querySelectorAll('.filter-tab')
+    .forEach((tab) => tab.classList.remove('active'))
+  buttonElement.classList.add('active')
+
+  const activityItems = document.querySelectorAll('.activity-item')
+
+  activityItems.forEach((item) => {
+    let show = true
+
+    switch (type) {
+      case 'unread':
+        show = item.querySelector('.activity-status') !== null
+        break
+      case 'system':
+        show =
+          item.querySelector(
+            '[data-lucide="settings"], [data-lucide="package"], [data-lucide="users"], [data-lucide="trending-up"]'
+          ) !== null
+        break
+      case 'alert':
+        show =
+          item.querySelector(
+            '[data-lucide="alert-triangle"], [data-lucide="x-circle"]'
+          ) !== null
+        break
+      case 'today':
+        const todayHeader =
+          item.closest('.activity-group')?.previousElementSibling
+        show = todayHeader && todayHeader.textContent.includes('Today')
+        break
+      case 'all':
+      default:
+        show = true
+        break
+    }
+
+    item.style.display = show ? 'flex' : 'none'
+  })
+
+  // Update group headers visibility
+  const activityGroups = document.querySelectorAll('.activity-group')
+  activityGroups.forEach((group) => {
+    const visibleItems = group.querySelectorAll(
+      '.activity-item[style*="display: flex"]'
+    )
+    const header = group.previousElementSibling
+    if (header && header.classList.contains('activity-group-header')) {
+      header.style.display = visibleItems.length > 0 ? 'block' : 'none'
+    }
+  })
+}
+
+function bulkMarkRead() {
+  const selectedItems = document.querySelectorAll('.activity-item.selected')
+  selectedItems.forEach((item) => {
+    const activityId = item
+      .querySelector('.activity-action-btn')
+      ?.getAttribute('onclick')
+      ?.match(/'([^']+)'/)?.[1]
+    if (activityId) {
+      markNotificationAsRead(activityId)
+    }
+  })
+
+  // Clear selection
+  clearBulkSelection()
+}
+
+function bulkDismiss() {
+  const selectedItems = document.querySelectorAll('.activity-item.selected')
+  const activityIds = []
+
+  selectedItems.forEach((item) => {
+    const activityId = item
+      .querySelector('.activity-action-btn.secondary')
+      ?.getAttribute('onclick')
+      ?.match(/'([^']+)'/)?.[1]
+    if (activityId) {
+      activityIds.push(activityId)
+    }
+  })
+
+  // Confirm bulk dismiss
+  if (activityIds.length > 0) {
+    showInUiConfirm(
+      `Dismiss ${activityIds.length} notification${
+        activityIds.length > 1 ? 's' : ''
+      }?`,
+      {
+        confirmText: 'Dismiss',
+        title: 'Bulk Dismiss',
+      }
+    ).then((confirmed) => {
+      if (confirmed) {
+        activityIds.forEach((id) => dismissActivity(id))
+        clearBulkSelection()
+      }
+    })
+  }
+}
+
+function clearBulkSelection() {
+  document.querySelectorAll('.activity-item.selected').forEach((item) => {
+    item.classList.remove('selected')
+    item.style.background = item.dataset.originalBg || ''
+  })
+
+  updateBulkActionsVisibility()
+}
+
+function updateBulkActionsVisibility() {
+  const selectedCount = document.querySelectorAll(
+    '.activity-item.selected'
+  ).length
+  const bulkActions = document.getElementById('bulk-actions')
+
+  if (bulkActions) {
+    if (selectedCount > 0) {
+      bulkActions.classList.remove('hidden')
+      bulkActions.querySelector(
+        'span'
+      ).textContent = `${selectedCount} selected`
+    } else {
+      bulkActions.classList.add('hidden')
+    }
+  }
+}
+
+function refreshActivities() {
+  // Refresh the activity page
+  if (AppState.currentPage === 'activity') {
+    const body = document.getElementById('main-content')
+    if (body) {
+      body.innerHTML = generateActivityPage()
+      lucide.createIcons()
+      initializePageEvents('activity')
+    }
+  }
+}
+
+// Enhanced activity item click handling for selection
+function handleActivityItemClick(event, activityId) {
+  const item = event.currentTarget
+  const isCtrlPressed = event.ctrlKey || event.metaKey
+
+  if (isCtrlPressed) {
+    // Multi-select mode
+    event.preventDefault()
+    item.classList.toggle('selected')
+
+    if (item.classList.contains('selected')) {
+      item.dataset.originalBg = item.style.background
+      item.style.background = '#e0f2fe'
+      item.style.borderLeftColor = '#0284c7'
+    } else {
+      item.style.background = item.dataset.originalBg || ''
+      delete item.dataset.originalBg
+    }
+
+    updateBulkActionsVisibility()
+  } else {
+    // Single click - mark as read
+    markNotificationAsRead(activityId)
   }
 }
 // ===== System-wide Notifications (persistence helpers) =====
@@ -12469,7 +14124,7 @@ function createNotification({
     AppState.notifications = AppState.notifications.slice(0, 500)
   saveNotifications()
   try {
-    renderNotifications()
+    renderNotifications(currentNotificationFilter)
   } catch (e) {}
 
   if (!silent && 'Notification' in window) {
@@ -15623,6 +17278,16 @@ const exposedFunctions = {
   refreshSupportTickets,
   closeEditAboutModal,
   saveAboutUs,
+  // New activity & notification functions
+  dismissActivity,
+  filterActivities,
+  filterByType,
+  bulkMarkRead,
+  bulkDismiss,
+  clearBulkSelection,
+  updateBulkActionsVisibility,
+  refreshActivities,
+  handleActivityItemClick,
 }
 
 Object.assign(window, exposedFunctions)
