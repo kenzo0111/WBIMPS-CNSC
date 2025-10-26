@@ -2813,7 +2813,7 @@ function generateDashboardPage() {
                 <div class="card">
                     <div class="card-header card-header-inline" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
                         <h3 class="card-title">Recent Activity</h3>
-                        <a href="#" class="link">View all activity →</a>
+                        <a href="#" class="link" onclick="navigateToPage('activity')">View all activity →</a>
                     </div>
                     <div class="activity-list" id="recent-activity-list">
                       <!-- Recent activities will be injected here by dashboard script -->
@@ -3216,7 +3216,7 @@ loadPageContent = function (pageId) {
   if (pageId === 'dashboard') {
     // small delay to allow DOM insertion
     setTimeout(async () => {
-      const acts = await fetchActivities(8)
+      const acts = await fetchActivities(5)
       renderActivityList(acts)
     }, 120)
   }
