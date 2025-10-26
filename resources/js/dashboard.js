@@ -2088,6 +2088,41 @@ function loadPageContent(pageId) {
   initializePageEvents(pageId)
 }
 
+// Helper to render a single metric card with the new overview structure
+function renderMetricCard(
+  title,
+  value,
+  trend,
+  iconName,
+  iconClass,
+  isCurrency = false
+) {
+  const dir = trend && trend.direction ? trend.direction : 'neutral'
+  const pct =
+    trend && typeof trend.percentage !== 'undefined' ? trend.percentage : 0
+  const sign = pct > 0 ? '+' : pct < 0 ? '' : ''
+  const pctClass = pct > 0 ? 'positive' : pct < 0 ? 'negative' : 'neutral'
+  return `
+        <div class="metric-card">
+          <div class="card-head">
+            <div class="label">${title}</div>
+            <div class="icon-badge ${iconClass}">
+              <i data-lucide="${iconName}" class="icon"></i>
+            </div>
+          </div>
+          <div class="stat">
+            <div class="number">${value}</div>
+            <div class="meta">
+              <div class="percent ${pctClass}">${sign}${Math.abs(pct)}%</div>
+              <div class="hint">${
+                dir === 'up' ? 'Up' : dir === 'down' ? 'Down' : 'No change'
+              }</div>
+            </div>
+          </div>
+        </div>
+      `
+}
+
 function generateDashboardPage() {
   const currentTime = new Date().toLocaleString('en-US', {
     weekday: 'long',
@@ -2205,8 +2240,23 @@ function generateDashboardPage() {
           </div>
 
           <!-- Notifications -->
-          <button id="notifications-btn" class="btn-secondary notifications-btn" onclick="toggleNotifications(event)" aria-haspopup="true" aria-expanded="false" title="Notifications" style="margin-left:4px;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;position:relative;border-radius:50%;">
-            <i data-lucide="bell" class="icon" style="width:18px;height:18px;"></i>
+          <button
+            id="notifications-btn"
+            type="button"
+            class="btn-secondary notifications-btn"
+            onclick="toggleNotifications(event)"
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-label="Notifications"
+            title="Notifications"
+            style="margin-left:4px;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;position:relative;background:transparent;border:none;box-shadow:none;border-radius:0;transition: background-color 0.12s ease, box-shadow 0.12s ease, transform 0.06s ease;"
+            onmouseover="this.style.background='rgba(0,0,0,0.06)'; this.style.borderRadius='50%';"
+            onmouseout="this.style.background='transparent'; this.style.borderRadius='0'; this.style.boxShadow='none';"
+            onfocus="this.style.background='rgba(99,102,241,0.12)'; this.style.boxShadow='0 0 0 4px rgba(99,102,241,0.16)'; this.style.borderRadius='50%';"
+            onblur="this.style.background='transparent'; this.style.borderRadius='0'; this.style.boxShadow='none';"
+            onmousedown="this.style.background='rgba(0,0,0,0.12)'; this.style.transform='scale(0.98)';"
+            onmouseup="this.style.background='rgba(0,0,0,0.06)'; this.style.transform='scale(1)';">
+            <i data-lucide="bell" class="icon" style="width:18px;height:18px;color:inherit;"></i>
             <span id="notifications-badge" aria-hidden="true"></span>
           </button>
 
@@ -2297,7 +2347,7 @@ function generateDashboardPage() {
         
         <div class="page-content">
             <!-- Hero Section -->
-            <div class="hero-section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 32px; margin-bottom: 24px; color: white; box-shadow: 0 8px 24px rgba(102, 126, 234, 0.25); position: relative; overflow: hidden;">
+            <div class="hero-section" style="background: linear-gradient(135deg, #800000 0%, #C62828 50%, #FF9800 100%); border-radius: 16px; padding: 32px; margin-bottom: 24px; color: white; box-shadow: 0 8px 24px rgba(198, 40, 40, 0.25); position: relative; overflow: hidden;">
                 <div style="background: url('data:image/svg+xml,%3csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3e%3ccircle cx=%2220%22 cy=%2220%22 r=%222%22 fill=%22rgba(255,255,255,0.1)%22/%3e%3ccircle cx=%2280%22 cy=%2280%22 r=%222%22 fill=%22rgba(255,255,255,0.1)%22/%3e%3ccircle cx=%2260%22 cy=%2230%22 r=%221%22 fill=%22rgba(255,255,255,0.1)%22/%3e%3ccircle cx=%2230%22 cy=%2270%22 r=%221.5%22 fill=%22rgba(255,255,255,0.1)%22/%3e%3c/svg%3e') no-repeat center; background-size: cover; position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0.1;"></div>
                 <div style="position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between;">
                     <div style="flex: 1;">
@@ -2332,163 +2382,54 @@ function generateDashboardPage() {
             
             <!-- Metrics Cards -->
             <div class="metrics-grid">
-                <div class="metric-card">
-                    <div class="metric-content">
-                        <div class="metric-info">
-                            <h3>Items</h3>
-                            <p class="value">${totalProducts}</p>
-                            <div class="trend-indicator ${
-                              productsTrend.direction
-                            }">
-                                <i data-lucide="${
-                                  productsTrend.direction === 'up'
-                                    ? 'trending-up'
-                                    : productsTrend.direction === 'down'
-                                    ? 'trending-down'
-                                    : 'minus'
-                                }" class="trend-icon"></i>
-                                <span class="trend-text">${
-                                  productsTrend.percentage > 0 ? '+' : ''
-                                }${productsTrend.percentage}%</span>
-                            </div>
-                        </div>
-                        <div class="metric-icon blue">
-                            <i data-lucide="package" class="icon"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="metric-card">
-                    <div class="metric-content">
-                        <div class="metric-info">
-                            <h3>Low Stock</h3>
-                            <p class="value">${lowStockItems}</p>
-                            <div class="trend-indicator ${
-                              lowStockTrend.direction
-                            }">
-                                <i data-lucide="${
-                                  lowStockTrend.direction === 'up'
-                                    ? 'trending-up'
-                                    : lowStockTrend.direction === 'down'
-                                    ? 'trending-down'
-                                    : 'minus'
-                                }" class="trend-icon"></i>
-                                <span class="trend-text">${
-                                  lowStockTrend.percentage > 0 ? '+' : ''
-                                }${lowStockTrend.percentage}%</span>
-                            </div>
-                        </div>
-                        <div class="metric-icon orange">
-                            <i data-lucide="alert-triangle" class="icon"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="metric-card">
-                    <div class="metric-content">
-                        <div class="metric-info">
-                            <h3>Incoming</h3>
-                            <p class="value">${incomingRequests}</p>
-                            <div class="trend-indicator ${
-                              incomingTrend.direction
-                            }">
-                                <i data-lucide="${
-                                  incomingTrend.direction === 'up'
-                                    ? 'trending-up'
-                                    : incomingTrend.direction === 'down'
-                                    ? 'trending-down'
-                                    : 'minus'
-                                }" class="trend-icon"></i>
-                                <span class="trend-text">${
-                                  incomingTrend.percentage > 0 ? '+' : ''
-                                }${incomingTrend.percentage}%</span>
-                            </div>
-                        </div>
-                        <div class="metric-icon yellow">
-                            <i data-lucide="clock" class="icon"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="metric-card">
-                    <div class="metric-content">
-                        <div class="metric-info">
-                            <h3>Received Today</h3>
-                            <p class="value">${receivedToday}</p>
-                            <div class="trend-indicator ${
-                              receivedTrend.direction
-                            }">
-                                <i data-lucide="${
-                                  receivedTrend.direction === 'up'
-                                    ? 'trending-up'
-                                    : receivedTrend.direction === 'down'
-                                    ? 'trending-down'
-                                    : 'minus'
-                                }" class="trend-icon"></i>
-                                <span class="trend-text">${
-                                  receivedTrend.percentage > 0 ? '+' : ''
-                                }${receivedTrend.percentage}%</span>
-                            </div>
-                        </div>
-                        <div class="metric-icon green">
-                            <i data-lucide="check-circle" class="icon"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="metric-card">
-                    <div class="metric-content">
-                        <div class="metric-info">
-                            <h3>Users</h3>
-                            <p class="value">${totalUsers}</p>
-                            <div class="trend-indicator ${
-                              usersTrend.direction
-                            }">
-                                <i data-lucide="${
-                                  usersTrend.direction === 'up'
-                                    ? 'trending-up'
-                                    : usersTrend.direction === 'down'
-                                    ? 'trending-down'
-                                    : 'minus'
-                                }" class="trend-icon"></i>
-                                <span class="trend-text">${
-                                  usersTrend.percentage > 0 ? '+' : ''
-                                }${usersTrend.percentage}%</span>
-                            </div>
-                        </div>
-                        <div class="metric-icon purple">
-                            <i data-lucide="users" class="icon"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="metric-card">
-                    <div class="metric-content">
-                        <div class="metric-info">
-                            <h3>Inventory Value</h3>
-                            <p class="value currency-value">${formatCurrency(
-                              totalInventoryValue
-                            )}</p>
-                            <div class="trend-indicator ${
-                              inventoryTrend.direction
-                            }">
-                                <i data-lucide="${
-                                  inventoryTrend.direction === 'up'
-                                    ? 'trending-up'
-                                    : inventoryTrend.direction === 'down'
-                                    ? 'trending-down'
-                                    : 'minus'
-                                }" class="trend-icon"></i>
-                                <span class="trend-text">${
-                                  inventoryTrend.percentage > 0 ? '+' : ''
-                                }${inventoryTrend.percentage}%</span>
-                            </div>
-                        </div>
-                        <div class="metric-icon indigo">
-                            <i data-lucide="bar-chart-3" class="icon"></i>
-                        </div>
-                    </div>
-                </div>
+                ${renderMetricCard(
+                  'Items',
+                  totalProducts,
+                  productsTrend,
+                  'package',
+                  'blue'
+                )}
+
+                ${renderMetricCard(
+                  'Low Stock',
+                  lowStockItems,
+                  lowStockTrend,
+                  'alert-triangle',
+                  'orange'
+                )}
+
+                ${renderMetricCard(
+                  'Incoming',
+                  incomingRequests,
+                  incomingTrend,
+                  'clock',
+                  'yellow'
+                )}
+
+                ${renderMetricCard(
+                  'Received Today',
+                  receivedToday,
+                  receivedTrend,
+                  'check-circle',
+                  'green'
+                )}
+
+                ${renderMetricCard(
+                  'Users',
+                  totalUsers,
+                  usersTrend,
+                  'users',
+                  'purple'
+                )}
+
+                ${renderMetricCard(
+                  'Inventory Value',
+                  formatCurrency(totalInventoryValue),
+                  inventoryTrend,
+                  'bar-chart-3',
+                  'indigo',
+                  true
+                )}
             </div>
             
             <!-- Quick Actions & Recent Activity -->
@@ -2537,18 +2478,16 @@ function generateDashboardPage() {
                         </div>
                     </div>
                 </div>
-
+                
                 <!-- Recent Activity second -->
                 <div class="card">
-                    <div class="card-header">
+                    <div class="card-header card-header-inline" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
                         <h3 class="card-title">Recent Activity</h3>
-                    </div>
-              <div class="activity-list" id="recent-activity-list">
-                <!-- Recent activities will be injected here by dashboard script -->
-                <div class="activity-loading" style="padding:16px;color:#6b7280;font-size:14px;">Loading recent activity…</div>
-              </div>
-                    <div class="activity-footer">
                         <a href="#" class="link">View all activity →</a>
+                    </div>
+                    <div class="activity-list" id="recent-activity-list">
+                      <!-- Recent activities will be injected here by dashboard script -->
+                      <div class="activity-loading" style="padding:16px;color:#6b7280;font-size:14px;">Loading recent activity…</div>
                     </div>
                 </div>
             </div>
@@ -9708,7 +9647,6 @@ function renderRolesManagementPage(
                                     Role
                                 </div>
                             </th>
-              <!-- Department column removed -->
                             <th>
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <i data-lucide="circle-dot" style="width:14px;height:14px;"></i>
