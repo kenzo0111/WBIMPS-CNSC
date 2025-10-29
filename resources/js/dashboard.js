@@ -1094,53 +1094,8 @@ function getStatusColor(status) {
 }
 
 // UI Alert / Toast helper
-function showAlert(message, type = 'info', duration = 4000) {
-  try {
-    let container = document.getElementById('ui-alert-container')
-    if (!container) {
-      container = document.createElement('div')
-      container.id = 'ui-alert-container'
-      container.className = 'ui-alert-container'
-      document.body.appendChild(container)
-    }
+// Note: showAlert function moved to global app.js for app-wide availability
 
-    const alertEl = document.createElement('div')
-    alertEl.className = `ui-alert ui-alert-${type}`
-    alertEl.setAttribute('role', 'status')
-
-    const text = document.createElement('div')
-    text.className = 'ui-alert-text'
-    text.textContent = message
-
-    const closeBtn = document.createElement('button')
-    closeBtn.className = 'ui-alert-close'
-    closeBtn.innerHTML = '✕'
-    closeBtn.onclick = () => {
-      alertEl.classList.add('ui-alert-hide')
-      setTimeout(() => alertEl.remove(), 300)
-    }
-
-    alertEl.appendChild(text)
-    alertEl.appendChild(closeBtn)
-    container.appendChild(alertEl)
-
-    // Auto remove
-    setTimeout(() => {
-      if (!alertEl) return
-      alertEl.classList.add('ui-alert-hide')
-      setTimeout(() => alertEl.remove(), 300)
-    }, duration)
-  } catch (e) {
-    // Fallback to native alert if something goes wrong
-    try {
-      alert(message)
-    } catch (err) {
-      console.log('Alert:', message)
-    }
-  }
-}
-
-// User Login Logging Function
 function logUserLogin(email, name, status = 'Success') {
   try {
     if (!window.MockData) window.MockData = {}
@@ -2820,6 +2775,7 @@ function generateDashboardPage() {
                     </div>
                 </div>
             </div>
+
         </div>
     `
 }

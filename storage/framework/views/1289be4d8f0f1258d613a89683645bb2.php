@@ -333,6 +333,7 @@
     </div>
 
     <!-- JavaScript -->
+    <?php echo app('Illuminate\Foundation\Vite')('resources/js/app.js'); ?>
     <?php echo app('Illuminate\Foundation\Vite')('resources/js/dashboard.js'); ?>
 </body>
 
