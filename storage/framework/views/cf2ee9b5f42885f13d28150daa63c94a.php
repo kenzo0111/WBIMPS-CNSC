@@ -27,27 +27,7 @@
                                     <td style="vertical-align:middle;width:64px;">
                                         <!-- Logo: prefer embedded CID (inline) then a provided URL, otherwise asset() -->
                                         <?php
-                                            // Prefer embedding inside the view (using $message->embed)
-                                            // because embedding via the Mailable may not always produce
-                                            // the CID when rendering outside of the mailer. If $message
-                                            // is available (it is when Laravel actually sends the mail),
-                                            // use it to embed the local file. Otherwise prefer a CID
-                                            // passed from the Mailable, and finally fall back to the
-                                            // public URL.
-                                            $logoLocal = public_path('images/UCN1.png');
-                                            $logoSrc = null;
-                                            try {
-                                                if (isset($message) && method_exists($message, 'embed') && file_exists($logoLocal)) {
-                                                    $logoSrc = $message->embed($logoLocal);
-                                                }
-                                            } catch (\Throwable $e) {
-                                                // ignore and fall back
-                                                $logoSrc = null;
-                                            }
-
-                                            if (empty($logoSrc)) {
-                                                $logoSrc = $logoCid ?? ($logoUrl ?? asset('images/UCN1.png'));
-                                            }
+                                            $logoSrc = $logoCid ?? ($logoUrl ?? asset('images/UCN1.png'));
                                         ?>
                                         <img src="<?php echo e($logoSrc); ?>" alt="Supply System" width="48" height="48" style="display:block;border:0;outline:none;text-decoration:none;" onerror="this.style.display='none'">
                                     </td>
@@ -128,15 +108,29 @@
                                             <td style="padding:8px 10px;border-bottom:1px solid #f5f5f5;vertical-align:top;"><?php echo e($idx); ?></td>
                                             <td style="padding:8px 10px;border-bottom:1px solid #f5f5f5;vertical-align:top;">
                                                 <?php if(is_array($item)): ?>
-                                                    <?php echo e($item['description'] ?? json_encode($item)); ?>
+                                                    <?php echo e($item['description'] ?? $item['item_description'] ?? json_encode($item)); ?>
 
                                                 <?php else: ?>
                                                     <?php echo e($item); ?>
 
                                                 <?php endif; ?>
                                             </td>
-                                            <td style="padding:8px 10px;border-bottom:1px solid #f5f5f5;vertical-align:top;"><?php echo e(is_array($item) ? ($item['quantity'] ?? '-') : '-'); ?></td>
-                                            <td style="padding:8px 10px;border-bottom:1px solid #f5f5f5;vertical-align:top;"><?php echo e(is_array($item) ? ($item['unit'] ?? '-') : '-'); ?></td>
+                                            <td style="padding:8px 10px;border-bottom:1px solid #f5f5f5;vertical-align:top;">
+                                                <?php if(is_array($item)): ?>
+                                                    <?php echo e($item['quantity'] ?? '-'); ?>
+
+                                                <?php else: ?>
+                                                    -
+                                                <?php endif; ?>
+                                            </td>
+                                            <td style="padding:8px 10px;border-bottom:1px solid #f5f5f5;vertical-align:top;">
+                                                <?php if(is_array($item)): ?>
+                                                    <?php echo e($item['unit'] ?? '-'); ?>
+
+                                                <?php else: ?>
+                                                    -
+                                                <?php endif; ?>
+                                            </td>
                                         </tr>
                                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                 </tbody>

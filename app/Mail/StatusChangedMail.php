@@ -37,6 +37,19 @@ class StatusChangedMail extends Mailable
      */
     public function build()
     {
+        // Attempt to embed a local logo so it appears inline in email clients.
+        $logoCid = null;
+        $logoPath = public_path('images/UCN1.png');
+        if (file_exists($logoPath)) {
+            try {
+                // embed() returns a CID string like "cid:..." that can be used as img src
+                $logoCid = $this->embed($logoPath);
+            } catch (\Throwable $e) {
+                // ignore embed failures and fall back to public asset URL in the view
+                $logoCid = null;
+            }
+        }
+
         return $this->subject("{$this->modelName} status changed: {$this->newStatus}")
             ->view('emails.status_changed')
             ->with([
@@ -45,6 +58,8 @@ class StatusChangedMail extends Mailable
                 'oldStatus' => $this->oldStatus,
                 'newStatus' => $this->newStatus,
                 'notes' => $this->notes,
+                'logoCid' => $logoCid,
+                'logoUrl' => asset('images/UCN1.png'),
             ]);
     }
 }

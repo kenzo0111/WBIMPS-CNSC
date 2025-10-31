@@ -34,7 +34,7 @@ class PurchaseRequestSubmitted extends Mailable
         $subject = sprintf('New Purchase Request submitted: %s', $this->pr->request_id ?? $this->pr->id);
         // Attempt to embed a local logo so it appears inline in email clients.
         $logoCid = null;
-        $logoPath = public_path('images/cnscrefine.png');
+        $logoPath = public_path('images/UCN1.png');
         if (file_exists($logoPath)) {
             try {
                 // embed() returns a CID string like "cid:..." that can be used as img src
@@ -51,7 +51,7 @@ class PurchaseRequestSubmitted extends Mailable
                         'pr' => $this->pr,
                         'logoCid' => $logoCid,
                         // keep logoUrl available as a fallback for clients that block inline images
-                        'logoUrl' => asset('images/cnscrefine.png'),
+                        'logoUrl' => asset('images/UCN1.png'),
                     ]);
     }
 }

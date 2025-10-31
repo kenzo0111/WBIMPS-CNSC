@@ -21,19 +21,7 @@
                 <tr>
                   <td style="vertical-align:middle;width:64px;">
                     @php
-                      $logoLocal = public_path('images/UCN1.png');
-                      $logoSrc = null;
-                      try {
-                        if (isset($message) && method_exists($message, 'embed') && file_exists($logoLocal)) {
-                          $logoSrc = $message->embed($logoLocal);
-                        }
-                      } catch (\Throwable $e) {
-                        $logoSrc = null;
-                      }
-
-                      if (empty($logoSrc)) {
-                        $logoSrc = $logoCid ?? ($logoUrl ?? asset('images/UCN1.png'));
-                      }
+                      $logoSrc = $logoCid ?? ($logoUrl ?? asset('images/UCN1.png'));
                     @endphp
                     <img src="{{ $logoSrc }}" alt="Supply System" width="48" height="48" style="display:block;border:0;outline:none;text-decoration:none;" onerror="this.style.display='none'">
                   </td>

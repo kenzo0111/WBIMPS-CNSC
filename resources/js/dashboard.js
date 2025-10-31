@@ -14711,7 +14711,9 @@ function openCategoryModal(mode = 'create', categoryId = null) {
 
   let categoryData = null
   if (categoryId) {
-    categoryData = MockData.categories.find((c) => c.id === categoryId)
+    categoryData = MockData.categories.find(
+      (c) => String(c.id) === String(categoryId)
+    )
   }
 
   modalContent.innerHTML = generateCategoryModal(mode, categoryData)
