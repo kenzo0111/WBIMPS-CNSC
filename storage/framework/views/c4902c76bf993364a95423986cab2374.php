@@ -140,6 +140,93 @@
       -webkit-backdrop-filter: blur(3px);
       backdrop-filter: blur(3px);
     }
+
+    /* Enhanced Alert Styles */
+    .ui-alert {
+      padding: 16px 20px;
+      border-radius: 12px;
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.4;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ui-alert-success {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+    }
+
+    .ui-alert-error {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: white;
+    }
+
+    .ui-alert-warning {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: white;
+    }
+
+    .ui-alert-info {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+    }
+
+    .ui-alert:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    .ui-alert button:hover {
+      opacity: 1 !important;
+    }
+
+    @keyframes slideInRight {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideOutRight {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+    }
+
+    @keyframes progress {
+      from {
+        width: 100%;
+      }
+      to {
+        width: 0%;
+      }
+    }
+
+    @media (max-width: 480px) {
+      #ui-alert-container {
+        left: 10px !important;
+        right: 10px !important;
+        max-width: none !important;
+      }
+
+      .ui-alert {
+        padding: 12px 16px;
+        font-size: 13px;
+      }
+    }
   </style>
 </head>
 
@@ -196,21 +283,96 @@
   </main>
 
   <script>
-    // Lightweight showAlert fallback for standalone pages
+    // Enhanced showAlert function with icons and animations
     function showAlert(message, type = 'info', duration = 3500) {
       try {
+        // Ensure Lucide icons are loaded
+        if (!document.querySelector('script[src*="lucide"]')) {
+          const lucideScript = document.createElement('script');
+          lucideScript.src = 'https://unpkg.com/lucide@latest/dist/umd/lucide.js';
+          document.head.appendChild(lucideScript);
+          lucideScript.onload = () => lucide.createIcons();
+        }
+
         let container = document.getElementById('ui-alert-container');
         if (!container) {
           container = document.createElement('div');
           container.id = 'ui-alert-container';
+          container.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 400px;
+            pointer-events: none;
+          `;
           document.body.appendChild(container);
         }
-        const el = document.createElement('div');
-        el.className = `ui-alert ui-alert-${type}`;
-        el.textContent = message;
-        container.appendChild(el);
-        setTimeout(() => { el.remove(); }, duration);
-      } catch (e) { alert(message); }
+
+        const alertEl = document.createElement('div');
+        alertEl.className = `ui-alert ui-alert-${type}`;
+        alertEl.style.cssText = `
+          margin-bottom: 10px;
+          pointer-events: auto;
+          cursor: pointer;
+          animation: slideInRight 0.3s ease-out;
+        `;
+
+        // Icon mapping
+        const icons = {
+          success: 'check-circle',
+          error: 'x-circle',
+          warning: 'alert-triangle',
+          info: 'info'
+        };
+
+        const iconName = icons[type] || 'info';
+
+        alertEl.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <i data-lucide="${iconName}" style="width: 20px; height: 20px; flex-shrink: 0;"></i>
+            <div style="flex: 1; font-size: 14px; line-height: 1.4;">${message}</div>
+            <button onclick="this.parentElement.parentElement.remove()" style="
+              background: none;
+              border: none;
+              color: inherit;
+              cursor: pointer;
+              padding: 2px;
+              opacity: 0.7;
+              font-size: 18px;
+              line-height: 1;
+            ">&times;</button>
+          </div>
+          <div style="height: 3px; background: rgba(255,255,255,0.3); border-radius: 2px; overflow: hidden; margin-top: 8px;">
+            <div style="height: 100%; background: rgba(255,255,255,0.8); border-radius: 2px; width: 100%; animation: progress ${duration}ms linear;"></div>
+          </div>
+        `;
+
+        container.appendChild(alertEl);
+
+        // Trigger icon creation if Lucide is loaded
+        if (window.lucide) {
+          lucide.createIcons();
+        }
+
+        // Auto remove after duration
+        setTimeout(() => {
+          if (alertEl.parentElement) {
+            alertEl.style.animation = 'slideOutRight 0.3s ease-in forwards';
+            setTimeout(() => alertEl.remove(), 300);
+          }
+        }, duration);
+
+        // Click to dismiss
+        alertEl.addEventListener('click', () => {
+          alertEl.style.animation = 'slideOutRight 0.3s ease-in forwards';
+          setTimeout(() => alertEl.remove(), 300);
+        });
+
+      } catch (e) {
+        // Fallback to native alert
+        alert(message);
+      }
     }
 
     function getCsrfToken() {
