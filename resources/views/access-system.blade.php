@@ -612,7 +612,6 @@
           email: source.email || email,
           name: source.name || extractNameFromEmail(email),
           role: source.role || 'User',
-          department: source.department || 'N/A',
           id: source.id || 'GUEST',
           loginTime: new Date().toISOString()
         };
