@@ -233,8 +233,8 @@
 <body>
   <header>
     <div class="header-container">
-      <div class="logo">
-  <img src="<?php echo e($imagesPath); ?>/cnscrefine.png" alt="CNSC Logo" />
+        <div class="logo">
+  <img src="/images/cnscrefine.png" alt="CNSC Logo" />
         <div class="logo-text">
           <h1>Supply and Property Management</h1>
           <hr />
@@ -268,7 +268,7 @@
           </div>
 
           <div class="form-extras">
-            <a href="#" class="forgot-link">Forgot your PIN?</a>
+            <a href="<?php echo e(route('password.forgot')); ?>" class="forgot-link">Forgot your PIN?</a>
           </div>
 
           <input type="hidden" name="credentials" id="hiddenPin" />
