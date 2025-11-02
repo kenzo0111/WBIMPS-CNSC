@@ -3356,7 +3356,7 @@ function generateCategoriesPage() {
                             ? categories
                                 .map(
                                   (category, index) => `
-                            <tr>
+                            <tr id="category-row-${category.id}">
                                 <td style="padding: 16px 24px; font-weight: 500;">${
                                   category.code
                                 }</td>
@@ -15052,52 +15052,44 @@ async function deleteCategory(categoryId) {
   if (!ok) return
 
   // Find the category name before deleting
-  const category = MockData.categories.find((c) => c.id === categoryId)
+  const category = MockData.categories.find((c) => c.id == categoryId) // Use == for type coercion
   const categoryName = category ? category.name : 'Category'
 
-  ;(async () => {
-    try {
-      const response = await fetch(
-        `/api/categories/${encodeURIComponent(categoryId)}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': getCsrfToken(),
-          },
-          credentials: 'same-origin',
-        }
-      )
-      if (!response.ok) throw await response.json()
-      // remove locally
-      MockData.categories = MockData.categories.filter(
-        (c) => c.id !== categoryId
-      )
-      showAlert(`${categoryName} has been successfully deleted`, 'success')
-    } catch (err) {
-      console.error('Error deleting category via API', err)
-      showAlert(
-        'Failed to delete category on server. Falling back to local delete.',
-        'warning'
-      )
-      MockData.categories = MockData.categories.filter(
-        (c) => c.id !== categoryId
-      )
-    } finally {
-      // update categories table in-place if possible
-      try {
-        const tbody = document.getElementById('categories-table-body')
-        if (tbody) {
-          const row = tbody.querySelector(`tr[data-id="${categoryId}"]`)
-          if (row) row.remove()
-          if (window.lucide) lucide.createIcons()
-          return
-        }
-      } catch (e) {}
-      loadPageContent('categories')
+  try {
+    const response = await fetch(
+      `/api/categories/${encodeURIComponent(categoryId)}`,
+      {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': getCsrfToken(),
+        },
+        credentials: 'same-origin',
+      }
+    )
+    if (!response.ok) throw await response.json()
+
+    // remove locally - use == for type coercion
+    MockData.categories = MockData.categories.filter((c) => c.id != categoryId)
+
+    // Remove the row from the table immediately
+    const row = document.getElementById(`category-row-${categoryId}`)
+    if (row) {
+      // Animate the removal for better UX
+      row.style.transition = 'opacity 0.3s ease-out'
+      row.style.opacity = '0'
+      setTimeout(() => {
+        row.remove()
+        if (window.lucide) lucide.createIcons()
+      }, 300)
     }
-  })()
+
+    showAlert(`${categoryName} has been successfully deleted`, 'success')
+  } catch (err) {
+    console.error('Error deleting category via API', err)
+    showAlert('Failed to delete category on server.', 'error')
+  }
 }
 
 // -----------------------------//
