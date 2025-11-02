@@ -115,6 +115,8 @@ document.addEventListener('DOMContentLoaded', () => {
   loadUserSession()
   loadUserLogs()
   loadUsers()
+  // Load About Us content from localStorage
+  loadAboutUsContent()
   // Load persisted notifications (if any) and update badge
   try {
     if (typeof loadNotifications === 'function') loadNotifications()
@@ -1454,6 +1456,53 @@ function updateUserDisplay() {
       lucide.createIcons()
     }
   }, 100)
+}
+
+// Load About Us content from localStorage
+function loadAboutUsContent() {
+  try {
+    const stored = localStorage.getItem('spmo_about_us_content')
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      AppState.aboutUsContent = parsed
+      console.log('About Us content loaded from localStorage')
+    } else {
+      // Set default content if nothing is stored
+      AppState.aboutUsContent = {
+        heroTitle: 'SPMO System',
+        heroSubtitle:
+          'Revolutionizing Inventory & Procurement Management for Camarines Norte State College',
+        mission:
+          'To provide a comprehensive, user-friendly platform that streamlines inventory management, automates procurement processes, and ensures transparency in resource allocation across all departments of CNSC.',
+        vision:
+          'To be the leading digital solution for educational institutions, setting the standard for efficient resource management, data-driven decision making, and operational excellence.',
+        institution:
+          'Camarines Norte State College - Supply and Property Management Office',
+        email: 'cnsc.spmo@.edu.ph',
+        phone: '(054) 440-1134',
+        gallery: [],
+        committeeMembers: [],
+      }
+    }
+  } catch (error) {
+    console.error('Error loading About Us content:', error)
+    // Fallback to default content on error
+    AppState.aboutUsContent = {
+      heroTitle: 'SPMO System',
+      heroSubtitle:
+        'Revolutionizing Inventory & Procurement Management for Camarines Norte State College',
+      mission:
+        'To provide a comprehensive, user-friendly platform that streamlines inventory management, automates procurement processes, and ensures transparency in resource allocation across all departments of CNSC.',
+      vision:
+        'To be the leading digital solution for educational institutions, setting the standard for efficient resource management, data-driven decision making, and operational excellence.',
+      institution:
+        'Camarines Norte State College - Supply and Property Management Office',
+      email: 'cnsc.spmo@.edu.ph',
+      phone: '(054) 440-1134',
+      gallery: [],
+      committeeMembers: [],
+    }
+  }
 }
 
 // Confirmation modal helper that returns a Promise<boolean>
@@ -9557,6 +9606,13 @@ function initializePageEvents(pageId) {
     case 'suppliers':
       initSuppliersPageEvents()
       break
+    case 'about':
+      // Initialize gallery carousel
+      currentGallerySlide = 0
+      updateGalleryCarousel()
+      // Optional: Start auto-play (uncomment to enable)
+      // startGalleryAutoPlay()
+      break
     case 'new-request':
     case 'pending-approval':
     case 'completed-request':
@@ -12143,40 +12199,109 @@ function generateAboutPage() {
             <p style="margin:0;color:#6b7280;font-size:16px;">Visual highlights from SPMO System and CNSC</p>
           </header>
 
-          <div id="gallery-container" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;">
+          ${
+            (aboutContent.gallery || []).length > 0
+              ? `
+          <div style="position:relative;max-width:900px;margin:0 auto;">
+            <!-- Carousel Container -->
+            <div id="gallery-carousel" style="position:relative;overflow:hidden;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,0.1);">
+              <div id="gallery-slides" style="display:flex;transition:transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);">
+                ${(aboutContent.gallery || [])
+                  .map((img, idx) => {
+                    const imgUrl = escapeHtml(
+                      typeof img === 'string' ? img : img.url || ''
+                    )
+                    const imgCaption = escapeHtml(
+                      typeof img === 'object' && img.caption
+                        ? img.caption
+                        : `Gallery Image ${idx + 1}`
+                    )
+                    return `
+                    <div class="gallery-slide" style="min-width:100%;position:relative;background:#f9fafb;" data-slide="${idx}">
+                      <div style="position:relative;width:100%;padding-bottom:56.25%;background:#e5e7eb;">
+                        <img src="${imgUrl}" alt="${imgCaption}" 
+                             style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;background:#1f2937;" 
+                             loading="lazy" 
+                             onclick="viewGalleryImage('${imgUrl}', '${imgCaption}')"
+                             onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27450%27%3E%3Crect fill=%27%23374151%27 width=%27800%27 height=%27450%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 font-family=%27sans-serif%27 font-size=%2724%27 fill=%27%239ca3af%27%3EImage not available%3C/text%3E%3C/svg%3E';" />
+                      </div>
+                      ${
+                        imgCaption
+                          ? `<div style="padding:20px;background:#ffffff;text-align:center;border-top:1px solid #e5e7eb;">
+                               <h3 style="margin:0;font-size:16px;color:#111827;font-weight:600;">${imgCaption}</h3>
+                             </div>`
+                          : ''
+                      }
+                    </div>
+                  `
+                  })
+                  .join('')}
+              </div>
+              
+              <!-- Navigation Arrows -->
+              ${
+                (aboutContent.gallery || []).length > 1
+                  ? `
+              <button onclick="galleryPrevSlide()" 
+                      style="position:absolute;left:16px;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,0.95);border:2px solid rgba(0,0,0,0.1);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:all 0.3s ease;z-index:10;"
+                      onmouseover="this.style.background='rgba(255,255,255,1)';this.style.transform='translateY(-50%) scale(1.1)';"
+                      onmouseout="this.style.background='rgba(255,255,255,0.95)';this.style.transform='translateY(-50%) scale(1)';"
+                      aria-label="Previous slide">
+                <i data-lucide="chevron-left" style="width:28px;height:28px;color:#374151;"></i>
+              </button>
+              <button onclick="galleryNextSlide()" 
+                      style="position:absolute;right:16px;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,0.95);border:2px solid rgba(0,0,0,0.1);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:all 0.3s ease;z-index:10;"
+                      onmouseover="this.style.background='rgba(255,255,255,1)';this.style.transform='translateY(-50%) scale(1.1)';"
+                      onmouseout="this.style.background='rgba(255,255,255,0.95)';this.style.transform='translateY(-50%) scale(1)';"
+                      aria-label="Next slide">
+                <i data-lucide="chevron-right" style="width:28px;height:28px;color:#374151;"></i>
+              </button>
+              `
+                  : ''
+              }
+            </div>
+            
+            <!-- Indicators -->
             ${
-              (aboutContent.gallery || []).length > 0
-                ? (aboutContent.gallery || [])
-                    .map((img, idx) => {
-                      const imgUrl = escapeHtml(
-                        typeof img === 'string' ? img : img.url || ''
-                      )
-                      const imgCaption = escapeHtml(
-                        typeof img === 'object' && img.caption
-                          ? img.caption
-                          : `Gallery Image ${idx + 1}`
-                      )
-                      return `
-                        <article style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.05);transition:transform 0.3s ease,box-shadow 0.3s ease;cursor:pointer;" onclick="viewGalleryImage('${imgUrl}', '${imgCaption}')">
-                          <div style="position:relative;width:100%;padding-bottom:75%;background:#e5e7eb;">
-                            <img src="${imgUrl}" alt="${imgCaption}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27400%27 height=%27300%27%3E%3Crect fill=%27%23e5e7eb%27 width=%27400%27 height=%27300%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 font-family=%27sans-serif%27 font-size=%2718%27 fill=%27%236b7280%27%3EImage not available%3C/text%3E%3C/svg%3E';" />
-                          </div>
-                          <div style="padding:16px;">
-                            <h3 style="margin:0;font-size:15px;color:#111827;font-weight:600;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${imgCaption}</h3>
-                          </div>
-                        </article>
-                      `
-                    })
-                    .join('')
-                : `<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#9ca3af;">
+              (aboutContent.gallery || []).length > 1
+                ? `
+            <div style="display:flex;justify-content:center;gap:12px;margin-top:24px;">
+              ${(aboutContent.gallery || [])
+                .map(
+                  (_, idx) => `
+                <button onclick="galleryGoToSlide(${idx})" 
+                        class="gallery-indicator" 
+                        data-slide="${idx}"
+                        style="width:${
+                          idx === 0 ? '32px' : '12px'
+                        };height:12px;border-radius:6px;background:${
+                    idx === 0
+                      ? 'linear-gradient(135deg,#667eea,#764ba2)'
+                      : '#d1d5db'
+                  };border:none;cursor:pointer;transition:all 0.3s ease;box-shadow:${
+                    idx === 0 ? '0 2px 8px rgba(102,126,234,0.4)' : 'none'
+                  };"
+                        onmouseover="if(this.style.width==='12px')this.style.background='#9ca3af';"
+                        onmouseout="if(this.style.width==='12px')this.style.background='#d1d5db';"
+                        aria-label="Go to slide ${idx + 1}">
+                </button>
+              `
+                )
+                .join('')}
+            </div>
+            `
+                : ''
+            }
+          </div>
+          `
+              : `<div style="text-align:center;padding:60px 20px;color:#9ca3af;">
                       <div style="width:80px;height:80px;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
                         <i data-lucide="image" style="width:40px;height:40px;opacity:0.5;"></i>
                       </div>
                       <p style="margin:0 0 8px 0;font-size:16px;font-weight:600;color:#6b7280;">No images in gallery</p>
                       <p style="margin:0;font-size:14px;">Click "Edit About Us" to add images</p>
                     </div>`
-            }
-          </div>
+          }
         </section>
 
         <!-- Team Section -->
@@ -13383,6 +13508,16 @@ function saveAboutUs() {
     // image fields removed — not stored anymore
   }
 
+  // Save to localStorage for persistence
+  try {
+    localStorage.setItem(
+      'spmo_about_us_content',
+      JSON.stringify(AppState.aboutUsContent)
+    )
+  } catch (e) {
+    console.warn('Failed to save About Us content to localStorage:', e)
+  }
+
   // Close modal and refresh
   closeEditAboutModal()
   loadPageContent('about')
@@ -13711,6 +13846,84 @@ window.viewGalleryImage = viewGalleryImage
 window.closeGalleryView = closeGalleryView
 window.handleGalleryFileUpload = handleGalleryFileUpload
 window.changeGalleryImage = changeGalleryImage
+
+// --- Gallery Carousel Functions ---
+let currentGallerySlide = 0
+
+function galleryNextSlide() {
+  const slides = document.getElementById('gallery-slides')
+  const slideElements = document.querySelectorAll('.gallery-slide')
+  if (!slides || !slideElements.length) return
+
+  currentGallerySlide = (currentGallerySlide + 1) % slideElements.length
+  updateGalleryCarousel()
+}
+
+function galleryPrevSlide() {
+  const slides = document.getElementById('gallery-slides')
+  const slideElements = document.querySelectorAll('.gallery-slide')
+  if (!slides || !slideElements.length) return
+
+  currentGallerySlide =
+    (currentGallerySlide - 1 + slideElements.length) % slideElements.length
+  updateGalleryCarousel()
+}
+
+function galleryGoToSlide(index) {
+  const slides = document.getElementById('gallery-slides')
+  const slideElements = document.querySelectorAll('.gallery-slide')
+  if (!slides || !slideElements.length) return
+
+  currentGallerySlide = index
+  updateGalleryCarousel()
+}
+
+function updateGalleryCarousel() {
+  const slides = document.getElementById('gallery-slides')
+  const indicators = document.querySelectorAll('.gallery-indicator')
+
+  if (!slides) return
+
+  // Move slides
+  slides.style.transform = `translateX(-${currentGallerySlide * 100}%)`
+
+  // Update indicators
+  indicators.forEach((indicator, idx) => {
+    if (idx === currentGallerySlide) {
+      indicator.style.width = '32px'
+      indicator.style.background = 'linear-gradient(135deg,#667eea,#764ba2)'
+      indicator.style.boxShadow = '0 2px 8px rgba(102,126,234,0.4)'
+    } else {
+      indicator.style.width = '12px'
+      indicator.style.background = '#d1d5db'
+      indicator.style.boxShadow = 'none'
+    }
+  })
+}
+
+// Auto-play carousel (optional - can be enabled/disabled)
+let galleryAutoPlayInterval = null
+
+function startGalleryAutoPlay() {
+  stopGalleryAutoPlay() // Clear any existing interval
+  galleryAutoPlayInterval = setInterval(() => {
+    galleryNextSlide()
+  }, 5000) // Change slide every 5 seconds
+}
+
+function stopGalleryAutoPlay() {
+  if (galleryAutoPlayInterval) {
+    clearInterval(galleryAutoPlayInterval)
+    galleryAutoPlayInterval = null
+  }
+}
+
+// Expose carousel functions globally
+window.galleryNextSlide = galleryNextSlide
+window.galleryPrevSlide = galleryPrevSlide
+window.galleryGoToSlide = galleryGoToSlide
+window.startGalleryAutoPlay = startGalleryAutoPlay
+window.stopGalleryAutoPlay = stopGalleryAutoPlay
 
 // -----------------------------//
 // Activity & Notifications Page //
