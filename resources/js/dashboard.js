@@ -2,6 +2,49 @@
 
 import { jsPDF } from 'jspdf'
 
+// ==============================
+// Theme Management
+// ==============================
+function initTheme() {
+  const savedTheme = localStorage.getItem('theme') || 'light'
+  applyTheme(savedTheme)
+}
+
+function toggleTheme() {
+  const currentTheme =
+    document.documentElement.getAttribute('data-theme') || 'light'
+  const newTheme = currentTheme === 'light' ? 'dark' : 'light'
+  applyTheme(newTheme)
+  localStorage.setItem('theme', newTheme)
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme)
+
+  // Update theme toggle icons
+  const lightIcon = document.querySelector('.theme-icon-light')
+  const darkIcon = document.querySelector('.theme-icon-dark')
+
+  if (lightIcon && darkIcon) {
+    if (theme === 'dark') {
+      lightIcon.style.display = 'none'
+      darkIcon.style.display = 'block'
+    } else {
+      lightIcon.style.display = 'block'
+      darkIcon.style.display = 'none'
+    }
+  }
+
+  // Reinitialize icons after theme change
+  if (window.lucide) {
+    lucide.createIcons()
+  }
+}
+
+// Make theme functions globally available
+window.toggleTheme = toggleTheme
+window.initTheme = initTheme
+
 // Safety fallbacks: if some edits were reverted or partial bundles loaded,
 // define minimal fallbacks to prevent ReferenceErrors at runtime.
 // Use safe checks against the window object to avoid referencing
@@ -64,6 +107,9 @@ if (typeof window !== 'undefined') {
 
 // Initialize Lucide icons and load user logs
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize theme first
+  initTheme()
+
   lucide.createIcons()
   // Load session/logs/users from in-memory state (persistence disabled)
   loadUserSession()
@@ -2507,6 +2553,25 @@ function generateDashboardPage() {
             <input id="header-search" type="text" placeholder="Search..." style="padding:8px 12px 8px 34px;border:1px solid #d1d5db;border-radius:6px;width:220px;font-size:14px;">
           </div>
 
+          <!-- Theme Toggle -->
+          <button
+            id="theme-toggle-btn"
+            type="button"
+            class="btn-secondary theme-toggle-btn"
+            onclick="toggleTheme()"
+            aria-label="Toggle theme"
+            title="Toggle theme"
+            style="margin-left:4px;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;position:relative;background:transparent;border:none;box-shadow:none;border-radius:0;transition: background-color 0.12s ease, box-shadow 0.12s ease, transform 0.06s ease;"
+            onmouseover="this.style.background='rgba(0,0,0,0.06)'; this.style.borderRadius='50%';"
+            onmouseout="this.style.background='transparent'; this.style.borderRadius='0'; this.style.boxShadow='none';"
+            onfocus="this.style.background='rgba(99,102,241,0.12)'; this.style.boxShadow='0 0 0 4px rgba(99,102,241,0.16)'; this.style.borderRadius='50%';"
+            onblur="this.style.background='transparent'; this.style.borderRadius='0'; this.style.boxShadow='none';"
+            onmousedown="this.style.background='rgba(0,0,0,0.12)'; this.style.transform='scale(0.98)';"
+            onmouseup="this.style.background='rgba(0,0,0,0.06)'; this.style.transform='scale(1)';">
+            <i data-lucide="sun" class="icon theme-icon-light" style="width:18px;height:18px;color:inherit;"></i>
+            <i data-lucide="moon" class="icon theme-icon-dark" style="width:18px;height:18px;color:inherit;display:none;"></i>
+          </button>
+
           <!-- Notifications -->
           <button
             id="notifications-btn"
@@ -2840,7 +2905,7 @@ function generateDashboardPage() {
                     </div>
                     <div class="activity-list" id="recent-activity-list">
                       <!-- Recent activities will be injected here by dashboard script -->
-                      <div class="activity-loading" style="padding:16px;color:#6b7280;font-size:14px;">Loading recent activity…</div>
+                      <div class="activity-loading" style="padding:16px;font-size:14px;">Loading recent activity…</div>
                     </div>
                 </div>
             </div>
@@ -2966,12 +3031,12 @@ function renderActivityList(activities) {
   if (!container) return
   if (!activities || activities.length === 0) {
     container.innerHTML = `
-      <div style="padding: 32px 20px; text-align: center; color: #6b7280; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 12px; border: 2px dashed #e2e8f0;">
-        <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+      <div class="activity-empty-state">
+        <div class="activity-empty-icon">
           <i data-lucide="activity" style="width: 32px; height: 32px; opacity: 0.6;"></i>
         </div>
-        <p style="margin: 0; font-size: 16px; font-weight: 600; color: #374151;">No recent activity</p>
-        <p style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.8;">Activity will appear here as you use the system</p>
+        <p class="activity-empty-title">No recent activity</p>
+        <p class="activity-empty-subtitle">Activity will appear here as you use the system</p>
       </div>
     `
     if (window.lucide) setTimeout(() => lucide.createIcons(), 10)
@@ -3279,10 +3344,10 @@ function generateCategoriesPage() {
                 <table class="table">
                     <thead>
             <tr>
-              <th style="padding: 16px 24px;">Category Code</th>
-              <th style="padding: 16px 24px;">Category Name</th>
-              <th style="padding: 16px 24px;">Description</th>
-              <th style="padding: 16px 24px;">Action</th>
+              <th>Category Code</th>
+              <th>Category Name</th>
+              <th>Description</th>
+              <th>Action</th>
             </tr>
                     </thead>
                     <tbody>
@@ -3291,11 +3356,7 @@ function generateCategoriesPage() {
                             ? categories
                                 .map(
                                   (category, index) => `
-                            <tr style="${
-                              index % 2 === 0
-                                ? 'background-color: white;'
-                                : 'background-color: #f9fafb;'
-                            }">
+                            <tr>
                                 <td style="padding: 16px 24px; font-weight: 500;">${
                                   category.code
                                 }</td>
@@ -3437,12 +3498,8 @@ function generateProductsPage() {
                           filteredProducts.length
                             ? filteredProducts
                                 .map((product, index) => {
-                                  const rowBg =
-                                    index % 2 === 0
-                                      ? 'background-color: white;'
-                                      : 'background-color: #f9fafb;'
                                   return `
-                            <tr style="${rowBg}">
+                            <tr>
                                 <td style="font-weight: 500;">${product.id}</td>
                                 <td style="font-weight: 500;">${
                                   product.name
@@ -9620,12 +9677,8 @@ function updateProductsTable() {
   if (tbody) {
     tbody.innerHTML = filteredProducts
       .map((product, index) => {
-        const rowBg =
-          index % 2 === 0
-            ? 'background-color: white;'
-            : 'background-color: #f9fafb;'
         return `
-            <tr style="${rowBg}">
+            <tr>
                 <td style="font-weight: 500;">${product.id}</td>
                 <td style="font-weight: 500;">${product.name}</td>
                 <td style="color: #6b7280; max-width: 300px;">${
@@ -9810,24 +9863,6 @@ function openSettingsModal() {
 
         <div style="padding:32px;">
           <div style="display:flex;flex-direction:column;gap:24px;">
-            <!-- Theme Settings -->
-            <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:20px;">
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-                <div style="width:40px;height:40px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:10px;display:flex;align-items:center;justify-content:center;">
-                  <i data-lucide="palette" style="width:20px;height:20px;color:white;"></i>
-                </div>
-                <div>
-                  <h3 style="margin:0;font-size:16px;font-weight:600;color:#111827;">Theme & Appearance</h3>
-                  <p style="margin:4px 0 0 0;font-size:13px;color:#6b7280;">Customize the look and feel</p>
-                </div>
-              </div>
-              <div style="display:flex;gap:12px;">
-                <button class="theme-btn active" data-theme="light" style="padding:10px 16px;border:2px solid #3b82f6;background:#3b82f6;color:white;border-radius:8px;font-size:14px;font-weight:500;">Light Mode</button>
-                <button class="theme-btn" data-theme="dark" style="padding:10px 16px;border:2px solid #e5e7eb;background:white;color:#374151;border-radius:8px;font-size:14px;font-weight:500;">Dark Mode</button>
-                <button class="theme-btn" data-theme="auto" style="padding:10px 16px;border:2px solid #e5e7eb;background:white;color:#374151;border-radius:8px;font-size:14px;font-weight:500;">Auto</button>
-              </div>
-            </div>
-
             <!-- Notification Settings -->
             <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:20px;">
               <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
@@ -9911,28 +9946,6 @@ function openSettingsModal() {
 
   document.body.appendChild(modal)
 
-  // Add event listeners for theme buttons
-  modal.querySelectorAll('.theme-btn').forEach((btn) => {
-    btn.addEventListener('click', function () {
-      modal
-        .querySelectorAll('.theme-btn')
-        .forEach((b) => b.classList.remove('active'))
-      this.classList.add('active')
-      // Remove active styling from others
-      modal.querySelectorAll('.theme-btn').forEach((b) => {
-        if (b !== this) {
-          b.style.borderColor = '#e5e7eb'
-          b.style.background = 'white'
-          b.style.color = '#374151'
-        }
-      })
-      // Add active styling to clicked button
-      this.style.borderColor = '#3b82f6'
-      this.style.background = '#3b82f6'
-      this.style.color = 'white'
-    })
-  })
-
   // Close modal when clicking outside
   modal.addEventListener('click', function (e) {
     if (e.target === modal) {
@@ -9991,24 +10004,6 @@ function generateSettingsPage() {
     <div class="page-content">
       <div style="max-width:980px;margin:0 auto;">
         <div style="display:flex;flex-direction:column;gap:20px;">
-          <!-- Theme & Appearance -->
-          <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;">
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-              <div style="width:44px;height:44px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;">
-                <i data-lucide="palette" style="width:20px;height:20px;color:white;"></i>
-              </div>
-              <div>
-                <h3 style="margin:0;font-size:16px;font-weight:600;color:#111827;">Theme & Appearance</h3>
-                <p style="margin:4px 0 0 0;font-size:13px;color:#6b7280;">Customize the look and feel</p>
-              </div>
-            </div>
-            <div style="display:flex;gap:12px;">
-              <button class="theme-btn active" data-theme="light" onclick="document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active');" style="padding:10px 16px;border:2px solid #3b82f6;background:#3b82f6;color:white;border-radius:8px;font-size:14px;font-weight:500;">Light Mode</button>
-              <button class="theme-btn" data-theme="dark" onclick="document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active');" style="padding:10px 16px;border:2px solid #e5e7eb;background:white;color:#374151;border-radius:8px;font-size:14px;font-weight:500;">Dark Mode</button>
-              <button class="theme-btn" data-theme="auto" onclick="document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active');" style="padding:10px 16px;border:2px solid #e5e7eb;background:white;color:#374151;border-radius:8px;font-size:14px;font-weight:500;">Auto</button>
-            </div>
-          </div>
-
           <!-- Notifications -->
           <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;">
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
@@ -15624,9 +15619,7 @@ function renderStockInRow(r, index) {
   const receivedBy = r?.receivedBy || ''
 
   return `
-    <tr data-id="${id}" style="${
-    index % 2 === 0 ? 'background-color: white;' : 'background-color: #f9fafb;'
-  }">
+    <tr data-id="${id}">
       <td style="font-weight: 500;">${transactionId}</td>
       <td>${date}</td>
       <td style="font-weight: 500;">${productName}</td>
