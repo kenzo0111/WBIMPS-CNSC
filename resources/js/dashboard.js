@@ -12136,6 +12136,49 @@ function generateAboutPage() {
           </div>
         </section>
 
+        <!-- Gallery Section -->
+        <section aria-labelledby="gallery-heading" style="background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:40px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+          <header style="text-align:center;margin-bottom:40px;">
+            <h2 id="gallery-heading" style="margin:0 0 8px 0;font-size:28px;color:#111827;font-weight:700;">Gallery</h2>
+            <p style="margin:0;color:#6b7280;font-size:16px;">Visual highlights from SPMO System and CNSC</p>
+          </header>
+
+          <div id="gallery-container" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;">
+            ${
+              (aboutContent.gallery || []).length > 0
+                ? (aboutContent.gallery || [])
+                    .map((img, idx) => {
+                      const imgUrl = escapeHtml(
+                        typeof img === 'string' ? img : img.url || ''
+                      )
+                      const imgCaption = escapeHtml(
+                        typeof img === 'object' && img.caption
+                          ? img.caption
+                          : `Gallery Image ${idx + 1}`
+                      )
+                      return `
+                        <article style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.05);transition:transform 0.3s ease,box-shadow 0.3s ease;cursor:pointer;" onclick="viewGalleryImage('${imgUrl}', '${imgCaption}')">
+                          <div style="position:relative;width:100%;padding-bottom:75%;background:#e5e7eb;">
+                            <img src="${imgUrl}" alt="${imgCaption}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27400%27 height=%27300%27%3E%3Crect fill=%27%23e5e7eb%27 width=%27400%27 height=%27300%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 font-family=%27sans-serif%27 font-size=%2718%27 fill=%27%236b7280%27%3EImage not available%3C/text%3E%3C/svg%3E';" />
+                          </div>
+                          <div style="padding:16px;">
+                            <h3 style="margin:0;font-size:15px;color:#111827;font-weight:600;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${imgCaption}</h3>
+                          </div>
+                        </article>
+                      `
+                    })
+                    .join('')
+                : `<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#9ca3af;">
+                      <div style="width:80px;height:80px;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+                        <i data-lucide="image" style="width:40px;height:40px;opacity:0.5;"></i>
+                      </div>
+                      <p style="margin:0 0 8px 0;font-size:16px;font-weight:600;color:#6b7280;">No images in gallery</p>
+                      <p style="margin:0;font-size:14px;">Click "Edit About Us" to add images</p>
+                    </div>`
+            }
+          </div>
+        </section>
+
         <!-- Team Section -->
         <section aria-labelledby="team-heading" style="background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:40px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
           <header style="text-align:center;margin-bottom:40px;">
@@ -13143,6 +13186,71 @@ function editAboutUs() {
                     </div>
                 </div>
                 
+                <!-- Gallery Images -->
+                <div style="padding: 16px; background: #f9fafb; border-radius: 8px; border: 2px solid #e5e7eb;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #111827; font-weight: 600;">Gallery Images</h3>
+                    <p style="margin:0 0 12px 0;color:#6b7280;font-size:13px;">Upload images with optional captions. Supported formats: JPG, PNG, GIF, WebP (Max 5MB per image).</p>
+                    <div id="gallery-list" style="display:flex;flex-direction:column;gap:12px;">
+                      ${
+                        (currentContent.gallery || []).length > 0
+                          ? (currentContent.gallery || [])
+                              .map((img, idx) => {
+                                const url =
+                                  typeof img === 'string' ? img : img.url || ''
+                                const caption =
+                                  typeof img === 'object' && img.caption
+                                    ? img.caption
+                                    : ''
+                                return `
+                          <div class="gallery-item-row" data-image-url="${url
+                            .replace(/"/g, '&quot;')
+                            .replace(/</g, '&lt;')
+                            .replace(
+                              />/g,
+                              '&gt;'
+                            )}" style="display:flex;gap:12px;align-items:flex-start;padding:12px;background:white;border:1px solid #e5e7eb;border-radius:8px;">
+                            <div style="flex-shrink:0;width:120px;height:90px;border-radius:8px;overflow:hidden;background:#f3f4f6;border:2px solid #e5e7eb;display:flex;align-items:center;justify-content:center;">
+                              <img src="${url}" alt="Preview" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                              <div style="display:none;flex-direction:column;align-items:center;justify-content:center;color:#9ca3af;font-size:12px;padding:8px;text-align:center;">
+                                <i data-lucide="image" style="width:24px;height:24px;margin-bottom:4px;"></i>
+                                No preview
+                              </div>
+                            </div>
+                            <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
+                              <input class="gallery-caption-input" type="text" value="${caption
+                                .replace(/"/g, '&quot;')
+                                .replace(/</g, '&lt;')
+                                .replace(
+                                  />/g,
+                                  '&gt;'
+                                )}" placeholder="Caption (optional)" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+                              <button type="button" class="btn btn-secondary" onclick="changeGalleryImage(this)" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-size:12px;">
+                                <i data-lucide="upload" style="width:14px;height:14px;"></i>
+                                Change Image
+                              </button>
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:6px;">
+                              <button type="button" class="btn btn-secondary" onclick="moveGalleryItemUp(this)" title="Move up" style="padding:6px 10px;font-size:12px;">⯅</button>
+                              <button type="button" class="btn btn-secondary" onclick="moveGalleryItemDown(this)" title="Move down" style="padding:6px 10px;font-size:12px;">⯆</button>
+                              <button type="button" class="btn btn-danger" onclick="removeGalleryItem(this)" title="Remove" style="padding:6px 10px;font-size:12px;">×</button>
+                            </div>
+                          </div>
+                        `
+                              })
+                              .join('')
+                          : '<div style="color:#6b7280;padding:12px;text-align:center;background:white;border:1px dashed #e5e7eb;border-radius:8px;">No images yet. Click "Add Image" to get started.</div>'
+                      }
+                    </div>
+                    <div style="margin-top:12px;display:flex;gap:8px;">
+                      <label class="btn btn-primary" style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;cursor:pointer;margin:0;">
+                        <i data-lucide="plus" style="width:14px;height:14px;"></i>
+                        Add Image
+                        <input type="file" id="gallery-file-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none;" onchange="handleGalleryFileUpload(event)">
+                      </label>
+                      <button type="button" class="btn btn-secondary" onclick="clearGalleryItems()" style="padding:8px 16px;">Clear All</button>
+                    </div>
+                </div>
+                
         <!-- Inspection Committee Members -->
         <div style="padding: 16px; background: #f9fafb; border-radius: 8px; border: 2px solid #e5e7eb;">
           <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #111827; font-weight: 600;">Inspection Committee Members</h3>
@@ -13194,6 +13302,24 @@ function saveAboutUs() {
   const institution = document.getElementById('edit-institution').value.trim()
   const email = document.getElementById('edit-email').value.trim()
   const phone = document.getElementById('edit-phone').value.trim()
+
+  // Collect gallery items
+  const galleryListEl = document.getElementById('gallery-list')
+  let gallery = []
+  if (galleryListEl) {
+    const rows = Array.from(galleryListEl.querySelectorAll('.gallery-item-row'))
+    gallery = rows
+      .map((r) => {
+        const url = r.getAttribute('data-image-url') || ''
+        const caption = (r.querySelector('.gallery-caption-input') || {}).value
+          ? r.querySelector('.gallery-caption-input').value.trim()
+          : ''
+        if (!url) return null
+        return caption ? { url, caption } : url
+      })
+      .filter((x) => x !== null)
+  }
+
   // Collect committee members from dynamic list inputs (if present)
   const committeeListEl = document.getElementById('committee-list')
   let committeeMembers = []
@@ -13252,6 +13378,7 @@ function saveAboutUs() {
     institution,
     email,
     phone,
+    gallery,
     committeeMembers,
     // image fields removed — not stored anymore
   }
@@ -13319,11 +13446,271 @@ function moveCommitteeMemberDown(buttonEl) {
   if (next) row.parentNode.insertBefore(next, row)
 }
 
+// --- Gallery item list helpers (used in Edit About modal) ---
+function addGalleryItem(imageDataUrl = '', caption = '') {
+  const list = document.getElementById('gallery-list')
+  if (!list) return
+
+  // Remove placeholder message if exists
+  const placeholder = list.querySelector('div[style*="No images yet"]')
+  if (placeholder) placeholder.remove()
+
+  const wrapper = document.createElement('div')
+  wrapper.className = 'gallery-item-row'
+  wrapper.setAttribute('data-image-url', imageDataUrl)
+  wrapper.style.cssText =
+    'display:flex;gap:12px;align-items:flex-start;padding:12px;background:white;border:1px solid #e5e7eb;border-radius:8px;'
+
+  const escapedCaption = String(caption || '')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+
+  wrapper.innerHTML = `
+    <div style="flex-shrink:0;width:120px;height:90px;border-radius:8px;overflow:hidden;background:#f3f4f6;border:2px solid #e5e7eb;display:flex;align-items:center;justify-content:center;position:relative;">
+      ${
+        imageDataUrl
+          ? `<img src="${imageDataUrl}" alt="Preview" style="width:100%;height:100%;object-fit:cover;">`
+          : `
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;color:#9ca3af;font-size:12px;padding:8px;text-align:center;">
+          <i data-lucide="image" style="width:24px;height:24px;margin-bottom:4px;"></i>
+          No preview
+        </div>
+      `
+      }
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
+      <input class="gallery-caption-input" type="text" value="${escapedCaption}" placeholder="Caption (optional)" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+      <button type="button" class="btn btn-secondary" onclick="changeGalleryImage(this)" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-size:12px;">
+        <i data-lucide="upload" style="width:14px;height:14px;"></i>
+        Change Image
+      </button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <button type="button" class="btn btn-secondary" onclick="moveGalleryItemUp(this)" title="Move up" style="padding:6px 10px;font-size:12px;">⯅</button>
+      <button type="button" class="btn btn-secondary" onclick="moveGalleryItemDown(this)" title="Move down" style="padding:6px 10px;font-size:12px;">⯆</button>
+      <button type="button" class="btn btn-danger" onclick="removeGalleryItem(this)" title="Remove" style="padding:6px 10px;font-size:12px;">×</button>
+    </div>
+  `
+  list.appendChild(wrapper)
+
+  // Reinitialize icons
+  try {
+    lucide.createIcons()
+  } catch (e) {}
+
+  return wrapper
+}
+
+// Handle file upload for new gallery images
+function handleGalleryFileUpload(event) {
+  const file = event.target.files[0]
+  if (!file) return
+
+  // Validate file type
+  const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+  if (!validTypes.includes(file.type)) {
+    showAlert(
+      'Please select a valid image file (JPG, PNG, GIF, or WebP)',
+      'error'
+    )
+    event.target.value = ''
+    return
+  }
+
+  // Validate file size (5MB max)
+  const maxSize = 5 * 1024 * 1024 // 5MB
+  if (file.size > maxSize) {
+    showAlert('Image size must be less than 5MB', 'error')
+    event.target.value = ''
+    return
+  }
+
+  // Read file and convert to base64
+  const reader = new FileReader()
+  reader.onload = function (e) {
+    const imageDataUrl = e.target.result
+    addGalleryItem(imageDataUrl, '')
+  }
+  reader.onerror = function () {
+    showAlert('Failed to read image file', 'error')
+  }
+  reader.readAsDataURL(file)
+
+  // Reset input
+  event.target.value = ''
+}
+
+// Change image for existing gallery item
+function changeGalleryImage(button) {
+  const row = button.closest('.gallery-item-row')
+  if (!row) return
+
+  // Create temporary file input
+  const fileInput = document.createElement('input')
+  fileInput.type = 'file'
+  fileInput.accept = 'image/jpeg,image/png,image/gif,image/webp'
+  fileInput.style.display = 'none'
+
+  fileInput.onchange = function (e) {
+    const file = e.target.files[0]
+    if (!file) return
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+    if (!validTypes.includes(file.type)) {
+      showAlert(
+        'Please select a valid image file (JPG, PNG, GIF, or WebP)',
+        'error'
+      )
+      return
+    }
+
+    // Validate file size (5MB max)
+    const maxSize = 5 * 1024 * 1024
+    if (file.size > maxSize) {
+      showAlert('Image size must be less than 5MB', 'error')
+      return
+    }
+
+    // Read file and update preview
+    const reader = new FileReader()
+    reader.onload = function (event) {
+      const imageDataUrl = event.target.result
+      row.setAttribute('data-image-url', imageDataUrl)
+
+      // Update preview
+      const previewContainer = row.querySelector('div[style*="width:120px"]')
+      if (previewContainer) {
+        previewContainer.innerHTML = `<img src="${imageDataUrl}" alt="Preview" style="width:100%;height:100%;object-fit:cover;">`
+      }
+    }
+    reader.onerror = function () {
+      showAlert('Failed to read image file', 'error')
+    }
+    reader.readAsDataURL(file)
+
+    // Clean up
+    fileInput.remove()
+  }
+
+  document.body.appendChild(fileInput)
+  fileInput.click()
+}
+
+function removeGalleryItem(buttonEl) {
+  const row = buttonEl.closest('.gallery-item-row')
+  if (!row) return
+  const list = row.parentNode
+  row.remove()
+
+  // Add placeholder if no items left
+  if (!list.querySelector('.gallery-item-row')) {
+    list.innerHTML =
+      '<div style="color:#6b7280;padding:12px;text-align:center;background:white;border:1px dashed #e5e7eb;border-radius:8px;">No images yet. Click "Add Image" to get started.</div>'
+  }
+}
+
+function moveGalleryItemUp(buttonEl) {
+  const row = buttonEl.closest('.gallery-item-row')
+  if (!row) return
+  const prev = row.previousElementSibling
+  if (prev && prev.classList.contains('gallery-item-row'))
+    row.parentNode.insertBefore(row, prev)
+}
+
+function moveGalleryItemDown(buttonEl) {
+  const row = buttonEl.closest('.gallery-item-row')
+  if (!row) return
+  const next = row.nextElementSibling
+  if (next && next.classList.contains('gallery-item-row'))
+    row.parentNode.insertBefore(next, row)
+}
+
+function clearGalleryItems() {
+  const list = document.getElementById('gallery-list')
+  if (!list) return
+  list.innerHTML =
+    '<div style="color:#6b7280;padding:12px;text-align:center;background:white;border:1px dashed #e5e7eb;border-radius:8px;">No images yet. Click "Add Image" to get started.</div>'
+}
+
+function viewGalleryImage(url, caption) {
+  if (!url) return
+
+  // Create modal to view full image
+  let modal = document.getElementById('gallery-view-modal')
+  if (!modal) {
+    modal = document.createElement('div')
+    modal.id = 'gallery-view-modal'
+    modal.className = 'modal-overlay'
+    document.body.appendChild(modal)
+  }
+
+  modal.className = 'modal-overlay active'
+  modal.innerHTML = `
+    <div class="modal-content" style="max-width: 900px; max-height: 90vh; padding: 0; display: flex; flex-direction: column; background: #1f2937;">
+      <div class="modal-header" style="background: linear-gradient(135deg, #374151 0%, #1f2937 100%); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="margin: 0; font-size: 20px; font-weight: 600;">${escapeHtml(
+          caption || 'Gallery Image'
+        )}</h2>
+        <button onclick="closeGalleryView()" class="btn btn-secondary" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px 16px;">
+          <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+        </button>
+      </div>
+      
+      <div style="flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 24px; background: #111827;">
+        <img src="${escapeHtml(url)}" alt="${escapeHtml(
+    caption || 'Gallery Image'
+  )}" 
+             style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);"
+             onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27600%27%3E%3Crect fill=%27%23374151%27 width=%27800%27 height=%27600%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 font-family=%27sans-serif%27 font-size=%2724%27 fill=%27%239ca3af%27%3EImage could not be loaded%3C/text%3E%3C/svg%3E';" />
+      </div>
+      
+      ${
+        caption
+          ? `<div style="padding: 20px; background: #374151; color: white; text-align: center; border-top: 1px solid #4b5563;">
+               <p style="margin: 0; font-size: 15px; line-height: 1.6;">${escapeHtml(
+                 caption
+               )}</p>
+             </div>`
+          : ''
+      }
+    </div>
+  `
+
+  // Close on background click
+  modal.addEventListener('click', function (e) {
+    if (e.target === modal) closeGalleryView()
+  })
+
+  // Reinitialize icons
+  try {
+    lucide.createIcons()
+  } catch (e) {}
+}
+
+function closeGalleryView() {
+  const modal = document.getElementById('gallery-view-modal')
+  if (modal) {
+    modal.className = 'modal-overlay'
+    setTimeout(() => modal.remove(), 300)
+  }
+}
+
 // Expose helpers to global scope so inline onclick handlers work
 window.addCommitteeMember = addCommitteeMember
 window.removeCommitteeMember = removeCommitteeMember
 window.moveCommitteeMemberUp = moveCommitteeMemberUp
 window.moveCommitteeMemberDown = moveCommitteeMemberDown
+window.addGalleryItem = addGalleryItem
+window.removeGalleryItem = removeGalleryItem
+window.moveGalleryItemUp = moveGalleryItemUp
+window.moveGalleryItemDown = moveGalleryItemDown
+window.clearGalleryItems = clearGalleryItems
+window.viewGalleryImage = viewGalleryImage
+window.closeGalleryView = closeGalleryView
+window.handleGalleryFileUpload = handleGalleryFileUpload
+window.changeGalleryImage = changeGalleryImage
 
 // -----------------------------//
 // Activity & Notifications Page //
