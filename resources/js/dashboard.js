@@ -16029,7 +16029,7 @@ async function saveStockOut(stockId) {
     : document.querySelector(
         '#stockout-modal input[placeholder="Enter product name"]'
       )?.value || ''
-  const quantity = parseInt(document.getElementById('so-qty').value) || 0
+  let quantity = parseInt(document.getElementById('so-qty').value) || 0
   const unitCost = parseFloat(document.getElementById('so-uc').value) || 0
   const totalCost = quantity * unitCost
   const department = document.getElementById('so-dept').value || ''
