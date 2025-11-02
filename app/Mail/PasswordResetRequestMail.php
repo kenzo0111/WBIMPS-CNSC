@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -16,8 +17,10 @@ class PasswordResetRequestMail extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct()
-    {
+    public function __construct(
+        public User $user,
+        public string $token
+    ) {
         //
     }
 
@@ -27,7 +30,7 @@ class PasswordResetRequestMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Password Reset Request Mail',
+            subject: 'Password Reset Request - CNSC SPMO',
         );
     }
 
@@ -37,7 +40,7 @@ class PasswordResetRequestMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'view.name',
+            view: 'emails.password-reset-request',
         );
     }
 

@@ -4,27 +4,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
     <title>CNSC Supply Management Dashboard</title>
-    @vite('resources/css/dashboard.css')
+    <?php echo app('Illuminate\Foundation\Vite')('resources/css/dashboard.css'); ?>
     <!-- Lucide Icons CDN -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <!-- Chart.js CDN for report charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         window.APP_ROUTES = window.APP_ROUTES || {};
-        window.APP_ROUTES.base = "{{ url('/') }}";
-        window.APP_ROUTES.login = "{{ route('login') }}";
-        window.APP_ROUTES.logout = "{{ route('logout') }}";
-        window.APP_ROUTES.dashboard = "{{ route('admin.dashboard') }}";
+        window.APP_ROUTES.base = "<?php echo e(url('/')); ?>";
+        window.APP_ROUTES.login = "<?php echo e(route('login')); ?>";
+        window.APP_ROUTES.logout = "<?php echo e(route('logout')); ?>";
+        window.APP_ROUTES.dashboard = "<?php echo e(route('admin.dashboard')); ?>";
         // Patterns for client-side route generation (placeholders: {id} or :id)
-        window.APP_ROUTES.purchaseOrderView = "{{ url('/purchase-order/view/{id}') }}";
-        window.APP_ROUTES.purchaseRequestView = "{{ url('/purchase-request/view/{id}') }}";
-        window.APP_ROUTES.inventoryCustodianSlipView = "{{ url('/inventory-custodian-slip/view/{id}') }}";
-        window.APP_ROUTES.inspectionAcceptanceReportView = "{{ url('/inspection-acceptance-report/view/{id}') }}";
+        window.APP_ROUTES.purchaseOrderView = "<?php echo e(url('/purchase-order/view/{id}')); ?>";
+        window.APP_ROUTES.purchaseRequestView = "<?php echo e(url('/purchase-request/view/{id}')); ?>";
+        window.APP_ROUTES.inventoryCustodianSlipView = "<?php echo e(url('/inventory-custodian-slip/view/{id}')); ?>";
+        window.APP_ROUTES.inspectionAcceptanceReportView = "<?php echo e(url('/inspection-acceptance-report/view/{id}')); ?>";
     </script>
     <script>
-        window.CURRENT_USER = @json($currentUserData);
+        window.CURRENT_USER = <?php echo json_encode($currentUserData, 15, 512) ?>;
     </script>
 </head>
 
@@ -36,7 +36,7 @@
             <div class="sidebar-header">
                 <div class="logo-container">
                     <div class="logo-icon">
-                        <img src="{{ $imagesPath }}/cnscrefine.png" alt="Logo" class="icon-logo" />
+                        <img src="<?php echo e($imagesPath); ?>/cnscrefine.png" alt="Logo" class="icon-logo" />
                     </div>
                     <div class="logo-text">
                         <h1>CNSC Supply</h1>
@@ -346,8 +346,8 @@
     </div>
 
     <!-- JavaScript -->
-    @vite('resources/js/app.js')
-    @vite('resources/js/dashboard.js')
+    <?php echo app('Illuminate\Foundation\Vite')('resources/js/app.js'); ?>
+    <?php echo app('Illuminate\Foundation\Vite')('resources/js/dashboard.js'); ?>
 </body>
 
-</html>
+</html><?php /**PATH C:\xampp\htdocs\SupplySystem\resources\views/admin/dashboard.blade.php ENDPATH**/ ?>

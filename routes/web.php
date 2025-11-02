@@ -20,6 +20,12 @@ Route::get('/login', [AccessController::class, 'show'])->name('login');
 Route::post('/login', [AccessController::class, 'authenticate'])->name('login.perform');
 Route::post('/logout', [AccessController::class, 'logout'])->name('logout');
 
+// Password reset routes
+Route::get('/forgot-password', [App\Http\Controllers\PasswordResetController::class, 'showForgotForm'])->name('password.forgot');
+Route::post('/forgot-password', [App\Http\Controllers\PasswordResetController::class, 'sendResetLink'])->name('password.reset.send');
+Route::get('/reset-password/{token}', [App\Http\Controllers\PasswordResetController::class, 'showResetForm'])->name('password.reset.form');
+Route::post('/reset-password', [App\Http\Controllers\PasswordResetController::class, 'resetPassword'])->name('password.reset.update');
+
 // Account setup routes
 Route::get('/account/setup/{token}', [App\Http\Controllers\AccountSetupController::class, 'showSetupForm'])->name('account.setup');
 Route::post('/account/setup', [App\Http\Controllers\AccountSetupController::class, 'setupAccount'])->name('account.setup.post');

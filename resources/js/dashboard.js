@@ -1411,7 +1411,7 @@ function updateUserDisplay() {
 }
 
 // Confirmation modal helper that returns a Promise<boolean>
-function showConfirm(message, title = 'Confirm') {
+function showConfirm(message, title = 'Confirm Action') {
   return new Promise((resolve) => {
     let modal = document.getElementById('confirm-modal')
     if (!modal) {
@@ -1429,20 +1429,51 @@ function showConfirm(message, title = 'Confirm') {
     const okBtn = modal.querySelector('#confirm-ok')
     const cancelBtn = modal.querySelector('#confirm-cancel')
 
+    // Set content
     titleEl.textContent = title
     msgEl.textContent = message
 
+    // Focus trap variables
+    let previousActiveElement = document.activeElement
+
     function cleanup(result) {
-      modal.classList.remove('active')
-      okBtn.removeEventListener('click', onOk)
-      cancelBtn.removeEventListener('click', onCancel)
-      document.removeEventListener('keydown', onKeyDown)
-      resolve(result)
+      // Smooth exit animation
+      const modalContent = modal.querySelector('.modal-content')
+      if (modalContent) {
+        modalContent.style.animation =
+          'confirmModalExit 0.25s cubic-bezier(0.4, 0, 1, 1)'
+      }
+
+      setTimeout(() => {
+        modal.classList.remove('active')
+
+        // Remove event listeners
+        okBtn.removeEventListener('click', onOk)
+        cancelBtn.removeEventListener('click', onCancel)
+        document.removeEventListener('keydown', onKeyDown)
+        modal.removeEventListener('click', onOverlayClick)
+
+        // Reset animation
+        if (modalContent) {
+          modalContent.style.animation = ''
+        }
+
+        // Restore focus
+        if (
+          previousActiveElement &&
+          typeof previousActiveElement.focus === 'function'
+        ) {
+          previousActiveElement.focus()
+        }
+
+        resolve(result)
+      }, 250)
     }
 
     function onOk() {
       cleanup(true)
     }
+
     function onCancel() {
       cleanup(false)
     }
@@ -1451,16 +1482,54 @@ function showConfirm(message, title = 'Confirm') {
       if (e.key === 'Escape') {
         cleanup(false)
       }
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
         cleanup(true)
+      }
+
+      // Tab trap for accessibility
+      if (e.key === 'Tab') {
+        const focusableElements = modal.querySelectorAll(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+        const firstFocusable = focusableElements[0]
+        const lastFocusable = focusableElements[focusableElements.length - 1]
+
+        if (e.shiftKey && document.activeElement === firstFocusable) {
+          e.preventDefault()
+          lastFocusable.focus()
+        } else if (!e.shiftKey && document.activeElement === lastFocusable) {
+          e.preventDefault()
+          firstFocusable.focus()
+        }
       }
     }
 
+    function onOverlayClick(e) {
+      if (e.target === modal) {
+        cleanup(false)
+      }
+    }
+
+    // Attach event listeners
     okBtn.addEventListener('click', onOk)
     cancelBtn.addEventListener('click', onCancel)
     document.addEventListener('keydown', onKeyDown)
+    modal.addEventListener('click', onOverlayClick)
 
+    // Show modal
     modal.classList.add('active')
+
+    // Re-initialize Lucide icons
+    setTimeout(() => {
+      if (window.lucide) {
+        lucide.createIcons()
+      }
+      // Auto-focus on confirm button for better UX
+      if (okBtn) {
+        cancelBtn.focus() // Focus cancel for safety (prevents accidental confirms)
+      }
+    }, 50)
   })
 }
 
@@ -10148,6 +10217,15 @@ function resolveLoginPath() {
 
 async function logout() {
   if (window.__isLoggingOut) return
+
+  // Show enhanced confirmation dialog
+  const confirmed = await showConfirm(
+    'You will be signed out of your account. Any unsaved changes will be lost.',
+    'Sign Out'
+  )
+
+  if (!confirmed) return
+
   window.__isLoggingOut = true
 
   closeUserMenu()
