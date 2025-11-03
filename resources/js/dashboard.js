@@ -15805,10 +15805,9 @@ function generateProductModal(mode = 'create', productData = null) {
                             }</h4>
                             <p style="margin: 0; font-size: 13px; color: #1e40af; line-height: 1.5;">
                                 This product is categorized as <strong>${
-                                  productData.type
-                                    ? productData.type.charAt(0).toUpperCase() +
-                                      productData.type.slice(1)
-                                    : 'N/A'
+                                  productData.category?.name ||
+                                  productData.type ||
+                                  'Uncategorized'
                                 }</strong> and is currently ${
                     productData.quantity > 0 ? 'in stock' : 'out of stock'
                   }.
