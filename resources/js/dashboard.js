@@ -1,6 +1,7 @@
 // Dashboard JavaScript Application
 
 import { jsPDF } from 'jspdf'
+import * as XLSX from 'xlsx'
 
 // ==============================
 // Theme Management
@@ -2540,10 +2541,6 @@ function loadPageContent(pageId) {
       break
     case 'activity-feed': // Activity Feed
       mainContent.innerHTML = generateActivityPage()
-      break
-    case 'transaction-tracking': // Transaction Tracking
-      mainContent.innerHTML = generateTransactionTrackingPage()
-      initTransactionTracking()
       break
     case 'settings':
       // App Settings page (moved from modal to full-page)
@@ -5372,7 +5369,7 @@ function generateInventoryReportsPage() {
                 <div>
                     <button class="btn btn-primary" id="export-inventory-btn">
                         <i data-lucide="download" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>
-                        Export CSV
+                        Export Excel
                     </button>
                 </div>
             </div>
@@ -5537,7 +5534,7 @@ function generateRequisitionReportsPage() {
                 <div>
                     <button class="btn btn-primary" id="export-requisition-btn">
                         <i data-lucide="download" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>
-                        Export CSV
+                        Export Excel
                     </button>
                 </div>
             </div>
@@ -5655,7 +5652,7 @@ function generateStatusReportsPage() {
                 <div>
                     <button class="btn btn-primary" id="export-status-btn">
                         <i data-lucide="download" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>
-                        Export CSV
+                        Export Excel
                     </button>
                 </div>
             </div>
@@ -5762,22 +5759,296 @@ function generateStatusReportsPage() {
     `
 }
 
-// CSV export helpers
-function downloadCSV(filename, rows) {
-  // Add UTF-8 BOM for Excel compatibility
-  const BOM = '\uFEFF'
-  const csvContent = rows
-    .map((r) => r.map((c) => `"${(c + '').replace(/"/g, '""')}"`).join(','))
-    .join('\n')
-  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  URL.revokeObjectURL(url)
+// Excel export helper with professional styling
+function downloadExcel(filename, rows, sheetName = 'Report', options = {}) {
+  // Create a new workbook
+  const wb = XLSX.utils.book_new()
+
+  // Add metadata header rows if requested
+  let dataStartRow = 0
+  let finalRows = [...rows]
+
+  if (options.includeMetadata !== false) {
+    const metadataRows = [
+      ['Supply System - ' + sheetName],
+      [
+        'Generated:',
+        new Date().toLocaleString('en-US', {
+          dateStyle: 'full',
+          timeStyle: 'short',
+        }),
+      ],
+      ['Total Records:', rows.length - 1], // Exclude header row
+      [], // Empty row for spacing
+    ]
+    finalRows = [...metadataRows, ...rows]
+    dataStartRow = metadataRows.length
+  }
+
+  // Convert rows to worksheet
+  const ws = XLSX.utils.aoa_to_sheet(finalRows)
+
+  // Get the range of the worksheet
+  const range = XLSX.utils.decode_range(ws['!ref'])
+
+  // Define professional color scheme
+  const colors = {
+    metadataBg: 'F3F4F6', // Gray-100
+    metadataText: '1F2937', // Gray-800
+    headerBg: '2563EB', // Blue-600
+    headerText: 'FFFFFF', // White
+    altRowBg: 'F9FAFB', // Gray-50
+    normalRowBg: 'FFFFFF', // White
+    borderColor: 'D1D5DB', // Gray-300
+    headerBorder: '1E40AF', // Blue-700
+    warningBg: 'FEF3C7', // Yellow-100
+    dangerBg: 'FEE2E2', // Red-100
+    successBg: 'D1FAE5', // Green-100
+  }
+
+  // Apply styling to metadata rows (if included)
+  if (options.includeMetadata !== false) {
+    for (let row = 0; row < dataStartRow - 1; row++) {
+      for (let col = range.s.c; col <= range.e.c; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col })
+        if (!ws[cellAddress]) continue
+
+        ws[cellAddress].s = {
+          font: {
+            bold: row === 0,
+            sz: row === 0 ? 14 : 11,
+            name: 'Calibri',
+            color: { rgb: colors.metadataText },
+          },
+          fill: {
+            fgColor: { rgb: colors.metadataBg },
+            patternType: 'solid',
+          },
+          alignment: {
+            horizontal: 'left',
+            vertical: 'center',
+            wrapText: false,
+          },
+        }
+      }
+    }
+  }
+
+  // Apply styling to header row (first data row)
+  const headerRow = dataStartRow
+  for (let col = range.s.c; col <= range.e.c; col++) {
+    const cellAddress = XLSX.utils.encode_cell({ r: headerRow, c: col })
+    if (!ws[cellAddress]) continue
+
+    ws[cellAddress].s = {
+      font: {
+        bold: true,
+        color: { rgb: colors.headerText },
+        sz: 12,
+        name: 'Calibri',
+      },
+      fill: {
+        fgColor: { rgb: colors.headerBg },
+        patternType: 'solid',
+      },
+      alignment: {
+        horizontal: 'center',
+        vertical: 'center',
+        wrapText: true,
+      },
+      border: {
+        top: { style: 'medium', color: { rgb: colors.headerBorder } },
+        bottom: { style: 'medium', color: { rgb: colors.headerBorder } },
+        left: { style: 'thin', color: { rgb: colors.headerBorder } },
+        right: { style: 'thin', color: { rgb: colors.headerBorder } },
+      },
+    }
+  }
+
+  // Apply styling to data rows with alternating colors
+  for (let row = headerRow + 1; row <= range.e.r; row++) {
+    const isAlternate = (row - headerRow) % 2 === 0
+
+    for (let col = range.s.c; col <= range.e.c; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: row, c: col })
+      if (!ws[cellAddress]) continue
+
+      // Determine alignment based on cell content type
+      let horizontalAlign = 'left'
+      const cellValue = ws[cellAddress].v
+      let bgColor = isAlternate ? colors.altRowBg : colors.normalRowBg
+
+      // Right-align numbers and currency
+      if (
+        typeof cellValue === 'number' ||
+        (typeof cellValue === 'string' &&
+          (cellValue.match(/^\$/) || cellValue.match(/^[\d,]+\.?\d*$/)))
+      ) {
+        horizontalAlign = 'right'
+      }
+
+      // Center-align if it's the first column (ID/SKU)
+      if (col === 0) {
+        horizontalAlign = 'center'
+      }
+
+      // Apply conditional formatting based on content
+      if (options.highlightLowStock && typeof cellValue === 'number') {
+        const threshold = options.lowStockThreshold || 10
+        const headerName =
+          ws[XLSX.utils.encode_cell({ r: headerRow, c: col })]?.v || ''
+
+        if (
+          headerName.toLowerCase().includes('quantity') ||
+          headerName.toLowerCase().includes('stock')
+        ) {
+          if (cellValue <= threshold) {
+            bgColor = colors.dangerBg
+          } else if (cellValue <= threshold * 2) {
+            bgColor = colors.warningBg
+          }
+        }
+      }
+
+      // Highlight status values
+      if (typeof cellValue === 'string') {
+        const lowerValue = cellValue.toLowerCase()
+        if (
+          lowerValue === 'completed' ||
+          lowerValue === 'approved' ||
+          lowerValue === 'active' ||
+          lowerValue === 'in stock'
+        ) {
+          bgColor = colors.successBg
+        } else if (lowerValue === 'pending' || lowerValue === 'processing') {
+          bgColor = colors.warningBg
+        } else if (
+          lowerValue === 'rejected' ||
+          lowerValue === 'cancelled' ||
+          lowerValue === 'out of stock'
+        ) {
+          bgColor = colors.dangerBg
+        }
+      }
+
+      ws[cellAddress].s = {
+        font: {
+          sz: 11,
+          name: 'Calibri',
+          color: { rgb: '111827' }, // Gray-900
+        },
+        alignment: {
+          horizontal: horizontalAlign,
+          vertical: 'center',
+          wrapText: false,
+        },
+        border: {
+          top: { style: 'thin', color: { rgb: colors.borderColor } },
+          bottom: { style: 'thin', color: { rgb: colors.borderColor } },
+          left: { style: 'thin', color: { rgb: colors.borderColor } },
+          right: { style: 'thin', color: { rgb: colors.borderColor } },
+        },
+        fill: {
+          fgColor: { rgb: bgColor },
+          patternType: 'solid',
+        },
+      }
+
+      // Format numbers with commas and currency
+      if (typeof cellValue === 'number' && !ws[cellAddress].z) {
+        const headerName =
+          ws[XLSX.utils.encode_cell({ r: headerRow, c: col })]?.v || ''
+
+        if (
+          headerName.toLowerCase().includes('cost') ||
+          headerName.toLowerCase().includes('price') ||
+          headerName.toLowerCase().includes('amount') ||
+          headerName.toLowerCase().includes('value')
+        ) {
+          ws[cellAddress].z = '$#,##0.00'
+        } else if (
+          headerName.toLowerCase().includes('quantity') ||
+          headerName.toLowerCase().includes('stock') ||
+          headerName.toLowerCase().includes('count')
+        ) {
+          ws[cellAddress].z = '#,##0'
+        } else if (col >= 2) {
+          // Default for other numeric columns
+          ws[cellAddress].z = '#,##0.00'
+        }
+      }
+    }
+  }
+
+  // Set column widths based on content with better calculation
+  const colWidths = []
+  for (let col = range.s.c; col <= range.e.c; col++) {
+    let maxWidth = 10
+    for (let row = range.s.r; row <= range.e.r; row++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: row, c: col })
+      if (ws[cellAddress] && ws[cellAddress].v) {
+        const cellValue = String(ws[cellAddress].v)
+        // Account for formatting (currency signs, commas, etc.)
+        const cellLength = cellValue.length * 1.1
+        maxWidth = Math.max(maxWidth, cellLength)
+      }
+    }
+    // Add padding and cap maximum width
+    colWidths.push({ wch: Math.min(Math.max(maxWidth + 2, 12), 50) })
+  }
+  ws['!cols'] = colWidths
+
+  // Set row heights
+  const rowHeights = []
+  if (options.includeMetadata !== false) {
+    rowHeights[0] = { hpt: 25 } // Title row
+    for (let i = 1; i < dataStartRow; i++) {
+      rowHeights[i] = { hpt: 20 }
+    }
+  }
+  rowHeights[headerRow] = { hpt: 35 } // Header row taller
+  for (let row = headerRow + 1; row <= range.e.r; row++) {
+    rowHeights[row] = { hpt: 20 } // Data rows
+  }
+  ws['!rows'] = rowHeights
+
+  // Freeze header row (and metadata if present)
+  ws['!freeze'] = {
+    xSplit: 0,
+    ySplit: headerRow + 1,
+    topLeftCell: XLSX.utils.encode_cell({ r: headerRow + 1, c: 0 }),
+    activePane: 'bottomLeft',
+    state: 'frozen',
+  }
+
+  // Add auto-filter to header row
+  ws['!autofilter'] = {
+    ref: XLSX.utils.encode_range({
+      s: { r: headerRow, c: range.s.c },
+      e: { r: range.e.r, c: range.e.c },
+    }),
+  }
+
+  // Add worksheet to workbook with custom sheet name
+  XLSX.utils.book_append_sheet(wb, ws, sheetName)
+
+  // Set workbook properties
+  wb.Props = {
+    Title: sheetName,
+    Subject: 'Supply System Export Report',
+    Author: 'Supply System',
+    Company: 'Camarines Norte State College',
+    CreatedDate: new Date(),
+    ModifiedDate: new Date(),
+  }
+
+  // Generate Excel file and trigger download
+  XLSX.writeFile(wb, filename, {
+    bookType: 'xlsx',
+    bookSST: false,
+    type: 'binary',
+    cellStyles: true,
+  })
 }
 
 function exportInventoryCSV() {
@@ -5800,7 +6071,11 @@ function exportInventoryCSV() {
           (i.unit_cost || i.unitPrice || 0),
     ])
   )
-  downloadCSV('inventory-report.csv', rows)
+  downloadExcel('inventory-report.xlsx', rows, 'Inventory Report', {
+    includeMetadata: true,
+    highlightLowStock: true,
+    lowStockThreshold: AppState.lowStockThreshold || 10,
+  })
 }
 
 function exportRequisitionCSV() {
@@ -5824,7 +6099,9 @@ function exportRequisitionCSV() {
       r.status || '',
     ])
   )
-  downloadCSV('requisition-report.csv', rows)
+  downloadExcel('requisition-report.xlsx', rows, 'Requisitions', {
+    includeMetadata: true,
+  })
 }
 
 function exportStatusCSV() {
@@ -5848,9 +6125,11 @@ function exportStatusCSV() {
   }, {})
 
   Object.keys(rowsToExport).forEach((k) =>
-    rows.push([k, rowsToExport[k], formatCurrency(costByStatus[k] || 0)])
+    rows.push([k, rowsToExport[k], costByStatus[k] || 0])
   )
-  downloadCSV('status-report.csv', rows)
+  downloadExcel('status-report.xlsx', rows, 'Status Report', {
+    includeMetadata: true,
+  })
 }
 
 // Render helpers + Chart wiring
@@ -5994,7 +6273,11 @@ function exportLowStockCSV() {
   toExport.forEach((i) =>
     rows.push([i.stockNumber, i.name, i.currentStock, i.unit])
   )
-  downloadCSV('low-stock-report.csv', rows)
+  downloadExcel('low-stock-report.xlsx', rows, 'Low Stock Items', {
+    includeMetadata: true,
+    highlightLowStock: true,
+    lowStockThreshold: AppState.lowStockThreshold || 10,
+  })
 }
 
 function renderRequisitionReport() {
@@ -12184,471 +12467,6 @@ function setLoginActivityPage(page) {
   loadPageContent('login-activity')
 }
 
-// ==========================================
-// TRANSACTION TRACKING PAGE
-// ==========================================
-
-function generateTransactionTrackingPage() {
-  return `
-    <div class="page-header">
-      <div class="page-header-content">
-        <div>
-          <h1 class="page-title">
-            <i data-lucide="file-search" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>
-            Transaction Tracking
-          </h1>
-          <p class="page-subtitle">Complete audit trail of all system transactions and activities</p>
-        </div>
-        <button class="btn btn-primary" onclick="exportTransactionLogs()" style="display:flex;align-items:center;gap:8px;">
-          <i data-lucide="download" style="width:16px;height:16px;"></i>
-          Export CSV
-        </button>
-      </div>
-    </div>
-
-    <!-- Statistics Cards -->
-    <div id="transaction-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 32px;">
-      <div class="card" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none;">
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-          <div>
-            <p style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">Total Transactions</p>
-            <h3 id="stat-total" style="margin: 0; font-size: 32px; font-weight: 700;">...</h3>
-          </div>
-          <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-            <i data-lucide="database" style="width: 28px; height: 28px;"></i>
-          </div>
-        </div>
-      </div>
-
-      <div class="card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none;">
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-          <div>
-            <p style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">Today's Activity</p>
-            <h3 id="stat-today" style="margin: 0; font-size: 32px; font-weight: 700;">...</h3>
-          </div>
-          <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-            <i data-lucide="activity" style="width: 28px; height: 28px;"></i>
-          </div>
-        </div>
-      </div>
-
-      <div class="card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none;">
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-          <div>
-            <p style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">This Week</p>
-            <h3 id="stat-week" style="margin: 0; font-size: 32px; font-weight: 700;">...</h3>
-          </div>
-          <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-            <i data-lucide="calendar" style="width: 28px; height: 28px;"></i>
-          </div>
-        </div>
-      </div>
-
-      <div class="card" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; border: none;">
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-          <div>
-            <p style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">Active Users</p>
-            <h3 id="stat-users" style="margin: 0; font-size: 32px; font-weight: 700;">...</h3>
-          </div>
-          <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-            <i data-lucide="users" style="width: 28px; height: 28px;"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Filters -->
-    <div class="card" style="margin-bottom: 24px;">
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-        <div>
-          <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">Transaction Type</label>
-          <select id="filter-type" class="form-control" onchange="filterTransactions()">
-            <option value="all">All Types</option>
-            <option value="purchase_request">Purchase Requests</option>
-            <option value="purchase_order">Purchase Orders</option>
-            <option value="stock_in">Stock In</option>
-            <option value="stock_out">Stock Out</option>
-            <option value="user_auth">User Authentication</option>
-            <option value="document_generation">Documents</option>
-          </select>
-        </div>
-        
-        <div>
-          <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">Department</label>
-          <select id="filter-department" class="form-control" onchange="filterTransactions()">
-            <option value="all">All Departments</option>
-            <option value="IT">IT</option>
-            <option value="HR">HR</option>
-            <option value="Finance">Finance</option>
-            <option value="Operations">Operations</option>
-          </select>
-        </div>
-
-        <div>
-          <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">Date Range</label>
-          <select id="filter-date" class="form-control" onchange="filterTransactions()">
-            <option value="all">All Time</option>
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-          </select>
-        </div>
-
-        <div>
-          <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">Search</label>
-          <input type="text" id="filter-search" class="form-control" placeholder="Search transactions..." onkeyup="filterTransactions()">
-        </div>
-      </div>
-    </div>
-
-    <!-- Transaction Table -->
-    <div class="card" style="padding: 0;">
-      <div style="padding: 20px 24px; border-bottom: 1px solid #e5e7eb;">
-        <h2 style="margin: 0; font-size: 18px; color: #111827; font-weight: 600;">
-          Transaction History
-        </h2>
-      </div>
-      
-      <div id="transaction-table-container" style="overflow-x: auto;">
-        <table class="table" style="margin: 0;">
-          <thead>
-            <tr>
-              <th style="padding-left: 24px;">Date & Time</th>
-              <th>Type</th>
-              <th>Transaction ID</th>
-              <th>Action</th>
-              <th>User</th>
-              <th>Department</th>
-              <th>Description</th>
-              <th style="padding-right: 24px;">Status</th>
-            </tr>
-          </thead>
-          <tbody id="transaction-table-body">
-            <tr>
-              <td colspan="8" style="text-align: center; padding: 60px 20px;">
-                <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
-                  <i data-lucide="loader" class="spin" style="width: 32px; height: 32px; color: #9ca3af;"></i>
-                  <p style="margin: 0; color: #6b7280;">Loading transactions...</p>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Pagination -->
-      <nav class="enhanced-pagination" id="transaction-pagination" style="display: none; padding: 12px 0; border-top: 1px solid #e5e7eb; background: #f9fafb;">
-        <div class="pagination-left" style="margin-left: 16px; font-size: 13px; color: #6b7280;">
-          <span id="pagination-info">Showing 0 to 0 of 0 entries</span>
-        </div>
-        <div class="pagination-right" style="margin-right: 16px; display: flex; gap: 4px;" id="pagination-buttons">
-        </div>
-      </nav>
-    </div>
-  `
-}
-
-// Initialize transaction tracking
-function initTransactionTracking() {
-  loadTransactionStatistics()
-  loadTransactionLogs()
-}
-
-// Load statistics
-async function loadTransactionStatistics() {
-  try {
-    const response = await fetch('/api/transaction-logs/statistics?days=30')
-    const stats = await response.json()
-
-    document.getElementById('stat-total').textContent =
-      stats.total_transactions || 0
-
-    // Calculate today's transactions
-    const today = stats.recent_activity?.find(
-      (a) => a.date === new Date().toISOString().split('T')[0]
-    )
-    document.getElementById('stat-today').textContent = today?.count || 0
-
-    // Calculate week's transactions
-    const weekCount =
-      stats.recent_activity?.slice(0, 7).reduce((sum, a) => sum + a.count, 0) ||
-      0
-    document.getElementById('stat-week').textContent = weekCount
-
-    // Active users (unique users from by_type data - approximation)
-    document.getElementById('stat-users').textContent =
-      Object.keys(stats.by_type || {}).length || 0
-  } catch (error) {
-    console.error('Error loading statistics:', error)
-  }
-}
-
-// Current pagination state
-let currentTransactionPage = 1
-let totalTransactionPages = 1
-let allTransactions = []
-
-// Load transaction logs
-async function loadTransactionLogs(page = 1) {
-  try {
-    const typeFilter = document.getElementById('filter-type')?.value || 'all'
-    const deptFilter =
-      document.getElementById('filter-department')?.value || 'all'
-    const dateFilter = document.getElementById('filter-date')?.value || 'all'
-    const searchFilter = document.getElementById('filter-search')?.value || ''
-
-    let url = `/api/transaction-logs?page=${page}&per_page=20`
-    if (typeFilter !== 'all') url += `&type=${typeFilter}`
-    if (deptFilter !== 'all') url += `&department=${deptFilter}`
-    if (searchFilter) url += `&search=${encodeURIComponent(searchFilter)}`
-
-    // Add date filter
-    if (dateFilter !== 'all') {
-      const now = new Date()
-      let startDate
-      if (dateFilter === 'today') {
-        startDate = now.toISOString().split('T')[0]
-      } else if (dateFilter === 'week') {
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-        startDate = weekAgo.toISOString().split('T')[0]
-      } else if (dateFilter === 'month') {
-        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-        startDate = monthAgo.toISOString().split('T')[0]
-      }
-      if (startDate) url += `&start_date=${startDate}`
-    }
-
-    const response = await fetch(url)
-    const data = await response.json()
-
-    allTransactions = data.data || []
-    currentTransactionPage = data.current_page || 1
-    totalTransactionPages = data.last_page || 1
-
-    renderTransactionTable(allTransactions)
-    renderTransactionPagination(data)
-  } catch (error) {
-    console.error('Error loading transactions:', error)
-    document.getElementById('transaction-table-body').innerHTML = `
-      <tr>
-        <td colspan="8" style="text-align: center; padding: 60px 20px;">
-          <div style="color: #ef4444;">
-            <i data-lucide="alert-circle" style="width: 32px; height: 32px;"></i>
-            <p>Error loading transactions. Please try again.</p>
-          </div>
-        </td>
-      </tr>
-    `
-    lucide.createIcons()
-  }
-}
-
-// Render transaction table
-function renderTransactionTable(transactions) {
-  const tbody = document.getElementById('transaction-table-body')
-
-  if (!transactions || transactions.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="8" style="text-align: center; padding: 60px 20px;">
-          <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
-            <i data-lucide="inbox" style="width: 48px; height: 48px; color: #9ca3af;"></i>
-            <p style="margin: 0; color: #6b7280; font-size: 16px;">No transactions found</p>
-            <p style="margin: 0; color: #9ca3af; font-size: 14px;">Try adjusting your filters</p>
-          </div>
-        </td>
-      </tr>
-    `
-    lucide.createIcons()
-    return
-  }
-
-  tbody.innerHTML = transactions
-    .map((t) => {
-      const date = new Date(t.created_at)
-      const formattedDate = date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-      const formattedTime = date.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-
-      const typeColors = {
-        purchase_request: { bg: '#dbeafe', text: '#1e40af', icon: 'file-text' },
-        purchase_order: {
-          bg: '#fef3c7',
-          text: '#92400e',
-          icon: 'shopping-cart',
-        },
-        stock_in: { bg: '#d1fae5', text: '#065f46', icon: 'package-plus' },
-        stock_out: { bg: '#fee2e2', text: '#991b1b', icon: 'package-minus' },
-        user_auth: { bg: '#e0e7ff', text: '#3730a3', icon: 'user-check' },
-        document_generation: { bg: '#f3e8ff', text: '#6b21a8', icon: 'file' },
-      }
-
-      const typeColor = typeColors[t.transaction_type] || {
-        bg: '#f3f4f6',
-        text: '#374151',
-        icon: 'circle',
-      }
-
-      const statusColor =
-        t.status === 'completed'
-          ? 'green'
-          : t.status === 'failed'
-          ? 'red'
-          : 'gray'
-
-      return `
-      <tr>
-        <td style="padding-left: 24px;">
-          <div style="display: flex; flex-direction: column; gap: 2px;">
-            <span style="font-weight: 500; font-size: 13px;">${formattedDate}</span>
-            <span style="font-size: 12px; color: #6b7280;">${formattedTime}</span>
-          </div>
-        </td>
-        <td>
-          <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: ${
-            typeColor.bg
-          }; color: ${
-        typeColor.text
-      }; border-radius: 6px; font-size: 12px; font-weight: 500;">
-            <i data-lucide="${
-              typeColor.icon
-            }" style="width: 12px; height: 12px;"></i>
-            ${t.transaction_type
-              .replace(/_/g, ' ')
-              .replace(/\b\w/g, (l) => l.toUpperCase())}
-          </span>
-        </td>
-        <td>
-          <code style="font-size: 12px; padding: 2px 6px; background: #f3f4f6; border-radius: 4px;">
-            ${t.transaction_id || '-'}
-          </code>
-        </td>
-        <td>
-          <span style="font-size: 13px; text-transform: capitalize;">${
-            t.action
-          }</span>
-        </td>
-        <td>
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <div style="width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 600;">
-              ${(t.user_name || 'U').charAt(0).toUpperCase()}
-            </div>
-            <span style="font-size: 13px;">${t.user_name || 'System'}</span>
-          </div>
-        </td>
-        <td>
-          <span style="font-size: 13px;">${t.department || '-'}</span>
-        </td>
-        <td>
-          <span style="font-size: 13px; color: #374151;" title="${
-            t.description
-          }">
-            ${
-              t.description.length > 50
-                ? t.description.substring(0, 50) + '...'
-                : t.description
-            }
-          </span>
-        </td>
-        <td style="padding-right: 24px;">
-          <span class="badge ${statusColor}" style="font-size: 11px; padding: 4px 10px;">
-            ${t.status}
-          </span>
-        </td>
-      </tr>
-    `
-    })
-    .join('')
-
-  lucide.createIcons()
-}
-
-// Render pagination
-function renderTransactionPagination(data) {
-  const pagination = document.getElementById('transaction-pagination')
-  const paginationInfo = document.getElementById('pagination-info')
-  const paginationButtons = document.getElementById('pagination-buttons')
-
-  if (data.total === 0) {
-    pagination.style.display = 'none'
-    return
-  }
-
-  pagination.style.display = 'flex'
-
-  const from = data.from || 0
-  const to = data.to || 0
-  const total = data.total || 0
-
-  paginationInfo.textContent = `Showing ${from} to ${to} of ${total} entries`
-
-  let buttons = ''
-
-  // Previous button
-  buttons += `<button class="pagination-btn" ${
-    data.current_page === 1 ? 'disabled' : ''
-  } onclick="loadTransactionLogs(${data.current_page - 1})">Previous</button>`
-
-  // Page buttons
-  const maxButtons = 5
-  let start = Math.max(1, data.current_page - Math.floor(maxButtons / 2))
-  let end = start + maxButtons - 1
-  if (end > data.last_page) {
-    end = data.last_page
-    start = Math.max(1, end - maxButtons + 1)
-  }
-
-  for (let p = start; p <= end; p++) {
-    buttons += `<button class="pagination-btn ${
-      p === data.current_page ? 'active' : ''
-    }" onclick="loadTransactionLogs(${p})">${p}</button>`
-  }
-
-  // Next button
-  buttons += `<button class="pagination-btn" ${
-    data.current_page === data.last_page ? 'disabled' : ''
-  } onclick="loadTransactionLogs(${data.current_page + 1})">Next</button>`
-
-  paginationButtons.innerHTML = buttons
-}
-
-// Filter transactions
-function filterTransactions() {
-  loadTransactionLogs(1) // Reset to page 1 when filtering
-}
-
-// Export transactions
-async function exportTransactionLogs() {
-  try {
-    const typeFilter = document.getElementById('filter-type')?.value || 'all'
-    const deptFilter =
-      document.getElementById('filter-department')?.value || 'all'
-    const searchFilter = document.getElementById('filter-search')?.value || ''
-
-    let url = `/api/transaction-logs/export?`
-    if (typeFilter !== 'all') url += `type=${typeFilter}&`
-    if (deptFilter !== 'all') url += `department=${deptFilter}&`
-    if (searchFilter) url += `search=${encodeURIComponent(searchFilter)}&`
-
-    window.location.href = url
-  } catch (error) {
-    console.error('Error exporting transactions:', error)
-    alert('Failed to export transactions. Please try again.')
-  }
-}
-
-// Expose functions globally
-window.initTransactionTracking = initTransactionTracking
-window.loadTransactionLogs = loadTransactionLogs
-window.filterTransactions = filterTransactions
-window.exportTransactionLogs = exportTransactionLogs
-
 // --- Expose commonly used handlers to global scope for legacy inline handlers ---
 ;(function exposeLegacyHandlers() {
   const handlers = {
@@ -17580,7 +17398,7 @@ async function initStatusManagement(filter = 'all') {
                 <div class="header-actions">
                     <button class="btn btn-primary" id="export-status-btn">
                         <i data-lucide="download" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>
-                        Export CSV
+                        Export Excel
                     </button>
                 </div>
             </div>
