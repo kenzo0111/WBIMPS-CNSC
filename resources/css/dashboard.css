@@ -1178,9 +1178,9 @@ body {
 }
 
 .request-table th {
-  background-color: var(--table-header-bg);
-  color: var(--text-primary);
-  font-weight: 500;
+  background-color: #0f172a;
+  color: #f8fafc;
+  font-weight: 600;
   transition: background-color 0.3s ease;
 }
 
@@ -1189,10 +1189,13 @@ body {
 }
 
 .request-table tbody tr:hover {
-  background-color: var(--bg-tertiary);
-  transform: scale(1.002);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #f9fafb !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.request-table tbody tr:hover td {
+  border-color: #d1d5db !important;
 }
 
 .request-table tbody td a {
@@ -2133,10 +2136,10 @@ body {
 .table th {
   text-align: left;
   padding: 16px;
-  font-weight: 500;
-  color: var(--text-primary);
-  background-color: var(--table-header-bg);
-  border-bottom: 1px solid var(--border-primary);
+  font-weight: 600;
+  color: #f8fafc;
+  background-color: #0f172a;
+  border-bottom: 1px solid #1e293b;
   font-size: 14px;
   transition: background-color 0.3s ease, color 0.3s ease,
     border-color 0.3s ease;
@@ -2157,10 +2160,13 @@ body {
 }
 
 .table tbody tr:hover {
-  background-color: var(--bg-tertiary);
-  transform: scale(1.002);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #f9fafb !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.table tbody tr:hover td {
+  border-color: #d1d5db !important;
 }
 
 .table-actions {
@@ -3732,9 +3738,9 @@ textarea:focus {
 }
 
 .request-table th {
-  background: var(--table-header-bg);
-  font-weight: 500;
-  color: var(--text-primary);
+  background: #0f172a;
+  font-weight: 600;
+  color: #f8fafc;
   transition: background-color 0.3s ease;
 }
 
@@ -3743,8 +3749,13 @@ textarea:focus {
 }
 
 .request-table tr:hover {
-  background: var(--bg-tertiary);
-  transition: background-color 0.2s ease;
+  background: #f9fafb !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.request-table tr:hover td {
+  border-color: #d1d5db !important;
 }
 
 /* Header popup styles (notifications and user menu) */
@@ -4400,14 +4411,16 @@ table.sticky-header thead th {
   position: sticky;
   top: 0;
   z-index: 5;
-  background: var(--table-header-bg);
+  background: #0f172a;
+  color: #f8fafc;
+  font-weight: 600;
   -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
 }
 
 /* Optional subtle divider under sticky header */
 table.sticky-header thead tr th {
-  box-shadow: 0 1px 0 var(--border-primary);
+  box-shadow: 0 1px 0 #1e293b;
 }
 
 /* Narrow custom scrollbar for inner scroll wrapper (uses parent container overflow) */
@@ -4448,14 +4461,14 @@ table.sticky-header thead tr th {
 
 /* Enhanced Table Styles for Reports */
 .table th {
-  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   font-weight: 600;
-  color: #111827;
+  color: #f8fafc;
   text-transform: uppercase;
   font-size: 12px;
   letter-spacing: 0.05em;
   padding: 14px 16px;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid #1e293b;
 }
 
 .table tbody tr {
@@ -4463,9 +4476,13 @@ table.sticky-header thead tr th {
 }
 
 .table tbody tr:hover {
-  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 50%, #fef2f2 100%);
-  transform: scale(1.01);
-  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.1);
+  background: #f9fafb !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.table tbody tr:hover td {
+  border-color: #d1d5db !important;
 }
 
 .table tbody tr:nth-child(even) {
@@ -4473,7 +4490,13 @@ table.sticky-header thead tr th {
 }
 
 .table tbody tr:nth-child(even):hover {
-  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 50%, #fef2f2 100%);
+  background: #f9fafb !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.table tbody tr:nth-child(even):hover td {
+  border-color: #d1d5db !important;
 }
 
 .table td {
@@ -5006,7 +5029,71 @@ body.modal-open {
   div.table-container table.table thead tr {
     background-color: #0f172a !important;
   }
+}
 
+/* ====================================================================
+   FORCE DARK MODE FOR ALL TABLE HEADERS (REGARDLESS OF THEME)
+   ==================================================================== */
+.data-table th,
+.table th,
+.request-table th,
+table th,
+table thead th,
+thead th,
+th,
+.data-table thead,
+.table thead,
+.request-table thead,
+table thead,
+thead,
+.table-container .table th,
+.table-container table th,
+.table-container thead th,
+div.table-container table.table thead th,
+div.table-container table.table th {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #1e293b !important;
+  font-weight: 600 !important;
+}
+
+/* Table header row - force dark */
+.data-table thead tr,
+.table thead tr,
+.request-table thead tr,
+table thead tr,
+thead tr,
+.table-container .table thead tr,
+.table-container table thead tr,
+div.table-container table.table thead tr {
+  background-color: #0f172a !important;
+}
+
+/* ====================================================================
+   FORCE ENHANCED HOVER EFFECTS FOR ALL TABLES (LIGHT MODE)
+   ==================================================================== */
+.data-table tbody tr:hover,
+.table tbody tr:hover,
+.request-table tbody tr:hover,
+.request-table tr:hover,
+table tbody tr:hover,
+tbody tr:hover {
+  background: #f9fafb !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.data-table tbody tr:hover td,
+.table tbody tr:hover td,
+.request-table tbody tr:hover td,
+.request-table tr:hover td,
+table tbody tr:hover td,
+tbody tr:hover td {
+  border-color: #d1d5db !important;
+}
+
+/* Continue with dark theme rules */
+[data-theme='dark'] {
   /* Table cells - all variants */
   .data-table td,
   .table td,
@@ -5029,7 +5116,9 @@ body.modal-open {
   tbody tr:hover,
   tr:hover {
     background-color: var(--bg-tertiary) !important;
-    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+    transform: scale(1.01) !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
   }
 
   /* Alternating row colors */
@@ -5309,6 +5398,9 @@ body.modal-open {
 
   .modal-content table tr:hover {
     background-color: var(--bg-tertiary) !important;
+    transform: scale(1.01) !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
   }
 
   /* Loading and success modals */
@@ -5626,6 +5718,42 @@ body.modal-open {
     border-color: #3b82f6;
   }
 
+  /* Enhanced Pagination (Login Activity) */
+  .enhanced-pagination {
+    background-color: var(--bg-secondary) !important;
+    border-top-color: var(--border-primary) !important;
+  }
+
+  .pagination-left {
+    color: var(--text-secondary) !important;
+  }
+
+  .pagination-btn {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--border-primary) !important;
+    color: var(--text-secondary) !important;
+  }
+
+  .pagination-btn:hover:not(:disabled) {
+    background-color: #dc2626 !important;
+    color: white !important;
+    border-color: #dc2626 !important;
+  }
+
+  .pagination-btn.active {
+    background-color: #dc2626 !important;
+    color: white !important;
+    border-color: #dc2626 !important;
+  }
+
+  .pagination-btn:disabled {
+    opacity: 0.3 !important;
+    cursor: not-allowed !important;
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--border-primary) !important;
+    color: var(--text-tertiary) !important;
+  }
+
   /* Status header and cards */
   .status-header {
     background-color: var(--bg-secondary);
@@ -5826,5 +5954,223 @@ body.modal-open {
 
   .activity-empty-subtitle {
     color: var(--text-secondary);
+  }
+
+  /* Report Filters Card Dark Mode */
+  .report-filters-card {
+    background: linear-gradient(
+      135deg,
+      var(--bg-secondary) 0%,
+      var(--bg-tertiary) 100%
+    );
+    border-color: var(--border-primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+
+  .card-header-inline {
+    border-bottom-color: var(--border-primary);
+  }
+
+  .card-title-small {
+    color: var(--text-primary);
+  }
+
+  .filter-item .form-label {
+    color: var(--text-secondary);
+  }
+
+  /* Low Stock Card Dark Mode */
+  .low-stock-card {
+    background: linear-gradient(
+      135deg,
+      var(--bg-secondary) 0%,
+      var(--bg-tertiary) 100%
+    );
+    border-color: var(--border-primary);
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
+  }
+
+  .threshold-input {
+    background-color: var(--bg-tertiary);
+    color: #ef4444;
+    border-color: rgba(220, 38, 38, 0.3);
+  }
+
+  .threshold-input:focus {
+    background-color: var(--bg-secondary);
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.25);
+  }
+
+  .low-stock-table-container {
+    border-color: var(--border-primary);
+    background-color: var(--bg-secondary);
+  }
+
+  .summary-card {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-primary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .summary-card:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  }
+
+  .alert-card {
+    border-color: rgba(220, 38, 38, 0.3);
+    background: linear-gradient(
+      135deg,
+      var(--bg-secondary) 0%,
+      var(--bg-tertiary) 100%
+    );
+  }
+
+  .summary-icon {
+    background: linear-gradient(
+      135deg,
+      rgba(220, 38, 38, 0.2) 0%,
+      rgba(220, 38, 38, 0.3) 100%
+    );
+    box-shadow: 0 4px 8px rgba(220, 38, 38, 0.25);
+  }
+
+  .summary-label {
+    color: var(--text-secondary);
+  }
+
+  .summary-value {
+    color: #ef4444;
+  }
+
+  .summary-detail {
+    color: var(--text-tertiary);
+  }
+
+  /* Button Dark Mode Styles */
+  .btn-primary {
+    background-color: #dc2626;
+    color: #ffffff;
+  }
+
+  .btn-primary:hover {
+    background-color: #ef4444;
+    box-shadow: 0 4px 6px rgba(220, 38, 38, 0.4);
+  }
+
+  .btn-primary:active {
+    background-color: #b91c1c;
+    box-shadow: 0 2px 4px rgba(220, 38, 38, 0.4);
+  }
+
+  .btn-secondary {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-primary);
+  }
+
+  .btn-secondary:hover {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-secondary);
+  }
+
+  .btn-outline-red {
+    background-color: #dc2626;
+    color: #ffffff;
+    border-color: #dc2626;
+  }
+
+  .btn-outline-red:hover {
+    background-color: #ef4444;
+    border-color: #ef4444;
+  }
+
+  .btn-outline-orange {
+    background-color: #ea580c;
+    color: #ffffff;
+    border-color: #ea580c;
+  }
+
+  .btn-outline-orange:hover {
+    background-color: #fb923c;
+    border-color: #fb923c;
+  }
+
+  .btn-outline-green {
+    background-color: transparent;
+    color: #22c55e;
+    border-color: #22c55e;
+  }
+
+  .btn-outline-green:hover {
+    background-color: rgba(34, 197, 94, 0.1);
+  }
+
+  .btn-outline-blue {
+    background-color: transparent;
+    color: #3b82f6;
+    border-color: #3b82f6;
+  }
+
+  .btn-outline-blue:hover {
+    background-color: rgba(59, 130, 246, 0.1);
+  }
+
+  /* Cards inside Modals Dark Mode */
+  .modal-content .card,
+  .modal-body .card {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--border-primary) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .modal-content .card::before,
+  .modal-body .card::before {
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.03) 0%,
+      rgba(255, 255, 255, 0.01) 100%
+    ) !important;
+  }
+
+  .modal-content .card:hover,
+  .modal-body .card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4) !important;
+    border-color: var(--border-secondary) !important;
+  }
+
+  .modal-content .card-header,
+  .modal-body .card-header {
+    background-color: transparent !important;
+    border-bottom-color: var(--border-primary) !important;
+  }
+
+  .modal-content .card-title,
+  .modal-body .card-title {
+    color: var(--text-primary) !important;
+  }
+
+  .modal-content .card-body,
+  .modal-body .card-body {
+    color: var(--text-secondary) !important;
+  }
+
+  /* Stats cards in modals */
+  .modal-content .stats-card,
+  .modal-body .stats-card {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--border-primary) !important;
+  }
+
+  .modal-content .stats-card:hover,
+  .modal-body .stats-card:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  /* Data cards in modals */
+  .modal-content .data-card,
+  .modal-body .data-card {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--border-primary) !important;
   }
 }

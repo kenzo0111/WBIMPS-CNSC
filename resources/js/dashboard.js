@@ -2430,6 +2430,13 @@ function loadPageContent(pageId) {
     case 'activity': // Activity & Notifications
       mainContent.innerHTML = generateActivityPage()
       break
+    case 'activity-feed': // Activity Feed
+      mainContent.innerHTML = generateActivityPage()
+      break
+    case 'transaction-tracking': // Transaction Tracking
+      mainContent.innerHTML = generateTransactionTrackingPage()
+      initTransactionTracking()
+      break
     case 'settings':
       // App Settings page (moved from modal to full-page)
       mainContent.innerHTML = generateSettingsPage()
@@ -4663,7 +4670,7 @@ function generateStockOutPage() {
                         <i data-lucide="x" class="icon"></i>
                         Clear
                     </button>
-                    <button class="btn btn-secondary" onclick="exportStockOut()" title="Export Data">
+                    <button class="btn btn-primary" onclick="exportStockOut()" title="Export Data">
                         <i data-lucide="download" class="icon"></i>
                         Export
                     </button>
@@ -5222,7 +5229,7 @@ function generateInventoryReportsPage() {
                     <p class="page-subtitle">Generate and export inventory summary with analytics</p>
                 </div>
                 <div>
-                    <button class="btn btn-secondary" id="export-inventory-btn">
+                    <button class="btn btn-primary" id="export-inventory-btn">
                         <i data-lucide="download" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>
                         Export CSV
                     </button>
@@ -5294,7 +5301,7 @@ function generateInventoryReportsPage() {
                         <div class="low-stock-controls">
                             <label class="form-label" style="margin:0;white-space:nowrap;">Threshold</label>
                             <input type="number" id="low-stock-threshold" class="form-input threshold-input" value="20" min="1">
-                            <button class="btn btn-secondary btn-sm" id="export-lowstock-btn">
+                            <button class="btn btn-primary btn-sm" id="export-lowstock-btn">
                                 <i data-lucide="download" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>
                                 Export
                             </button>
@@ -5387,7 +5394,7 @@ function generateRequisitionReportsPage() {
                     <p class="page-subtitle">Overview of requisitions and purchase requests</p>
                 </div>
                 <div>
-                    <button class="btn btn-secondary" id="export-requisition-btn">
+                    <button class="btn btn-primary" id="export-requisition-btn">
                         <i data-lucide="download" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>
                         Export CSV
                     </button>
@@ -5505,7 +5512,7 @@ function generateStatusReportsPage() {
                     <p class="page-subtitle">Breakdown of request statuses from Status Management</p>
                 </div>
                 <div>
-                    <button class="btn btn-secondary" id="export-status-btn">
+                    <button class="btn btn-primary" id="export-status-btn">
                         <i data-lucide="download" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>
                         Export CSV
                     </button>
@@ -12033,6 +12040,471 @@ function setLoginActivityPage(page) {
   loadPageContent('login-activity')
 }
 
+// ==========================================
+// TRANSACTION TRACKING PAGE
+// ==========================================
+
+function generateTransactionTrackingPage() {
+  return `
+    <div class="page-header">
+      <div class="page-header-content">
+        <div>
+          <h1 class="page-title">
+            <i data-lucide="file-search" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>
+            Transaction Tracking
+          </h1>
+          <p class="page-subtitle">Complete audit trail of all system transactions and activities</p>
+        </div>
+        <button class="btn btn-primary" onclick="exportTransactionLogs()" style="display:flex;align-items:center;gap:8px;">
+          <i data-lucide="download" style="width:16px;height:16px;"></i>
+          Export CSV
+        </button>
+      </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div id="transaction-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 32px;">
+      <div class="card" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <p style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">Total Transactions</p>
+            <h3 id="stat-total" style="margin: 0; font-size: 32px; font-weight: 700;">...</h3>
+          </div>
+          <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="database" style="width: 28px; height: 28px;"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <p style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">Today's Activity</p>
+            <h3 id="stat-today" style="margin: 0; font-size: 32px; font-weight: 700;">...</h3>
+          </div>
+          <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="activity" style="width: 28px; height: 28px;"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <p style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">This Week</p>
+            <h3 id="stat-week" style="margin: 0; font-size: 32px; font-weight: 700;">...</h3>
+          </div>
+          <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="calendar" style="width: 28px; height: 28px;"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; border: none;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <p style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">Active Users</p>
+            <h3 id="stat-users" style="margin: 0; font-size: 32px; font-weight: 700;">...</h3>
+          </div>
+          <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="users" style="width: 28px; height: 28px;"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card" style="margin-bottom: 24px;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+        <div>
+          <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">Transaction Type</label>
+          <select id="filter-type" class="form-control" onchange="filterTransactions()">
+            <option value="all">All Types</option>
+            <option value="purchase_request">Purchase Requests</option>
+            <option value="purchase_order">Purchase Orders</option>
+            <option value="stock_in">Stock In</option>
+            <option value="stock_out">Stock Out</option>
+            <option value="user_auth">User Authentication</option>
+            <option value="document_generation">Documents</option>
+          </select>
+        </div>
+        
+        <div>
+          <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">Department</label>
+          <select id="filter-department" class="form-control" onchange="filterTransactions()">
+            <option value="all">All Departments</option>
+            <option value="IT">IT</option>
+            <option value="HR">HR</option>
+            <option value="Finance">Finance</option>
+            <option value="Operations">Operations</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">Date Range</label>
+          <select id="filter-date" class="form-control" onchange="filterTransactions()">
+            <option value="all">All Time</option>
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">Search</label>
+          <input type="text" id="filter-search" class="form-control" placeholder="Search transactions..." onkeyup="filterTransactions()">
+        </div>
+      </div>
+    </div>
+
+    <!-- Transaction Table -->
+    <div class="card" style="padding: 0;">
+      <div style="padding: 20px 24px; border-bottom: 1px solid #e5e7eb;">
+        <h2 style="margin: 0; font-size: 18px; color: #111827; font-weight: 600;">
+          Transaction History
+        </h2>
+      </div>
+      
+      <div id="transaction-table-container" style="overflow-x: auto;">
+        <table class="table" style="margin: 0;">
+          <thead>
+            <tr>
+              <th style="padding-left: 24px;">Date & Time</th>
+              <th>Type</th>
+              <th>Transaction ID</th>
+              <th>Action</th>
+              <th>User</th>
+              <th>Department</th>
+              <th>Description</th>
+              <th style="padding-right: 24px;">Status</th>
+            </tr>
+          </thead>
+          <tbody id="transaction-table-body">
+            <tr>
+              <td colspan="8" style="text-align: center; padding: 60px 20px;">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
+                  <i data-lucide="loader" class="spin" style="width: 32px; height: 32px; color: #9ca3af;"></i>
+                  <p style="margin: 0; color: #6b7280;">Loading transactions...</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <nav class="enhanced-pagination" id="transaction-pagination" style="display: none; padding: 12px 0; border-top: 1px solid #e5e7eb; background: #f9fafb;">
+        <div class="pagination-left" style="margin-left: 16px; font-size: 13px; color: #6b7280;">
+          <span id="pagination-info">Showing 0 to 0 of 0 entries</span>
+        </div>
+        <div class="pagination-right" style="margin-right: 16px; display: flex; gap: 4px;" id="pagination-buttons">
+        </div>
+      </nav>
+    </div>
+  `
+}
+
+// Initialize transaction tracking
+function initTransactionTracking() {
+  loadTransactionStatistics()
+  loadTransactionLogs()
+}
+
+// Load statistics
+async function loadTransactionStatistics() {
+  try {
+    const response = await fetch('/api/transaction-logs/statistics?days=30')
+    const stats = await response.json()
+
+    document.getElementById('stat-total').textContent =
+      stats.total_transactions || 0
+
+    // Calculate today's transactions
+    const today = stats.recent_activity?.find(
+      (a) => a.date === new Date().toISOString().split('T')[0]
+    )
+    document.getElementById('stat-today').textContent = today?.count || 0
+
+    // Calculate week's transactions
+    const weekCount =
+      stats.recent_activity?.slice(0, 7).reduce((sum, a) => sum + a.count, 0) ||
+      0
+    document.getElementById('stat-week').textContent = weekCount
+
+    // Active users (unique users from by_type data - approximation)
+    document.getElementById('stat-users').textContent =
+      Object.keys(stats.by_type || {}).length || 0
+  } catch (error) {
+    console.error('Error loading statistics:', error)
+  }
+}
+
+// Current pagination state
+let currentTransactionPage = 1
+let totalTransactionPages = 1
+let allTransactions = []
+
+// Load transaction logs
+async function loadTransactionLogs(page = 1) {
+  try {
+    const typeFilter = document.getElementById('filter-type')?.value || 'all'
+    const deptFilter =
+      document.getElementById('filter-department')?.value || 'all'
+    const dateFilter = document.getElementById('filter-date')?.value || 'all'
+    const searchFilter = document.getElementById('filter-search')?.value || ''
+
+    let url = `/api/transaction-logs?page=${page}&per_page=20`
+    if (typeFilter !== 'all') url += `&type=${typeFilter}`
+    if (deptFilter !== 'all') url += `&department=${deptFilter}`
+    if (searchFilter) url += `&search=${encodeURIComponent(searchFilter)}`
+
+    // Add date filter
+    if (dateFilter !== 'all') {
+      const now = new Date()
+      let startDate
+      if (dateFilter === 'today') {
+        startDate = now.toISOString().split('T')[0]
+      } else if (dateFilter === 'week') {
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        startDate = weekAgo.toISOString().split('T')[0]
+      } else if (dateFilter === 'month') {
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        startDate = monthAgo.toISOString().split('T')[0]
+      }
+      if (startDate) url += `&start_date=${startDate}`
+    }
+
+    const response = await fetch(url)
+    const data = await response.json()
+
+    allTransactions = data.data || []
+    currentTransactionPage = data.current_page || 1
+    totalTransactionPages = data.last_page || 1
+
+    renderTransactionTable(allTransactions)
+    renderTransactionPagination(data)
+  } catch (error) {
+    console.error('Error loading transactions:', error)
+    document.getElementById('transaction-table-body').innerHTML = `
+      <tr>
+        <td colspan="8" style="text-align: center; padding: 60px 20px;">
+          <div style="color: #ef4444;">
+            <i data-lucide="alert-circle" style="width: 32px; height: 32px;"></i>
+            <p>Error loading transactions. Please try again.</p>
+          </div>
+        </td>
+      </tr>
+    `
+    lucide.createIcons()
+  }
+}
+
+// Render transaction table
+function renderTransactionTable(transactions) {
+  const tbody = document.getElementById('transaction-table-body')
+
+  if (!transactions || transactions.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" style="text-align: center; padding: 60px 20px;">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
+            <i data-lucide="inbox" style="width: 48px; height: 48px; color: #9ca3af;"></i>
+            <p style="margin: 0; color: #6b7280; font-size: 16px;">No transactions found</p>
+            <p style="margin: 0; color: #9ca3af; font-size: 14px;">Try adjusting your filters</p>
+          </div>
+        </td>
+      </tr>
+    `
+    lucide.createIcons()
+    return
+  }
+
+  tbody.innerHTML = transactions
+    .map((t) => {
+      const date = new Date(t.created_at)
+      const formattedDate = date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+      const formattedTime = date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+
+      const typeColors = {
+        purchase_request: { bg: '#dbeafe', text: '#1e40af', icon: 'file-text' },
+        purchase_order: {
+          bg: '#fef3c7',
+          text: '#92400e',
+          icon: 'shopping-cart',
+        },
+        stock_in: { bg: '#d1fae5', text: '#065f46', icon: 'package-plus' },
+        stock_out: { bg: '#fee2e2', text: '#991b1b', icon: 'package-minus' },
+        user_auth: { bg: '#e0e7ff', text: '#3730a3', icon: 'user-check' },
+        document_generation: { bg: '#f3e8ff', text: '#6b21a8', icon: 'file' },
+      }
+
+      const typeColor = typeColors[t.transaction_type] || {
+        bg: '#f3f4f6',
+        text: '#374151',
+        icon: 'circle',
+      }
+
+      const statusColor =
+        t.status === 'completed'
+          ? 'green'
+          : t.status === 'failed'
+          ? 'red'
+          : 'gray'
+
+      return `
+      <tr>
+        <td style="padding-left: 24px;">
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-weight: 500; font-size: 13px;">${formattedDate}</span>
+            <span style="font-size: 12px; color: #6b7280;">${formattedTime}</span>
+          </div>
+        </td>
+        <td>
+          <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: ${
+            typeColor.bg
+          }; color: ${
+        typeColor.text
+      }; border-radius: 6px; font-size: 12px; font-weight: 500;">
+            <i data-lucide="${
+              typeColor.icon
+            }" style="width: 12px; height: 12px;"></i>
+            ${t.transaction_type
+              .replace(/_/g, ' ')
+              .replace(/\b\w/g, (l) => l.toUpperCase())}
+          </span>
+        </td>
+        <td>
+          <code style="font-size: 12px; padding: 2px 6px; background: #f3f4f6; border-radius: 4px;">
+            ${t.transaction_id || '-'}
+          </code>
+        </td>
+        <td>
+          <span style="font-size: 13px; text-transform: capitalize;">${
+            t.action
+          }</span>
+        </td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 600;">
+              ${(t.user_name || 'U').charAt(0).toUpperCase()}
+            </div>
+            <span style="font-size: 13px;">${t.user_name || 'System'}</span>
+          </div>
+        </td>
+        <td>
+          <span style="font-size: 13px;">${t.department || '-'}</span>
+        </td>
+        <td>
+          <span style="font-size: 13px; color: #374151;" title="${
+            t.description
+          }">
+            ${
+              t.description.length > 50
+                ? t.description.substring(0, 50) + '...'
+                : t.description
+            }
+          </span>
+        </td>
+        <td style="padding-right: 24px;">
+          <span class="badge ${statusColor}" style="font-size: 11px; padding: 4px 10px;">
+            ${t.status}
+          </span>
+        </td>
+      </tr>
+    `
+    })
+    .join('')
+
+  lucide.createIcons()
+}
+
+// Render pagination
+function renderTransactionPagination(data) {
+  const pagination = document.getElementById('transaction-pagination')
+  const paginationInfo = document.getElementById('pagination-info')
+  const paginationButtons = document.getElementById('pagination-buttons')
+
+  if (data.total === 0) {
+    pagination.style.display = 'none'
+    return
+  }
+
+  pagination.style.display = 'flex'
+
+  const from = data.from || 0
+  const to = data.to || 0
+  const total = data.total || 0
+
+  paginationInfo.textContent = `Showing ${from} to ${to} of ${total} entries`
+
+  let buttons = ''
+
+  // Previous button
+  buttons += `<button class="pagination-btn" ${
+    data.current_page === 1 ? 'disabled' : ''
+  } onclick="loadTransactionLogs(${data.current_page - 1})">Previous</button>`
+
+  // Page buttons
+  const maxButtons = 5
+  let start = Math.max(1, data.current_page - Math.floor(maxButtons / 2))
+  let end = start + maxButtons - 1
+  if (end > data.last_page) {
+    end = data.last_page
+    start = Math.max(1, end - maxButtons + 1)
+  }
+
+  for (let p = start; p <= end; p++) {
+    buttons += `<button class="pagination-btn ${
+      p === data.current_page ? 'active' : ''
+    }" onclick="loadTransactionLogs(${p})">${p}</button>`
+  }
+
+  // Next button
+  buttons += `<button class="pagination-btn" ${
+    data.current_page === data.last_page ? 'disabled' : ''
+  } onclick="loadTransactionLogs(${data.current_page + 1})">Next</button>`
+
+  paginationButtons.innerHTML = buttons
+}
+
+// Filter transactions
+function filterTransactions() {
+  loadTransactionLogs(1) // Reset to page 1 when filtering
+}
+
+// Export transactions
+async function exportTransactionLogs() {
+  try {
+    const typeFilter = document.getElementById('filter-type')?.value || 'all'
+    const deptFilter =
+      document.getElementById('filter-department')?.value || 'all'
+    const searchFilter = document.getElementById('filter-search')?.value || ''
+
+    let url = `/api/transaction-logs/export?`
+    if (typeFilter !== 'all') url += `type=${typeFilter}&`
+    if (deptFilter !== 'all') url += `department=${deptFilter}&`
+    if (searchFilter) url += `search=${encodeURIComponent(searchFilter)}&`
+
+    window.location.href = url
+  } catch (error) {
+    console.error('Error exporting transactions:', error)
+    alert('Failed to export transactions. Please try again.')
+  }
+}
+
+// Expose functions globally
+window.initTransactionTracking = initTransactionTracking
+window.loadTransactionLogs = loadTransactionLogs
+window.filterTransactions = filterTransactions
+window.exportTransactionLogs = exportTransactionLogs
+
 // --- Expose commonly used handlers to global scope for legacy inline handlers ---
 ;(function exposeLegacyHandlers() {
   const handlers = {
@@ -16963,7 +17435,7 @@ async function initStatusManagement(filter = 'all') {
                     <p class="page-subtitle">Track and manage request statuses across all departments</p>
                 </div>
                 <div class="header-actions">
-                    <button class="btn btn-secondary" id="export-status-btn">
+                    <button class="btn btn-primary" id="export-status-btn">
                         <i data-lucide="download" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>
                         Export CSV
                     </button>
