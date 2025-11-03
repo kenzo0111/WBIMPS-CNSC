@@ -90,4 +90,19 @@ class ProductController extends Controller
         $product->delete();
         return response()->json(['message' => 'Product deleted']);
     }
+
+    /**
+     * Get products with low stock (threshold: 20 or below)
+     */
+    public function lowStock(Request $request)
+    {
+        $threshold = $request->get('threshold', 20);
+        
+        $products = Product::with('category')
+            ->where('quantity', '<=', $threshold)
+            ->orderBy('quantity', 'asc')
+            ->get();
+
+        return response()->json(['data' => $products]);
+    }
 }

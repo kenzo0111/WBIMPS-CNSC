@@ -783,6 +783,114 @@ async function loadStockOutFromAPI() {
   return []
 }
 
+// Load low stock items from API
+async function loadLowStockItems(threshold = 20) {
+  try {
+    const response = await fetch(
+      `/api/products/low-stock?threshold=${threshold}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': getCsrfToken(),
+        },
+        credentials: 'same-origin',
+      }
+    )
+    if (response.ok) {
+      const data = await response.json()
+      const lowStockItems = data.data || []
+
+      // Update the low stock table
+      const tbody = document.getElementById('low-stock-table-body')
+      const badge = document.getElementById('low-stock-count-badge')
+
+      if (tbody) {
+        if (lowStockItems.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" class="text-center" style="padding: 24px; color: #10b981;">
+                <i data-lucide="check-circle" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;"></i>
+                All items are well stocked!
+              </td>
+            </tr>
+          `
+        } else {
+          tbody.innerHTML = lowStockItems
+            .map((item) => {
+              const statusClass =
+                item.quantity === 0
+                  ? 'red'
+                  : item.quantity <= 10
+                  ? 'red'
+                  : 'yellow'
+              const statusText =
+                item.quantity === 0
+                  ? 'Out of Stock'
+                  : item.quantity <= 10
+                  ? 'Critical'
+                  : 'Low'
+
+              return `
+              <tr>
+                <td style="font-weight: 500;">${item.sku || '-'}</td>
+                <td>${item.name || '-'}</td>
+                <td>${item.category ? item.category.name : '-'}</td>
+                <td style="font-weight: 600; color: ${
+                  item.quantity === 0
+                    ? '#ef4444'
+                    : item.quantity <= 10
+                    ? '#f97316'
+                    : '#eab308'
+                };">
+                  ${item.quantity}
+                </td>
+                <td>${item.unit || '-'}</td>
+                <td>
+                  <span class="badge ${statusClass}">${statusText}</span>
+                </td>
+              </tr>
+            `
+            })
+            .join('')
+        }
+
+        // Reinitialize icons
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons()
+        }
+      }
+
+      if (badge) {
+        badge.textContent = `${lowStockItems.length} ${
+          lowStockItems.length === 1 ? 'item' : 'items'
+        }`
+        badge.className = lowStockItems.length > 0 ? 'badge red' : 'badge green'
+      }
+
+      return lowStockItems
+    }
+  } catch (error) {
+    console.error('Error loading low stock items:', error)
+    const tbody = document.getElementById('low-stock-table-body')
+    if (tbody) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" class="text-center" style="padding: 24px; color: #ef4444;">
+            <i data-lucide="alert-circle" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;"></i>
+            Error loading low stock items
+          </td>
+        </tr>
+      `
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons()
+      }
+    }
+  }
+  return []
+}
+
 async function loadPersistedInventoryData() {
   // Load data from API instead of localStorage
   await Promise.all([
@@ -4718,6 +4826,39 @@ function generateStockOutPage() {
                             <button class="pagination-btn">Next</button>
                         </div>
                     </nav>
+                </div>
+            </div>
+
+            <!-- Low Stock Alert Table -->
+            <div class="card" style="margin-top: 24px;">
+                <div class="card-header-inline">
+                    <h3 class="card-title-small">
+                        <i data-lucide="alert-triangle" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;color:#ff9800;"></i>
+                        Running Low on Stock
+                    </h3>
+                    <span id="low-stock-count-badge" class="badge red">0 items</span>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>SKU</th>
+                                <th>Product Name</th>
+                                <th>Category</th>
+                                <th>Current Stock</th>
+                                <th>Unit</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="low-stock-table-body">
+                            <tr>
+                                <td colspan="6" class="text-center" style="padding: 24px;">
+                                    <i data-lucide="loader" style="width:24px;height:24px;animation:spin 1s linear infinite;"></i>
+                                    Loading low stock items...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -9612,6 +9753,9 @@ function initializePageEvents(pageId) {
       break
     case 'suppliers':
       initSuppliersPageEvents()
+      break
+    case 'stock-out':
+      loadLowStockItems()
       break
     case 'about':
       // Initialize gallery carousel
