@@ -5,6 +5,23 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property string $par_no
+ * @property string|null $entity_name
+ * @property string|null $fund_cluster
+ * @property \Illuminate\Support\Carbon|null $date
+ * @property array|null $items
+ * @property string|null $received_by_name
+ * @property string|null $received_by_position
+ * @property \Illuminate\Support\Carbon|null $received_date
+ * @property string|null $issued_by_name
+ * @property string|null $issued_by_position
+ * @property \Illuminate\Support\Carbon|null $issued_date
+ * @property string|null $status
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ */
 class PropertyAcknowledgementReceipt extends Model
 {
     use HasFactory;

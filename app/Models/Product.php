@@ -5,6 +5,21 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property string $sku
+ * @property string $name
+ * @property string|null $description
+ * @property int|null $category_id
+ * @property int $quantity
+ * @property string|null $unit
+ * @property float $unit_cost
+ * @property float $total_value
+ * @property string|null $date
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Category|null $category
+ */
 class Product extends Model
 {
     protected $fillable = [

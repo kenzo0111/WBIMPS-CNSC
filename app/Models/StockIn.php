@@ -4,6 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property string $transaction_id
+ * @property string $sku
+ * @property string $product_name
+ * @property int $quantity
+ * @property float $unit_cost
+ * @property string|null $supplier
+ * @property string $date_received
+ * @property string|null $received_by
+ */
 class StockIn extends Model
 {
     protected $table = 'stock_in';

@@ -88,7 +88,7 @@ class AccessController extends Controller
         try {
             Activity::create([
                 'action' => 'User logged out: ' . ($user?->email ?? $user?->name ?? 'Unknown'),
-                'meta' => json_encode(['user_id' => $user->id ?? null]),
+                'meta' => json_encode(['user_id' => $user?->id ?? null]),
             ]);
         } catch (\Throwable $e) {
             logger()->warning('Failed to record logout activity', ['error' => $e->getMessage()]);

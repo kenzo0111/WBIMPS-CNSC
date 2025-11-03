@@ -4,6 +4,22 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property string $transaction_id
+ * @property string $issue_id
+ * @property string $sku
+ * @property string $product_name
+ * @property int $quantity
+ * @property float|null $unit_cost
+ * @property float|null $total_cost
+ * @property string|null $department
+ * @property string|null $issued_to
+ * @property string|null $issued_by
+ * @property string|null $purpose
+ * @property string|null $status
+ * @property string $date_issued
+ */
 class StockOut extends Model
 {
     protected $table = 'stock_out';

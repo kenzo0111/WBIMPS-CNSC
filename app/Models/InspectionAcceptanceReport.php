@@ -5,6 +5,28 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property string $iar_no
+ * @property string|null $entity_name
+ * @property string|null $fund_cluster
+ * @property string|null $supplier
+ * @property \Illuminate\Support\Carbon|null $iar_date
+ * @property string|null $po_no
+ * @property \Illuminate\Support\Carbon|null $po_date
+ * @property string|null $requisitioning_office
+ * @property string|null $responsibility_center_code
+ * @property string|null $invoice_no
+ * @property \Illuminate\Support\Carbon|null $invoice_date
+ * @property \Illuminate\Support\Carbon|null $date_inspected
+ * @property \Illuminate\Support\Carbon|null $date_received
+ * @property string|null $inspection_status
+ * @property string|null $acceptance_status
+ * @property array|null $items
+ * @property string|null $status
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ */
 class InspectionAcceptanceReport extends Model
 {
     use HasFactory;

@@ -97,12 +97,14 @@ class StockOutController extends Controller
 
     /**
      * Update the specified resource in storage.
+     * @param Request $request
+     * @param StockOut $stockOut
      */
     public function update(Request $request, StockOut $stockOut)
     {
         $validated = $request->validate([
-            'issue_id' => 'required|string|unique:stock_out,issue_id,' . $stockOut->id,
-            'transaction_id' => 'nullable|string|unique:stock_out,transaction_id,' . $stockOut->id,
+            'issue_id' => 'required|string|unique:stock_out,issue_id,' . $stockOut->getKey(),
+            'transaction_id' => 'nullable|string|unique:stock_out,transaction_id,' . $stockOut->getKey(),
             'sku' => 'required|string|exists:products,sku',
             'product_name' => 'required|string',
             'quantity' => 'required|integer|min:1',
