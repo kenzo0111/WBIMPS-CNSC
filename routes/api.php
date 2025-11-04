@@ -25,6 +25,9 @@ Route::get('/purchase-requests', [PurchaseRequestController::class, 'index']);
 Route::post('/purchase-requests', [PurchaseRequestController::class, 'store']);
 // Update status for a purchase request (accepts request_id like REQ-2025-007 or numeric id)
 Route::post('/status-requests/{id}/status', [PurchaseRequestController::class, 'updateStatus']);
+// Purchase Order API routes
+Route::apiResource('purchase-orders', App\Http\Controllers\Api\PurchaseOrderController::class);
+Route::post('/purchase-orders/{id}/status', [App\Http\Controllers\Api\PurchaseOrderController::class, 'updateStatus']);
 // Geocoding proxy endpoint
 Route::get('/geocode', [App\Http\Controllers\GeocodeController::class, 'index']);
 

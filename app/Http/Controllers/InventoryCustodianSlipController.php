@@ -22,8 +22,34 @@ class InventoryCustodianSlipController extends Controller
         return $pdf->download('inventory_custodian_slip.pdf');
     }
 
-    public function preview(Request $request)
+    public function preview(Request $request = null, $id = null)
     {
+        // If an ID is provided, load the inventory custodian slip from the database
+        if ($id) {
+            $ics = \App\Models\InventoryCustodianSlip::find($id);
+            
+            if (!$ics) {
+                abort(404, 'Inventory Custodian Slip not found');
+            }
+
+            // Prepare data from the model
+            $data = [
+                'entity_name' => $ics->entity_name ?? '',
+                'fund_cluster' => $ics->fund_cluster ?? '',
+                'items' => $ics->items ?? [],
+                'grand_total' => $ics->grand_total ?? 0,
+                'ics_no' => $ics->ics_no ?? '',
+                'received_from' => $ics->received_from ?? '',
+                'received_by_name' => $ics->received_by_name ?? '',
+                'received_by_designation' => $ics->received_by_designation ?? '',
+                'received_by_date' => $ics->received_by_date ? $ics->received_by_date->format('Y-m-d') : null,
+            ];
+
+            $pdf = Pdf::loadView('pdf.inventory_custodian_slip_pdf', $data);
+            return $pdf->stream('inventory_custodian_slip_' . ($ics->ics_no ?? $id) . '.pdf');
+        }
+
+        // If no ID is provided, use request data (for preview/generate)
         $data = $this->prepareData($request);
 
         $pdf = Pdf::loadView('pdf.inventory_custodian_slip_pdf', $data);

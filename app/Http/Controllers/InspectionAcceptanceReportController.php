@@ -56,10 +56,43 @@ class InspectionAcceptanceReportController extends Controller
     }
 
     /**
-     * Stream a blank A4 preview of the inspection and acceptance report PDF.
+     * Stream a preview of the inspection and acceptance report PDF.
+     * Accepts an optional ID to load from the database.
      */
-    public function preview()
+    public function preview($id = null)
     {
+        // If an ID is provided, load the inspection acceptance report from the database
+        if ($id) {
+            $iar = \App\Models\InspectionAcceptanceReport::find($id);
+            
+            if (!$iar) {
+                abort(404, 'Inspection Acceptance Report not found');
+            }
+
+            // Prepare data from the model
+            $viewData = [
+                'entityName' => $iar->entity_name ?? '',
+                'fundCluster' => $iar->fund_cluster ?? '',
+                'supplier' => $iar->supplier ?? '',
+                'iarNo' => $iar->iar_no ?? '',
+                'iarDate' => $iar->iar_date ? $iar->iar_date->format('Y-m-d') : '',
+                'poNo' => $iar->po_no ?? '',
+                'poDate' => $iar->po_date ? $iar->po_date->format('Y-m-d') : '',
+                'requisitioningOffice' => $iar->requisitioning_office ?? '',
+                'responsibilityCenterCode' => $iar->responsibility_center_code ?? '',
+                'invoiceNo' => $iar->invoice_no ?? '',
+                'invoiceDate' => $iar->invoice_date ? $iar->invoice_date->format('Y-m-d') : '',
+                'dateInspected' => $iar->date_inspected ? $iar->date_inspected->format('Y-m-d') : '',
+                'dateReceived' => $iar->date_received ? $iar->date_received->format('Y-m-d') : '',
+                'inspectionStatus' => $iar->inspection_status ?? '',
+                'acceptanceStatus' => $iar->acceptance_status ?? '',
+                'items' => $iar->items ?? [],
+            ];
+
+            $pdf = Pdf::loadView('pdf.inspection_acceptance_report_pdf', $viewData)->setPaper('a4', 'portrait');
+            return $pdf->stream('inspection_acceptance_report_' . ($iar->iar_no ?? $id) . '.pdf');
+        }
+
         // Preview with clean/empty placeholders (no sample data)
         $sample = [
             'entityName' => '',

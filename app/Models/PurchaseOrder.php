@@ -59,12 +59,14 @@ class PurchaseOrder extends Model
         'entity_name',
         'entity_address',
         'status',
+        'department',
+        'gentlemen',
+        'notes',
     ];
 
     protected $casts = [
         'items' => 'array',
         'date_of_purchase' => 'date',
-        'date_of_delivery' => 'date',
         'ors_burs_date' => 'date',
         'grand_total' => 'decimal:2',
         'ors_burs_amount' => 'decimal:2',

@@ -899,12 +899,99 @@ async function loadPersistedInventoryData() {
     loadCategoriesFromAPI(),
     loadStockInFromAPI(),
     loadStockOutFromAPI(),
+    loadPurchaseOrdersFromAPI(),
   ])
   return
 }
 
 // Initialize with no persisted data
 loadPersistedInventoryData()
+
+// Load purchase orders from API
+async function loadPurchaseOrdersFromAPI() {
+  try {
+    const response = await fetch('/api/purchase-orders', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      credentials: 'same-origin',
+    })
+    if (response.ok) {
+      const data = await response.json()
+      const purchaseOrders = data.data || []
+
+      // Map database records to AppState format
+      const allPurchaseOrders = purchaseOrders.map((po) => ({
+        id: po.po_number || `PO-${po.id}`,
+        databaseId: po.id,
+        poNumber: po.po_number || '',
+        supplier: po.supplier || '',
+        supplierAddress: po.supplier_address || '',
+        supplierTIN: po.tin_number || '',
+        requestDate: formatDate(po.created_at || ''),
+        deliveryDate: po.date_of_delivery || '',
+        deliveredDate: formatDate(po.updated_at || ''), // Use updated_at as delivered date for completed items
+        purchaseDate: formatDate(po.date_of_purchase || ''),
+        procurementMode: po.mode_of_procurement || '',
+        gentlemen: po.gentlemen || '',
+        placeOfDelivery: po.place_of_delivery || '',
+        deliveryTerm: po.delivery_term || '',
+        paymentTerm: po.payment_term || '',
+        orsNo: po.ors_burs_no || '',
+        orsDate: formatDate(po.ors_burs_date || ''),
+        orsAmount: po.ors_burs_amount || '',
+        fundCluster: po.fund_cluster || '',
+        fundsAvailable: po.funds_available || '',
+        notes: po.notes || '',
+        totalAmount: Number(po.grand_total || 0),
+        status: po.status ? po.status.toLowerCase() : 'draft',
+        requestedBy: 'Current User',
+        approvedBy:
+          po.status === 'approved' ||
+          po.status === 'completed' ||
+          po.status === 'delivered'
+            ? 'Admin'
+            : '',
+        department: po.department || '',
+        items: Array.isArray(po.items) ? po.items : [],
+        generateICS: Array.isArray(po.items)
+          ? po.items.some((item) => item.generateICS)
+          : false,
+        generateRIS: Array.isArray(po.items)
+          ? po.items.some((item) => item.generateRIS)
+          : false,
+        generatePAR: Array.isArray(po.items)
+          ? po.items.some((item) => item.generatePAR)
+          : false,
+        generateIAR: Array.isArray(po.items)
+          ? po.items.some((item) => item.generateIAR)
+          : false,
+      }))
+
+      // Separate purchase orders by status
+      const completedStatuses = ['approved', 'delivered', 'completed']
+      const pendingStatuses = ['draft', 'submitted', 'pending']
+
+      // Populate completedRequests with approved/delivered/completed orders
+      AppState.completedRequests = allPurchaseOrders.filter((po) =>
+        completedStatuses.includes(po.status)
+      )
+
+      // Populate newRequests with draft/submitted/pending orders
+      AppState.newRequests = allPurchaseOrders.filter((po) =>
+        pendingStatuses.includes(po.status)
+      )
+
+      return allPurchaseOrders
+    }
+  } catch (error) {
+    console.error('Error loading purchase orders from API:', error)
+  }
+  return []
+}
 
 // Load categories from API and populate MockData.categories
 async function loadCategoriesFromAPI() {
@@ -2510,13 +2597,25 @@ function loadPageContent(pageId) {
       initStatusManagement('returned')
       break
     case 'new-request':
-      mainContent.innerHTML = generateNewRequestPage()
+      // Reload purchase orders before displaying
+      loadPurchaseOrdersFromAPI().then(() => {
+        mainContent.innerHTML = generateNewRequestPage()
+        lucide.createIcons()
+      })
       break
     case 'pending-approval':
-      mainContent.innerHTML = generatePendingApprovalPage()
+      // Reload purchase orders before displaying
+      loadPurchaseOrdersFromAPI().then(() => {
+        mainContent.innerHTML = generatePendingApprovalPage()
+        lucide.createIcons()
+      })
       break
     case 'completed-request':
-      mainContent.innerHTML = generateCompletedRequestPage()
+      // Reload purchase orders before displaying
+      loadPurchaseOrdersFromAPI().then(() => {
+        mainContent.innerHTML = generateCompletedRequestPage()
+        lucide.createIcons()
+      })
       break
     case 'inventory-reports':
       mainContent.innerHTML = generateInventoryReportsPage()
@@ -5293,7 +5392,9 @@ function generateCompletedRequestPage() {
                       }')">
                         <i data-lucide="eye"></i>
                       </button>
-                                            <button class="icon-action-btn" title="Download">
+                                            <button class="icon-action-btn" title="Download" onclick="openDownloadFormsChooser(this, '${
+                                              request.id
+                                            }')">
                                                 <i data-lucide="download"></i>
                                             </button>
                                             <button class="icon-action-btn icon-action-warning" title="Archive" onclick="archiveRequest('${
@@ -7946,6 +8047,10 @@ function openViewForms(triggerEl, requestId) {
     AppState.completedRequests.find((r) => r.id === requestId) ||
     null
 
+  // Use databaseId for the URL (the actual primary key), not the display ID (po_number)
+  const actualId =
+    request && request.databaseId ? request.databaseId : requestId
+
   const container = document.createElement('div')
   container.id = 'request-forms-chooser'
   container.setAttribute('role', 'dialog')
@@ -8019,9 +8124,9 @@ function openViewForms(triggerEl, requestId) {
   function buildHref(routeKey, fallbackPath) {
     const r = window.APP_ROUTES && window.APP_ROUTES[routeKey]
     if (r && typeof r === 'string')
-      return r.replace('{id}', requestId).replace(':id', requestId)
+      return r.replace('{id}', actualId).replace(':id', actualId)
     // Fallback: replace {id} in fallbackPath and ensure baseUrl prefix
-    return `${baseUrl}${fallbackPath.replace('{id}', requestId)}`
+    return `${baseUrl}${fallbackPath.replace('{id}', actualId)}`
   }
 
   const poHref = buildHref('purchaseOrderView', '/purchase-order/view/{id}')
@@ -8177,6 +8282,449 @@ function openViewForms(triggerEl, requestId) {
 }
 
 window.openViewForms = openViewForms
+
+// New: Download Forms Chooser with checkboxes for completed requests
+function openDownloadFormsChooser(triggerEl, requestId) {
+  const previousActive = document.activeElement
+
+  // Remove any existing chooser first
+  const existing = document.getElementById('download-forms-chooser')
+  if (existing) existing.remove()
+
+  // Find request data
+  const request =
+    AppState.newRequests.find((r) => r.id === requestId) ||
+    AppState.pendingRequests.find((r) => r.id === requestId) ||
+    AppState.completedRequests.find((r) => r.id === requestId) ||
+    null
+
+  // Use databaseId for the URL (the actual primary key), not the display ID (po_number)
+  const actualId =
+    request && request.databaseId ? request.databaseId : requestId
+
+  const container = document.createElement('div')
+  container.id = 'download-forms-chooser'
+  container.setAttribute('role', 'dialog')
+  container.setAttribute('aria-modal', 'false')
+  const headingId = `download-forms-chooser-title-${Date.now()}`
+  container.setAttribute('aria-labelledby', headingId)
+  container.tabIndex = -1
+
+  // Basic styles + animation-ready
+  container.style.position = 'absolute'
+  container.style.zIndex = 1200
+  container.style.minWidth = '280px'
+  container.style.maxWidth = '340px'
+  container.style.background = 'white'
+  container.style.border = '1px solid rgba(0,0,0,0.08)'
+  container.style.boxShadow = '0 8px 24px rgba(2,6,23,0.12)'
+  container.style.borderRadius = '8px'
+  container.style.padding = '12px'
+  container.style.opacity = '0'
+  container.style.transform = 'translateY(6px)'
+  container.style.transition = 'opacity 160ms ease, transform 160ms ease'
+
+  // Ensure styles for checkboxes exist
+  if (!document.getElementById('download-chooser-style')) {
+    const css = document.createElement('style')
+    css.id = 'download-chooser-style'
+    css.textContent = `
+      .download-form-item {
+        display: flex;
+        align-items: center;
+        padding: 8px;
+        border-radius: 6px;
+        transition: background 120ms ease;
+        cursor: pointer;
+        user-select: none;
+      }
+      .download-form-item:hover {
+        background: #f3f4f6;
+      }
+      .download-form-checkbox {
+        width: 18px;
+        height: 18px;
+        margin-right: 10px;
+        cursor: pointer;
+        accent-color: #dc2626;
+      }
+      .download-form-label {
+        flex: 1;
+        font-size: 14px;
+        color: #0f172a;
+        cursor: pointer;
+      }
+      .download-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #e5e7eb;
+      }
+      .download-btn {
+        flex: 1;
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: none;
+        font-weight: 600;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 120ms ease;
+      }
+      .download-btn-primary {
+        background: #dc2626;
+        color: white;
+      }
+      .download-btn-primary:hover {
+        background: #b91c1c;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+      }
+      .download-btn-primary:active {
+        transform: translateY(0);
+      }
+      .download-btn-primary:disabled {
+        background: #d1d5db;
+        cursor: not-allowed;
+        transform: none;
+      }
+      .download-btn-secondary {
+        background: #f3f4f6;
+        color: #0f172a;
+        border: 1px solid rgba(15,23,42,0.06);
+      }
+      .download-btn-secondary:hover {
+        background: #e5e7eb;
+      }
+      .download-btn-secondary:active {
+        transform: translateY(1px);
+      }
+      .select-all-option {
+        padding: 8px;
+        border-bottom: 1px solid #e5e7eb;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        border-radius: 6px;
+        background: #fef2f2;
+      }
+      .select-all-option:hover {
+        background: #fee2e2;
+      }
+    `
+    document.head.appendChild(css)
+  }
+
+  // Build helper to resolve route URLs from window.APP_ROUTES if provided, else use sensible fallbacks
+  const baseUrl = (window.APP_ROUTES && window.APP_ROUTES.base) || ''
+  function buildHref(routeKey, fallbackPath) {
+    const r = window.APP_ROUTES && window.APP_ROUTES[routeKey]
+    if (r && typeof r === 'string')
+      return r.replace('{id}', actualId).replace(':id', actualId)
+    return `${baseUrl}${fallbackPath.replace('{id}', actualId)}`
+  }
+
+  const forms = [
+    {
+      id: 'po',
+      label: 'Purchase Order (PO)',
+      viewHref: buildHref('purchaseOrderView', '/purchase-order/view/{id}'),
+      downloadUrl: `${baseUrl}/purchase-order/{id}/pdf`,
+    },
+    {
+      id: 'pr',
+      label: 'Purchase Request (PR)',
+      viewHref: buildHref('purchaseRequestView', '/purchase-request/view/{id}'),
+      downloadUrl: `${baseUrl}/purchase-request/generate`,
+      method: 'POST',
+    },
+    {
+      id: 'ics',
+      label: 'Inventory Custodian Slip (ICS)',
+      viewHref: buildHref(
+        'inventoryCustodianSlipView',
+        '/inventory-custodian-slip/view/{id}'
+      ),
+      downloadUrl: `${baseUrl}/inventory-custodian-slip/generate`,
+      method: 'POST',
+    },
+    {
+      id: 'ris',
+      label: 'Requisition & Issue Slip (RIS)',
+      viewHref: buildHref(
+        'requisitionIssueSlipView',
+        '/requisition-issue-slip/view/{id}'
+      ),
+      downloadUrl: `${baseUrl}/requisition-issue-slip/generate`,
+      method: 'POST',
+    },
+    {
+      id: 'par',
+      label: 'Property Acknowledgement Receipt (PAR)',
+      viewHref: buildHref(
+        'propertyAcknowledgementReceiptView',
+        '/property-acknowledgement-receipt/view/{id}'
+      ),
+      downloadUrl: `${baseUrl}/property-acknowledgement-receipt/generate`,
+      method: 'POST',
+    },
+    {
+      id: 'iar',
+      label: 'Inspection & Acceptance Report (IAR)',
+      viewHref: buildHref(
+        'inspectionAcceptanceReportView',
+        '/inspection-acceptance-report/view/{id}'
+      ),
+      downloadUrl: `${baseUrl}/inspection-acceptance-report/generate`,
+      method: 'POST',
+    },
+  ]
+
+  const checkboxesHtml = forms
+    .map(
+      (form) => `
+    <div class="download-form-item">
+      <input type="checkbox" class="download-form-checkbox" id="dl-${
+        form.id
+      }" data-form-id="${form.id}" data-download-url="${
+        form.downloadUrl
+      }" data-method="${form.method || 'GET'}" data-label="${form.label}">
+      <label class="download-form-label" for="dl-${form.id}">${
+        form.label
+      }</label>
+    </div>
+  `
+    )
+    .join('')
+
+  container.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div id="${headingId}" style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:4px;">
+        <i data-lucide="download" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>
+        Select Forms to Download
+      </div>
+      
+      <div class="select-all-option">
+        <input type="checkbox" class="download-form-checkbox" id="select-all-forms">
+        <label class="download-form-label" for="select-all-forms" style="font-weight:600;">Select All</label>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        ${checkboxesHtml}
+      </div>
+
+      <div class="download-actions">
+        <button type="button" class="download-btn download-btn-primary" id="download-selected-btn" disabled>
+          <i data-lucide="download" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>
+          Download
+        </button>
+        <button type="button" class="download-btn download-btn-secondary" id="download-close-btn">Cancel</button>
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(container)
+
+  // Re-render lucide icons
+  if (typeof lucide !== 'undefined' && lucide.createIcons) {
+    lucide.createIcons()
+  }
+
+  // Positioning logic (same as openViewForms)
+  const triggerRect = triggerEl.getBoundingClientRect()
+  const containerRect = container.getBoundingClientRect()
+  const viewportTop = window.scrollY
+  const viewportBottom = window.scrollY + window.innerHeight
+  const spaceBelow = viewportBottom - (triggerRect.bottom + window.scrollY)
+  const spaceAbove = triggerRect.top + window.scrollY - viewportTop
+
+  let top = triggerRect.bottom + window.scrollY + 8
+  if (
+    spaceBelow < containerRect.height + 8 &&
+    spaceAbove > containerRect.height + 8
+  ) {
+    top = triggerRect.top + window.scrollY - containerRect.height - 8
+  } else if (spaceBelow < containerRect.height + 8) {
+    top = Math.max(viewportTop + 8, viewportBottom - containerRect.height - 8)
+  }
+
+  let left = triggerRect.left + window.scrollX
+  if (left + containerRect.width > window.scrollX + window.innerWidth - 8) {
+    left = window.scrollX + window.innerWidth - containerRect.width - 8
+  }
+  if (left < window.scrollX + 8) left = window.scrollX + 8
+
+  container.style.top = top + 'px'
+  container.style.left = left + 'px'
+
+  // Animate in
+  requestAnimationFrame(() => {
+    container.style.opacity = '1'
+    container.style.transform = 'translateY(0)'
+  })
+
+  // Get all checkboxes and buttons
+  const selectAllCheckbox = container.querySelector('#select-all-forms')
+  const formCheckboxes = container.querySelectorAll(
+    '.download-form-checkbox:not(#select-all-forms)'
+  )
+  const downloadBtn = container.querySelector('#download-selected-btn')
+  const closeBtn = container.querySelector('#download-close-btn')
+
+  // Update download button state
+  function updateDownloadButton() {
+    const anyChecked = Array.from(formCheckboxes).some((cb) => cb.checked)
+    downloadBtn.disabled = !anyChecked
+  }
+
+  // Handle select all
+  selectAllCheckbox.addEventListener('change', (e) => {
+    formCheckboxes.forEach((cb) => {
+      cb.checked = e.target.checked
+    })
+    updateDownloadButton()
+  })
+
+  // Handle individual checkboxes
+  formCheckboxes.forEach((cb) => {
+    cb.addEventListener('change', () => {
+      const allChecked = Array.from(formCheckboxes).every((c) => c.checked)
+      const noneChecked = Array.from(formCheckboxes).every((c) => !c.checked)
+      selectAllCheckbox.checked = allChecked
+      selectAllCheckbox.indeterminate = !allChecked && !noneChecked
+      updateDownloadButton()
+    })
+  })
+
+  // Handle item click (toggle checkbox)
+  container.querySelectorAll('.download-form-item').forEach((item) => {
+    item.addEventListener('click', (e) => {
+      if (e.target.tagName !== 'INPUT') {
+        const checkbox = item.querySelector('input[type="checkbox"]')
+        if (checkbox) {
+          checkbox.checked = !checkbox.checked
+          checkbox.dispatchEvent(new Event('change'))
+        }
+      }
+    })
+  })
+
+  // Handle select-all item click
+  container
+    .querySelector('.select-all-option')
+    ?.addEventListener('click', (e) => {
+      if (e.target.tagName !== 'INPUT') {
+        selectAllCheckbox.checked = !selectAllCheckbox.checked
+        selectAllCheckbox.dispatchEvent(new Event('change'))
+      }
+    })
+
+  // Handle download button
+  downloadBtn.addEventListener('click', async () => {
+    const selectedForms = Array.from(formCheckboxes)
+      .filter((cb) => cb.checked)
+      .map((cb) => ({
+        id: cb.dataset.formId,
+        downloadUrl: cb.dataset.downloadUrl,
+        method: cb.dataset.method,
+        label: cb.dataset.label,
+      }))
+
+    if (selectedForms.length === 0) return
+
+    // Download each selected form as PDF with a slight delay between downloads
+    for (let i = 0; i < selectedForms.length; i++) {
+      const form = selectedForms[i]
+
+      try {
+        if (form.method === 'POST') {
+          // For POST requests, we need to submit a form with the request ID
+          const formElement = document.createElement('form')
+          formElement.method = 'POST'
+          formElement.action = form.downloadUrl
+          formElement.target = '_blank'
+          formElement.style.display = 'none'
+
+          // Add CSRF token
+          const csrfInput = document.createElement('input')
+          csrfInput.type = 'hidden'
+          csrfInput.name = '_token'
+          csrfInput.value =
+            document.querySelector('meta[name="csrf-token"]')?.content || ''
+          formElement.appendChild(csrfInput)
+
+          // Add request ID
+          const idInput = document.createElement('input')
+          idInput.type = 'hidden'
+          idInput.name = 'request_id'
+          idInput.value = actualId
+          formElement.appendChild(idInput)
+
+          document.body.appendChild(formElement)
+          formElement.submit()
+          document.body.removeChild(formElement)
+        } else {
+          // For GET requests (like PO), use the download URL directly
+          const downloadUrl = form.downloadUrl.replace('{id}', actualId)
+          window.open(downloadUrl, '_blank')
+        }
+
+        // Add a small delay between downloads to avoid browser blocking
+        if (i < selectedForms.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 500))
+        }
+      } catch (error) {
+        console.error(`Failed to download ${form.label}:`, error)
+      }
+    }
+
+    // Close the chooser
+    closeChooser(true)
+  })
+
+  // Close handlers
+  function closeChooser(returnFocus = true) {
+    container.style.opacity = '0'
+    container.style.transform = 'translateY(6px)'
+    setTimeout(() => {
+      if (container && container.parentNode)
+        container.parentNode.removeChild(container)
+    }, 160)
+    document.removeEventListener('click', onDocClick)
+    container.removeEventListener('keydown', onKeyDown)
+    if (
+      returnFocus &&
+      previousActive &&
+      typeof previousActive.focus === 'function'
+    )
+      previousActive.focus()
+  }
+
+  function onDocClick(e) {
+    if (!container.contains(e.target) && e.target !== triggerEl) {
+      closeChooser(true)
+    }
+  }
+
+  function onKeyDown(e) {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      closeChooser(true)
+      return
+    }
+  }
+
+  container.addEventListener('keydown', onKeyDown)
+  setTimeout(() => document.addEventListener('click', onDocClick), 0)
+
+  closeBtn.addEventListener('click', () => closeChooser(true))
+
+  // Focus first checkbox
+  const firstCheckbox = container.querySelector('.download-form-checkbox')
+  if (firstCheckbox) firstCheckbox.focus()
+}
+
+window.openDownloadFormsChooser = openDownloadFormsChooser
 
 // ---------------------- //
 // Purchase Order Wizard  //
@@ -8597,7 +9145,6 @@ function renderPurchaseOrderWizardStep(requestData) {
                                     <th style="padding: 12px;">Stock #</th>
                                     <th style="padding: 12px;">Unit</th>
                                     <th style="padding: 12px;">Description</th>
-                                    <th style="padding: 12px;">Detailed Description</th>
                                     <th style="padding: 12px;">Qty</th>
                                     <th style="padding: 12px;">Unit Cost</th>
                                     <th style="padding: 12px;">Amount</th>
@@ -8608,7 +9155,7 @@ function renderPurchaseOrderWizardStep(requestData) {
                             <tbody id="po-items-tbody"></tbody>
                             <tfoot>
                                 <tr style="border-top: 2px solid #e5e7eb; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
-                                    <td colspan="7" style="text-align: right; font-weight: 600; padding: 16px; color: #1e40af;">Grand Total:</td>
+                                    <td colspan="6" style="text-align: right; font-weight: 600; padding: 16px; color: #1e40af;">Grand Total:</td>
                                     <td style="font-weight: 700; color: #2563eb; padding: 16px; font-size: 16px;" id="grand-total">₱0.00</td>
                                     <td style="padding: 16px;"></td>
                                 </tr>
@@ -8686,27 +9233,47 @@ function renderPurchaseOrderWizardStep(requestData) {
                                         ? 'selected'
                                         : ''
                                     }>01 - Regular Agency Fund</option>
-                                    <option value="05 - Income Generated Fund" ${
+                                    <option value="02 - Foreign Assisted Projects Fund" ${
                                       AppState.purchaseOrderDraft
                                         .fundCluster ===
-                                      '05 - Income Generated Fund'
+                                      '02 - Foreign Assisted Projects Fund'
                                         ? 'selected'
                                         : ''
-                                    }>05 - Income Generated Fund</option>
-                                    <option value="06 - Business Related Fund" ${
+                                    }>02 - Foreign Assisted Projects Fund</option>
+                                    <option value="03 - Special Account - Locally Funded/Domestic Grants Fund" ${
                                       AppState.purchaseOrderDraft
                                         .fundCluster ===
-                                      '06 - Business Related Fund'
+                                      '03 - Special Account - Locally Funded/Domestic Grants Fund'
                                         ? 'selected'
                                         : ''
-                                    }>06 - Business Related Fund</option>
-                                    <option value="07 - General Appropriations Act (GAA)" ${
+                                    }>03 - Special Account - Locally Funded/Domestic Grants Fund</option>
+                                    <option value="04 - Special Account - Foreign Assisted/Foreign Grants Fund" ${
                                       AppState.purchaseOrderDraft
                                         .fundCluster ===
-                                      '07 - General Appropriations Act (GAA)'
+                                      '04 - Special Account - Foreign Assisted/Foreign Grants Fund'
                                         ? 'selected'
                                         : ''
-                                    }>07 - General Appropriations Act (GAA)</option>
+                                    }>04 - Special Account - Foreign Assisted/Foreign Grants Fund</option>
+                                    <option value="05 - Internally Generated Funds" ${
+                                      AppState.purchaseOrderDraft
+                                        .fundCluster ===
+                                      '05 - Internally Generated Funds'
+                                        ? 'selected'
+                                        : ''
+                                    }>05 - Internally Generated Funds</option>
+                                    <option value="06 - Business Related Funds" ${
+                                      AppState.purchaseOrderDraft
+                                        .fundCluster ===
+                                      '06 - Business Related Funds'
+                                        ? 'selected'
+                                        : ''
+                                    }>06 - Business Related Funds</option>
+                                    <option value="07 - Trust Receipts" ${
+                                      AppState.purchaseOrderDraft
+                                        .fundCluster === '07 - Trust Receipts'
+                                        ? 'selected'
+                                        : ''
+                                    }>07 - Trust Receipts</option>
                                 </select>
                             </div>
                             <div class="form-group" style="margin-bottom: 16px;">
@@ -8844,7 +9411,7 @@ function persistCurrentWizardStep() {
   }
 }
 
-function finalizePurchaseOrderCreation() {
+async function finalizePurchaseOrderCreation() {
   // Gather data from wizard fields
   const modal = document.getElementById('purchase-order-modal')
   if (!modal) return
@@ -8874,46 +9441,149 @@ function finalizePurchaseOrderCreation() {
     0
   )
 
-  const newRequestId = generateNextRequestId()
-  const newRequest = {
-    id: newRequestId,
-    poNumber,
-    supplier,
-    supplierAddress,
-    supplierTIN,
-    requestDate: new Date().toISOString().split('T')[0],
-    deliveryDate,
-    deliveredDate: '', // will be set when actually delivered; keep separate from planned deliveryDate
-    purchaseDate,
-    procurementMode,
-    gentlemen,
-    placeOfDelivery,
-    deliveryTerm,
-    paymentTerm,
-    orsNo,
-    orsDate,
-    orsAmount,
-    fundCluster,
-    fundsAvailable,
-    notes,
-    totalAmount,
+  // Prepare payload for API
+  const payload = {
+    po_number: poNumber,
+    supplier: supplier,
+    supplier_address: supplierAddress,
+    tin_number: supplierTIN,
+    date_of_purchase: normalizeDateForServer(purchaseDate),
+    mode_of_procurement: procurementMode,
+    place_of_delivery: placeOfDelivery,
+    delivery_term: deliveryTerm,
+    date_of_delivery: deliveryDate, // Keep as string for flexible delivery terms like "15 days"
+    payment_term: paymentTerm,
+    items: AppState.purchaseOrderItems.map((item) => ({
+      stockPropertyNumber: item.stockPropertyNumber || '',
+      unit: item.unit || '',
+      description: item.description || '',
+      detailedDescription: item.detailedDescription || '',
+      quantity: Number(item.quantity) || 0,
+      unitCost: Number(item.unitCost) || 0,
+      amount: Number(item.amount) || 0,
+      generateICS: Boolean(item.generateICS),
+      generateRIS: Boolean(item.generateRIS),
+      generatePAR: Boolean(item.generatePAR),
+      generateIAR: Boolean(item.generateIAR),
+    })),
+    grand_total: totalAmount,
+    fund_cluster: fundCluster,
+    ors_burs_no: orsNo,
+    funds_available: fundsAvailable,
+    ors_burs_date: normalizeDateForServer(orsDate),
+    ors_burs_amount: orsAmount ? parseFloat(orsAmount) : null,
+    entity_name: 'Camarines Norte State College',
+    entity_address: '',
+    department: department,
+    gentlemen: gentlemen,
+    notes: notes,
     status: 'submitted',
-    requestedBy: 'Current User',
-    department,
-    // Aggregate forms from items (check if any item has each form enabled)
-    generateICS: AppState.purchaseOrderItems.some((item) => item.generateICS),
-    generateRIS: AppState.purchaseOrderItems.some((item) => item.generateRIS),
-    generatePAR: AppState.purchaseOrderItems.some((item) => item.generatePAR),
-    generateIAR: AppState.purchaseOrderItems.some((item) => item.generateIAR),
-    items: [...AppState.purchaseOrderItems],
   }
-  AppState.newRequests.push(newRequest)
+
   try {
-    if (typeof saveStatusRequests === 'function') saveStatusRequests()
-  } catch (e) {}
-  showAlert(`New purchase order ${poNumber} created successfully!`, 'success')
-  loadPageContent('new-request')
-  closePurchaseOrderModal()
+    // Show loading state
+    showAlert('Creating purchase order...', 'info')
+
+    // Post to API
+    const response = await fetch('/api/purchase-orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error('Purchase Order Creation Error:', errorData)
+
+      // Show detailed validation errors if available
+      if (errorData.errors) {
+        const errorMessages = Object.entries(errorData.errors)
+          .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
+          .join('\n')
+        throw new Error(`Validation failed:\n${errorMessages}`)
+      }
+
+      throw new Error(errorData.message || 'Failed to create purchase order')
+    }
+
+    const result = await response.json()
+
+    // Also add to local state for immediate UI update
+    const newRequestId = generateNextRequestId()
+    const newRequest = {
+      id: newRequestId,
+      databaseId: result.data.id, // Store database ID
+      poNumber,
+      supplier,
+      supplierAddress,
+      supplierTIN,
+      requestDate: new Date().toISOString().split('T')[0],
+      deliveryDate,
+      deliveredDate: '',
+      purchaseDate,
+      procurementMode,
+      gentlemen,
+      placeOfDelivery,
+      deliveryTerm,
+      paymentTerm,
+      orsNo,
+      orsDate,
+      orsAmount,
+      fundCluster,
+      fundsAvailable,
+      notes,
+      totalAmount,
+      status: 'submitted',
+      requestedBy: 'Current User',
+      department,
+      generateICS: AppState.purchaseOrderItems.some((item) => item.generateICS),
+      generateRIS: AppState.purchaseOrderItems.some((item) => item.generateRIS),
+      generatePAR: AppState.purchaseOrderItems.some((item) => item.generatePAR),
+      generateIAR: AppState.purchaseOrderItems.some((item) => item.generateIAR),
+      items: [...AppState.purchaseOrderItems],
+    }
+    AppState.newRequests.push(newRequest)
+
+    try {
+      if (typeof saveStatusRequests === 'function') saveStatusRequests()
+    } catch (e) {}
+
+    showAlert(`Purchase order ${poNumber} created successfully!`, 'success')
+    loadPageContent('new-request')
+    closePurchaseOrderModal()
+
+    // Reset wizard state
+    AppState.purchaseOrderWizardStep = 1
+    AppState.purchaseOrderDraft = {}
+    AppState.purchaseOrderItems = [
+      {
+        id: '1',
+        stockPropertyNumber: '',
+        unit: '',
+        description: '',
+        detailedDescription: '',
+        quantity: 0,
+        currentStock: 0,
+        unitCost: 0,
+        amount: 0,
+        generateICS: false,
+        generateRIS: false,
+        generatePAR: false,
+        generateIAR: false,
+      },
+    ]
+  } catch (error) {
+    console.error('Error creating purchase order:', error)
+    showAlert(
+      error.message || 'Failed to create purchase order. Please try again.',
+      'error'
+    )
+  }
 }
 
 // Expose wizard functions
@@ -9625,24 +10295,13 @@ function renderPOItems() {
                        ${isReadOnly ? 'readonly' : ''}>
             </td>
             <td style="padding: 12px;">
-                <input type="text" 
-                       value="${item.description}" 
-                       onchange="updatePOItem('${
-                         item.id
-                       }', 'description', this.value)"
-                       class="form-input" 
-                       style="height: 32px;" 
-                       placeholder="Item name"
-                       ${isReadOnly ? 'readonly' : ''}>
-            </td>
-            <td style="padding: 12px;">
                 <textarea value="${item.detailedDescription}" 
                           onchange="updatePOItem('${
                             item.id
                           }', 'detailedDescription', this.value)"
                           class="form-textarea" 
-                          style="height: 32px; min-height: 32px; resize: none;" 
-                          placeholder="Detailed specifications..."
+                          style="height: 60px; min-height: 60px; resize: vertical;" 
+                          placeholder="Enter item description and detailed specifications..."
                           ${isReadOnly ? 'readonly' : ''}>${
         item.detailedDescription
       }</textarea>
@@ -9823,26 +10482,29 @@ async function deleteRequest(requestId) {
 }
 
 function generateNextRequestId() {
-  const prefix = 'REQ-'
-  // 1. Map all existing IDs
-  const highestNum = AppState.newRequests
-    .map((r) => r.id)
-    // 2. Filter for valid REQ-### format and parse the number
-    .filter(
-      (id) =>
-        id &&
-        typeof id === 'string' &&
-        id.startsWith(prefix) &&
-        id.length > prefix.length
-    )
-    .map((id) => parseInt(id.substring(prefix.length)))
-    .filter((num) => !isNaN(num))
-    // 3. Find the maximum number, defaulting to 0 if none exist
-    .reduce((max, num) => Math.max(max, num), 0)
+  const now = new Date()
+  const year = now.getFullYear()
+  // Months are 0-indexed, so add 1 and pad (e.g., 9 -> '10')
+  const month = String(now.getMonth() + 1).padStart(2, '0')
 
-  const nextNum = highestNum + 1
-  // 4. Pad with leading zeros to ensure a length of 3 (e.g., 1 -> '001')
-  return `${prefix}${String(nextNum).padStart(3, '0')}`
+  const datePrefix = `${year}-${month}`
+
+  // Get all requests (new, pending, and completed) to count total requests for the month
+  const allRequests = [
+    ...(AppState.newRequests || []),
+    ...(AppState.pendingRequests || []),
+    ...(AppState.completedRequests || []),
+  ]
+
+  // Count how many requests already exist for the current year/month
+  const count = allRequests.filter(
+    (r) => r.id && typeof r.id === 'string' && r.id.startsWith(datePrefix)
+  ).length
+
+  const nextCount = count + 1
+  const paddedCount = String(nextCount).padStart(3, '0')
+
+  return `${datePrefix}-${paddedCount}`
 }
 
 /**
@@ -10207,7 +10869,7 @@ function updateProductsTable() {
 }
 
 // Action functions
-function approveRequest(requestId) {
+async function approveRequest(requestId) {
   console.log('Approving request:', requestId)
 
   // Find in newRequests first
@@ -10215,60 +10877,105 @@ function approveRequest(requestId) {
   let request = null
   if (idx !== -1) {
     request = AppState.newRequests[idx]
-    // mark approved
-    request.status = 'approved'
-    request.approvedBy = 'Approver User'
-    request.approvedDate = new Date().toISOString().split('T')[0]
-
-    // Move to completedRequests
-    AppState.completedRequests.push(request)
-    AppState.newRequests.splice(idx, 1)
   } else {
     // try pendingRequests fallback
     const pidx = AppState.pendingRequests.findIndex((r) => r.id === requestId)
     if (pidx !== -1) {
       request = AppState.pendingRequests[pidx]
-      request.status = 'approved'
-      request.approvedBy = 'Approver User'
-      request.approvedDate = new Date().toISOString().split('T')[0]
-      AppState.completedRequests.push(request)
-      AppState.pendingRequests.splice(pidx, 1)
     }
   }
 
-  if (request) {
+  if (!request) {
+    showAlert(`Request ${requestId} not found.`, 'error')
+    return
+  }
+
+  // Check if request has a database ID
+  if (!request.databaseId) {
+    showAlert('Cannot approve: Request not saved to database.', 'error')
+    return
+  }
+
+  try {
+    // Show loading
+    showAlert('Approving request...', 'info')
+
+    // Call API to update status
+    const response = await fetch(
+      `/api/purchase-orders/${request.databaseId}/status`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': getCsrfToken(),
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          status: 'approved',
+        }),
+      }
+    )
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || 'Failed to approve request')
+    }
+
+    const result = await response.json()
+
+    // Update local state
+    request.status = 'approved'
+    request.approvedBy = 'Admin'
+    request.approvedDate = new Date().toISOString().split('T')[0]
+
+    // Move to completedRequests
+    AppState.completedRequests.push(request)
+
+    // Remove from newRequests or pendingRequests
+    if (idx !== -1) {
+      AppState.newRequests.splice(idx, 1)
+    } else {
+      const pidx = AppState.pendingRequests.findIndex((r) => r.id === requestId)
+      if (pidx !== -1) {
+        AppState.pendingRequests.splice(pidx, 1)
+      }
+    }
+
     showAlert(`Request ${requestId} approved successfully!`, 'success')
+
     // Create persistent notification for approval
     try {
       if (typeof createNotification === 'function') {
         createNotification({
           title: `Request ${requestId} approved`,
-          message: `Request ${requestId} was approved by ${
-            request.approvedBy || 'Approver'
-          }`,
+          message: `Purchase order ${requestId} was approved and moved to completed requests`,
           type: 'success',
           icon: 'check-circle',
         })
       } else {
         addNotification(
           `Request ${requestId} approved`,
-          `Request ${requestId} was approved by ${
-            request.approvedBy || 'Approver'
-          }`,
+          `Purchase order ${requestId} was approved and moved to completed requests`,
           'success',
           'check-circle'
         )
       }
     } catch (e) {}
+
     try {
       if (typeof saveStatusRequests === 'function') saveStatusRequests()
     } catch (e) {}
-  } else {
-    showAlert(`Request ${requestId} not found.`, 'error')
-  }
 
-  // Refresh Pending Approval view
-  loadPageContent('pending-approval')
+    // Refresh Pending Approval view
+    loadPageContent('pending-approval')
+  } catch (error) {
+    console.error('Error approving request:', error)
+    showAlert(
+      error.message || 'Failed to approve request. Please try again.',
+      'error'
+    )
+  }
 }
 
 async function rejectRequest(requestId) {
@@ -10279,40 +10986,89 @@ async function rejectRequest(requestId) {
   )
   if (!ok) return
 
-  // Try to find and mark rejected
+  // Try to find request
   const idx = AppState.newRequests.findIndex((r) => r.id === requestId)
   let request = null
   if (idx !== -1) {
     request = AppState.newRequests[idx]
-    request.status = 'rejected'
-    request.rejectedBy = 'Approver User'
-    request.rejectedDate = new Date().toISOString().split('T')[0]
-    AppState.rejectedRequests = AppState.rejectedRequests || []
-    AppState.rejectedRequests.push(request)
-    AppState.newRequests.splice(idx, 1)
   } else {
     const pidx = AppState.pendingRequests.findIndex((r) => r.id === requestId)
     if (pidx !== -1) {
       request = AppState.pendingRequests[pidx]
-      request.status = 'rejected'
-      request.rejectedBy = 'Approver User'
-      request.rejectedDate = new Date().toISOString().split('T')[0]
-      AppState.rejectedRequests = AppState.rejectedRequests || []
-      AppState.rejectedRequests.push(request)
-      AppState.pendingRequests.splice(pidx, 1)
     }
   }
 
-  if (request) {
+  if (!request) {
+    showAlert(`Request ${requestId} not found.`, 'error')
+    return
+  }
+
+  // Check if request has a database ID
+  if (!request.databaseId) {
+    showAlert('Cannot reject: Request not saved to database.', 'error')
+    return
+  }
+
+  try {
+    // Show loading
+    showAlert('Rejecting request...', 'info')
+
+    // Call API to update status
+    const response = await fetch(
+      `/api/purchase-orders/${request.databaseId}/status`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': getCsrfToken(),
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          status: 'cancelled',
+        }),
+      }
+    )
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || 'Failed to reject request')
+    }
+
+    const result = await response.json()
+
+    // Update local state
+    request.status = 'cancelled'
+    request.rejectedBy = 'Admin'
+    request.rejectedDate = new Date().toISOString().split('T')[0]
+
+    AppState.rejectedRequests = AppState.rejectedRequests || []
+    AppState.rejectedRequests.push(request)
+
+    // Remove from newRequests or pendingRequests
+    if (idx !== -1) {
+      AppState.newRequests.splice(idx, 1)
+    } else {
+      const pidx = AppState.pendingRequests.findIndex((r) => r.id === requestId)
+      if (pidx !== -1) {
+        AppState.pendingRequests.splice(pidx, 1)
+      }
+    }
+
     showAlert(`Request ${requestId} rejected.`, 'warning')
+
     try {
       if (typeof saveStatusRequests === 'function') saveStatusRequests()
     } catch (e) {}
-  } else {
-    showAlert(`Request ${requestId} not found.`, 'error')
-  }
 
-  loadPageContent('pending-approval')
+    loadPageContent('pending-approval')
+  } catch (error) {
+    console.error('Error rejecting request:', error)
+    showAlert(
+      error.message || 'Failed to reject request. Please try again.',
+      'error'
+    )
+  }
 }
 
 async function archiveRequest(requestId) {

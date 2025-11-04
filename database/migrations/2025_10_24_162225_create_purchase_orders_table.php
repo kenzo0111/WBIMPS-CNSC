@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('mode_of_procurement')->nullable();
             $table->string('place_of_delivery')->nullable();
             $table->string('delivery_term')->nullable();
-            $table->date('date_of_delivery')->nullable();
+            $table->string('date_of_delivery')->nullable(); // Changed from date to string to allow "15 days", "30 days", etc.
             $table->string('payment_term')->nullable();
             $table->json('items')->nullable();
             $table->decimal('grand_total', 15, 2)->default(0);

@@ -61,10 +61,37 @@ class PurchaseRequestController extends Controller
     }
 
     /**
-     * Stream a blank A4 preview of the purchase request PDF.
+     * Stream a preview of the purchase request PDF.
+     * Accepts an optional ID to load from the database.
      */
-    public function preview()
+    public function preview($id = null)
     {
+        // If an ID is provided, load the purchase request from the database
+        if ($id) {
+            $pr = \App\Models\PurchaseRequest::find($id);
+            
+            if (!$pr) {
+                abort(404, 'Purchase Request not found');
+            }
+
+            // Prepare data from the model
+            $data = [
+                'entity_name' => $pr->entity_name ?? 'Camarines Norte State College',
+                'pr_no' => $pr->pr_no ?? '',
+                'date' => $pr->date ? $pr->date->format('Y-m-d') : Carbon::now()->toDateString(),
+                'purpose' => $pr->purpose ?? '',
+                'requested_by' => $pr->requested_by ?? '',
+                'designation' => $pr->designation ?? '',
+                'approved_by' => $pr->approved_by ?? '',
+                'approved_position' => $pr->approved_position ?? '',
+                'items' => $pr->items ?? [],
+            ];
+
+            $pdf = Pdf::loadView('pdf.purchase_request_pdf', $data)->setPaper('a4', 'portrait');
+            return $pdf->stream('purchase_request_' . ($pr->pr_no ?? $id) . '.pdf');
+        }
+
+        // Preview with clean/empty placeholders (no sample data)
         $sample = [
             'entity_name' => '',
             // PR specific fields expected by the blade

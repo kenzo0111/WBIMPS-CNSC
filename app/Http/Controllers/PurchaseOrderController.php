@@ -18,15 +18,18 @@ class PurchaseOrderController extends Controller
         logger()->debug('generatePDF payload', is_array($data) ? $data : ['payload' => $data]);
 
         $data['items'] = collect($request->input('items', []))
-            ->filter(fn ($item) => filled($item['description'] ?? null))
+            ->filter(fn ($item) => filled($item['description'] ?? $item['detailedDescription'] ?? null))
             ->map(function ($item, $index) {
                 $quantity = (float) ($item['quantity'] ?? 0);
                 $unitCost = (float) ($item['unit_cost'] ?? 0);
 
+                // Use detailedDescription if description is not present
+                $description = $item['description'] ?? $item['detailedDescription'] ?? '';
+
                 return [
                     'stock_number' => $item['stock_number'] ?? '',
                     'unit' => $item['unit'] ?? '',
-                    'description' => $item['description'] ?? '',
+                    'description' => $description,
                     'quantity' => $quantity,
                     'unit_cost' => $unitCost,
                     'amount' => $quantity * $unitCost,
@@ -84,6 +87,7 @@ class PurchaseOrderController extends Controller
                 'n/a',
                 'na',
                 '-',
+                'testing',
             ];
 
             foreach ($blacklist as $bad) {
@@ -118,11 +122,84 @@ class PurchaseOrderController extends Controller
     }
 
     /**
+     * Format date from model attribute (which might be Carbon instance, string, or null)
+     * Handles cases where the date field contains invalid strings like "TESTING"
+     */
+    private function formatDateFromModel($date)
+    {
+        if (empty($date)) {
+            return null;
+        }
+
+        // If it's already a Carbon instance, format it
+        if ($date instanceof \Carbon\Carbon) {
+            return $date->format('Y-m-d');
+        }
+
+        // If it's a string, try to parse it safely
+        return $this->safeDateForBlade($date);
+    }
+
+    /**
      * Render a preview of the purchase order view with sample data.
      * This returns the HTML view (not a PDF) so you can preview in browser.
      */
-    public function preview()
+    public function preview($id = null)
     {
+        // If an ID is provided, load the purchase order from the database
+        if ($id) {
+            $purchaseOrder = \App\Models\PurchaseOrder::find($id);
+            
+            if (!$purchaseOrder) {
+                abort(404, 'Purchase Order not found');
+            }
+
+            // Map and normalize items array to match PDF template expectations
+            $items = collect($purchaseOrder->items ?? [])
+                ->map(function ($item) {
+                    // Use detailedDescription if description is not present
+                    $description = $item['description'] ?? $item['detailedDescription'] ?? '';
+                    
+                    return [
+                        'stock_number' => $item['stockPropertyNumber'] ?? $item['stock_number'] ?? '',
+                        'unit' => $item['unit'] ?? '',
+                        'description' => $description,
+                        'quantity' => (float) ($item['quantity'] ?? 0),
+                        'unit_cost' => (float) ($item['unitCost'] ?? $item['unit_cost'] ?? 0),
+                        'amount' => (float) ($item['amount'] ?? 0),
+                    ];
+                })
+                ->all();
+
+            // Convert the model to array and prepare data for PDF
+            $data = [
+                'supplier' => $purchaseOrder->supplier ?? '',
+                'supplier_address' => $purchaseOrder->supplier_address ?? '',
+                'po_number' => $purchaseOrder->po_number ?? '',
+                'date_of_purchase' => $this->formatDateFromModel($purchaseOrder->date_of_purchase),
+                'tin_number' => $purchaseOrder->tin_number ?? '',
+                'mode_of_procurement' => $purchaseOrder->mode_of_procurement ?? '',
+                'place_of_delivery' => $purchaseOrder->place_of_delivery ?? '',
+                'delivery_term' => $purchaseOrder->delivery_term ?? 'FOB Destination',
+                'date_of_delivery' => $this->formatDateFromModel($purchaseOrder->date_of_delivery),
+                'payment_term' => $purchaseOrder->payment_term ?? '30 days',
+                'items' => $items,
+                'notes' => $purchaseOrder->notes ?? '',
+                'fund_cluster' => $purchaseOrder->fund_cluster ?? '05 - Internally Generated Fund',
+                'ors_burs_no' => $purchaseOrder->ors_burs_no ?? '',
+                'funds_available' => $purchaseOrder->funds_available ?? '',
+                'ors_burs_date' => $this->formatDateFromModel($purchaseOrder->ors_burs_date),
+                'ors_burs_amount' => $purchaseOrder->ors_burs_amount ?? '',
+                'accountant_signature' => $purchaseOrder->accountant_signature ?? '',
+                'entity_name' => $purchaseOrder->entity_name ?? 'Camarines Norte State College',
+                'entity_address' => $purchaseOrder->entity_address ?? 'lot 8, F. Pimentel',
+                'grand_total' => $purchaseOrder->grand_total ?? 0,
+            ];
+
+            $pdf = Pdf::loadView('pdf.purchase_order_pdf', $data)->setPaper('a4', 'portrait');
+            return $pdf->stream('purchase_order_' . $purchaseOrder->po_number . '.pdf');
+        }
+
         // Provide empty/blank data so the preview renders a clean sheet (layout only)
         $sample = [
             'supplier' => '',
@@ -149,8 +226,79 @@ class PurchaseOrderController extends Controller
         ];
 
         // Generate PDF and stream to browser for preview (blank template)
-    $pdf = Pdf::loadView('pdf.purchase_order_pdf', $sample)->setPaper('a4', 'portrait');
+        $pdf = Pdf::loadView('pdf.purchase_order_pdf', $sample)->setPaper('a4', 'portrait');
 
-    return $pdf->stream('purchase_order_preview.pdf');
+        return $pdf->stream('purchase_order_preview.pdf');
+    }
+
+    /**
+     * Generate and download PDF for a purchase order from the database.
+     */
+    public function downloadPDF($id)
+    {
+        $purchaseOrder = \App\Models\PurchaseOrder::find($id);
+        
+        if (!$purchaseOrder) {
+            abort(404, 'Purchase Order not found');
+        }
+
+        // Map and normalize items array to match PDF template expectations
+        $items = collect($purchaseOrder->items ?? [])
+            ->map(function ($item) {
+                // Use detailedDescription if description is not present
+                $description = $item['description'] ?? $item['detailedDescription'] ?? '';
+                
+                return [
+                    'stock_number' => $item['stockPropertyNumber'] ?? $item['stock_number'] ?? '',
+                    'unit' => $item['unit'] ?? '',
+                    'description' => $description,
+                    'quantity' => (float) ($item['quantity'] ?? 0),
+                    'unit_cost' => (float) ($item['unitCost'] ?? $item['unit_cost'] ?? 0),
+                    'amount' => (float) ($item['amount'] ?? 0),
+                ];
+            })
+            ->all();
+
+        // Convert the model to array and prepare data for PDF
+        $data = [
+            'supplier' => $purchaseOrder->supplier ?? '',
+            'supplier_address' => $purchaseOrder->supplier_address ?? '',
+            'po_number' => $purchaseOrder->po_number ?? '',
+            'date_of_purchase' => $this->formatDateFromModel($purchaseOrder->date_of_purchase),
+            'tin_number' => $purchaseOrder->tin_number ?? '',
+            'mode_of_procurement' => $purchaseOrder->mode_of_procurement ?? '',
+            'place_of_delivery' => $purchaseOrder->place_of_delivery ?? '',
+            'delivery_term' => $purchaseOrder->delivery_term ?? 'FOB Destination',
+            'date_of_delivery' => $this->formatDateFromModel($purchaseOrder->date_of_delivery),
+            'payment_term' => $purchaseOrder->payment_term ?? '30 days',
+            'items' => $items,
+            'notes' => $purchaseOrder->notes ?? '',
+            'fund_cluster' => $purchaseOrder->fund_cluster ?? '05 - Internally Generated Fund',
+            'ors_burs_no' => $purchaseOrder->ors_burs_no ?? '',
+            'funds_available' => $purchaseOrder->funds_available ?? '',
+            'ors_burs_date' => $this->formatDateFromModel($purchaseOrder->ors_burs_date),
+            'ors_burs_amount' => $purchaseOrder->ors_burs_amount ?? '',
+            'accountant_signature' => $purchaseOrder->accountant_signature ?? '',
+            'entity_name' => $purchaseOrder->entity_name ?? 'Camarines Norte State College',
+            'entity_address' => $purchaseOrder->entity_address ?? 'lot 8, F. Pimentel',
+            'grand_total' => $purchaseOrder->grand_total ?? 0,
+        ];
+
+        $pdf = Pdf::loadView('pdf.purchase_order_pdf', $data)->setPaper('a4', 'portrait');
+
+        // Record activity
+        try {
+            \App\Models\Activity::create([
+                'action' => 'Downloaded Purchase Order PDF',
+                'meta' => json_encode([
+                    'po_number' => $purchaseOrder->po_number,
+                    'id' => $id
+                ])
+            ]);
+        } catch (\Throwable $e) {
+            logger()->warning('Failed to record activity for PurchaseOrder PDF download', ['error' => $e->getMessage()]);
+        }
+
+        return $pdf->download('purchase_order_' . $purchaseOrder->po_number . '.pdf');
     }
 }
