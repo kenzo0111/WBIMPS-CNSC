@@ -22,6 +22,16 @@ class PurchaseRequestController extends Controller
         }
 
         $results = $q->orderBy('submitted_at', 'desc')->get();
+        
+        // Calculate total_cost for each request (unit_cost * quantity)
+        $results = $results->map(function ($request) {
+            $data = $request->toArray();
+            $unitCost = $request->unit_cost ?? 0;
+            $quantity = $request->quantity ?? 0;
+            $data['total_cost'] = $unitCost * $quantity;
+            return $data;
+        });
+        
         return response()->json($results);
     }
 

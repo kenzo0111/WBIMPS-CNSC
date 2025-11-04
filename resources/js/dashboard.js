@@ -4736,6 +4736,12 @@ async function loadSuppliersFromAPI() {
 // must expose any function globally for legacy templates, re-add explicitly.
 
 function generateStockInPage() {
+  // Get unique suppliers from stockInData
+  const uniqueSuppliers = [
+    'All Suppliers',
+    ...[...new Set((stockInData || []).map((r) => r.supplier).filter(Boolean))],
+  ]
+
   return `
         <div class="page-header">
             <div class="page-header-content">
@@ -4765,10 +4771,9 @@ function generateStockInPage() {
                 <div class="filter-right">
                     <input type="date" class="form-input" style="width: 160px;" id="date-filter">
                     <select class="filter-dropdown" id="supplier-filter">
-                        <option>All Suppliers</option>
-                        <option>ABC Office Supplies</option>
-                        <option>Tech Solutions Inc.</option>
-                        <option>Global Hardware Corp</option>
+                        ${uniqueSuppliers
+                          .map((s) => `<option value="${s}">${s}</option>`)
+                          .join('')}
                     </select>
                     <select class="filter-dropdown" id="sort-stock">
                         <option>Sort By</option>
@@ -4825,6 +4830,11 @@ function generateStockInPage() {
 }
 
 function generateStockOutPage() {
+  // Get unique departments from stockOutData
+  const uniqueDepartments = [
+    ...new Set((stockOutData || []).map((r) => r.department).filter(Boolean)),
+  ].sort()
+
   return `
         <div class="page-header">
             <div class="page-header-content">
@@ -4852,14 +4862,11 @@ function generateStockOutPage() {
                     </div>
                     <select class="filter-dropdown" id="departmentFilter">
                         <option value="">All Departments</option>
-                        <option value="COENG">College of Engineering</option>
-                        <option value="CBPA">College of Business and Public Administration</option>
-                        <option value="CAS">College of Arts and Sciences</option>
-                        <option value="CCMS">College of Computing and Multimedia Studies</option>
-                        <option value="OP">Office of the President</option>
-                        <option value="VPAA">Office of the Vice President for Academic Affairs</option>
-                        <option value="VPRE">Office of the Vice President for Research and Extension</option>
-                        <option value="VPFA">Office of the Vice President for Finance Affairs</option>
+                        ${uniqueDepartments
+                          .map(
+                            (dept) => `<option value="${dept}">${dept}</option>`
+                          )
+                          .join('')}
                     </select>
                     <select class="filter-dropdown" id="statusFilter">
                         <option value="">All Status</option>
@@ -4962,6 +4969,27 @@ function generateStockOutPage() {
 }
 
 function generateNewRequestPage() {
+  // Department List - same as in step 2 of purchase order modal
+  const departments = [
+    { value: 'COENG', label: 'College of Engineering' },
+    { value: 'CBPA', label: 'College of Business and Public Administration' },
+    { value: 'CAS', label: 'College of Arts and Sciences' },
+    { value: 'CCMS', label: 'College of Computing and Multimedia Studies' },
+    { value: 'OP', label: 'Office of the President' },
+    {
+      value: 'OVPAA',
+      label: 'Office of the Vice President for Academic Affairs',
+    },
+    {
+      value: 'OVPRE',
+      label: 'Office of the Vice President for Research and Extension',
+    },
+    {
+      value: 'OVPFA',
+      label: 'Office of the Vice President for Finance Affairs',
+    },
+  ]
+
   return `
         <section class="page-header">
             <div class="page-header-content">
@@ -4988,25 +5016,23 @@ function generateNewRequestPage() {
                         <i data-lucide="search" class="search-icon"></i>
                     </div>
 
-                    <label for="statusFilter" class="visually-hidden">Filter by Status</label>
-                    <select class="filter-dropdown" id="statusFilter">
+                    <label for="newRequestStatusFilter" class="visually-hidden">Filter by Status</label>
+                    <select class="filter-dropdown" id="newRequestStatusFilter">
                         <option value="">All Status</option>
                         <option value="draft">Draft</option>
                         <option value="submitted">Submitted</option>
                         <option value="pending">Pending</option>
                     </select>
 
-                    <label for="departmentFilter" class="visually-hidden">Filter by Department</label>
-                    <select class="filter-dropdown" id="departmentFilter">
+                    <label for="newRequestDepartmentFilter" class="visually-hidden">Filter by Department</label>
+                    <select class="filter-dropdown" id="newRequestDepartmentFilter">
                         <option value="">All Departments</option>
-                        <option value="coeng">College of Engineering</option>
-                        <option value="cbpa">College of Business and Public Administration</option>
-                        <option value="cas">College of Arts and Sciences</option>
-                        <option value="ccms">College of Computing and Multimedia Studies</option>
-                        <option value="op">Office of the President</option>
-                        <option value="vpaa">Office of the Vice President for Academic Affairs</option>
-                        <option value="vpre">Office of the Vice President for Research and Extension</option>
-                        <option value="vpfa">Office of the Vice President for Finance Affairs</option>
+                        ${departments
+                          .map(
+                            (dept) =>
+                              `<option value="${dept.value}">${dept.label}</option>`
+                          )
+                          .join('')}
                     </select>
                 </div>
             </section>
@@ -5329,8 +5355,8 @@ function generateCompletedRequestPage() {
                     </div>
 
                     <!-- Status Filter -->
-                    <label for="statusFilter" class="visually-hidden">Filter by Status</label>
-                    <select class="filter-dropdown" id="statusFilter">
+                    <label for="completedStatusFilter" class="visually-hidden">Filter by Status</label>
+                    <select class="filter-dropdown" id="completedStatusFilter">
                         <option value="">All Status</option>
                         <option value="approved">Approved</option>
                         <option value="delivered">Delivered</option>
@@ -6406,11 +6432,9 @@ function renderRequisitionReport() {
       r.requestDate ? new Date(r.requestDate) <= new Date(to) : true
     )
 
-  // supplier filter
+  // supplier filter - exact match
   if (supplier && supplier !== 'All')
-    all = all.filter((r) =>
-      (r.supplier || '').toLowerCase().includes(supplier.toLowerCase())
-    )
+    all = all.filter((r) => r.supplier === supplier)
 
   window.__requisitionFilteredRows = all
 
@@ -8902,25 +8926,125 @@ function renderPurchaseOrderWizardStep(requestData) {
         `
     footer.innerHTML = footerButtons(true, 'Next')
   } else if (step === 2) {
-    const departments = [
-      { value: 'COENG', label: 'College of Engineering' },
-      { value: 'CBPA', label: 'College of Business and Public Administration' },
-      { value: 'CAS', label: 'College of Arts and Sciences' },
-      { value: 'CCMS', label: 'College of Computing and Multimedia Studies' },
-      { value: 'OP', label: 'Office of the President' },
-      {
-        value: 'OVPAA',
-        label: 'Office of the Vice President for Academic Affairs',
-      },
-      {
-        value: 'OVPRE',
-        label: 'Office of the Vice President for Research and Extension',
-      },
-      {
-        value: 'OVPFA',
-        label: 'Office of the Vice President for Finance Affairs',
-      },
-    ]
+    const departmentCategories = {
+      'Academic Departments': [
+        { value: 'CAS', label: 'College of Arts and Sciences (CAS)' },
+        {
+          value: 'CBPA',
+          label: 'College of Business and Public Administration (CBPA)',
+        },
+        {
+          value: 'CCMS',
+          label: 'College of Computing and Multimedia Studies (CCMS)',
+        },
+        { value: 'COENG', label: 'College of Engineering (COEng)' },
+        { value: 'GS', label: 'Graduate School' },
+      ],
+      'Key Executive Offices': [
+        { value: 'OP', label: 'Office of the President (OP)' },
+        {
+          value: 'OVPAA',
+          label: 'Office of the Vice President for Academic Affairs (OVPAA)',
+        },
+        {
+          value: 'OVPAF',
+          label: 'Office of the Vice President for Administration & Finance',
+        },
+        {
+          value: 'OVPRE',
+          label: 'Office of the Vice President for Research and Extension',
+        },
+      ],
+      'Student Services': [
+        { value: 'AO', label: 'Admission Office' },
+        {
+          value: 'OSSD',
+          label: 'Office of Student Services and Development (OSSD)',
+        },
+        { value: 'GCO', label: 'Guidance and Counseling Office' },
+        { value: 'LIB', label: 'Library' },
+        { value: 'MDS', label: 'Medical and Dental Services' },
+        { value: 'RO', label: "Registrar's Office" },
+        { value: 'SFAU', label: 'Student Financial Assistance Unit (SFAU)' },
+        { value: 'TEO', label: 'Testing and Evaluation Office' },
+        {
+          value: 'ECS',
+          label: 'Electronic Counseling Services (E-Counseling)',
+        },
+      ],
+      'Administrative & Operational Units': [
+        { value: 'AAO', label: 'Alumni Affairs Office' },
+        { value: 'ASD', label: 'Auxilliary Services Division' },
+        { value: 'GSO', label: 'General Services Office (GSO)' },
+        {
+          value: 'ITSO',
+          label: 'Information Technology Services Office (ITSO)',
+        },
+        { value: 'LAO', label: 'Legal Affairs Office (LAO)' },
+        { value: 'MP', label: 'Motorpool' },
+        { value: 'PPD', label: 'Physical Plan Division' },
+        { value: 'PDO', label: 'Planning and Development Office' },
+        {
+          value: 'PICRO',
+          label: 'Public Information and Community Relations Office (PICRO)',
+        },
+      ],
+      'Academic & Research Support': [
+        {
+          value: 'CEID',
+          label: 'Center for Education and Instructional Development (CEID)',
+        },
+        {
+          value: 'CEID2',
+          label: 'Center for Equity, Inclusivity, and Diversity',
+        },
+        { value: 'CPAU', label: 'Culture and Performing Arts Unit (CPAU)' },
+        { value: 'ESD', label: 'Extension Services Division (ESD)' },
+        {
+          value: 'FMRC',
+          label: 'Fabrication and Manufacturing Research Center (FMRC)',
+        },
+        { value: 'IPMO', label: 'Intellectual Property Management Office' },
+        {
+          value: 'ISRO',
+          label: 'Integrated Sustainability and Resilience Office (ISRO)',
+        },
+        { value: 'IRO', label: 'International Relations Office' },
+        { value: 'MSIO', label: 'Management System and Improvement Office' },
+        { value: 'NSTP', label: 'NSTP Office' },
+        { value: 'QAO', label: 'Quality Assurance Office (QAO)' },
+        {
+          value: 'QPRDI',
+          label: 'Queen Pineapple Research and Development Institute',
+        },
+        { value: 'RSD', label: 'Research Services Division (RSD)' },
+        { value: 'SWK', label: 'Sentro ng Wika at Kultura' },
+        { value: 'SPRC', label: 'Social Policy Research Center' },
+        { value: 'SDO', label: 'Sports and Development Office' },
+      ],
+    }
+
+    // Get current department from draft
+    const currentDepartment = AppState.purchaseOrderDraft.department || ''
+
+    // Generate department options with optgroups
+    const generateDepartmentOptionsHTML = () => {
+      return Object.keys(departmentCategories)
+        .map((category) => {
+          const departments = departmentCategories[category]
+          const options = departments
+            .map(
+              (d) =>
+                `<option value="${d.value}" ${
+                  currentDepartment === d.value ? 'selected' : ''
+                }>${d.label}</option>`
+            )
+            .join('')
+          return `<optgroup label="${category}">${options}</optgroup>`
+        })
+        .join('')
+    }
+
     body.innerHTML = `
             <div class="po-wizard">
                 ${progress}
@@ -8942,17 +9066,7 @@ function renderPurchaseOrderWizardStep(requestData) {
                                 </label>
                                 <select class="form-select" id="po-department" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                                     <option value="">Select Department</option>
-                                    ${departments
-                                      .map(
-                                        (d) =>
-                                          `<option value="${d.value}" ${
-                                            AppState.purchaseOrderDraft
-                                              .department === d.value
-                                              ? 'selected'
-                                              : ''
-                                          }>${d.label}</option>`
-                                      )
-                                      .join('')}
+                                    ${generateDepartmentOptionsHTML()}
                                 </select>
                             </div>
                             <div class="form-group" style="margin-bottom: 16px;">
@@ -10699,7 +10813,11 @@ function initializePageEvents(pageId) {
     case 'suppliers':
       initSuppliersPageEvents()
       break
+    case 'stock-in':
+      initializeStockInPageEvents()
+      break
     case 'stock-out':
+      initializeStockOutPageEvents()
       loadLowStockItems()
       break
     case 'about':
@@ -10710,9 +10828,13 @@ function initializePageEvents(pageId) {
       // startGalleryAutoPlay()
       break
     case 'new-request':
+      initializeNewRequestPageEvents()
+      break
     case 'pending-approval':
-    case 'completed-request':
       // Initialize PO modal triggers
+      break
+    case 'completed-request':
+      initializeCompletedRequestPageEvents()
       break
     default:
       break
@@ -10752,18 +10874,29 @@ function initializeProductsPageEvents() {
 
 function updateProductsTable() {
   const currentTab = AppState.currentProductTab || 'expendable'
-  let filteredProducts = MockData.products.filter(
-    (product) => product.type === currentTab.toLowerCase()
-  )
+  const allProducts = MockData.products || []
+
+  // Helper to derive product type
+  const deriveType = (product) => {
+    if (!product) return 'expendable'
+    if (product.type) return product.type
+    const sku = (product.id || '').toString().toUpperCase()
+    if (sku.startsWith('SE')) return 'semi-expendable'
+    if (sku.startsWith('N')) return 'non-expendable'
+    return 'expendable'
+  }
+
+  // Filter by current tab
+  let filteredProducts = allProducts.filter((p) => deriveType(p) === currentTab)
 
   // Apply search filter
   if (AppState.productSearchTerm) {
     const searchTerm = AppState.productSearchTerm.toLowerCase()
     filteredProducts = filteredProducts.filter(
       (product) =>
-        product.name.toLowerCase().includes(searchTerm) ||
-        product.description.toLowerCase().includes(searchTerm) ||
-        product.id.toLowerCase().includes(searchTerm)
+        (product.name || '').toLowerCase().includes(searchTerm) ||
+        (product.description || '').toLowerCase().includes(searchTerm) ||
+        (product.id || '').toString().toLowerCase().includes(searchTerm)
     )
   }
 
@@ -10772,30 +10905,34 @@ function updateProductsTable() {
     switch (AppState.productFilterBy) {
       case 'High Value (>₱5,000)':
         filteredProducts = filteredProducts.filter(
-          (product) => product.totalValue > 5000
+          (product) => (product.totalValue || 0) > 5000
         )
         break
       case 'Medium Value (₱1,000-₱5,000)':
         filteredProducts = filteredProducts.filter(
-          (product) => product.totalValue >= 1000 && product.totalValue <= 5000
+          (product) =>
+            (product.totalValue || 0) >= 1000 &&
+            (product.totalValue || 0) <= 5000
         )
         break
       case 'Low Value (<₱1,000)':
         filteredProducts = filteredProducts.filter(
-          (product) => product.totalValue < 1000
+          (product) => (product.totalValue || 0) < 1000
         )
         break
       case 'Low Quantity (<20)':
         filteredProducts = filteredProducts.filter(
-          (product) => product.quantity < 20
+          (product) => (product.quantity ?? 0) < 20
         )
         break
       case 'Recent (Last 30 days)':
         const thirtyDaysAgo = new Date()
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-        filteredProducts = filteredProducts.filter(
-          (product) => new Date(product.date) >= thirtyDaysAgo
-        )
+        filteredProducts = filteredProducts.filter((product) => {
+          if (!product.date) return false
+          const productDate = new Date(product.date)
+          return productDate >= thirtyDaysAgo
+        })
         break
     }
   }
@@ -10804,22 +10941,38 @@ function updateProductsTable() {
   if (AppState.productSortBy && AppState.productSortBy !== 'Sort By') {
     switch (AppState.productSortBy) {
       case 'Product Name (A-Z)':
-        filteredProducts.sort((a, b) => a.name.localeCompare(b.name))
+        filteredProducts.sort((a, b) =>
+          (a.name || '').localeCompare(b.name || '')
+        )
         break
       case 'Product Name (Z-A)':
-        filteredProducts.sort((a, b) => b.name.localeCompare(a.name))
+        filteredProducts.sort((a, b) =>
+          (b.name || '').localeCompare(a.name || '')
+        )
         break
       case 'Date (Newest)':
-        filteredProducts.sort((a, b) => new Date(b.date) - new Date(a.date))
+        filteredProducts.sort((a, b) => {
+          const dateA = a.date ? new Date(a.date) : new Date(0)
+          const dateB = b.date ? new Date(b.date) : new Date(0)
+          return dateB - dateA
+        })
         break
       case 'Date (Oldest)':
-        filteredProducts.sort((a, b) => new Date(a.date) - new Date(b.date))
+        filteredProducts.sort((a, b) => {
+          const dateA = a.date ? new Date(a.date) : new Date(0)
+          const dateB = b.date ? new Date(b.date) : new Date(0)
+          return dateA - dateB
+        })
         break
       case 'Total Value (High to Low)':
-        filteredProducts.sort((a, b) => b.totalValue - a.totalValue)
+        filteredProducts.sort(
+          (a, b) => (b.totalValue || 0) - (a.totalValue || 0)
+        )
         break
       case 'Total Value (Low to High)':
-        filteredProducts.sort((a, b) => a.totalValue - b.totalValue)
+        filteredProducts.sort(
+          (a, b) => (a.totalValue || 0) - (b.totalValue || 0)
+        )
         break
     }
   }
@@ -10827,40 +10980,735 @@ function updateProductsTable() {
   // Update table body
   const tbody = document.querySelector('.table tbody')
   if (tbody) {
-    tbody.innerHTML = filteredProducts
-      .map((product, index) => {
-        return `
+    tbody.innerHTML = filteredProducts.length
+      ? filteredProducts
+          .map((product, index) => {
+            return `
             <tr>
                 <td style="font-weight: 500;">${product.id}</td>
                 <td style="font-weight: 500;">${product.name}</td>
                 <td style="color: #6b7280; max-width: 300px;">${
-                  product.description
+                  product.description || ''
                 }</td>
-                <td>${product.quantity}</td>
-                <td>${formatCurrency(product.unitCost)}</td>
+                <td>${product.quantity ?? 0}</td>
+                <td>${product.unit || '-'}</td>
+                <td>${formatCurrency(product.unit_cost || 0)}</td>
                 <td style="font-weight: 500;">${formatCurrency(
-                  product.totalValue
+                  product.totalValue || 0
                 )}</td>
-                <td>${product.date}</td>
+                <td>${product.date || ''}</td>
                 <td>
                     <div class="table-actions">
-                        <button class="icon-action-btn icon-action-danger" title="Delete">
+                        <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteProduct('${
+                          product.id
+                        }')">
                             <i data-lucide="trash-2"></i>
                         </button>
-                        <button class="icon-action-btn icon-action-warning" title="Edit">
+                        <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openProductModal('edit','${
+                          product.id
+                        }')">
                             <i data-lucide="edit"></i>
                         </button>
                     </div>
                 </td>
             </tr>
         `
-      })
-      .join('')
+          })
+          .join('')
+      : `<tr><td colspan="9" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No products found</td></tr>`
 
     // Update pagination count
     const paginationLeft = document.querySelector('.pagination-left')
     if (paginationLeft) {
-      paginationLeft.textContent = `Showing 1 to ${filteredProducts.length}`
+      paginationLeft.textContent =
+        filteredProducts.length === 0
+          ? 'No entries to display'
+          : `Showing 1 to ${filteredProducts.length} of ${filteredProducts.length} entries`
+    }
+
+    // Reinitialize icons
+    lucide.createIcons()
+  }
+}
+
+// Initialize Stock In Page Events
+function initializeStockInPageEvents() {
+  // Initialize search functionality
+  const searchInput = document.getElementById('stock-search')
+  if (searchInput) {
+    searchInput.addEventListener('input', function (e) {
+      AppState.stockInSearchTerm = e.target.value
+      updateStockInTable()
+    })
+  }
+
+  // Initialize date filter
+  const dateFilter = document.getElementById('date-filter')
+  if (dateFilter) {
+    dateFilter.addEventListener('change', function (e) {
+      AppState.stockInDateFilter = e.target.value
+      updateStockInTable()
+    })
+  }
+
+  // Initialize supplier filter
+  const supplierFilter = document.getElementById('supplier-filter')
+  if (supplierFilter) {
+    supplierFilter.addEventListener('change', function (e) {
+      AppState.stockInSupplierFilter = e.target.value
+      updateStockInTable()
+    })
+  }
+
+  // Initialize sort dropdown
+  const sortStock = document.getElementById('sort-stock')
+  if (sortStock) {
+    sortStock.addEventListener('change', function (e) {
+      AppState.stockInSortBy = e.target.value
+      updateStockInTable()
+    })
+  }
+}
+
+function updateStockInTable() {
+  let filteredRecords = [...(stockInData || [])]
+
+  // Apply search filter
+  if (AppState.stockInSearchTerm) {
+    const searchTerm = AppState.stockInSearchTerm.toLowerCase()
+    filteredRecords = filteredRecords.filter(
+      (record) =>
+        (record.transactionId || '').toLowerCase().includes(searchTerm) ||
+        (record.productName || '').toLowerCase().includes(searchTerm) ||
+        (record.sku || '').toLowerCase().includes(searchTerm) ||
+        (record.supplier || '').toLowerCase().includes(searchTerm) ||
+        (record.receivedBy || '').toLowerCase().includes(searchTerm)
+    )
+  }
+
+  // Apply date filter
+  if (AppState.stockInDateFilter) {
+    filteredRecords = filteredRecords.filter((record) => {
+      if (!record.date) return false
+      // Normalize both dates to YYYY-MM-DD format for comparison
+      const recordDate = new Date(record.date).toISOString().split('T')[0]
+      return recordDate === AppState.stockInDateFilter
+    })
+  }
+
+  // Apply supplier filter
+  if (
+    AppState.stockInSupplierFilter &&
+    AppState.stockInSupplierFilter !== 'All Suppliers'
+  ) {
+    filteredRecords = filteredRecords.filter(
+      (record) => record.supplier === AppState.stockInSupplierFilter
+    )
+  }
+
+  // Apply sorting
+  if (AppState.stockInSortBy && AppState.stockInSortBy !== 'Sort By') {
+    switch (AppState.stockInSortBy) {
+      case 'Date (Newest)':
+        filteredRecords.sort((a, b) => {
+          const dateA = a.date ? new Date(a.date) : new Date(0)
+          const dateB = b.date ? new Date(b.date) : new Date(0)
+          return dateB - dateA
+        })
+        break
+      case 'Date (Oldest)':
+        filteredRecords.sort((a, b) => {
+          const dateA = a.date ? new Date(a.date) : new Date(0)
+          const dateB = b.date ? new Date(b.date) : new Date(0)
+          return dateA - dateB
+        })
+        break
+      case 'Amount (High to Low)':
+        filteredRecords.sort((a, b) => (b.totalCost || 0) - (a.totalCost || 0))
+        break
+      case 'Amount (Low to High)':
+        filteredRecords.sort((a, b) => (a.totalCost || 0) - (b.totalCost || 0))
+        break
+      case 'Product Name (A-Z)':
+        filteredRecords.sort((a, b) =>
+          (a.productName || '').localeCompare(b.productName || '')
+        )
+        break
+    }
+  }
+
+  // Update table body
+  const tbody = document.getElementById('stock-in-table-body')
+  if (tbody) {
+    tbody.innerHTML =
+      filteredRecords.length > 0
+        ? filteredRecords.map((r, i) => renderStockInRow(r, i)).join('')
+        : '<tr><td colspan="10" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No records found</td></tr>'
+
+    // Update pagination count
+    const paginationLeft = document.querySelector('.pagination-left')
+    if (paginationLeft) {
+      paginationLeft.textContent =
+        filteredRecords.length === 0
+          ? 'No entries to display'
+          : `Showing 1 to ${filteredRecords.length} of ${filteredRecords.length} entries`
+    }
+
+    // Reinitialize icons
+    lucide.createIcons()
+  }
+}
+
+// Initialize Stock Out Page Events
+function initializeStockOutPageEvents() {
+  // Initialize search functionality
+  const searchInput = document.getElementById('stockOutSearch')
+  if (searchInput) {
+    searchInput.addEventListener('input', function (e) {
+      AppState.stockOutSearchTerm = e.target.value
+      updateStockOutTable()
+    })
+  }
+
+  // Initialize department filter
+  const departmentFilter = document.getElementById('departmentFilter')
+  if (departmentFilter) {
+    departmentFilter.addEventListener('change', function (e) {
+      AppState.stockOutDepartmentFilter = e.target.value
+      updateStockOutTable()
+    })
+  }
+
+  // Initialize status filter
+  const statusFilter = document.getElementById('statusFilter')
+  if (statusFilter) {
+    statusFilter.addEventListener('change', function (e) {
+      AppState.stockOutStatusFilter = e.target.value
+      updateStockOutTable()
+    })
+  }
+
+  // Initialize date filter
+  const dateFrom = document.getElementById('dateFrom')
+  if (dateFrom) {
+    dateFrom.addEventListener('change', function (e) {
+      AppState.stockOutDateFrom = e.target.value
+      updateStockOutTable()
+    })
+  }
+
+  // Initialize sortable headers
+  const sortableHeaders = document.querySelectorAll('.sortable')
+  sortableHeaders.forEach((header) => {
+    header.addEventListener('click', function () {
+      const sortKey = this.getAttribute('data-sort')
+      // Toggle sort direction if clicking same column
+      if (AppState.stockOutSortBy === sortKey) {
+        AppState.stockOutSortDirection =
+          AppState.stockOutSortDirection === 'asc' ? 'desc' : 'asc'
+      } else {
+        AppState.stockOutSortBy = sortKey
+        AppState.stockOutSortDirection = 'asc'
+      }
+      updateStockOutTable()
+    })
+  })
+}
+
+function updateStockOutTable() {
+  let filteredRecords = [...(stockOutData || [])]
+
+  // Apply search filter
+  if (AppState.stockOutSearchTerm) {
+    const searchTerm = AppState.stockOutSearchTerm.toLowerCase()
+    filteredRecords = filteredRecords.filter(
+      (record) =>
+        (record.issueId || '').toLowerCase().includes(searchTerm) ||
+        (record.productName || '').toLowerCase().includes(searchTerm) ||
+        (record.sku || '').toLowerCase().includes(searchTerm) ||
+        (record.department || '').toLowerCase().includes(searchTerm) ||
+        (record.issuedTo || '').toLowerCase().includes(searchTerm) ||
+        (record.issuedBy || '').toLowerCase().includes(searchTerm)
+    )
+  }
+
+  // Apply department filter
+  if (AppState.stockOutDepartmentFilter) {
+    filteredRecords = filteredRecords.filter(
+      (record) => record.department === AppState.stockOutDepartmentFilter
+    )
+  }
+
+  // Apply status filter
+  if (AppState.stockOutStatusFilter) {
+    filteredRecords = filteredRecords.filter(
+      (record) =>
+        (record.status || '').toLowerCase() ===
+        AppState.stockOutStatusFilter.toLowerCase()
+    )
+  }
+
+  // Apply date filter (from date)
+  if (AppState.stockOutDateFrom) {
+    filteredRecords = filteredRecords.filter((record) => {
+      if (!record.date) return false
+      const recordDate = new Date(record.date).toISOString().split('T')[0]
+      return recordDate >= AppState.stockOutDateFrom
+    })
+  }
+
+  // Apply sorting
+  if (AppState.stockOutSortBy) {
+    const sortKey = AppState.stockOutSortBy
+    const direction = AppState.stockOutSortDirection === 'asc' ? 1 : -1
+
+    filteredRecords.sort((a, b) => {
+      let valA, valB
+
+      switch (sortKey) {
+        case 'issue_id':
+          valA = a.issueId || ''
+          valB = b.issueId || ''
+          return direction * valA.localeCompare(valB)
+        case 'date':
+          valA = a.date ? new Date(a.date) : new Date(0)
+          valB = b.date ? new Date(b.date) : new Date(0)
+          return direction * (valA - valB)
+        case 'product_name':
+          valA = a.productName || ''
+          valB = b.productName || ''
+          return direction * valA.localeCompare(valB)
+        case 'quantity':
+          return direction * ((a.quantity || 0) - (b.quantity || 0))
+        case 'unit_cost':
+          return direction * ((a.unitCost || 0) - (b.unitCost || 0))
+        case 'total_cost':
+          return direction * ((a.totalCost || 0) - (b.totalCost || 0))
+        case 'department':
+          valA = a.department || ''
+          valB = b.department || ''
+          return direction * valA.localeCompare(valB)
+        default:
+          return 0
+      }
+    })
+  }
+
+  // Update table body
+  const tbody = document.getElementById('stock-out-table-body')
+  if (tbody) {
+    tbody.innerHTML =
+      filteredRecords.length > 0
+        ? filteredRecords.map((s, i) => renderStockOutRow(s, i)).join('')
+        : '<tr><td colspan="12" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No records found</td></tr>'
+
+    // Update pagination count
+    const paginationLeft = document.querySelector('.pagination-left')
+    if (paginationLeft) {
+      paginationLeft.textContent =
+        filteredRecords.length === 0
+          ? 'No entries to display'
+          : `Showing 1 to ${filteredRecords.length} of ${filteredRecords.length} entries`
+    }
+
+    // Reinitialize icons
+    lucide.createIcons()
+  }
+}
+
+// Clear Stock Out Filters
+function clearStockOutFilters() {
+  // Reset filter values
+  AppState.stockOutSearchTerm = ''
+  AppState.stockOutDepartmentFilter = ''
+  AppState.stockOutStatusFilter = ''
+  AppState.stockOutDateFrom = ''
+  AppState.stockOutSortBy = ''
+  AppState.stockOutSortDirection = 'asc'
+
+  // Clear input fields
+  const searchInput = document.getElementById('stockOutSearch')
+  if (searchInput) searchInput.value = ''
+
+  const departmentFilter = document.getElementById('departmentFilter')
+  if (departmentFilter) departmentFilter.value = ''
+
+  const statusFilter = document.getElementById('statusFilter')
+  if (statusFilter) statusFilter.value = ''
+
+  const dateFrom = document.getElementById('dateFrom')
+  if (dateFrom) dateFrom.value = ''
+
+  // Update table
+  updateStockOutTable()
+}
+
+// Export Stock Out data
+function exportStockOut() {
+  // Get current filtered data
+  let exportData = [...(stockOutData || [])]
+
+  // Apply same filters as table
+  if (AppState.stockOutSearchTerm) {
+    const searchTerm = AppState.stockOutSearchTerm.toLowerCase()
+    exportData = exportData.filter(
+      (record) =>
+        (record.issueId || '').toLowerCase().includes(searchTerm) ||
+        (record.productName || '').toLowerCase().includes(searchTerm) ||
+        (record.sku || '').toLowerCase().includes(searchTerm) ||
+        (record.department || '').toLowerCase().includes(searchTerm) ||
+        (record.issuedTo || '').toLowerCase().includes(searchTerm) ||
+        (record.issuedBy || '').toLowerCase().includes(searchTerm)
+    )
+  }
+
+  if (AppState.stockOutDepartmentFilter) {
+    exportData = exportData.filter(
+      (record) => record.department === AppState.stockOutDepartmentFilter
+    )
+  }
+
+  if (AppState.stockOutStatusFilter) {
+    exportData = exportData.filter(
+      (record) =>
+        (record.status || '').toLowerCase() ===
+        AppState.stockOutStatusFilter.toLowerCase()
+    )
+  }
+
+  if (AppState.stockOutDateFrom) {
+    exportData = exportData.filter((record) => {
+      if (!record.date) return false
+      const recordDate = new Date(record.date).toISOString().split('T')[0]
+      return recordDate >= AppState.stockOutDateFrom
+    })
+  }
+
+  // Prepare rows for Excel
+  const rows = [
+    [
+      'Issue ID',
+      'Date',
+      'Product Name',
+      'SKU',
+      'Quantity',
+      'Unit Cost',
+      'Total Cost',
+      'Department',
+      'Issued To',
+      'Issued By',
+      'Status',
+    ],
+  ]
+
+  exportData.forEach((record) => {
+    rows.push([
+      record.issueId || '',
+      record.date || '',
+      record.productName || '',
+      record.sku || '',
+      record.quantity || 0,
+      record.unitCost || 0,
+      record.totalCost || 0,
+      record.department || '',
+      record.issuedTo || '',
+      record.issuedBy || '',
+      record.status || '',
+    ])
+  })
+
+  // Use the downloadExcel function if available
+  if (typeof downloadExcel === 'function') {
+    downloadExcel('stock-out-report.xlsx', rows, 'Stock Out Records', {
+      includeMetadata: true,
+    })
+  } else {
+    showAlert('Export functionality not available', 'error')
+  }
+}
+
+// Initialize New Request Page Events
+function initializeNewRequestPageEvents() {
+  // Initialize search functionality
+  const searchInput = document.getElementById('requestSearch')
+  if (searchInput) {
+    searchInput.addEventListener('input', function (e) {
+      updateNewRequestsTable()
+    })
+  }
+
+  // Initialize status filter
+  const statusFilter = document.getElementById('newRequestStatusFilter')
+  if (statusFilter) {
+    statusFilter.addEventListener('change', function (e) {
+      updateNewRequestsTable()
+    })
+  }
+
+  // Initialize department filter
+  const departmentFilter = document.getElementById('newRequestDepartmentFilter')
+  if (departmentFilter) {
+    departmentFilter.addEventListener('change', function (e) {
+      updateNewRequestsTable()
+    })
+  }
+}
+
+// Update New Requests Table with filters
+function updateNewRequestsTable() {
+  const searchTerm =
+    document.getElementById('requestSearch')?.value.toLowerCase() || ''
+  const statusFilter =
+    document.getElementById('newRequestStatusFilter')?.value || ''
+  const departmentFilter =
+    document.getElementById('newRequestDepartmentFilter')?.value || ''
+
+  // Start with all new requests
+  let filteredRequests = [...(AppState.newRequests || [])]
+
+  // Apply search filter
+  if (searchTerm) {
+    filteredRequests = filteredRequests.filter(
+      (request) =>
+        (request.id && request.id.toLowerCase().includes(searchTerm)) ||
+        (request.poNumber &&
+          request.poNumber.toLowerCase().includes(searchTerm)) ||
+        (request.supplier &&
+          request.supplier.toLowerCase().includes(searchTerm)) ||
+        (request.requestedBy &&
+          request.requestedBy.toLowerCase().includes(searchTerm)) ||
+        (request.department &&
+          request.department.toLowerCase().includes(searchTerm))
+    )
+  }
+
+  // Apply status filter
+  if (statusFilter) {
+    filteredRequests = filteredRequests.filter(
+      (request) => request.status === statusFilter
+    )
+  }
+
+  // Apply department filter
+  if (departmentFilter) {
+    filteredRequests = filteredRequests.filter(
+      (request) => request.department === departmentFilter
+    )
+  }
+
+  // Update table body
+  const tbody = document.querySelector('.table tbody')
+  if (tbody) {
+    if (filteredRequests.length > 0) {
+      tbody.innerHTML = filteredRequests
+        .map(
+          (request) => `
+        <tr>
+            <td>${request.id}</td>
+            <td>
+                ${request.poNumber}
+            </td>
+            <td>${request.supplier}</td>
+            <td>${request.requestDate}</td>
+            <td>${request.deliveryDate}</td>
+            <td>${formatCurrency(request.totalAmount)}</td>
+            <td>
+                <span class="${getBadgeClass(request.status)}">
+                    ${capitalize(request.status)}
+                </span>
+            </td>
+            <td>${request.requestedBy}</td>
+            <td>${request.department}</td>
+            <td>
+                <div class="table-actions">
+                  <button class="icon-action-btn" title="View" onclick="openViewForms(this, '${
+                    request.id
+                  }')">
+                    <i data-lucide="eye"></i>
+                  </button>
+                  <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openPurchaseOrderModal('edit', '${
+                    request.id
+                  }')">
+                    <i data-lucide="edit"></i>
+                  </button>
+                    <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteRequest('${
+                      request.id
+                    }')">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `
+        )
+        .join('')
+    } else {
+      tbody.innerHTML = `
+        <tr>
+            <td colspan="10" class="px-6 py-12 text-center text-gray-500">
+                <div class="flex flex-col items-center gap-2">
+                    <p>No requests found</p>
+                </div>
+            </td>
+        </tr>
+      `
+    }
+
+    // Update pagination count
+    const paginationLeft = document.querySelector('.pagination-left')
+    if (paginationLeft) {
+      paginationLeft.textContent =
+        filteredRequests.length > 0
+          ? `Showing 1 to ${filteredRequests.length} of ${filteredRequests.length} entries`
+          : 'Showing 0 entries'
+    }
+
+    // Reinitialize icons
+    lucide.createIcons()
+  }
+}
+
+// Initialize Completed Request Page Events
+function initializeCompletedRequestPageEvents() {
+  // Initialize search functionality
+  const searchInput = document.getElementById('completedSearch')
+  if (searchInput) {
+    searchInput.addEventListener('input', function (e) {
+      updateCompletedRequestsTable()
+    })
+  }
+
+  // Initialize status filter
+  const statusFilter = document.getElementById('completedStatusFilter')
+  if (statusFilter) {
+    statusFilter.addEventListener('change', function (e) {
+      updateCompletedRequestsTable()
+    })
+  }
+}
+
+// Update Completed Requests Table with filters
+function updateCompletedRequestsTable() {
+  const searchTerm =
+    document.getElementById('completedSearch')?.value.toLowerCase() || ''
+  const statusFilter =
+    document.getElementById('completedStatusFilter')?.value || ''
+
+  // Get all completed requests
+  const allCompleted = AppState.completedRequests || []
+  const visibleStatuses = ['approved', 'delivered', 'completed']
+  let filteredRequests = allCompleted.filter((r) =>
+    visibleStatuses.includes(r.status)
+  )
+
+  // Apply search filter
+  if (searchTerm) {
+    filteredRequests = filteredRequests.filter(
+      (request) =>
+        (request.id && request.id.toLowerCase().includes(searchTerm)) ||
+        (request.poNumber &&
+          request.poNumber.toLowerCase().includes(searchTerm)) ||
+        (request.supplier &&
+          request.supplier.toLowerCase().includes(searchTerm)) ||
+        (request.requestedBy &&
+          request.requestedBy.toLowerCase().includes(searchTerm)) ||
+        (request.approvedBy &&
+          request.approvedBy.toLowerCase().includes(searchTerm))
+    )
+  }
+
+  // Apply status filter
+  if (statusFilter) {
+    filteredRequests = filteredRequests.filter(
+      (request) => request.status === statusFilter
+    )
+  }
+
+  // Update table body
+  const tbody = document.querySelector('.table tbody')
+  if (tbody) {
+    if (filteredRequests.length > 0) {
+      tbody.innerHTML = filteredRequests
+        .map(
+          (request) => `
+                <tr>
+                    <td>${request.id}</td>
+                    <td>
+                        ${request.poNumber}
+                    </td>
+                    <td>${request.supplier}</td>
+                    <td>${formatCurrency(request.totalAmount)}</td>
+                    <td>
+                        <span class="${getBadgeClass(request.status)}">
+                            ${capitalize(request.status)}
+                        </span>
+                    </td>
+                    <td>${request.requestedBy}</td>
+                    <td>${request.approvedBy}</td>
+                    <td>${request.deliveredDate || '-'}</td>
+                    <td>
+                        <div class="table-actions">
+                            <button class="icon-action-btn" title="View" onclick="openViewForms(this, '${
+                              request.id
+                            }')">
+                                <i data-lucide="eye"></i>
+                            </button>
+                            <button class="icon-action-btn" title="Download" onclick="openDownloadFormsChooser(this, '${
+                              request.id
+                            }')">
+                                <i data-lucide="download"></i>
+                            </button>
+                            <button class="icon-action-btn icon-action-warning" title="Archive" onclick="archiveRequest('${
+                              request.id
+                            }')">
+                                <i data-lucide="archive"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `
+        )
+        .join('')
+    } else {
+      tbody.innerHTML = `
+        <tr>
+            <td colspan="9" class="px-6 py-12 text-center text-gray-500">
+                <div class="flex flex-col items-center gap-2">
+                    <p>No completed requests found</p>
+                </div>
+            </td>
+        </tr>
+      `
+    }
+
+    // Update summary stats
+    const totalRequests = filteredRequests.length
+    const totalValue = filteredRequests.reduce(
+      (sum, req) => sum + (req.totalAmount || 0),
+      0
+    )
+
+    // Update summary display (if elements exist)
+    const summarySection = document.querySelector('.completed-summary')
+    if (summarySection) {
+      summarySection.innerHTML = `
+        <div style="flex:0 1 180px;display:flex;flex-direction:column;gap:4px;">
+            <p style="font-size:13px;letter-spacing:.5px;text-transform:uppercase;color:#6b7280;font-weight:600;margin:0;">Total Requests</p>
+            <p style="font-size:26px;font-weight:700;color:#111827;line-height:1;margin:0;">${totalRequests}</p>
+        </div>
+        <div style="flex:0 1 180px;display:flex;flex-direction:column;gap:4px;">
+            <p style="font-size:13px;letter-spacing:.5px;text-transform:uppercase;color:#6b7280;font-weight:600;margin:0;">Total Value</p>
+            <p style="font-size:26px;font-weight:700;color:#111827;line-height:1;margin:0;">${formatCurrency(
+              totalValue
+            )}</p>
+        </div>
+        <div style="flex:0 1 180px;display:flex;flex-direction:column;gap:4px;">
+            <p style="font-size:13px;letter-spacing:.5px;text-transform:uppercase;color:#6b7280;font-weight:600;margin:0;">Completed Requests</p>
+            <p style="font-size:26px;font-weight:700;color:#16a34a;line-height:1;margin:0;">${
+              filteredRequests.length
+            }</p>
+        </div>
+      `
     }
 
     // Reinitialize icons
@@ -12127,6 +12975,10 @@ async function deleteMember(memberId) {
 
 // Expose deleteMember for inline onclick handlers
 window.deleteMember = deleteMember
+
+// Expose stock out functions for inline onclick handlers
+window.clearStockOutFilters = clearStockOutFilters
+window.exportStockOut = exportStockOut
 
 function refreshRolesTable() {
   // Assuming your main content container has the ID 'main-content'
