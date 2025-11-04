@@ -106,22 +106,22 @@
     <table class="info-table">
         <tr>
             <td class="label">Entity Name :</td>
-            <td class="field"></td>
+            <td class="field">{{ $ris->entity_name ?? '' }}</td>
             <td style="width: 50px;"></td>
             <td class="label">Fund Cluster :</td>
-            <td class="field"></td>
+            <td class="field">{{ $ris->fund_cluster ?? '' }}</td>
         </tr>
     </table>
     
     <table class="main-table">
         <thead>
             <tr>
-                <td colspan="4" style="border: none; border-right: 1px solid #000; text-align: left; padding: 3px; font-size: 9pt;">Division : </td>
-                <td colspan="4" style="border: none; text-align: left; padding: 3px; font-size: 9pt;">Responsibility Center Code : </td>
+                <td colspan="4" style="border: none; border-right: 1px solid #000; text-align: left; padding: 3px; font-size: 9pt;">Division : {{ $ris->division ?? '' }}</td>
+                <td colspan="4" style="border: none; text-align: left; padding: 3px; font-size: 9pt;">Responsibility Center Code : {{ $ris->responsibility_center_code ?? '' }}</td>
             </tr>
             <tr>
-                <td colspan="4" style="border: none; border-right: 1px solid #000; text-align: left; padding: 3px; font-size: 9pt;">Office : </td>
-                <td colspan="4" style="border: none; text-align: left; padding: 3px; font-size: 9pt;">RIS No. : </td>
+                <td colspan="4" style="border: none; border-right: 1px solid #000; text-align: left; padding: 3px; font-size: 9pt;">Office : {{ $ris->office ?? '' }}</td>
+                <td colspan="4" style="border: none; text-align: left; padding: 3px; font-size: 9pt;">RIS No. : {{ $ris->ris_no ?? '' }}</td>
             </tr>
             <tr>
                 <th colspan="4" class="section-header">Requisition</th>
@@ -140,23 +140,48 @@
             </tr>
         </thead>
         <tbody>
-            @for($i = 0; $i < 20; $i++)
-            <tr>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-            </tr>
-            @endfor
+            @if(isset($ris->items) && is_array($ris->items))
+                @foreach($ris->items as $item)
+                <tr>
+                    <td>{{ $item['stock_no'] ?? '' }}</td>
+                    <td>{{ $item['unit'] ?? '' }}</td>
+                    <td>{{ $item['description'] ?? '' }}</td>
+                    <td>{{ $item['quantity'] ?? '' }}</td>
+                    <td>{{ ($item['stock_available'] ?? '') === 'Yes' ? '✓' : '' }}</td>
+                    <td>{{ ($item['stock_available'] ?? '') === 'No' ? '✓' : '' }}</td>
+                    <td>{{ $item['issue_quantity'] ?? '' }}</td>
+                    <td>{{ $item['remarks'] ?? '' }}</td>
+                </tr>
+                @endforeach
+                @for($i = count($ris->items); $i < 20; $i++)
+                <tr>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                </tr>
+                @endfor
+            @else
+                @for($i = 0; $i < 20; $i++)
+                <tr>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                </tr>
+                @endfor
+            @endif
             <tr>
                 <td colspan="8" style="text-align: left; padding: 5px; height: 50px; vertical-align: top;">
-                    Purpose: _______________________________________________________________________________
-                    <br>
-                    _______________________________________________________________________________
+                    Purpose: {{ $ris->purpose ?? '' }}
                 </td>
             </tr>
             <tr>
@@ -168,31 +193,31 @@
             </tr>
             <tr>
                 <td>Signature :</td>
-                <td colspan="2">&nbsp;</td>
-                <td colspan="2">&nbsp;</td>
-                <td>&nbsp;</td>
-                <td colspan="2">&nbsp;</td>
+                <td colspan="2">{{ $ris->requested_by_signature ?? '' }}</td>
+                <td colspan="2">{{ $ris->approved_by_signature ?? '' }}</td>
+                <td>{{ $ris->issued_by_signature ?? '' }}</td>
+                <td colspan="2">{{ $ris->received_by_signature ?? '' }}</td>
             </tr>
             <tr>
                 <td>Printed Name :</td>
-                <td colspan="2">&nbsp;</td>
-                <td colspan="2">&nbsp;</td>
-                <td>&nbsp;</td>
-                <td colspan="2">&nbsp;</td>
+                <td colspan="2">{{ $ris->requested_by_name ?? '' }}</td>
+                <td colspan="2">{{ $ris->approved_by_name ?? '' }}</td>
+                <td>{{ $ris->issued_by_name ?? '' }}</td>
+                <td colspan="2">{{ $ris->received_by_name ?? '' }}</td>
             </tr>
             <tr>
                 <td>Designation :</td>
-                <td colspan="2">&nbsp;</td>
-                <td colspan="2">&nbsp;</td>
-                <td>&nbsp;</td>
-                <td colspan="2">&nbsp;</td>
+                <td colspan="2">{{ $ris->requested_by_designation ?? '' }}</td>
+                <td colspan="2">{{ $ris->approved_by_designation ?? '' }}</td>
+                <td>{{ $ris->issued_by_designation ?? '' }}</td>
+                <td colspan="2">{{ $ris->received_by_designation ?? '' }}</td>
             </tr>
             <tr>
                 <td>Date :</td>
-                <td colspan="2">&nbsp;</td>
-                <td colspan="2">&nbsp;</td>
-                <td>&nbsp;</td>
-                <td colspan="2">&nbsp;</td>
+                <td colspan="2">{{ $ris->requested_by_date ? $ris->requested_by_date->format('m/d/Y') : '' }}</td>
+                <td colspan="2">{{ $ris->approved_by_date ? $ris->approved_by_date->format('m/d/Y') : '' }}</td>
+                <td>{{ $ris->issued_by_date ? $ris->issued_by_date->format('m/d/Y') : '' }}</td>
+                <td colspan="2">{{ $ris->received_by_date ? $ris->received_by_date->format('m/d/Y') : '' }}</td>
             </tr>
         </tbody>
     </table>

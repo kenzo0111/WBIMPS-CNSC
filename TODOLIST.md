@@ -5,5 +5,5 @@
 - [x] Develop and Configure System Notifications
 - [x] Integrate and Display Recent Activity Feed
 - [x] Implement Account Setup Link for New Users (Option A)
-- [ ] Set Up Conditional Requisition Data Retrieval (Based on Form Check)
+- [ ] Set Up Conditional Requisition Data Retrieval (Based on Item Form Check)
 - [x] Complete Database Implementation for the Dashboard

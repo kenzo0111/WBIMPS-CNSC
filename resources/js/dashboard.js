@@ -9276,12 +9276,16 @@ function renderPurchaseOrderWizardStep(requestData) {
                             </tfoot>
                         </table>
                     </div>
+                    
+                    <!-- Dynamic Forms Section -->
+                    <div id="po-dynamic-forms-container" style="margin-top: 32px;"></div>
                 </div>
             </div>
         `
     // Initialize after table exists
     initializePurchaseOrderModal(null, { skipRender: true })
     renderPOItems()
+    renderDynamicPOForms()
     footer.innerHTML = footerButtons(
       AppState.purchaseOrderItems.length > 0,
       'Next'
@@ -10328,6 +10332,7 @@ function addPOItem() {
   AppState.purchaseOrderItems.push(newItem)
   showAlert('New item added to purchase order!', 'info')
   renderPOItems()
+  renderDynamicPOForms()
 }
 
 function removePOItem(id) {
@@ -10336,6 +10341,7 @@ function removePOItem(id) {
       (item) => item.id !== id
     )
     renderPOItems()
+    renderDynamicPOForms()
   }
 }
 
@@ -10363,6 +10369,39 @@ function updatePOItem(id, field, value) {
     item.amount = (item.quantity || 0) * (item.unitCost || 0)
   }
 
+  // Logic for new item procurement (Stock # is blank)
+  const stockNumber = (item.stockPropertyNumber || '').trim()
+  const isNewItem = !stockNumber // Stock # is blank means new item being procured
+  const unitCost = parseFloat(item.unitCost) || 0
+
+  if (
+    isNewItem &&
+    (field === 'stockPropertyNumber' ||
+      field === 'unitCost' ||
+      field === 'quantity')
+  ) {
+    // For new items (procurement), automatically check IAR
+    item.generateIAR = true
+
+    // Disable RIS for procurement items
+    item.generateRIS = false
+
+    // Determine PAR vs ICS based on unit cost
+    if (unitCost > 50000) {
+      // High-value PPE: enable PAR, disable ICS
+      item.generatePAR = true
+      item.generateICS = false
+    } else if (unitCost > 0) {
+      // Semi-expendable: enable ICS, disable PAR
+      item.generateICS = true
+      item.generatePAR = false
+    } else {
+      // No cost set yet, disable both until cost is entered
+      item.generatePAR = false
+      item.generateICS = false
+    }
+  }
+
   AppState.purchaseOrderItems[itemIndex] = item
   renderPOItems()
 }
@@ -10377,7 +10416,8 @@ function updatePOItemForm(itemId, formField, checked) {
   item[formField] = checked
 
   AppState.purchaseOrderItems[itemIndex] = item
-  // No need to re-render the entire table for checkbox changes
+  // Re-render dynamic forms section when checkboxes change
+  renderDynamicPOForms()
 }
 
 function renderPOItems() {
@@ -10543,6 +10583,248 @@ function renderPOItems() {
     formatCurrency(grandTotal)
 
   // Reinitialize icons
+  lucide.createIcons()
+}
+
+// Render dynamic forms section based on checked items
+function renderDynamicPOForms() {
+  const container = document.getElementById('po-dynamic-forms-container')
+  if (!container) return
+
+  // Check which forms are needed across all items
+  const hasICS = AppState.purchaseOrderItems.some((item) => item.generateICS)
+  const hasRIS = AppState.purchaseOrderItems.some((item) => item.generateRIS)
+  const hasPAR = AppState.purchaseOrderItems.some((item) => item.generatePAR)
+  const hasIAR = AppState.purchaseOrderItems.some((item) => item.generateIAR)
+
+  // If no forms are checked, show a message
+  if (!hasICS && !hasRIS && !hasPAR && !hasIAR) {
+    container.innerHTML = `
+      <div style="padding: 24px; background: #f9fafb; border: 2px dashed #d1d5db; border-radius: 12px; text-align: center;">
+        <i data-lucide="file-text" style="width: 48px; height: 48px; color: #9ca3af; margin-bottom: 12px;"></i>
+        <p style="margin: 0; color: #6b7280; font-size: 14px;">Select forms from the items table above to configure them here</p>
+      </div>
+    `
+    lucide.createIcons()
+    return
+  }
+
+  let formsHTML = `
+    <div style="border-top: 2px solid #e5e7eb; padding-top: 24px;">
+      <h4 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 8px;">
+        <i data-lucide="file-check" style="width: 18px; height: 18px; color: #2563eb;"></i>
+        Form Configuration
+      </h4>
+      <p style="margin: 0 0 20px 0; font-size: 13px; color: #6b7280;">Fill in the details for the selected forms. These will be generated upon purchase order completion.</p>
+  `
+
+  // ICS Form Section
+  if (hasICS) {
+    const icsItems = AppState.purchaseOrderItems.filter(
+      (item) => item.generateICS
+    )
+    formsHTML += `
+      <div style="background: #f0f9ff; border: 2px solid #bae6fd; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+          <i data-lucide="package" style="width: 20px; height: 20px; color: #0369a1;"></i>
+          <h5 style="margin: 0; font-size: 15px; font-weight: 600; color: #0369a1;">Inventory Custodian Slip (ICS)</h5>
+          <span style="margin-left: auto; padding: 4px 12px; background: #0369a1; color: white; border-radius: 12px; font-size: 12px; font-weight: 500;">${
+            icsItems.length
+          } item${icsItems.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="grid-2" style="gap: 16px;">
+          <div class="form-group">
+            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+              <i data-lucide="user" style="width: 14px; height: 14px; color: #6b7280;"></i>
+              Received By
+            </label>
+            <input type="text" class="form-input" id="ics-received-by" placeholder="Name of recipient" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+              <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #6b7280;"></i>
+              Position/Designation
+            </label>
+            <input type="text" class="form-input" id="ics-position" placeholder="e.g., Supply Officer" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+              <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
+              Date Received
+            </label>
+            <input type="date" class="form-input" id="ics-date-received" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+              <i data-lucide="map-pin" style="width: 14px; height: 14px; color: #6b7280;"></i>
+              Location/Office
+            </label>
+            <input type="text" class="form-input" id="ics-location" placeholder="Office or building location" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          </div>
+        </div>
+      </div>
+    `
+  }
+
+  // RIS Form Section
+  if (hasRIS) {
+    const risItems = AppState.purchaseOrderItems.filter(
+      (item) => item.generateRIS
+    )
+    formsHTML += `
+      <div style="background: #f0fdf4; border: 2px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+          <i data-lucide="file-text" style="width: 20px; height: 20px; color: #15803d;"></i>
+          <h5 style="margin: 0; font-size: 15px; font-weight: 600; color: #15803d;">Requisition and Issue Slip (RIS)</h5>
+          <span style="margin-left: auto; padding: 4px 12px; background: #15803d; color: white; border-radius: 12px; font-size: 12px; font-weight: 500;">${
+            risItems.length
+          } item${risItems.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="grid-2" style="gap: 16px;">
+          <div class="form-group">
+            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+              <i data-lucide="user" style="width: 14px; height: 14px; color: #6b7280;"></i>
+              Requested By
+            </label>
+            <input type="text" class="form-input" id="ris-requested-by" placeholder="Name of requester" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+              <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #6b7280;"></i>
+              Department/Office
+            </label>
+            <input type="text" class="form-input" id="ris-department" placeholder="Requesting department" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+              <i data-lucide="user-check" style="width: 14px; height: 14px; color: #6b7280;"></i>
+              Issued By
+            </label>
+            <input type="text" class="form-input" id="ris-issued-by" placeholder="Name of issuer" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+              <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
+              Date Issued
+            </label>
+            <input type="date" class="form-input" id="ris-date-issued" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          </div>
+        </div>
+      </div>
+    `
+  }
+
+  // PAR Form Section
+  if (hasPAR) {
+    const parItems = AppState.purchaseOrderItems.filter(
+      (item) => item.generatePAR
+    )
+    formsHTML += `
+      <div style="background: #fefce8; border: 2px solid #fde68a; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+          <i data-lucide="clipboard-check" style="width: 20px; height: 20px; color: #a16207;"></i>
+          <h5 style="margin: 0; font-size: 15px; font-weight: 600; color: #a16207;">Property Acknowledgement Receipt (PAR)</h5>
+          <span style="margin-left: auto; padding: 4px 12px; background: #a16207; color: white; border-radius: 12px; font-size: 12px; font-weight: 500;">${
+            parItems.length
+          } item${parItems.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="grid-2" style="gap: 16px;">
+          <div class="form-group">
+            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+              <i data-lucide="user" style="width: 14px; height: 14px; color: #6b7280;"></i>
+              Acknowledged By
+            </label>
+            <input type="text" class="form-input" id="par-acknowledged-by" placeholder="Name of property custodian" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+              <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #6b7280;"></i>
+              Position/Designation
+            </label>
+            <input type="text" class="form-input" id="par-position" placeholder="e.g., Property Custodian" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+              <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
+              Date Acknowledged
+            </label>
+            <input type="date" class="form-input" id="par-date-acknowledged" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+              <i data-lucide="hash" style="width: 14px; height: 14px; color: #6b7280;"></i>
+              PAR Number (Optional)
+            </label>
+            <input type="text" class="form-input" id="par-number" placeholder="Auto-generated if blank" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          </div>
+        </div>
+      </div>
+    `
+  }
+
+  // IAR Form Section
+  if (hasIAR) {
+    const iarItems = AppState.purchaseOrderItems.filter(
+      (item) => item.generateIAR
+    )
+    formsHTML += `
+      <div style="background: #fdf2f8; border: 2px solid #fbcfe8; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+          <i data-lucide="clipboard-list" style="width: 20px; height: 20px; color: #be185d;"></i>
+          <h5 style="margin: 0; font-size: 15px; font-weight: 600; color: #be185d;">Inspection and Acceptance Report (IAR)</h5>
+          <span style="margin-left: auto; padding: 4px 12px; background: #be185d; color: white; border-radius: 12px; font-size: 12px; font-weight: 500;">${
+            iarItems.length
+          } item${iarItems.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="grid-2" style="gap: 16px;">
+          <div class="form-group">
+            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+              <i data-lucide="user-check" style="width: 14px; height: 14px; color: #6b7280;"></i>
+              Inspected By
+            </label>
+            <input type="text" class="form-input" id="iar-inspected-by" placeholder="Name of inspector" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+              <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #6b7280;"></i>
+              Position/Designation
+            </label>
+            <input type="text" class="form-input" id="iar-position" placeholder="e.g., Inspection Officer" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+              <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
+              Inspection Date
+            </label>
+            <input type="date" class="form-input" id="iar-inspection-date" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+              <i data-lucide="check-circle" style="width: 14px; height: 14px; color: #6b7280;"></i>
+              Acceptance Status
+            </label>
+            <select class="form-select" id="iar-status" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+              <option value="">Select status</option>
+              <option value="accepted">Accepted</option>
+              <option value="accepted-with-remarks">Accepted with Remarks</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+              <i data-lucide="message-square" style="width: 14px; height: 14px; color: #6b7280;"></i>
+              Remarks/Notes
+            </label>
+            <textarea class="form-textarea" id="iar-remarks" placeholder="Any remarks or conditions noted during inspection..." style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; min-height: 80px;"></textarea>
+          </div>
+        </div>
+      </div>
+    `
+  }
+
+  formsHTML += `</div>`
+
+  container.innerHTML = formsHTML
   lucide.createIcons()
 }
 
@@ -12179,6 +12461,7 @@ window.addPOItem = addPOItem
 window.removePOItem = removePOItem
 window.updatePOItem = updatePOItem
 window.updatePOItemForm = updatePOItemForm
+window.renderDynamicPOForms = renderDynamicPOForms
 window.savePurchaseOrder = savePurchaseOrder
 window.approveRequest = approveRequest
 window.rejectRequest = rejectRequest

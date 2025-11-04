@@ -13,6 +13,12 @@ use Illuminate\Database\Eloquent\Model;
  * @property array|null $items
  * @property float|null $grand_total
  * @property string|null $status
+ * @property string|null $received_from_name
+ * @property string|null $received_from_position
+ * @property \Illuminate\Support\Carbon|null $received_from_date
+ * @property string|null $received_by_name
+ * @property string|null $received_by_position
+ * @property \Illuminate\Support\Carbon|null $received_by_date
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  */
@@ -29,10 +35,18 @@ class InventoryCustodianSlip extends Model
         'items',
         'grand_total',
         'status',
+        'received_from_name',
+        'received_from_position',
+        'received_from_date',
+        'received_by_name',
+        'received_by_position',
+        'received_by_date',
     ];
 
     protected $casts = [
         'items' => 'array',
         'grand_total' => 'decimal:2',
+        'received_from_date' => 'date',
+        'received_by_date' => 'date',
     ];
 }

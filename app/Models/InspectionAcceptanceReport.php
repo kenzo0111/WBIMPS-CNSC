@@ -16,12 +16,15 @@ use Illuminate\Database\Eloquent\Model;
  * @property \Illuminate\Support\Carbon|null $po_date
  * @property string|null $requisitioning_office
  * @property string|null $responsibility_center_code
+ * @property \Illuminate\Support\Carbon|null $responsibility_date
  * @property string|null $invoice_no
  * @property \Illuminate\Support\Carbon|null $invoice_date
  * @property \Illuminate\Support\Carbon|null $date_inspected
  * @property \Illuminate\Support\Carbon|null $date_received
  * @property string|null $inspection_status
+ * @property string|null $inspection_officer_label
  * @property string|null $acceptance_status
+ * @property string|null $custodian_label
  * @property array|null $items
  * @property string|null $status
  * @property \Illuminate\Support\Carbon|null $created_at
@@ -43,12 +46,15 @@ class InspectionAcceptanceReport extends Model
         'po_date',
         'requisitioning_office',
         'responsibility_center_code',
+        'responsibility_date',
         'invoice_no',
         'invoice_date',
         'date_inspected',
         'date_received',
         'inspection_status',
+        'inspection_officer_label',
         'acceptance_status',
+        'custodian_label',
         'items',
         'status',
     ];
@@ -60,5 +66,6 @@ class InspectionAcceptanceReport extends Model
         'invoice_date' => 'date',
         'date_inspected' => 'date',
         'date_received' => 'date',
+        'responsibility_date' => 'date',
     ];
 }
