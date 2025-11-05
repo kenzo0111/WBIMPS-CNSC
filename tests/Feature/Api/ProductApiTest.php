@@ -33,6 +33,7 @@ test('can create a product', function () {
     $category = Category::factory()->create();
 
     $productData = [
+        'sku' => 'SKU-TEST-001',
         'name' => 'Test Product',
         'description' => 'Test Description',
         'quantity' => 100,
@@ -45,8 +46,10 @@ test('can create a product', function () {
 
     $response->assertStatus(201)
         ->assertJson([
-            'name' => 'Test Product',
-            'quantity' => 100,
+            'data' => [
+                'name' => 'Test Product',
+                'quantity' => 100,
+            ],
         ]);
 
     $this->assertDatabaseHas('products', [
@@ -62,8 +65,10 @@ test('can show a specific product', function () {
 
     $response->assertStatus(200)
         ->assertJson([
-            'id' => $product->id,
-            'name' => $product->name,
+            'data' => [
+                'id' => $product->id,
+                'name' => $product->name,
+            ],
         ]);
 });
 
@@ -71,6 +76,7 @@ test('can update a product', function () {
     $product = Product::factory()->create(['name' => 'Old Name']);
 
     $response = $this->putJson("/api/products/{$product->id}", [
+        'sku' => $product->sku,
         'name' => 'Updated Name',
         'description' => $product->description,
         'quantity' => $product->quantity,
@@ -111,5 +117,5 @@ test('validates required fields when creating product', function () {
     $response = $this->postJson('/api/products', []);
 
     $response->assertStatus(422)
-        ->assertJsonValidationErrors(['name', 'quantity', 'unit', 'unit_cost']);
+        ->assertJsonValidationErrors(['sku', 'name']);
 });

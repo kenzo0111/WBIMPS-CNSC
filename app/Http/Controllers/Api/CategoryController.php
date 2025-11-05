@@ -22,11 +22,12 @@ class CategoryController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'code' => 'nullable|string|unique:categories,code',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
         ]);
         // Generate a new category code like C001 if not provided
-        if (empty($request->input('code'))) {
+        if (empty($validated['code'])) {
             $last = Category::whereNotNull('code')
                 ->orderByRaw('CAST(SUBSTRING(code, 2) AS UNSIGNED) DESC')
                 ->first();

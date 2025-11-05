@@ -21,13 +21,14 @@ class ProductFactory extends Factory
     public function definition(): array
     {
         return [
+            'sku' => 'SKU-'.fake()->unique()->numberBetween(10000, 99999),
             'name' => fake()->words(3, true),
             'description' => fake()->sentence(),
             'quantity' => fake()->numberBetween(10, 1000),
             'unit' => fake()->randomElement(['pcs', 'box', 'pack', 'unit', 'kg', 'liter']),
             'unit_cost' => fake()->randomFloat(2, 10, 1000),
             'category_id' => Category::factory(),
-            'date_acquired' => fake()->date(),
+            'date' => fake()->date(),
         ];
     }
 

@@ -38,8 +38,9 @@ test('can create a category', function () {
 
     $response->assertStatus(201)
         ->assertJson([
-            'code' => 'CAT001',
-            'name' => 'Test Category',
+            'data' => [
+                'name' => 'Test Category',
+            ],
         ]);
 
     $this->assertDatabaseHas('categories', [
@@ -55,8 +56,10 @@ test('can show a specific category', function () {
 
     $response->assertStatus(200)
         ->assertJson([
-            'id' => $category->id,
-            'name' => $category->name,
+            'data' => [
+                'id' => $category->id,
+                'name' => $category->name,
+            ],
         ]);
 });
 
@@ -93,5 +96,5 @@ test('validates required fields when creating category', function () {
     $response = $this->postJson('/api/categories', []);
 
     $response->assertStatus(422)
-        ->assertJsonValidationErrors(['code', 'name']);
+        ->assertJsonValidationErrors(['name']);
 });

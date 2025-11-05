@@ -1,0 +1,163 @@
+<?php
+
+use App\Models\PurchaseRequest;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
+
+uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    // Create an authenticated admin user for tests
+    $this->user = User::factory()->create([
+        'is_admin' => true,
+        'status' => 'active',
+    ]);
+    $this->actingAs($this->user, 'web');
+    
+    // Fake mail to prevent actual email sending
+    Mail::fake();
+});
+
+test('can list purchase requests', function () {
+    PurchaseRequest::factory()->count(3)->create();
+
+    $response = $this->getJson('/api/purchase-requests');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(3);
+});
+
+test('can filter purchase requests by department', function () {
+    PurchaseRequest::factory()->create(['department' => 'IT']);
+    PurchaseRequest::factory()->create(['department' => 'HR']);
+    PurchaseRequest::factory()->create(['department' => 'IT']);
+
+    $response = $this->getJson('/api/purchase-requests?department=IT');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(2);
+});
+
+test('can filter purchase requests by status', function () {
+    PurchaseRequest::factory()->pending()->create();
+    PurchaseRequest::factory()->approved()->create();
+    PurchaseRequest::factory()->pending()->create();
+
+    $response = $this->getJson('/api/purchase-requests?status=pending');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(2);
+});
+
+test('can create a purchase request', function () {
+    $requestData = [
+        'email' => 'test@example.com',
+        'requester' => 'John Doe',
+        'department' => 'IT',
+        'items' => ['Laptop', 'Mouse', 'Keyboard'],
+        'unit' => 'pcs',
+        'quantity' => 3,
+        'unitCost' => 50000,
+        'neededDate' => now()->addDays(7)->format('Y-m-d'),
+        'priority' => 'High',
+    ];
+
+    $response = $this->postJson('/api/purchase-requests', $requestData);
+
+    $response->assertStatus(201)
+        ->assertJson([
+            'email' => 'test@example.com',
+            'requester' => 'John Doe',
+            'department' => 'IT',
+            'status' => 'Incoming',
+        ]);
+
+    $this->assertDatabaseHas('purchase_requests', [
+        'email' => 'test@example.com',
+        'requester' => 'John Doe',
+        'department' => 'IT',
+    ]);
+});
+
+test('generates unique request IDs with current year', function () {
+    $currentYear = now()->year;
+    
+    $response = $this->postJson('/api/purchase-requests', [
+        'email' => 'test@example.com',
+        'requester' => 'John Doe',
+        'department' => 'IT',
+        'items' => ['Test Item'],
+    ]);
+
+    $response->assertStatus(201);
+    
+    $requestId = $response->json('request_id');
+    expect($requestId)->toStartWith("REQ-{$currentYear}-");
+});
+
+test('validates required fields when creating purchase request', function () {
+    $response = $this->postJson('/api/purchase-requests', []);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['email', 'requester', 'department', 'items']);
+});
+
+test('can update purchase request status by request_id', function () {
+    $pr = PurchaseRequest::factory()->create([
+        'request_id' => 'REQ-2025-001',
+        'status' => 'Incoming',
+    ]);
+
+    $response = $this->postJson("/api/status-requests/{$pr->request_id}/status", [
+        'status' => 'Approved',
+    ]);
+
+    $response->assertStatus(200)
+        ->assertJson([
+            'status' => 'Approved',
+        ]);
+
+    $this->assertDatabaseHas('purchase_requests', [
+        'request_id' => 'REQ-2025-001',
+        'status' => 'Approved',
+    ]);
+});
+
+test('can update purchase request status by numeric id', function () {
+    $pr = PurchaseRequest::factory()->create(['status' => 'Incoming']);
+
+    $response = $this->postJson("/api/status-requests/{$pr->id}/status", [
+        'status' => 'Rejected',
+    ]);
+
+    $response->assertStatus(200)
+        ->assertJson([
+            'status' => 'Rejected',
+        ]);
+});
+
+test('returns 404 when updating non-existent purchase request', function () {
+    $response = $this->postJson('/api/status-requests/99999/status', [
+        'status' => 'Approved',
+    ]);
+
+    $response->assertStatus(404)
+        ->assertJson([
+            'error' => 'Purchase request not found',
+        ]);
+});
+
+test('calculates total cost for each purchase request', function () {
+    PurchaseRequest::factory()->create([
+        'unit_cost' => 100.50,
+        'quantity' => 5,
+    ]);
+
+    $response = $this->getJson('/api/purchase-requests');
+
+    $response->assertStatus(200);
+    
+    $totalCost = $response->json('0.total_cost');
+    expect($totalCost)->toBe(502.5);
+});
