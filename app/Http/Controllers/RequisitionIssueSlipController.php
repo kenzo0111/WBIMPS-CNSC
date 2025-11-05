@@ -4,14 +4,150 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\RequisitionIssueSlip;
 
 class RequisitionIssueSlipController extends Controller
 {
+    /**
+     * Display a listing of all RIS records
+     */
+    public function index()
+    {
+        $risRecords = RequisitionIssueSlip::orderBy('created_at', 'desc')->get();
+        return view('ris.index', compact('risRecords'));
+    }
+
+    /**
+     * Store a new RIS record
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'ris_no' => 'required|string|unique:requisition_issue_slips,ris_no',
+            'entity_name' => 'nullable|string',
+            'fund_cluster' => 'nullable|string',
+            'division' => 'nullable|string',
+            'responsibility_center_code' => 'nullable|string',
+            'office' => 'nullable|string',
+            'purpose' => 'nullable|string',
+            'items' => 'nullable|array',
+            'requested_by_name' => 'nullable|string',
+            'requested_by_designation' => 'nullable|string',
+            'requested_by_date' => 'nullable|date',
+            'approved_by_name' => 'nullable|string',
+            'approved_by_designation' => 'nullable|string',
+            'approved_by_date' => 'nullable|date',
+            'issued_by_name' => 'nullable|string',
+            'issued_by_designation' => 'nullable|string',
+            'issued_by_date' => 'nullable|date',
+            'received_by_name' => 'nullable|string',
+            'received_by_designation' => 'nullable|string',
+            'received_by_date' => 'nullable|date',
+        ]);
+
+        $ris = RequisitionIssueSlip::create($validated);
+
+        try {
+            \App\Models\Activity::create([
+                'action' => 'Created Requisition Issue Slip',
+                'meta' => json_encode(['ris_no' => $ris->ris_no, 'ris_id' => $ris->id])
+            ]);
+        } catch (\Throwable $e) {
+            logger()->warning('Failed to record activity for RIS creation', ['error' => $e->getMessage()]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'RIS created successfully',
+            'data' => $ris
+        ]);
+    }
+
+    /**
+     * Display the specified RIS record
+     */
+    public function show($id)
+    {
+        $ris = RequisitionIssueSlip::findOrFail($id);
+        return response()->json($ris);
+    }
+
     public function generatePDF(Request $request)
     {
+        // Check if we're generating from a saved RIS (using ris_id parameter)
+        if ($request->has('ris_id')) {
+            $ris = \App\Models\RequisitionIssueSlip::find($request->input('ris_id'));
+            
+            if (!$ris) {
+                abort(404, 'Requisition Issue Slip not found');
+            }
+
+            $pdf = Pdf::loadView('pdf.requisition_issue_slips_pdf', ['ris' => $ris]);
+
+            try {
+                \App\Models\Activity::create([
+                    'action' => 'Generated Requisition Issue Slip PDF', 
+                    'meta' => json_encode(['ris_no' => $ris->ris_no, 'ris_id' => $ris->id])
+                ]);
+            } catch (\Throwable $e) {
+                logger()->warning('Failed to record activity for RIS PDF', ['error' => $e->getMessage()]);
+            }
+
+            return $pdf->download('requisition_issue_slip_' . $ris->ris_no . '.pdf');
+        }
+
+        // Check if we're generating from a request_id (purchase order ID from dashboard)
+        if ($request->has('request_id')) {
+            $id = $request->input('request_id');
+            
+            // Try to find RIS first
+            $ris = \App\Models\RequisitionIssueSlip::find($id);
+            
+            if (!$ris) {
+                // If RIS doesn't exist, try to find a purchase order with this ID
+                // and generate RIS from it
+                $purchaseOrder = \App\Models\PurchaseOrder::find($id);
+                
+                if ($purchaseOrder) {
+                    // Generate RIS data from purchase order
+                    $risData = $this->generateRisFromPurchaseOrder($purchaseOrder);
+                    $pdf = Pdf::loadView('pdf.requisition_issue_slips_pdf', ['ris' => (object)$risData]);
+                    
+                    try {
+                        \App\Models\Activity::create([
+                            'action' => 'Downloaded Requisition Issue Slip PDF from PO', 
+                            'meta' => json_encode(['po_number' => $purchaseOrder->po_number, 'po_id' => $purchaseOrder->id])
+                        ]);
+                    } catch (\Throwable $e) {
+                        logger()->warning('Failed to record activity for RIS PDF download', ['error' => $e->getMessage()]);
+                    }
+                    
+                    return $pdf->download('RIS_from_PO_' . $purchaseOrder->po_number . '.pdf');
+                }
+                
+                // If no purchase order found either, show error
+                abort(404, 'Requisition Issue Slip not found. No associated Purchase Order found.');
+            }
+
+            // If RIS found, download it
+            $pdf = Pdf::loadView('pdf.requisition_issue_slips_pdf', ['ris' => $ris]);
+
+            try {
+                \App\Models\Activity::create([
+                    'action' => 'Downloaded Requisition Issue Slip PDF', 
+                    'meta' => json_encode(['ris_no' => $ris->ris_no, 'ris_id' => $ris->id])
+                ]);
+            } catch (\Throwable $e) {
+                logger()->warning('Failed to record activity for RIS PDF download', ['error' => $e->getMessage()]);
+            }
+
+            return $pdf->download('RIS_' . $ris->ris_no . '.pdf');
+        }
+
+        // Otherwise, generate from form data
         $data = $this->prepareData($request);
 
-        $pdf = Pdf::loadView('pdf.requisition_issue_slips_pdf', $data);
+        $pdf = Pdf::loadView('pdf.requisition_issue_slips_pdf', ['ris' => (object)$data]);
 
         try {
             \App\Models\Activity::create(['action' => 'Generated Requisition Issue Slip PDF', 'meta' => json_encode(['ris_no' => $data['ris_no'] ?? null])]);
@@ -24,52 +160,81 @@ class RequisitionIssueSlipController extends Controller
 
     public function preview(Request $request = null, $id = null)
     {
-        // If an ID is provided, load the requisition issue slip from the database
+        // If an ID is provided, try to load the requisition issue slip from the database
         if ($id) {
             $ris = \App\Models\RequisitionIssueSlip::find($id);
             
             if (!$ris) {
-                abort(404, 'Requisition Issue Slip not found');
+                // If RIS doesn't exist, try to find a purchase order with this ID
+                // and generate RIS from it
+                $purchaseOrder = \App\Models\PurchaseOrder::find($id);
+                
+                if ($purchaseOrder) {
+                    // Generate RIS data from purchase order
+                    $risData = $this->generateRisFromPurchaseOrder($purchaseOrder);
+                    $pdf = Pdf::loadView('pdf.requisition_issue_slips_pdf', ['ris' => (object)$risData]);
+                    return $pdf->stream('requisition_issue_slip_PO_' . $purchaseOrder->po_number . '.pdf');
+                }
+                
+                // If no purchase order found either, show error
+                abort(404, 'Requisition Issue Slip not found. Please create a RIS record first.');
             }
 
-            // Prepare data from the model
-            $data = [
-                'ris_no' => $ris->ris_no ?? '',
-                'entity_name' => $ris->entity_name ?? '',
-                'fund_cluster' => $ris->fund_cluster ?? '',
-                'division' => $ris->division ?? '',
-                'responsibility_center_code' => $ris->responsibility_center_code ?? '',
-                'office' => $ris->office ?? '',
-                'purpose' => $ris->purpose ?? '',
-                'items' => $ris->items ?? [],
-                'requested_by_signature' => $ris->requested_by_signature ?? '',
-                'requested_by_name' => $ris->requested_by_name ?? '',
-                'requested_by_designation' => $ris->requested_by_designation ?? '',
-                'requested_by_date' => $ris->requested_by_date ? $ris->requested_by_date->format('Y-m-d') : null,
-                'approved_by_signature' => $ris->approved_by_signature ?? '',
-                'approved_by_name' => $ris->approved_by_name ?? '',
-                'approved_by_designation' => $ris->approved_by_designation ?? '',
-                'approved_by_date' => $ris->approved_by_date ? $ris->approved_by_date->format('Y-m-d') : null,
-                'issued_by_signature' => $ris->issued_by_signature ?? '',
-                'issued_by_name' => $ris->issued_by_name ?? '',
-                'issued_by_designation' => $ris->issued_by_designation ?? '',
-                'issued_by_date' => $ris->issued_by_date ? $ris->issued_by_date->format('Y-m-d') : null,
-                'received_by_signature' => $ris->received_by_signature ?? '',
-                'received_by_name' => $ris->received_by_name ?? '',
-                'received_by_designation' => $ris->received_by_designation ?? '',
-                'received_by_date' => $ris->received_by_date ? $ris->received_by_date->format('Y-m-d') : null,
-            ];
-
-            $pdf = Pdf::loadView('pdf.requisition_issue_slips_pdf', $data);
+            $pdf = Pdf::loadView('pdf.requisition_issue_slips_pdf', ['ris' => $ris]);
             return $pdf->stream('requisition_issue_slip_' . $ris->ris_no . '.pdf');
         }
 
         // If no ID is provided, use request data (for preview/generate)
         $data = $this->prepareData($request);
 
-        $pdf = Pdf::loadView('pdf.requisition_issue_slips_pdf', $data);
+        $pdf = Pdf::loadView('pdf.requisition_issue_slips_pdf', ['ris' => (object)$data]);
 
         return $pdf->stream('requisition_issue_slip.pdf');
+    }
+
+    /**
+     * Generate RIS data from a Purchase Order
+     */
+    private function generateRisFromPurchaseOrder($purchaseOrder): array
+    {
+        $items = [];
+        
+        if (is_array($purchaseOrder->items)) {
+            foreach ($purchaseOrder->items as $item) {
+                $items[] = [
+                    'stock_no' => $item['stock_no'] ?? '',
+                    'unit' => $item['unit'] ?? '',
+                    'description' => $item['item_description'] ?? $item['description'] ?? '',
+                    'quantity' => $item['quantity'] ?? '',
+                    'stock_available' => 'Yes', // Default
+                    'issue_quantity' => $item['quantity'] ?? '',
+                    'remarks' => '',
+                ];
+            }
+        }
+
+        return [
+            'ris_no' => 'RIS-' . $purchaseOrder->po_number,
+            'entity_name' => 'Camarines Norte State College',
+            'fund_cluster' => '',
+            'division' => '',
+            'responsibility_center_code' => '',
+            'office' => $purchaseOrder->supplier ?? '',
+            'purpose' => $purchaseOrder->purpose ?? 'Generated from Purchase Order',
+            'items' => $items,
+            'requested_by_name' => '',
+            'requested_by_designation' => '',
+            'requested_by_date' => null,
+            'approved_by_name' => '',
+            'approved_by_designation' => '',
+            'approved_by_date' => null,
+            'issued_by_name' => '',
+            'issued_by_designation' => '',
+            'issued_by_date' => null,
+            'received_by_name' => '',
+            'received_by_designation' => '',
+            'received_by_date' => null,
+        ];
     }
 
     private function prepareData(Request $request): array

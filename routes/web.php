@@ -38,6 +38,11 @@ Route::post('/inspection-acceptance-report/generate', [InspectionAcceptanceRepor
 Route::get('/inspection-acceptance-report/preview', [InspectionAcceptanceReportController::class, 'preview'])->name('inspection-acceptance-report.preview');
 Route::post('/inventory-custodian-slip/generate', [InventoryCustodianSlipController::class, 'generatePDF'])->name('inventory-custodian-slip.generate');
 Route::get('/inventory-custodian-slip/preview', [InventoryCustodianSlipController::class, 'preview'])->name('inventory-custodian-slip.preview');
+
+// RIS routes
+Route::get('/requisition-issue-slip', [RequisitionIssueSlipController::class, 'index'])->name('requisition-issue-slip.index');
+Route::post('/requisition-issue-slip', [RequisitionIssueSlipController::class, 'store'])->name('requisition-issue-slip.store');
+Route::get('/requisition-issue-slip/{id}', [RequisitionIssueSlipController::class, 'show'])->name('requisition-issue-slip.show');
 Route::post('/requisition-issue-slip/generate', [RequisitionIssueSlipController::class, 'generatePDF'])->name('requisition-issue-slip.generate');
 Route::get('/requisition-issue-slip/preview', [RequisitionIssueSlipController::class, 'preview'])->name('requisition-issue-slip.preview');
 

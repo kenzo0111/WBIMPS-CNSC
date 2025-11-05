@@ -21,6 +21,8 @@
         window.APP_ROUTES.purchaseOrderView = "{{ url('/purchase-order/view/{id}') }}";
         window.APP_ROUTES.purchaseRequestView = "{{ url('/purchase-request/view/{id}') }}";
         window.APP_ROUTES.inventoryCustodianSlipView = "{{ url('/inventory-custodian-slip/view/{id}') }}";
+        window.APP_ROUTES.requisitionIssueSlipView = "{{ url('/requisition-issue-slip/view/{id}') }}";
+        window.APP_ROUTES.propertyAcknowledgementReceiptView = "{{ url('/property-acknowledgement-receipt/view/{id}') }}";
         window.APP_ROUTES.inspectionAcceptanceReportView = "{{ url('/inspection-acceptance-report/view/{id}') }}";
     </script>
     <script>

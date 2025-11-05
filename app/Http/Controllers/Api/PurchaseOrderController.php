@@ -54,6 +54,10 @@ class PurchaseOrderController extends Controller
             'gentlemen' => 'nullable|string',
             'notes' => 'nullable|string',
             'status' => 'nullable|string|in:draft,submitted,pending,approved,delivered,completed,cancelled',
+            'ics_form_data' => 'nullable|array',
+            'ris_form_data' => 'nullable|array',
+            'par_form_data' => 'nullable|array',
+            'iar_form_data' => 'nullable|array',
         ]);
 
         if ($validator->fails()) {
@@ -70,6 +74,15 @@ class PurchaseOrderController extends Controller
 
         $data = $request->all();
         
+        // Extract form data before creating purchase order
+        $icsFormData = $data['ics_form_data'] ?? null;
+        $risFormData = $data['ris_form_data'] ?? null;
+        $parFormData = $data['par_form_data'] ?? null;
+        $iarFormData = $data['iar_form_data'] ?? null;
+        
+        // Remove form data from purchase order data
+        unset($data['ics_form_data'], $data['ris_form_data'], $data['par_form_data'], $data['iar_form_data']);
+        
         // Set default status if not provided
         if (!isset($data['status'])) {
             $data['status'] = 'submitted';
@@ -81,6 +94,26 @@ class PurchaseOrderController extends Controller
         }
 
         $purchaseOrder = PurchaseOrder::create($data);
+
+        // Create ICS record if ICS form data is provided and items are marked for ICS
+        if ($icsFormData && !empty($icsFormData['ics_no'])) {
+            $this->createInventoryCustodianSlip($purchaseOrder, $icsFormData);
+        }
+
+        // Create RIS record if RIS form data is provided and items are marked for RIS
+        if ($risFormData && !empty($risFormData['ris_no'])) {
+            $this->createRequisitionIssueSlip($purchaseOrder, $risFormData);
+        }
+
+        // Create PAR record if PAR form data is provided and items are marked for PAR
+        if ($parFormData && !empty($parFormData['par_no'])) {
+            $this->createPropertyAcknowledgementReceipt($purchaseOrder, $parFormData);
+        }
+
+        // Create IAR record if IAR form data is provided and items are marked for IAR
+        if ($iarFormData && !empty($iarFormData['iar_no'])) {
+            $this->createInspectionAcceptanceReport($purchaseOrder, $iarFormData);
+        }
 
         // Log activity
         try {
@@ -272,5 +305,286 @@ class PurchaseOrderController extends Controller
             'message' => 'Purchase order status updated successfully',
             'data' => $purchaseOrder
         ]);
+    }
+
+    /**
+     * Create an Inventory Custodian Slip record from purchase order data.
+     */
+    protected function createInventoryCustodianSlip($purchaseOrder, $formData)
+    {
+        try {
+            // Filter items that are marked for ICS generation
+            $icsItems = collect($purchaseOrder->items)
+                ->filter(function ($item) {
+                    return isset($item['generateICS']) && $item['generateICS'] === true;
+                })
+                ->map(function ($item) {
+                    return [
+                        'stock_number' => $item['stockPropertyNumber'] ?? '',
+                        'unit' => $item['unit'] ?? '',
+                        'description' => $item['description'] ?? $item['detailedDescription'] ?? '',
+                        'quantity' => $item['quantity'] ?? 0,
+                        'unit_cost' => $item['unitCost'] ?? 0,
+                        'amount' => $item['amount'] ?? 0,
+                    ];
+                })
+                ->values()
+                ->toArray();
+
+            if (empty($icsItems)) {
+                return null;
+            }
+
+            // Calculate grand total for ICS items
+            $icsTotal = collect($icsItems)->sum('amount');
+
+            // Create ICS record
+            $ics = \App\Models\InventoryCustodianSlip::create([
+                'ics_no' => $formData['ics_no'],
+                'entity_name' => $formData['entity_name'] ?? $purchaseOrder->entity_name,
+                'fund_cluster' => $formData['fund_cluster'] ?? $purchaseOrder->fund_cluster,
+                'items' => $icsItems,
+                'grand_total' => $icsTotal,
+                'status' => 'Active',
+                'received_from_name' => $formData['received_from_name'] ?? null,
+                'received_from_position' => $formData['received_from_position'] ?? null,
+                'received_from_date' => !empty($formData['received_from_date']) ? $formData['received_from_date'] : null,
+                'received_by_name' => $formData['received_by_name'] ?? null,
+                'received_by_position' => $formData['received_by_position'] ?? null,
+                'received_by_date' => !empty($formData['received_by_date']) ? $formData['received_by_date'] : null,
+            ]);
+
+            // Log activity
+            \App\Models\Activity::create([
+                'action' => 'Inventory Custodian Slip Created',
+                'meta' => json_encode([
+                    'ics_no' => $ics->ics_no,
+                    'po_number' => $purchaseOrder->po_number,
+                    'items_count' => count($icsItems)
+                ])
+            ]);
+
+            return $ics;
+        } catch (\Throwable $e) {
+            \Log::error('Failed to create ICS record', [
+                'error' => $e->getMessage(),
+                'po_number' => $purchaseOrder->po_number
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Create a Requisition and Issue Slip record from purchase order data.
+     */
+    protected function createRequisitionIssueSlip($purchaseOrder, $formData)
+    {
+        try {
+            // Filter items that are marked for RIS generation
+            $risItems = collect($purchaseOrder->items)
+                ->filter(function ($item) {
+                    return isset($item['generateRIS']) && $item['generateRIS'] === true;
+                })
+                ->map(function ($item) {
+                    return [
+                        'stock_number' => $item['stockPropertyNumber'] ?? '',
+                        'unit' => $item['unit'] ?? '',
+                        'description' => $item['description'] ?? $item['detailedDescription'] ?? '',
+                        'quantity' => $item['quantity'] ?? 0,
+                        'unit_cost' => $item['unitCost'] ?? 0,
+                        'amount' => $item['amount'] ?? 0,
+                    ];
+                })
+                ->values()
+                ->toArray();
+
+            if (empty($risItems)) {
+                return null;
+            }
+
+            // Calculate grand total for RIS items
+            $risTotal = collect($risItems)->sum('amount');
+
+            // Create RIS record
+            $ris = \App\Models\RequisitionIssueSlip::create([
+                'ris_no' => $formData['ris_no'],
+                'entity_name' => $formData['entity_name'] ?? $purchaseOrder->entity_name,
+                'fund_cluster' => $formData['fund_cluster'] ?? $purchaseOrder->fund_cluster,
+                'division' => $formData['division'] ?? null,
+                'office' => $formData['office'] ?? null,
+                'responsibility_center_code' => $formData['responsibility_center_code'] ?? null,
+                'purpose' => $formData['purpose'] ?? null,
+                'items' => $risItems,
+                'grand_total' => $risTotal,
+                'status' => 'Active',
+                'requested_by_name' => $formData['requested_by_name'] ?? null,
+                'requested_by_designation' => $formData['requested_by_designation'] ?? null,
+                'requested_by_date' => !empty($formData['requested_by_date']) ? $formData['requested_by_date'] : null,
+                'approved_by_name' => $formData['approved_by_name'] ?? null,
+                'approved_by_designation' => $formData['approved_by_designation'] ?? null,
+                'approved_by_date' => !empty($formData['approved_by_date']) ? $formData['approved_by_date'] : null,
+                'issued_by_name' => $formData['issued_by_name'] ?? null,
+                'issued_by_designation' => $formData['issued_by_designation'] ?? null,
+                'issued_by_date' => !empty($formData['issued_by_date']) ? $formData['issued_by_date'] : null,
+                'received_by_name' => $formData['received_by_name'] ?? null,
+                'received_by_designation' => $formData['received_by_designation'] ?? null,
+                'received_by_date' => !empty($formData['received_by_date']) ? $formData['received_by_date'] : null,
+            ]);
+
+            // Log activity
+            \App\Models\Activity::create([
+                'action' => 'Requisition and Issue Slip Created',
+                'meta' => json_encode([
+                    'ris_no' => $ris->ris_no,
+                    'po_number' => $purchaseOrder->po_number,
+                    'items_count' => count($risItems)
+                ])
+            ]);
+
+            return $ris;
+        } catch (\Throwable $e) {
+            \Log::error('Failed to create RIS record', [
+                'error' => $e->getMessage(),
+                'po_number' => $purchaseOrder->po_number
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Create a Property Acknowledgement Receipt record from purchase order data.
+     */
+    protected function createPropertyAcknowledgementReceipt($purchaseOrder, $formData)
+    {
+        try {
+            // Filter items that are marked for PAR generation
+            $parItems = collect($purchaseOrder->items)
+                ->filter(function ($item) {
+                    return isset($item['generatePAR']) && $item['generatePAR'] === true;
+                })
+                ->map(function ($item) {
+                    return [
+                        'stock_number' => $item['stockPropertyNumber'] ?? '',
+                        'unit' => $item['unit'] ?? '',
+                        'description' => $item['description'] ?? $item['detailedDescription'] ?? '',
+                        'quantity' => $item['quantity'] ?? 0,
+                        'unit_cost' => $item['unitCost'] ?? 0,
+                        'amount' => $item['amount'] ?? 0,
+                    ];
+                })
+                ->values()
+                ->toArray();
+
+            if (empty($parItems)) {
+                return null;
+            }
+
+            // Calculate grand total for PAR items
+            $parTotal = collect($parItems)->sum('amount');
+
+            // Create PAR record
+            $par = \App\Models\PropertyAcknowledgementReceipt::create([
+                'par_no' => $formData['par_no'],
+                'entity_name' => $formData['entity_name'] ?? $purchaseOrder->entity_name,
+                'fund_cluster' => $formData['fund_cluster'] ?? $purchaseOrder->fund_cluster,
+                'items' => $parItems,
+                'grand_total' => $parTotal,
+                'status' => 'Active',
+                'received_from_name' => $formData['received_from_name'] ?? null,
+                'received_from_position' => $formData['received_from_position'] ?? null,
+                'received_from_date' => !empty($formData['received_from_date']) ? $formData['received_from_date'] : null,
+                'received_by_name' => $formData['received_by_name'] ?? null,
+                'received_by_position' => $formData['received_by_position'] ?? null,
+                'received_by_date' => !empty($formData['received_by_date']) ? $formData['received_by_date'] : null,
+            ]);
+
+            // Log activity
+            \App\Models\Activity::create([
+                'action' => 'Property Acknowledgement Receipt Created',
+                'meta' => json_encode([
+                    'par_no' => $par->par_no,
+                    'po_number' => $purchaseOrder->po_number,
+                    'items_count' => count($parItems)
+                ])
+            ]);
+
+            return $par;
+        } catch (\Throwable $e) {
+            \Log::error('Failed to create PAR record', [
+                'error' => $e->getMessage(),
+                'po_number' => $purchaseOrder->po_number
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Create an Inspection and Acceptance Report record from purchase order data.
+     */
+    protected function createInspectionAcceptanceReport($purchaseOrder, $formData)
+    {
+        try {
+            // Filter items that are marked for IAR generation
+            $iarItems = collect($purchaseOrder->items)
+                ->filter(function ($item) {
+                    return isset($item['generateIAR']) && $item['generateIAR'] === true;
+                })
+                ->map(function ($item) {
+                    return [
+                        'stock_number' => $item['stockPropertyNumber'] ?? '',
+                        'unit' => $item['unit'] ?? '',
+                        'description' => $item['description'] ?? $item['detailedDescription'] ?? '',
+                        'quantity' => $item['quantity'] ?? 0,
+                        'unit_cost' => $item['unitCost'] ?? 0,
+                        'amount' => $item['amount'] ?? 0,
+                    ];
+                })
+                ->values()
+                ->toArray();
+
+            if (empty($iarItems)) {
+                return null;
+            }
+
+            // Calculate grand total for IAR items
+            $iarTotal = collect($iarItems)->sum('amount');
+
+            // Create IAR record
+            $iar = \App\Models\InspectionAcceptanceReport::create([
+                'iar_no' => $formData['iar_no'],
+                'entity_name' => $formData['entity_name'] ?? $purchaseOrder->entity_name,
+                'fund_cluster' => $formData['fund_cluster'] ?? $purchaseOrder->fund_cluster,
+                'invoice_number' => $formData['invoice_number'] ?? null,
+                'invoice_date' => !empty($formData['invoice_date']) ? $formData['invoice_date'] : null,
+                'po_number' => $formData['po_number'] ?? $purchaseOrder->po_number,
+                'items' => $iarItems,
+                'grand_total' => $iarTotal,
+                'status' => 'Active',
+                'inspected_by_name' => $formData['inspected_by_name'] ?? null,
+                'inspected_by_position' => $formData['inspected_by_position'] ?? null,
+                'inspected_by_date' => !empty($formData['inspected_by_date']) ? $formData['inspected_by_date'] : null,
+                'inspected_by_name_2' => $formData['inspected_by_name_2'] ?? null,
+                'inspected_by_position_2' => $formData['inspected_by_position_2'] ?? null,
+                'inspected_by_date_2' => !empty($formData['inspected_by_date_2']) ? $formData['inspected_by_date_2'] : null,
+            ]);
+
+            // Log activity
+            \App\Models\Activity::create([
+                'action' => 'Inspection and Acceptance Report Created',
+                'meta' => json_encode([
+                    'iar_no' => $iar->iar_no,
+                    'po_number' => $purchaseOrder->po_number,
+                    'items_count' => count($iarItems)
+                ])
+            ]);
+
+            return $iar;
+        } catch (\Throwable $e) {
+            \Log::error('Failed to create IAR record', [
+                'error' => $e->getMessage(),
+                'po_number' => $purchaseOrder->po_number
+            ]);
+            return null;
+        }
     }
 }

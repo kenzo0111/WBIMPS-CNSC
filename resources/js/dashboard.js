@@ -9568,7 +9568,100 @@ function persistCurrentWizardStep() {
     AppState.purchaseOrderDraft.paymentTerm =
       modal.querySelector('#po-payment-term')?.value || ''
   } else if (step === 3) {
-    // Step 3 (items) - forms are now integrated into each item, no separate checkboxes to save
+    // Step 3 - Save ICS, RIS, PAR, and IAR form data
+    // Save ICS form data
+    AppState.purchaseOrderDraft.icsFormData = {
+      ics_no: modal.querySelector('#ics_ics_no')?.value || '',
+      entity_name: modal.querySelector('#ics_entity_name')?.value || '',
+      fund_cluster: modal.querySelector('#ics_fund_cluster')?.value || '',
+      received_by_name:
+        modal.querySelector('#ics_received_by_name')?.value || '',
+      received_by_position:
+        modal.querySelector('#ics_received_by_position')?.value || '',
+      received_by_date:
+        modal.querySelector('#ics_received_by_date')?.value || '',
+      received_from_name:
+        modal.querySelector('#ics_received_from_name')?.value || '',
+      received_from_position:
+        modal.querySelector('#ics_received_from_position')?.value || '',
+      received_from_date:
+        modal.querySelector('#ics_received_from_date')?.value || '',
+    }
+
+    // Save RIS form data
+    AppState.purchaseOrderDraft.risFormData = {
+      ris_no: modal.querySelector('#ris_ris_no')?.value || '',
+      entity_name: modal.querySelector('#ris_entity_name')?.value || '',
+      fund_cluster: modal.querySelector('#ris_fund_cluster')?.value || '',
+      division: modal.querySelector('#ris_division')?.value || '',
+      office: modal.querySelector('#ris_office')?.value || '',
+      responsibility_center_code:
+        modal.querySelector('#ris_responsibility_center_code')?.value || '',
+      purpose: modal.querySelector('#ris_purpose')?.value || '',
+      requested_by_name:
+        modal.querySelector('#ris_requested_by_name')?.value || '',
+      requested_by_designation:
+        modal.querySelector('#ris_requested_by_designation')?.value || '',
+      requested_by_date:
+        modal.querySelector('#ris_requested_by_date')?.value || '',
+      approved_by_name:
+        modal.querySelector('#ris_approved_by_name')?.value || '',
+      approved_by_designation:
+        modal.querySelector('#ris_approved_by_designation')?.value || '',
+      approved_by_date:
+        modal.querySelector('#ris_approved_by_date')?.value || '',
+      issued_by_name: modal.querySelector('#ris_issued_by_name')?.value || '',
+      issued_by_designation:
+        modal.querySelector('#ris_issued_by_designation')?.value || '',
+      issued_by_date: modal.querySelector('#ris_issued_by_date')?.value || '',
+      received_by_name:
+        modal.querySelector('#ris_received_by_name')?.value || '',
+      received_by_designation:
+        modal.querySelector('#ris_received_by_designation')?.value || '',
+      received_by_date:
+        modal.querySelector('#ris_received_by_date')?.value || '',
+    }
+
+    // Save PAR form data
+    AppState.purchaseOrderDraft.parFormData = {
+      par_no: modal.querySelector('#par_par_no')?.value || '',
+      entity_name: modal.querySelector('#par_entity_name')?.value || '',
+      fund_cluster: modal.querySelector('#par_fund_cluster')?.value || '',
+      received_by_name:
+        modal.querySelector('#par_received_by_name')?.value || '',
+      received_by_position:
+        modal.querySelector('#par_received_by_position')?.value || '',
+      received_by_date:
+        modal.querySelector('#par_received_by_date')?.value || '',
+      received_from_name:
+        modal.querySelector('#par_received_from_name')?.value || '',
+      received_from_position:
+        modal.querySelector('#par_received_from_position')?.value || '',
+      received_from_date:
+        modal.querySelector('#par_received_from_date')?.value || '',
+    }
+
+    // Save IAR form data
+    AppState.purchaseOrderDraft.iarFormData = {
+      iar_no: modal.querySelector('#iar_iar_no')?.value || '',
+      entity_name: modal.querySelector('#iar_entity_name')?.value || '',
+      fund_cluster: modal.querySelector('#iar_fund_cluster')?.value || '',
+      invoice_number: modal.querySelector('#iar_invoice_no')?.value || '',
+      invoice_date: modal.querySelector('#iar_invoice_date')?.value || '',
+      po_number: modal.querySelector('#iar_po_no')?.value || '',
+      inspected_by_name:
+        modal.querySelector('#iar_inspected_by_name')?.value || '',
+      inspected_by_position:
+        modal.querySelector('#iar_inspected_by_position')?.value || '',
+      inspected_by_date:
+        modal.querySelector('#iar_inspected_by_date')?.value || '',
+      inspected_by_name_2:
+        modal.querySelector('#iar_inspected_by_name_2')?.value || '',
+      inspected_by_position_2:
+        modal.querySelector('#iar_inspected_by_position_2')?.value || '',
+      inspected_by_date_2:
+        modal.querySelector('#iar_inspected_by_date_2')?.value || '',
+    }
   } else if (step === 4) {
     AppState.purchaseOrderDraft.orsNo =
       modal.querySelector('#po-ors-no')?.value || ''
@@ -9652,6 +9745,11 @@ async function finalizePurchaseOrderCreation() {
     gentlemen: gentlemen,
     notes: notes,
     status: 'submitted',
+    // Include form data for ICS, RIS, PAR, and IAR
+    ics_form_data: draft.icsFormData || null,
+    ris_form_data: draft.risFormData || null,
+    par_form_data: draft.parFormData || null,
+    iar_form_data: draft.iarFormData || null,
   }
 
   try {
@@ -11303,14 +11401,14 @@ function renderDynamicPOForms() {
                 <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Date
               </label>
-              <input type="date" class="form-input" id="par_received_date" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="date" class="form-input" id="par_received_by_date" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
           </div>
           
           <div style="margin: 24px 0 16px 0; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;">
             <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 6px;">
               <i data-lucide="user" style="width: 16px; height: 16px; color: #a16207;"></i>
-              Issued By
+              Received From (Issuer)
             </h6>
           </div>
           <div class="grid-3" style="gap: 16px;">
@@ -11319,21 +11417,21 @@ function renderDynamicPOForms() {
                 <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Name
               </label>
-              <input type="text" class="form-input" id="par_issued_by_name" placeholder="Full name of issuer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="par_received_from_name" placeholder="Full name of issuer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Position
               </label>
-              <input type="text" class="form-input" id="par_issued_by_position" placeholder="e.g., Supply Officer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="par_received_from_position" placeholder="e.g., Supply Officer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Date
               </label>
-              <input type="date" class="form-input" id="par_issued_date" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="date" class="form-input" id="par_received_from_date" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
           </div>
         </div>
@@ -11590,6 +11688,86 @@ function renderDynamicPOForms() {
                   Custodian Label
                 </label>
                 <input type="text" class="form-input" id="iar_custodian_label" placeholder="Name/title of custodian" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+            </div>
+          </div>
+
+          <!-- Inspector Signatures Section -->
+          <div style="margin-bottom: 24px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #fbcfe8;">
+              <i data-lucide="user-check" style="width: 18px; height: 18px; color: #be185d;"></i>
+              <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #be185d; text-transform: uppercase; letter-spacing: 0.5px;">Inspector #1</h6>
+            </div>
+            <div class="grid-3" style="gap: 16px;">
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
+                  Name
+                </label>
+                <input type="text" class="form-input" id="iar_inspected_by_name" placeholder="Full name of inspector" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
+                  Position
+                </label>
+                <input type="text" class="form-input" id="iar_inspected_by_position" placeholder="e.g., Inspector" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
+                  Date
+                </label>
+                <input type="date" class="form-input" id="iar_inspected_by_date" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+            </div>
+          </div>
+
+          <!-- Inspector #2 Section -->
+          <div style="margin-bottom: 24px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #fbcfe8;">
+              <i data-lucide="user-check" style="width: 18px; height: 18px; color: #be185d;"></i>
+              <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #be185d; text-transform: uppercase; letter-spacing: 0.5px;">Inspector #2</h6>
+            </div>
+            <div class="grid-3" style="gap: 16px;">
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
+                  Name
+                </label>
+                <input type="text" class="form-input" id="iar_inspected_by_name_2" placeholder="Full name of second inspector" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
+                  Position
+                </label>
+                <input type="text" class="form-input" id="iar_inspected_by_position_2" placeholder="e.g., Inspector" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
+                  Date
+                </label>
+                <input type="date" class="form-input" id="iar_inspected_by_date_2" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">

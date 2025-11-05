@@ -106,22 +106,22 @@
     <table class="info-table">
         <tr>
             <td class="label">Entity Name :</td>
-            <td class="field"></td>
+            <td class="field"><?php echo e($ris->entity_name ?? ''); ?></td>
             <td style="width: 50px;"></td>
             <td class="label">Fund Cluster :</td>
-            <td class="field"></td>
+            <td class="field"><?php echo e($ris->fund_cluster ?? ''); ?></td>
         </tr>
     </table>
     
     <table class="main-table">
         <thead>
             <tr>
-                <td colspan="4" style="border: none; border-right: 1px solid #000; text-align: left; padding: 3px; font-size: 9pt;">Division : </td>
-                <td colspan="4" style="border: none; text-align: left; padding: 3px; font-size: 9pt;">Responsibility Center Code : </td>
+                <td colspan="4" style="border: none; border-right: 1px solid #000; text-align: left; padding: 3px; font-size: 9pt;">Division : <?php echo e($ris->division ?? ''); ?></td>
+                <td colspan="4" style="border: none; text-align: left; padding: 3px; font-size: 9pt;">Responsibility Center Code : <?php echo e($ris->responsibility_center_code ?? ''); ?></td>
             </tr>
             <tr>
-                <td colspan="4" style="border: none; border-right: 1px solid #000; text-align: left; padding: 3px; font-size: 9pt;">Office : </td>
-                <td colspan="4" style="border: none; text-align: left; padding: 3px; font-size: 9pt;">RIS No. : </td>
+                <td colspan="4" style="border: none; border-right: 1px solid #000; text-align: left; padding: 3px; font-size: 9pt;">Office : <?php echo e($ris->office ?? ''); ?></td>
+                <td colspan="4" style="border: none; text-align: left; padding: 3px; font-size: 9pt;">RIS No. : <?php echo e($ris->ris_no ?? ''); ?></td>
             </tr>
             <tr>
                 <th colspan="4" class="section-header">Requisition</th>
@@ -140,23 +140,49 @@
             </tr>
         </thead>
         <tbody>
-            <?php for($i = 0; $i < 20; $i++): ?>
-            <tr>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-            </tr>
-            <?php endfor; ?>
+            <?php if(isset($ris->items) && is_array($ris->items)): ?>
+                <?php $__currentLoopData = $ris->items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <tr>
+                    <td><?php echo e($item['stock_no'] ?? ''); ?></td>
+                    <td><?php echo e($item['unit'] ?? ''); ?></td>
+                    <td><?php echo e($item['description'] ?? ''); ?></td>
+                    <td><?php echo e($item['quantity'] ?? ''); ?></td>
+                    <td><?php echo e(($item['stock_available'] ?? '') === 'Yes' ? '✓' : ''); ?></td>
+                    <td><?php echo e(($item['stock_available'] ?? '') === 'No' ? '✓' : ''); ?></td>
+                    <td><?php echo e($item['issue_quantity'] ?? ''); ?></td>
+                    <td><?php echo e($item['remarks'] ?? ''); ?></td>
+                </tr>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                <?php for($i = count($ris->items); $i < 20; $i++): ?>
+                <tr>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                </tr>
+                <?php endfor; ?>
+            <?php else: ?>
+                <?php for($i = 0; $i < 20; $i++): ?>
+                <tr>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                </tr>
+                <?php endfor; ?>
+            <?php endif; ?>
             <tr>
                 <td colspan="8" style="text-align: left; padding: 5px; height: 50px; vertical-align: top;">
-                    Purpose: _______________________________________________________________________________
-                    <br>
-                    _______________________________________________________________________________
+                    Purpose: <?php echo e($ris->purpose ?? ''); ?>
+
                 </td>
             </tr>
             <tr>
@@ -168,31 +194,31 @@
             </tr>
             <tr>
                 <td>Signature :</td>
-                <td colspan="2">&nbsp;</td>
-                <td colspan="2">&nbsp;</td>
-                <td>&nbsp;</td>
-                <td colspan="2">&nbsp;</td>
+                <td colspan="2"><?php echo e($ris->requested_by_signature ?? ''); ?></td>
+                <td colspan="2"><?php echo e($ris->approved_by_signature ?? ''); ?></td>
+                <td><?php echo e($ris->issued_by_signature ?? ''); ?></td>
+                <td colspan="2"><?php echo e($ris->received_by_signature ?? ''); ?></td>
             </tr>
             <tr>
                 <td>Printed Name :</td>
-                <td colspan="2">&nbsp;</td>
-                <td colspan="2">&nbsp;</td>
-                <td>&nbsp;</td>
-                <td colspan="2">&nbsp;</td>
+                <td colspan="2"><?php echo e($ris->requested_by_name ?? ''); ?></td>
+                <td colspan="2"><?php echo e($ris->approved_by_name ?? ''); ?></td>
+                <td><?php echo e($ris->issued_by_name ?? ''); ?></td>
+                <td colspan="2"><?php echo e($ris->received_by_name ?? ''); ?></td>
             </tr>
             <tr>
                 <td>Designation :</td>
-                <td colspan="2">&nbsp;</td>
-                <td colspan="2">&nbsp;</td>
-                <td>&nbsp;</td>
-                <td colspan="2">&nbsp;</td>
+                <td colspan="2"><?php echo e($ris->requested_by_designation ?? ''); ?></td>
+                <td colspan="2"><?php echo e($ris->approved_by_designation ?? ''); ?></td>
+                <td><?php echo e($ris->issued_by_designation ?? ''); ?></td>
+                <td colspan="2"><?php echo e($ris->received_by_designation ?? ''); ?></td>
             </tr>
             <tr>
                 <td>Date :</td>
-                <td colspan="2">&nbsp;</td>
-                <td colspan="2">&nbsp;</td>
-                <td>&nbsp;</td>
-                <td colspan="2">&nbsp;</td>
+                <td colspan="2"><?php echo e($ris->requested_by_date ? $ris->requested_by_date->format('m/d/Y') : ''); ?></td>
+                <td colspan="2"><?php echo e($ris->approved_by_date ? $ris->approved_by_date->format('m/d/Y') : ''); ?></td>
+                <td><?php echo e($ris->issued_by_date ? $ris->issued_by_date->format('m/d/Y') : ''); ?></td>
+                <td colspan="2"><?php echo e($ris->received_by_date ? $ris->received_by_date->format('m/d/Y') : ''); ?></td>
             </tr>
         </tbody>
     </table>
