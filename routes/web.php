@@ -45,6 +45,7 @@ Route::post('/requisition-issue-slip', [RequisitionIssueSlipController::class, '
 Route::get('/requisition-issue-slip/{id}', [RequisitionIssueSlipController::class, 'show'])->name('requisition-issue-slip.show');
 Route::post('/requisition-issue-slip/generate', [RequisitionIssueSlipController::class, 'generatePDF'])->name('requisition-issue-slip.generate');
 Route::get('/requisition-issue-slip/preview', [RequisitionIssueSlipController::class, 'preview'])->name('requisition-issue-slip.preview');
+Route::get('/requisition-issue-slip/{id}/pdf', [RequisitionIssueSlipController::class, 'downloadPDF'])->name('requisition-issue-slip.download');
 
 // Human-friendly 'view' endpoints used by the dashboard chooser/popover.
 // These accept an {id} parameter so client-side code can open a specific
