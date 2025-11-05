@@ -11,8 +11,7 @@
 |
 */
 
-uses(Tests\TestCase::class)
- // ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
+uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class)
     ->in('Feature');
 
 /*

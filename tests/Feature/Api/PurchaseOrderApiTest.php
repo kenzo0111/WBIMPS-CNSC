@@ -2,9 +2,6 @@
 
 use App\Models\PurchaseOrder;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     // Create an authenticated admin user for tests
@@ -144,7 +141,7 @@ test('purchase order has correct date casting', function () {
     $response = $this->getJson("/api/purchase-orders/{$po->id}");
 
     $response->assertStatus(200);
-    
+
     expect($response->json('data.date_of_purchase'))->toContain('2025-11-05');
 });
 

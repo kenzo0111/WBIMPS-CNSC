@@ -2,9 +2,6 @@
 
 use App\Models\Supplier;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     // Create an authenticated admin user for tests
@@ -125,7 +122,7 @@ test('can search suppliers by name', function () {
     $response = $this->getJson('/api/suppliers?search=ABC');
 
     $response->assertStatus(200);
-    
+
     $data = $response->json('data');
     expect(count($data))->toBeGreaterThanOrEqual(2);
 });

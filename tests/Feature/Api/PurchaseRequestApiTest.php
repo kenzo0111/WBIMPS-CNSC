@@ -2,10 +2,7 @@
 
 use App\Models\PurchaseRequest;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     // Create an authenticated admin user for tests
@@ -14,7 +11,7 @@ beforeEach(function () {
         'status' => 'active',
     ]);
     $this->actingAs($this->user, 'web');
-    
+
     // Fake mail to prevent actual email sending
     Mail::fake();
 });
@@ -82,7 +79,7 @@ test('can create a purchase request', function () {
 
 test('generates unique request IDs with current year', function () {
     $currentYear = now()->year;
-    
+
     $response = $this->postJson('/api/purchase-requests', [
         'email' => 'test@example.com',
         'requester' => 'John Doe',
@@ -91,7 +88,7 @@ test('generates unique request IDs with current year', function () {
     ]);
 
     $response->assertStatus(201);
-    
+
     $requestId = $response->json('request_id');
     expect($requestId)->toStartWith("REQ-{$currentYear}-");
 });
@@ -157,7 +154,7 @@ test('calculates total cost for each purchase request', function () {
     $response = $this->getJson('/api/purchase-requests');
 
     $response->assertStatus(200);
-    
+
     $totalCost = $response->json('0.total_cost');
     expect($totalCost)->toBe(502.5);
 });
