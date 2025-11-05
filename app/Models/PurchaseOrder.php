@@ -71,4 +71,12 @@ class PurchaseOrder extends Model
         'grand_total' => 'decimal:2',
         'ors_burs_amount' => 'decimal:2',
     ];
+
+    /**
+     * Get the requisition issue slip associated with this purchase order.
+     */
+    public function requisitionIssueSlip()
+    {
+        return $this->hasOne(RequisitionIssueSlip::class);
+    }
 }

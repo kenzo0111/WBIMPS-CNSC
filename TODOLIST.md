@@ -13,6 +13,7 @@
 ## Recent Updates (November 5, 2025)
 
 ### RIS (Requisition Issue Slip) Refactoring
+
 - [x] Removed RequisitionIssueSlipSeeder (no longer needed)
 - [x] Refactored RequisitionIssueSlipController to match Purchase Order pattern
 - [x] Added downloadPDF method for RIS (similar to PO)

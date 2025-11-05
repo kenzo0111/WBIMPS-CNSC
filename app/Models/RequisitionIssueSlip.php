@@ -43,6 +43,7 @@ class RequisitionIssueSlip extends Model
 
     protected $fillable = [
         'ris_no',
+        'purchase_order_id',
         'entity_name',
         'fund_cluster',
         'division',
@@ -76,4 +77,12 @@ class RequisitionIssueSlip extends Model
         'issued_by_date' => 'date',
         'received_by_date' => 'date',
     ];
+
+    /**
+     * Get the purchase order associated with this RIS.
+     */
+    public function purchaseOrder()
+    {
+        return $this->belongsTo(PurchaseOrder::class);
+    }
 }

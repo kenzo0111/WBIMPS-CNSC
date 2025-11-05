@@ -39,13 +39,14 @@ Route::get('/inspection-acceptance-report/preview', [InspectionAcceptanceReportC
 Route::post('/inventory-custodian-slip/generate', [InventoryCustodianSlipController::class, 'generatePDF'])->name('inventory-custodian-slip.generate');
 Route::get('/inventory-custodian-slip/preview', [InventoryCustodianSlipController::class, 'preview'])->name('inventory-custodian-slip.preview');
 
-// RIS routes
+// RIS routes (specific routes must come before dynamic {id} routes)
 Route::get('/requisition-issue-slip', [RequisitionIssueSlipController::class, 'index'])->name('requisition-issue-slip.index');
 Route::post('/requisition-issue-slip', [RequisitionIssueSlipController::class, 'store'])->name('requisition-issue-slip.store');
-Route::get('/requisition-issue-slip/{id}', [RequisitionIssueSlipController::class, 'show'])->name('requisition-issue-slip.show');
 Route::post('/requisition-issue-slip/generate', [RequisitionIssueSlipController::class, 'generatePDF'])->name('requisition-issue-slip.generate');
 Route::get('/requisition-issue-slip/preview', [RequisitionIssueSlipController::class, 'preview'])->name('requisition-issue-slip.preview');
+Route::get('/requisition-issue-slip/view/{id}', [RequisitionIssueSlipController::class, 'preview'])->name('requisitionIssueSlipView');
 Route::get('/requisition-issue-slip/{id}/pdf', [RequisitionIssueSlipController::class, 'downloadPDF'])->name('requisition-issue-slip.download');
+Route::get('/requisition-issue-slip/{id}', [RequisitionIssueSlipController::class, 'show'])->name('requisition-issue-slip.show');
 
 // Human-friendly 'view' endpoints used by the dashboard chooser/popover.
 // These accept an {id} parameter so client-side code can open a specific
@@ -54,7 +55,6 @@ Route::get('/requisition-issue-slip/{id}/pdf', [RequisitionIssueSlipController::
 Route::get('/purchase-order/view/{id}', [PurchaseOrderController::class, 'preview'])->name('purchaseOrderView');
 Route::get('/purchase-request/view/{id}', [PurchaseRequestController::class, 'preview'])->name('purchaseRequestView');
 Route::get('/inventory-custodian-slip/view/{id}', [InventoryCustodianSlipController::class, 'preview'])->name('inventoryCustodianSlipView');
-Route::get('/requisition-issue-slip/view/{id}', [RequisitionIssueSlipController::class, 'preview'])->name('requisitionIssueSlipView');
 Route::get('/inspection-acceptance-report/view/{id}', [InspectionAcceptanceReportController::class, 'preview'])->name('inspectionAcceptanceReportView');
 // PAR (Property Acknowledgement Receipt) preview handled by a dedicated controller.
 Route::get('/property-acknowledgement-receipt/view/{id}', [PropertyAcknowledgementReceiptController::class, 'preview'])->name('propertyAcknowledgementReceiptView');

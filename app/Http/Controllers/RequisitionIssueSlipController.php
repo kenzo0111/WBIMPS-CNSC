@@ -117,7 +117,13 @@ class RequisitionIssueSlipController extends Controller
     {
         // If an ID is provided, load the requisition issue slip from the database
         if ($id) {
+            // First, try to find RIS by its own ID
             $ris = \App\Models\RequisitionIssueSlip::find($id);
+            
+            // If not found, try to find RIS by purchase_order_id
+            if (!$ris) {
+                $ris = \App\Models\RequisitionIssueSlip::where('purchase_order_id', $id)->first();
+            }
             
             if (!$ris) {
                 abort(404, 'Requisition Issue Slip not found');
@@ -162,7 +168,13 @@ class RequisitionIssueSlipController extends Controller
      */
     public function downloadPDF($id)
     {
+        // First, try to find RIS by its own ID
         $ris = \App\Models\RequisitionIssueSlip::find($id);
+        
+        // If not found, try to find RIS by purchase_order_id
+        if (!$ris) {
+            $ris = \App\Models\RequisitionIssueSlip::where('purchase_order_id', $id)->first();
+        }
         
         if (!$ris) {
             abort(404, 'Requisition Issue Slip not found');
@@ -176,7 +188,7 @@ class RequisitionIssueSlipController extends Controller
                 'action' => 'Downloaded Requisition Issue Slip PDF',
                 'meta' => json_encode([
                     'ris_no' => $ris->ris_no,
-                    'id' => $id
+                    'id' => $ris->id
                 ])
             ]);
         } catch (\Throwable $e) {
