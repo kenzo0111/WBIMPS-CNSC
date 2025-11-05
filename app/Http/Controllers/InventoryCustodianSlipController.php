@@ -26,23 +26,71 @@ class InventoryCustodianSlipController extends Controller
     {
         // If an ID is provided, load the inventory custodian slip from the database
         if ($id) {
+            // First, try to find ICS by its own ID
             $ics = \App\Models\InventoryCustodianSlip::find($id);
             
+            // If not found by ID, try to find by purchase order ID
             if (!$ics) {
-                abort(404, 'Inventory Custodian Slip not found');
+                // Check if this ID is a purchase order ID
+                $purchaseOrder = \App\Models\PurchaseOrder::find($id);
+                
+                if ($purchaseOrder) {
+                    // Find ICS associated with this purchase order
+                    $ics = \App\Models\InventoryCustodianSlip::where('purchase_order_id', $purchaseOrder->id)->first();
+                }
+                
+                // If still not found, try to find purchase request and then purchase order
+                if (!$ics) {
+                    $purchaseRequest = \App\Models\PurchaseRequest::find($id);
+                    
+                    if ($purchaseRequest) {
+                        // Try to find purchase order by matching request_id or department
+                        $purchaseOrder = \App\Models\PurchaseOrder::where('po_number', 'LIKE', '%' . $purchaseRequest->request_id . '%')
+                            ->orWhere('department', $purchaseRequest->department)
+                            ->first();
+                        
+                        if ($purchaseOrder) {
+                            // Find ICS by purchase_order_id
+                            $ics = \App\Models\InventoryCustodianSlip::where('purchase_order_id', $purchaseOrder->id)->first();
+                        }
+                    }
+                }
+            }
+            
+            if (!$ics) {
+                // Instead of 404, show empty form with a message
+                $data = [
+                    'entityName' => '',
+                    'fundCluster' => '',
+                    'parNo' => '',
+                    'items' => [],
+                    'grand_total' => 0,
+                    'received_from_name' => '',
+                    'received_from_position' => '',
+                    'received_from_date' => '',
+                    'received_by_name' => '',
+                    'received_by_position' => '',
+                    'received_by_date' => '',
+                    'not_found_message' => 'Inventory Custodian Slip has not been created yet for this request.',
+                ];
+                
+                $pdf = Pdf::loadView('pdf.inventory_custodian_slip_pdf', $data);
+                return $pdf->stream('inventory_custodian_slip_pending.pdf');
             }
 
-            // Prepare data from the model
+            // Prepare data from the model - mapping to match PDF template variable names
             $data = [
-                'entity_name' => $ics->entity_name ?? '',
-                'fund_cluster' => $ics->fund_cluster ?? '',
+                'entityName' => $ics->entity_name ?? '',
+                'fundCluster' => $ics->fund_cluster ?? '',
+                'parNo' => $ics->ics_no ?? '',
                 'items' => $ics->items ?? [],
                 'grand_total' => $ics->grand_total ?? 0,
-                'ics_no' => $ics->ics_no ?? '',
-                'received_from' => $ics->received_from ?? '',
+                'received_from_name' => $ics->received_from_name ?? '',
+                'received_from_position' => $ics->received_from_position ?? '',
+                'received_from_date' => $ics->received_from_date ? $ics->received_from_date->format('m/d/Y') : '',
                 'received_by_name' => $ics->received_by_name ?? '',
-                'received_by_designation' => $ics->received_by_designation ?? '',
-                'received_by_date' => $ics->received_by_date ? $ics->received_by_date->format('Y-m-d') : null,
+                'received_by_position' => $ics->received_by_position ?? '',
+                'received_by_date' => $ics->received_by_date ? $ics->received_by_date->format('m/d/Y') : '',
             ];
 
             $pdf = Pdf::loadView('pdf.inventory_custodian_slip_pdf', $data);
@@ -55,6 +103,107 @@ class InventoryCustodianSlipController extends Controller
         $pdf = Pdf::loadView('pdf.inventory_custodian_slip_pdf', $data);
 
         return $pdf->stream('inventory_custodian_slip.pdf');
+    }
+
+    /**
+     * Download ICS as PDF by ID (purchase order ID, ICS ID, or purchase request ID)
+     */
+    public function downloadPDF($id)
+    {
+        // Use the same logic as preview to find the ICS
+        // First, try to find ICS by its own ID
+        $ics = \App\Models\InventoryCustodianSlip::find($id);
+        
+        // If not found by ID, try to find by purchase order ID
+        if (!$ics) {
+            // Check if this ID is a purchase order ID
+            $purchaseOrder = \App\Models\PurchaseOrder::find($id);
+            
+            if ($purchaseOrder) {
+                // Find ICS associated with this purchase order
+                $ics = \App\Models\InventoryCustodianSlip::where('purchase_order_id', $purchaseOrder->id)->first();
+            }
+            
+            // If still not found, try to find purchase request and then purchase order
+            if (!$ics) {
+                $purchaseRequest = \App\Models\PurchaseRequest::find($id);
+                
+                if ($purchaseRequest) {
+                    // Try to find purchase order by matching request_id or department
+                    $purchaseOrder = \App\Models\PurchaseOrder::where('po_number', 'LIKE', '%' . $purchaseRequest->request_id . '%')
+                        ->orWhere('department', $purchaseRequest->department)
+                        ->first();
+                    
+                    if ($purchaseOrder) {
+                        // Find ICS by purchase_order_id
+                        $ics = \App\Models\InventoryCustodianSlip::where('purchase_order_id', $purchaseOrder->id)->first();
+                    }
+                }
+            }
+        }
+        
+        if (!$ics) {
+            // Return empty ICS form with message
+            $data = [
+                'entityName' => '',
+                'fundCluster' => '',
+                'parNo' => '',
+                'items' => [],
+                'grand_total' => 0,
+                'received_from_name' => '',
+                'received_from_position' => '',
+                'received_from_date' => '',
+                'received_by_name' => '',
+                'received_by_position' => '',
+                'received_by_date' => '',
+                'not_found_message' => 'Inventory Custodian Slip has not been created yet for this request.',
+            ];
+            
+            $pdf = Pdf::loadView('pdf.inventory_custodian_slip_pdf', $data);
+            
+            try {
+                \App\Models\Activity::create([
+                    'action' => 'Downloaded ICS PDF (Not Found)',
+                    'meta' => json_encode(['id' => $id])
+                ]);
+            } catch (\Throwable $e) {
+                logger()->warning('Failed to record activity for ICS PDF download', ['error' => $e->getMessage()]);
+            }
+            
+            return $pdf->download('inventory_custodian_slip_not_created.pdf');
+        }
+
+        // Prepare data from the model
+        $data = [
+            'entityName' => $ics->entity_name ?? '',
+            'fundCluster' => $ics->fund_cluster ?? '',
+            'parNo' => $ics->ics_no ?? '',
+            'items' => $ics->items ?? [],
+            'grand_total' => $ics->grand_total ?? 0,
+            'received_from_name' => $ics->received_from_name ?? '',
+            'received_from_position' => $ics->received_from_position ?? '',
+            'received_from_date' => $ics->received_from_date ? $ics->received_from_date->format('m/d/Y') : '',
+            'received_by_name' => $ics->received_by_name ?? '',
+            'received_by_position' => $ics->received_by_position ?? '',
+            'received_by_date' => $ics->received_by_date ? $ics->received_by_date->format('m/d/Y') : '',
+        ];
+
+        $pdf = Pdf::loadView('pdf.inventory_custodian_slip_pdf', $data);
+
+        try {
+            \App\Models\Activity::create([
+                'action' => 'Downloaded Inventory Custodian Slip PDF',
+                'meta' => json_encode([
+                    'ics_no' => $ics->ics_no,
+                    'ics_id' => $ics->id,
+                    'po_id' => $ics->purchase_order_id
+                ])
+            ]);
+        } catch (\Throwable $e) {
+            logger()->warning('Failed to record activity for ICS PDF download', ['error' => $e->getMessage()]);
+        }
+
+        return $pdf->download('inventory_custodian_slip_' . ($ics->ics_no ?? $id) . '.pdf');
     }
 
     public function generateICS()
@@ -98,11 +247,19 @@ class InventoryCustodianSlipController extends Controller
             ]];
         }
 
-        $payload['items'] = $items;
-        $payload['grand_total'] = collect($items)->sum('total_cost');
-        $payload['entity_name'] = $payload['entity_name'] ?? '';
-        $payload['fund_cluster'] = $payload['fund_cluster'] ?? '';
-
-        return $payload;
+        // Map to PDF template variable names
+        return [
+            'items' => $items,
+            'grand_total' => collect($items)->sum('total_cost'),
+            'entityName' => $payload['entity_name'] ?? $payload['entityName'] ?? '',
+            'fundCluster' => $payload['fund_cluster'] ?? $payload['fundCluster'] ?? '',
+            'parNo' => $payload['ics_no'] ?? $payload['parNo'] ?? '',
+            'received_from_name' => $payload['received_from_name'] ?? '',
+            'received_from_position' => $payload['received_from_position'] ?? '',
+            'received_from_date' => $payload['received_from_date'] ?? '',
+            'received_by_name' => $payload['received_by_name'] ?? '',
+            'received_by_position' => $payload['received_by_position'] ?? '',
+            'received_by_date' => $payload['received_by_date'] ?? '',
+        ];
     }
 }

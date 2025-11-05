@@ -79,4 +79,28 @@ class PurchaseOrder extends Model
     {
         return $this->hasOne(RequisitionIssueSlip::class);
     }
+
+    /**
+     * Get the inventory custodian slip associated with this purchase order.
+     */
+    public function inventoryCustodianSlip()
+    {
+        return $this->hasOne(InventoryCustodianSlip::class);
+    }
+
+    /**
+     * Get the property acknowledgement receipt associated with this purchase order.
+     */
+    public function propertyAcknowledgementReceipt()
+    {
+        return $this->hasOne(PropertyAcknowledgementReceipt::class);
+    }
+
+    /**
+     * Get the inspection acceptance report associated with this purchase order.
+     */
+    public function inspectionAcceptanceReport()
+    {
+        return $this->hasOne(InspectionAcceptanceReport::class);
+    }
 }

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $fund_cluster
  * @property \Illuminate\Support\Carbon|null $date
  * @property array|null $items
+ * @property float|null $grand_total
  * @property string|null $received_by_name
  * @property string|null $received_by_position
  * @property \Illuminate\Support\Carbon|null $received_date
@@ -29,11 +30,13 @@ class PropertyAcknowledgementReceipt extends Model
     protected $table = 'property_acknowledgement_receipts';
 
     protected $fillable = [
+        'purchase_order_id',
         'par_no',
         'entity_name',
         'fund_cluster',
         'date',
         'items',
+        'grand_total',
         'received_by_name',
         'received_by_position',
         'received_date',
@@ -45,8 +48,17 @@ class PropertyAcknowledgementReceipt extends Model
 
     protected $casts = [
         'items' => 'array',
+        'grand_total' => 'decimal:2',
         'date' => 'date',
         'received_date' => 'date',
         'issued_date' => 'date',
     ];
+
+    /**
+     * Get the purchase order that owns this PAR.
+     */
+    public function purchaseOrder()
+    {
+        return $this->belongsTo(PurchaseOrder::class);
+    }
 }

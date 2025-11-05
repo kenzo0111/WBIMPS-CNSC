@@ -56,14 +56,74 @@ class InspectionAcceptanceReportController extends Controller
     }
 
     /**
+     * Download PDF for a specific IAR record.
+     * Similar to preview but forces download instead of streaming.
+     */
+    public function downloadPDF($id)
+    {
+        // First, try to find IAR by its own ID
+        $iar = \App\Models\InspectionAcceptanceReport::find($id);
+        
+        // If not found, try to find IAR by purchase_order_id
+        if (!$iar) {
+            $iar = \App\Models\InspectionAcceptanceReport::where('purchase_order_id', $id)->first();
+        }
+        
+        if (!$iar) {
+            abort(404, 'Inspection Acceptance Report not found');
+        }
+
+        // Prepare data from the model
+        $viewData = [
+            'entityName' => $iar->entity_name ?? '',
+            'fundCluster' => $iar->fund_cluster ?? '',
+            'supplier' => $iar->supplier ?? '',
+            'iarNo' => $iar->iar_no ?? '',
+            'iarDate' => $iar->iar_date ? $iar->iar_date->format('Y-m-d') : '',
+            'poNo' => $iar->po_no ?? '',
+            'poDate' => $iar->po_date ? $iar->po_date->format('Y-m-d') : '',
+            'requisitioningOffice' => $iar->requisitioning_office ?? '',
+            'responsibilityCenterCode' => $iar->responsibility_center_code ?? '',
+            'invoiceNo' => $iar->invoice_no ?? '',
+            'invoiceDate' => $iar->invoice_date ? $iar->invoice_date->format('Y-m-d') : '',
+            'dateInspected' => $iar->date_inspected ? $iar->date_inspected->format('Y-m-d') : '',
+            'dateReceived' => $iar->date_received ? $iar->date_received->format('Y-m-d') : '',
+            'inspectionStatus' => $iar->inspection_status ?? '',
+            'acceptanceStatus' => $iar->acceptance_status ?? '',
+            'items' => $iar->items ?? [],
+        ];
+
+        try {
+            \App\Models\Activity::create([
+                'action' => 'Downloaded Inspection Acceptance Report PDF',
+                'meta' => json_encode(['iar_no' => $iar->iar_no, 'id' => $id])
+            ]);
+        } catch (\Throwable $e) {
+            logger()->warning('Failed to record activity for IAR PDF download', ['error' => $e->getMessage()]);
+        }
+
+        $pdf = Pdf::loadView('pdf.inspection_acceptance_report_pdf', $viewData)
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download('inspection_acceptance_report_' . ($iar->iar_no ?? $id) . '.pdf');
+    }
+
+    /**
      * Stream a preview of the inspection and acceptance report PDF.
      * Accepts an optional ID to load from the database.
+     * The ID can be either an IAR ID or a Purchase Order ID.
      */
     public function preview($id = null)
     {
         // If an ID is provided, load the inspection acceptance report from the database
         if ($id) {
+            // First, try to find IAR by its own ID
             $iar = \App\Models\InspectionAcceptanceReport::find($id);
+            
+            // If not found, try to find IAR by purchase_order_id
+            if (!$iar) {
+                $iar = \App\Models\InspectionAcceptanceReport::where('purchase_order_id', $id)->first();
+            }
             
             if (!$iar) {
                 abort(404, 'Inspection Acceptance Report not found');

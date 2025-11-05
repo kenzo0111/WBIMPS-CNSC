@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * @property int $id
+ * @property int|null $purchase_order_id
  * @property string $ics_no
  * @property string|null $entity_name
  * @property string|null $fund_cluster
@@ -29,6 +30,7 @@ class InventoryCustodianSlip extends Model
     protected $table = 'inventory_custodian_slips';
 
     protected $fillable = [
+        'purchase_order_id',
         'ics_no',
         'entity_name',
         'fund_cluster',
@@ -49,4 +51,12 @@ class InventoryCustodianSlip extends Model
         'received_from_date' => 'date',
         'received_by_date' => 'date',
     ];
+
+    /**
+     * Get the purchase order that owns this ICS.
+     */
+    public function purchaseOrder()
+    {
+        return $this->belongsTo(PurchaseOrder::class);
+    }
 }

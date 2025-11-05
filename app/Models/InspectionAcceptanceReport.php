@@ -37,6 +37,7 @@ class InspectionAcceptanceReport extends Model
     protected $table = 'inspection_acceptance_reports';
 
     protected $fillable = [
+        'purchase_order_id',
         'iar_no',
         'entity_name',
         'fund_cluster',
@@ -68,4 +69,12 @@ class InspectionAcceptanceReport extends Model
         'date_received' => 'date',
         'responsibility_date' => 'date',
     ];
+
+    /**
+     * Get the purchase order that owns this IAR.
+     */
+    public function purchaseOrder()
+    {
+        return $this->belongsTo(PurchaseOrder::class);
+    }
 }

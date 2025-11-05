@@ -8510,8 +8510,8 @@ function openDownloadFormsChooser(triggerEl, requestId) {
         'inventoryCustodianSlipView',
         '/inventory-custodian-slip/view/{id}'
       ),
-      downloadUrl: `${baseUrl}/inventory-custodian-slip/generate`,
-      method: 'POST',
+      downloadUrl: `${baseUrl}/inventory-custodian-slip/{id}/pdf`,
+      method: 'GET',
     },
     {
       id: 'ris',
@@ -8530,8 +8530,8 @@ function openDownloadFormsChooser(triggerEl, requestId) {
         'propertyAcknowledgementReceiptView',
         '/property-acknowledgement-receipt/view/{id}'
       ),
-      downloadUrl: `${baseUrl}/property-acknowledgement-receipt/generate`,
-      method: 'POST',
+      downloadUrl: `${baseUrl}/property-acknowledgement-receipt/{id}/pdf`,
+      method: 'GET',
     },
     {
       id: 'iar',
@@ -8540,8 +8540,8 @@ function openDownloadFormsChooser(triggerEl, requestId) {
         'inspectionAcceptanceReportView',
         '/inspection-acceptance-report/view/{id}'
       ),
-      downloadUrl: `${baseUrl}/inspection-acceptance-report/generate`,
-      method: 'POST',
+      downloadUrl: `${baseUrl}/inspection-acceptance-report/{id}/pdf`,
+      method: 'GET',
     },
   ]
 

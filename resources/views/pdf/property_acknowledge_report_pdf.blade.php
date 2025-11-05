@@ -61,17 +61,58 @@
 			</tr>
 		</thead>
 		<tbody>
-			{{-- Provide a number of empty rows to fill out the receipt when printed --}}
-			@for ($i = 0; $i < ($rows ?? 20); $i++)
-			<tr>
-				<td>&nbsp;</td>
-				<td>&nbsp;</td>
-				<td>&nbsp;</td>
-				<td>&nbsp;</td>
-				<td>&nbsp;</td>
-				<td>&nbsp;</td>
-			</tr>
-			@endfor
+			{{-- Render items from database if available --}}
+			@if(isset($items) && is_array($items) && count($items) > 0)
+				@foreach($items as $item)
+				<tr>
+					<td>{{ $item['quantity'] ?? '&nbsp;' }}</td>
+					<td>{{ $item['unit'] ?? '&nbsp;' }}</td>
+					<td>{{ $item['description'] ?? '&nbsp;' }}</td>
+					<td>{{ $item['stock_number'] ?? $item['property_number'] ?? '&nbsp;' }}</td>
+					<td>{{ $item['date_acquired'] ?? '&nbsp;' }}</td>
+					<td style="text-align: right;">{{ isset($item['amount']) && $item['amount'] > 0 ? number_format($item['amount'], 2) : '&nbsp;' }}</td>
+				</tr>
+				@endforeach
+				
+				{{-- Add empty rows to fill the page if needed --}}
+				@php
+					$remainingRows = ($rows ?? 18) - count($items);
+					$remainingRows = max(0, $remainingRows); // Ensure non-negative
+				@endphp
+				
+				@if($remainingRows > 0)
+					@for ($i = 0; $i < $remainingRows; $i++)
+					<tr>
+						<td>&nbsp;</td>
+						<td>&nbsp;</td>
+						<td>&nbsp;</td>
+						<td>&nbsp;</td>
+						<td>&nbsp;</td>
+						<td>&nbsp;</td>
+					</tr>
+					@endfor
+				@endif
+				
+				{{-- Grand Total Row --}}
+				@if(isset($grandTotal) && $grandTotal > 0)
+				<tr>
+					<td colspan="5" style="text-align: right; font-weight: bold;">Grand Total:</td>
+					<td style="text-align: right; font-weight: bold;">{{ number_format($grandTotal, 2) }}</td>
+				</tr>
+				@endif
+			@else
+				{{-- Provide empty rows when no items exist --}}
+				@for ($i = 0; $i < ($rows ?? 18); $i++)
+				<tr>
+					<td>&nbsp;</td>
+					<td>&nbsp;</td>
+					<td>&nbsp;</td>
+					<td>&nbsp;</td>
+					<td>&nbsp;</td>
+					<td>&nbsp;</td>
+				</tr>
+				@endfor
+			@endif
 		</tbody>
 		<tfoot>
 			<tr>

@@ -62,16 +62,57 @@
 		</thead>
 		<tbody>
 			
-			<?php for($i = 0; $i < ($rows ?? 20); $i++): ?>
-			<tr>
-				<td>&nbsp;</td>
-				<td>&nbsp;</td>
-				<td>&nbsp;</td>
-				<td>&nbsp;</td>
-				<td>&nbsp;</td>
-				<td>&nbsp;</td>
-			</tr>
-			<?php endfor; ?>
+			<?php if(isset($items) && is_array($items) && count($items) > 0): ?>
+				<?php $__currentLoopData = $items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+				<tr>
+					<td><?php echo e($item['quantity'] ?? '&nbsp;'); ?></td>
+					<td><?php echo e($item['unit'] ?? '&nbsp;'); ?></td>
+					<td><?php echo e($item['description'] ?? '&nbsp;'); ?></td>
+					<td><?php echo e($item['stock_number'] ?? $item['property_number'] ?? '&nbsp;'); ?></td>
+					<td><?php echo e($item['date_acquired'] ?? '&nbsp;'); ?></td>
+					<td style="text-align: right;"><?php echo e(isset($item['amount']) && $item['amount'] > 0 ? number_format($item['amount'], 2) : '&nbsp;'); ?></td>
+				</tr>
+				<?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+				
+				
+				<?php
+					$remainingRows = ($rows ?? 18) - count($items);
+					$remainingRows = max(0, $remainingRows); // Ensure non-negative
+				?>
+				
+				<?php if($remainingRows > 0): ?>
+					<?php for($i = 0; $i < $remainingRows; $i++): ?>
+					<tr>
+						<td>&nbsp;</td>
+						<td>&nbsp;</td>
+						<td>&nbsp;</td>
+						<td>&nbsp;</td>
+						<td>&nbsp;</td>
+						<td>&nbsp;</td>
+					</tr>
+					<?php endfor; ?>
+				<?php endif; ?>
+				
+				
+				<?php if(isset($grandTotal) && $grandTotal > 0): ?>
+				<tr>
+					<td colspan="5" style="text-align: right; font-weight: bold;">Grand Total:</td>
+					<td style="text-align: right; font-weight: bold;"><?php echo e(number_format($grandTotal, 2)); ?></td>
+				</tr>
+				<?php endif; ?>
+			<?php else: ?>
+				
+				<?php for($i = 0; $i < ($rows ?? 18); $i++): ?>
+				<tr>
+					<td>&nbsp;</td>
+					<td>&nbsp;</td>
+					<td>&nbsp;</td>
+					<td>&nbsp;</td>
+					<td>&nbsp;</td>
+					<td>&nbsp;</td>
+				</tr>
+				<?php endfor; ?>
+			<?php endif; ?>
 		</tbody>
 		<tfoot>
 			<tr>

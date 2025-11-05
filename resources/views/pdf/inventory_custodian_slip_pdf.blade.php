@@ -49,6 +49,13 @@
 
     <h2 class="center" style="margin:2px 0 6px 0;">INVENTORY CUSTODIAN SLIP</h2>
 
+    @if(isset($not_found_message))
+    <div style="text-align: center; padding: 40px 20px; color: #666;">
+        <p style="font-size: 14px; margin-bottom: 10px;">{{ $not_found_message }}</p>
+        <p style="font-size: 12px; color: #999;">This form will be generated when the purchase order is processed and items are received.</p>
+    </div>
+    @endif
+
     <!-- single compact meta row: left = stacked labels, right = ICS aligned to item-no column -->
     <table class="meta-row" style="margin-bottom:8px;">
         <tr>
@@ -95,13 +102,13 @@
 
             @foreach($renderItems as $entry)
             <tr>
-                <td>{{ $entry['quantity'] }}</td>
-                <td>{{ $entry['unit'] }}</td>
-                <td>{{ $entry['unit_cost'] === '' ? '' : number_format((float) $entry['unit_cost'], 2) }}</td>
-                <td>{{ $entry['total_cost'] === '' ? '' : number_format((float) $entry['total_cost'], 2) }}</td>
-                <td class="description">{!! $entry['description'] === '' ? '&nbsp;' : nl2br(e($entry['description'])) !!}</td>
-                <td>{{ $entry['item_no'] }}</td>
-                <td>{{ $entry['useful_life'] }}</td>
+                <td>{{ $entry['quantity'] ?? '' }}</td>
+                <td>{{ $entry['unit'] ?? '' }}</td>
+                <td>{{ !isset($entry['unit_cost']) || $entry['unit_cost'] === '' ? '' : number_format((float) $entry['unit_cost'], 2) }}</td>
+                <td>{{ !isset($entry['total_cost']) && !isset($entry['amount']) || (($entry['total_cost'] ?? $entry['amount'] ?? '') === '') ? '' : number_format((float) ($entry['total_cost'] ?? $entry['amount'] ?? 0), 2) }}</td>
+                <td class="description">{!! ($entry['description'] ?? '') === '' ? '&nbsp;' : nl2br(e($entry['description'])) !!}</td>
+                <td>{{ $entry['item_no'] ?? $entry['stock_number'] ?? '' }}</td>
+                <td>{{ $entry['useful_life'] ?? '' }}</td>
             </tr>
             @endforeach
         </tbody>
@@ -112,19 +119,19 @@
                         <div class="sig-block">
                             <div class="sig-label">Received from :</div>
                             <div class="sig-line"></div>
-                            <div class="sig-name">ARSENIO GEM A. GARCILLANOSA</div>
+                            <div class="sig-name">{{ $received_from_name ?? 'ARSENIO GEM A. GARCILLANOSA' }}</div>
                             <div class="sig-subtext">Signature Over Printed Name</div>
-                            <div class="sig-subtext position">Supply Officer III/Admin Officer V</div>
-                            <div class="sig-subtext position">Date: _________________</div>
+                            <div class="sig-subtext position">{{ $received_from_position ?? 'Supply Officer III/Admin Officer V' }}</div>
+                            <div class="sig-subtext position">Date: {{ $received_from_date ?? '_________________' }}</div>
                         </div>
 
                         <div class="sig-block">
                             <div class="sig-label">Received by:</div>
                             <div class="sig-line"></div>
-                            <div class="sig-name">_______________________________</div>
+                            <div class="sig-name">{{ $received_by_name ?? '_______________________________' }}</div>
                             <div class="sig-subtext">Signature Over Printed Name</div>
-                            <div class="sig-subtext position">Position: _________________</div>
-                            <div class="sig-subtext position">Date: _________________</div>
+                            <div class="sig-subtext position">Position: {{ $received_by_position ?? '_________________' }}</div>
+                            <div class="sig-subtext position">Date: {{ $received_by_date ?? '_________________' }}</div>
                         </div>
                     </div>
                 </td>

@@ -340,6 +340,7 @@ class PurchaseOrderController extends Controller
 
             // Create ICS record
             $ics = \App\Models\InventoryCustodianSlip::create([
+                'purchase_order_id' => $purchaseOrder->id,
                 'ics_no' => $formData['ics_no'],
                 'entity_name' => $formData['entity_name'] ?? $purchaseOrder->entity_name,
                 'fund_cluster' => $formData['fund_cluster'] ?? $purchaseOrder->fund_cluster,
@@ -484,18 +485,20 @@ class PurchaseOrderController extends Controller
 
             // Create PAR record
             $par = \App\Models\PropertyAcknowledgementReceipt::create([
+                'purchase_order_id' => $purchaseOrder->id,
                 'par_no' => $formData['par_no'],
                 'entity_name' => $formData['entity_name'] ?? $purchaseOrder->entity_name,
                 'fund_cluster' => $formData['fund_cluster'] ?? $purchaseOrder->fund_cluster,
+                'date' => !empty($formData['date']) ? $formData['date'] : now(),
                 'items' => $parItems,
                 'grand_total' => $parTotal,
-                'status' => 'Active',
-                'received_from_name' => $formData['received_from_name'] ?? null,
-                'received_from_position' => $formData['received_from_position'] ?? null,
-                'received_from_date' => !empty($formData['received_from_date']) ? $formData['received_from_date'] : null,
                 'received_by_name' => $formData['received_by_name'] ?? null,
                 'received_by_position' => $formData['received_by_position'] ?? null,
-                'received_by_date' => !empty($formData['received_by_date']) ? $formData['received_by_date'] : null,
+                'received_date' => !empty($formData['received_by_date']) ? $formData['received_by_date'] : null,
+                'issued_by_name' => $formData['received_from_name'] ?? null,
+                'issued_by_position' => $formData['received_from_position'] ?? null,
+                'issued_date' => !empty($formData['received_from_date']) ? $formData['received_from_date'] : null,
+                'status' => 'Active',
             ]);
 
             // Log activity
@@ -551,6 +554,7 @@ class PurchaseOrderController extends Controller
 
             // Create IAR record
             $iar = \App\Models\InspectionAcceptanceReport::create([
+                'purchase_order_id' => $purchaseOrder->id,
                 'iar_no' => $formData['iar_no'],
                 'entity_name' => $formData['entity_name'] ?? $purchaseOrder->entity_name,
                 'fund_cluster' => $formData['fund_cluster'] ?? $purchaseOrder->fund_cluster,

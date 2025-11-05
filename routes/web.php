@@ -36,8 +36,10 @@ Route::get('/purchase-order/preview', [PurchaseOrderController::class, 'preview'
 Route::get('/purchase-order/{id}/pdf', [PurchaseOrderController::class, 'downloadPDF'])->name('purchase-order.download');
 Route::post('/inspection-acceptance-report/generate', [InspectionAcceptanceReportController::class, 'generatePDF'])->name('inspection-acceptance-report.generate');
 Route::get('/inspection-acceptance-report/preview', [InspectionAcceptanceReportController::class, 'preview'])->name('inspection-acceptance-report.preview');
+Route::get('/inspection-acceptance-report/{id}/pdf', [InspectionAcceptanceReportController::class, 'downloadPDF'])->name('inspection-acceptance-report.download');
 Route::post('/inventory-custodian-slip/generate', [InventoryCustodianSlipController::class, 'generatePDF'])->name('inventory-custodian-slip.generate');
 Route::get('/inventory-custodian-slip/preview', [InventoryCustodianSlipController::class, 'preview'])->name('inventory-custodian-slip.preview');
+Route::get('/inventory-custodian-slip/{id}/pdf', [InventoryCustodianSlipController::class, 'downloadPDF'])->name('inventory-custodian-slip.download');
 
 // RIS routes (specific routes must come before dynamic {id} routes)
 Route::get('/requisition-issue-slip', [RequisitionIssueSlipController::class, 'index'])->name('requisition-issue-slip.index');
@@ -47,6 +49,10 @@ Route::get('/requisition-issue-slip/preview', [RequisitionIssueSlipController::c
 Route::get('/requisition-issue-slip/view/{id}', [RequisitionIssueSlipController::class, 'preview'])->name('requisitionIssueSlipView');
 Route::get('/requisition-issue-slip/{id}/pdf', [RequisitionIssueSlipController::class, 'downloadPDF'])->name('requisition-issue-slip.download');
 Route::get('/requisition-issue-slip/{id}', [RequisitionIssueSlipController::class, 'show'])->name('requisition-issue-slip.show');
+
+// PAR routes
+Route::post('/property-acknowledgement-receipt/generate', [PropertyAcknowledgementReceiptController::class, 'generatePDF'])->name('property-acknowledgement-receipt.generate');
+Route::get('/property-acknowledgement-receipt/{id}/pdf', [PropertyAcknowledgementReceiptController::class, 'downloadPDF'])->name('property-acknowledgement-receipt.download');
 
 // Human-friendly 'view' endpoints used by the dashboard chooser/popover.
 // These accept an {id} parameter so client-side code can open a specific
