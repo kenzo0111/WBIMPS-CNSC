@@ -22,8 +22,11 @@ test('can list suppliers', function () {
 
     $response->assertStatus(200)
         ->assertJsonStructure([
+            'success',
             'data' => [
-                '*' => ['id', 'name', 'contact', 'email'],
+                'data' => [
+                    '*' => ['id', 'name', 'contact', 'email'],
+                ],
             ],
         ]);
 });

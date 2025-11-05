@@ -13,7 +13,10 @@ class SupplierController extends Controller
     {
         $suppliers = Supplier::orderBy('name')->paginate(50);
 
-        return response()->json($suppliers);
+        return response()->json([
+            'success' => true,
+            'data' => $suppliers,
+        ]);
     }
 
     public function store(Request $request)
@@ -26,19 +29,29 @@ class SupplierController extends Controller
             'email' => 'nullable|email|max:255',
         ]);
         if ($v->fails()) {
-            return response()->json(['errors' => $v->errors()], 422);
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $v->errors(),
+            ], 422);
         }
 
         $supplier = Supplier::create($v->validated());
 
-        return response()->json($supplier, 201);
+        return response()->json([
+            'success' => true,
+            'data' => $supplier,
+        ], 201);
     }
 
     public function show($id)
     {
         $s = Supplier::findOrFail($id);
 
-        return response()->json($s);
+        return response()->json([
+            'success' => true,
+            'data' => $s,
+        ]);
     }
 
     public function update(Request $request, $id)
@@ -52,12 +65,19 @@ class SupplierController extends Controller
             'email' => 'nullable|email|max:255',
         ]);
         if ($v->fails()) {
-            return response()->json(['errors' => $v->errors()], 422);
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $v->errors(),
+            ], 422);
         }
 
         $s->update($v->validated());
 
-        return response()->json($s);
+        return response()->json([
+            'success' => true,
+            'data' => $s,
+        ]);
     }
 
     public function destroy($id)
@@ -65,6 +85,9 @@ class SupplierController extends Controller
         $s = Supplier::findOrFail($id);
         $s->delete();
 
-        return response()->json(['deleted' => true]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Supplier deleted successfully',
+        ]);
     }
 }

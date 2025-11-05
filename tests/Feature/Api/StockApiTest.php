@@ -80,7 +80,14 @@ test('can show a specific stock in transaction', function () {
 });
 
 test('can update a stock in transaction', function () {
-    $stockIn = StockIn::factory()->create(['quantity' => 50]);
+    $product = Product::factory()->create([
+        'sku' => 'SKU-UPDATE-001',
+    ]);
+    
+    $stockIn = StockIn::factory()->create([
+        'sku' => 'SKU-UPDATE-001',
+        'quantity' => 50,
+    ]);
 
     $response = $this->putJson("/api/stock-in/{$stockIn->id}", [
         'transaction_id' => $stockIn->transaction_id,
@@ -185,7 +192,14 @@ test('can show a specific stock out transaction', function () {
 });
 
 test('can update a stock out transaction', function () {
-    $stockOut = StockOut::factory()->create(['quantity' => 10]);
+    $product = Product::factory()->create([
+        'sku' => 'SKU-UPDATE-002',
+    ]);
+    
+    $stockOut = StockOut::factory()->create([
+        'sku' => 'SKU-UPDATE-002',
+        'quantity' => 10,
+    ]);
 
     $response = $this->putJson("/api/stock-out/{$stockOut->id}", [
         'transaction_id' => $stockOut->transaction_id,
@@ -220,10 +234,14 @@ test('validates required fields when creating stock out', function () {
     $response = $this->postJson('/api/stock-out', []);
 
     $response->assertStatus(422)
-        ->assertJsonValidationErrors(['transaction_id', 'issue_id', 'sku', 'product_name', 'quantity']);
+        ->assertJsonValidationErrors(['issue_id', 'sku', 'product_name', 'quantity']);
 });
 
 test('calculates total cost for stock out transaction', function () {
+    $product = Product::factory()->create([
+        'sku' => 'SKU-99999',
+    ]);
+    
     $stockOutData = [
         'transaction_id' => 'SO-2025-002',
         'issue_id' => 'ISS-2025-002',

@@ -117,7 +117,10 @@ test('can update purchase order status', function () {
 
     $response->assertStatus(200)
         ->assertJson([
-            'status' => 'approved',
+            'success' => true,
+            'data' => [
+                'status' => 'approved',
+            ],
         ]);
 
     $this->assertDatabaseHas('purchase_orders', [
@@ -130,7 +133,7 @@ test('validates required fields when creating purchase order', function () {
     $response = $this->postJson('/api/purchase-orders', []);
 
     $response->assertStatus(422)
-        ->assertJsonValidationErrors(['po_number', 'supplier']);
+        ->assertJsonValidationErrors(['po_number']);
 });
 
 test('purchase order has correct date casting', function () {

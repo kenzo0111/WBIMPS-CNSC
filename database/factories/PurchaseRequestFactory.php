@@ -34,16 +34,15 @@ class PurchaseRequestFactory extends Factory
 
         return [
             'request_id' => 'REQ-'.date('Y').'-'.fake()->unique()->numberBetween(1000, 9999),
+            'email' => fake()->safeEmail(),
+            'requester' => fake()->name(),
             'department' => fake()->randomElement(['IT', 'HR', 'Finance', 'Operations', 'Admin']),
-            'section' => fake()->randomElement(['Section A', 'Section B', 'Section C']),
-            'purpose' => fake()->sentence(),
             'items' => json_encode($items),
-            'status' => 'pending',
-            'requested_by' => User::factory(),
-            'sai_number' => 'SAI-'.fake()->numberBetween(1000, 9999),
-            'sai_date' => fake()->date(),
-            'alobs_number' => 'ALOBS-'.fake()->numberBetween(1000, 9999),
-            'alobs_date' => fake()->date(),
+            'unit' => fake()->randomElement(['pcs', 'box', 'pack', 'unit']),
+            'needed_date' => fake()->dateTimeBetween('now', '+30 days'),
+            'priority' => fake()->randomElement(['Low', 'Medium', 'High']),
+            'status' => 'Incoming',
+            'submitted_at' => fake()->dateTimeBetween('-30 days', 'now'),
         ];
     }
 

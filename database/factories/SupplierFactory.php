@@ -21,10 +21,10 @@ class SupplierFactory extends Factory
     {
         return [
             'name' => fake()->company(),
-            'contact_person' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
-            'phone' => fake()->phoneNumber(),
             'address' => fake()->address(),
+            'tin' => fake()->numerify('###-###-###-###'),
+            'contact' => fake()->phoneNumber(),
+            'email' => fake()->unique()->safeEmail(),
         ];
     }
 }

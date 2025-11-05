@@ -61,17 +61,24 @@ class PurchaseRequestController extends Controller
 
         $currentYear = now()->year;
 
-        // Determine the next sequence number for the current year by inspecting
-        // existing request_id values of the form "REQ-<year>-<nnn>". Using
-        // MAX on the numeric suffix reduces the chance of duplicates compared
-        // to a simple total count. We still guard against a race by retrying
-        // on duplicate key errors.
-        $maxNum = DB::table('purchase_requests')
+        // Determine the next sequence number for the current year
+        // Database-agnostic approach: fetch all IDs and parse in PHP
+        $existingRequests = DB::table('purchase_requests')
             ->where('request_id', 'like', "REQ-{$currentYear}-%")
-            ->select(DB::raw("MAX(CAST(SUBSTRING_INDEX(request_id, '-', -1) AS UNSIGNED)) as maxnum"))
-            ->value('maxnum');
+            ->pluck('request_id');
 
-        $nextSeq = ($maxNum ? (int) $maxNum + 1 : 1);
+        $maxNum = 0;
+        foreach ($existingRequests as $requestId) {
+            // Extract the numeric suffix from "REQ-YYYY-NNN"
+            if (preg_match('/REQ-\d{4}-(\d+)$/', $requestId, $matches)) {
+                $num = (int) $matches[1];
+                if ($num > $maxNum) {
+                    $maxNum = $num;
+                }
+            }
+        }
+
+        $nextSeq = $maxNum + 1;
 
         $pr = null;
         $attempts = 0;

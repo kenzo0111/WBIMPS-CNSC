@@ -11,8 +11,22 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('property_acknowledgement_receipts_and_inspection_acceptance_reports', function (Blueprint $table) {
-            //
+        // Add purchase_order_id to property_acknowledgement_receipts table
+        Schema::table('property_acknowledgement_receipts', function (Blueprint $table) {
+            $table->unsignedBigInteger('purchase_order_id')->nullable()->after('id');
+            $table->foreign('purchase_order_id')
+                ->references('id')
+                ->on('purchase_orders')
+                ->onDelete('cascade');
+        });
+
+        // Add purchase_order_id to inspection_acceptance_reports table
+        Schema::table('inspection_acceptance_reports', function (Blueprint $table) {
+            $table->unsignedBigInteger('purchase_order_id')->nullable()->after('id');
+            $table->foreign('purchase_order_id')
+                ->references('id')
+                ->on('purchase_orders')
+                ->onDelete('cascade');
         });
     }
 
@@ -21,8 +35,16 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('property_acknowledgement_receipts_and_inspection_acceptance_reports', function (Blueprint $table) {
-            //
+        // Remove foreign key and column from property_acknowledgement_receipts
+        Schema::table('property_acknowledgement_receipts', function (Blueprint $table) {
+            $table->dropForeign(['purchase_order_id']);
+            $table->dropColumn('purchase_order_id');
+        });
+
+        // Remove foreign key and column from inspection_acceptance_reports
+        Schema::table('inspection_acceptance_reports', function (Blueprint $table) {
+            $table->dropForeign(['purchase_order_id']);
+            $table->dropColumn('purchase_order_id');
         });
     }
 };

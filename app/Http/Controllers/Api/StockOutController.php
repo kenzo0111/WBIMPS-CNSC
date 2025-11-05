@@ -75,6 +75,11 @@ class StockOutController extends Controller
 
         $created = null;
         DB::transaction(function () use ($validated, &$created) {
+            // Calculate total_cost if not provided
+            if (!isset($validated['total_cost']) && isset($validated['unit_cost'])) {
+                $validated['total_cost'] = $validated['quantity'] * $validated['unit_cost'];
+            }
+            
             $created = StockOut::create($validated);
 
             // Update product inventory
