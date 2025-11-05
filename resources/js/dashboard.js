@@ -261,6 +261,9 @@ const AppState = {
   statusRequests: [],
   currentStatusFilter: 'all',
 
+  // Suppliers list
+  suppliers: [],
+
   // About Us Content
   aboutUsContent: null,
 }
@@ -4609,12 +4612,20 @@ function saveSupplier(mode = 'create', index = null) {
           headers: {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': getCsrfToken(),
           },
           credentials: 'same-origin',
           body: JSON.stringify(payload),
         })
-        if (!res.ok) throw res
+
+        // Parse response first before checking status
         const createdBody = await res.json()
+
+        if (!res.ok) {
+          // If not OK, throw the parsed body for better error messages
+          throw createdBody
+        }
+
         // server may return created supplier object directly or inside data
         const created = createdBody.data || createdBody || {}
         // ensure coords from payload are preserved if server doesn't echo them
@@ -4628,12 +4639,20 @@ function saveSupplier(mode = 'create', index = null) {
           headers: {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': getCsrfToken(),
           },
           credentials: 'same-origin',
           body: JSON.stringify(payload),
         })
-        if (!res.ok) throw res
+
+        // Parse response first before checking status
         const updatedBody = await res.json()
+
+        if (!res.ok) {
+          // If not OK, throw the parsed body for better error messages
+          throw updatedBody
+        }
+
         const updated = updatedBody.data || updatedBody || {}
         updated.latitude = updated.latitude || payload.latitude || null
         updated.longitude = updated.longitude || payload.longitude || null
@@ -4674,23 +4693,32 @@ function saveSupplier(mode = 'create', index = null) {
           if (text) text.style.opacity = '1'
         }
       } catch (e) {}
-      // Try to extract server message when possible
-      try {
-        if (err && typeof err.json === 'function') {
+
+      // Enhanced error handling
+      console.error('Supplier save error:', err)
+
+      let errorMessage = 'Failed to save supplier'
+
+      // Check if err is already a parsed JSON object (from our improved fetch handling)
+      if (err && typeof err === 'object' && !err.json) {
+        const msg =
+          err?.message || (err?.errors ? JSON.stringify(err.errors) : null)
+        if (msg) errorMessage += ': ' + msg
+      }
+      // Fallback for Response objects
+      else if (err && typeof err.json === 'function') {
+        try {
           const errJson = await err.json()
           const msg =
             errJson?.message ||
             (errJson?.errors ? JSON.stringify(errJson.errors) : null)
-          showAlert(
-            'Failed to save supplier: ' + (msg || 'Server error'),
-            'error'
-          )
-        } else {
-          showAlert('Failed to save supplier', 'error')
+          if (msg) errorMessage += ': ' + msg
+        } catch (e) {
+          console.error('Error parsing error response:', e)
         }
-      } catch (e) {
-        showAlert('Failed to save supplier', 'error')
       }
+
+      showAlert(errorMessage, 'error')
     }
   })()
 }
@@ -4754,20 +4782,36 @@ async function loadSuppliersFromAPI() {
     })
     if (!res.ok) throw res
     const payload = await res.json()
-    // If paginated, take data
-    const items = Array.isArray(payload)
-      ? payload
-      : payload.data || payload.items || []
+    // Handle different response structures:
+    // - Direct array: payload = [...]
+    // - Wrapped: payload = { data: [...] }
+    // - Paginated: payload = { data: { data: [...], current_page: 1, ... } }
+    let items = []
+    if (Array.isArray(payload)) {
+      items = payload
+    } else if (payload.data) {
+      // Check if payload.data is paginated (has a 'data' property)
+      if (payload.data.data && Array.isArray(payload.data.data)) {
+        items = payload.data.data
+      } else if (Array.isArray(payload.data)) {
+        items = payload.data
+      }
+    }
+
     AppState.suppliers = items
     if (window.MockData) window.MockData.suppliers = AppState.suppliers
     const body = document.getElementById('suppliers-table-body')
     if (body) body.innerHTML = renderSuppliersRows()
   } catch (e) {
+    console.error('Failed to load suppliers from API:', e)
     // fallback to MockData if API unavailable
     if (window.MockData && Array.isArray(window.MockData.suppliers)) {
       AppState.suppliers = window.MockData.suppliers.slice()
       const body = document.getElementById('suppliers-table-body')
       if (body) body.innerHTML = renderSuppliersRows()
+    } else {
+      // Initialize as empty array if no fallback data
+      AppState.suppliers = []
     }
   }
 }

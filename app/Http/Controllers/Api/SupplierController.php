@@ -27,6 +27,8 @@ class SupplierController extends Controller
             'tin' => 'nullable|string|max:64',
             'contact' => 'nullable|string|max:128',
             'email' => 'nullable|email|max:255',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
         ]);
         if ($v->fails()) {
             return response()->json([
@@ -63,6 +65,8 @@ class SupplierController extends Controller
             'tin' => 'nullable|string|max:64',
             'contact' => 'nullable|string|max:128',
             'email' => 'nullable|email|max:255',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
         ]);
         if ($v->fails()) {
             return response()->json([

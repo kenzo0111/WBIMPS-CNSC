@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $tin
  * @property string|null $contact
  * @property string|null $email
+ * @property float|null $latitude
+ * @property float|null $longitude
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  */
@@ -25,5 +27,7 @@ class Supplier extends Model
         'tin',
         'contact',
         'email',
+        'latitude',
+        'longitude',
     ];
 }
