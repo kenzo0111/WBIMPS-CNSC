@@ -4,11 +4,11 @@ use App\Models\Category;
 use App\Models\User;
 
 beforeEach(function () {
-    $this->user = User::factory()->create([
+    $user = User::factory()->create([
         'is_admin' => true,
         'status' => 'active',
     ]);
-    $this->actingAs($this->user, 'web');
+    $this->actingAs($user, 'web');
 });
 
 test('can list categories', function () {

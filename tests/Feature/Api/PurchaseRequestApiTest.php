@@ -6,11 +6,11 @@ use Illuminate\Support\Facades\Mail;
 
 beforeEach(function () {
     // Create an authenticated admin user for tests
-    $this->user = User::factory()->create([
+    $user = User::factory()->create([
         'is_admin' => true,
         'status' => 'active',
     ]);
-    $this->actingAs($this->user, 'web');
+    $this->actingAs($user, 'web');
 
     // Fake mail to prevent actual email sending
     Mail::fake();

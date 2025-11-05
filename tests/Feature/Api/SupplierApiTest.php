@@ -5,11 +5,11 @@ use App\Models\User;
 
 beforeEach(function () {
     // Create an authenticated admin user for tests
-    $this->user = User::factory()->create([
+    $user = User::factory()->create([
         'is_admin' => true,
         'status' => 'active',
     ]);
-    $this->actingAs($this->user, 'web');
+    $this->actingAs($user, 'web');
 });
 
 test('can list suppliers', function () {
