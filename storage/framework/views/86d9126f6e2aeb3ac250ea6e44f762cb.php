@@ -84,8 +84,6 @@
     </style>
 </head>
 <body>
-    <div class="header-title"><?php echo e($appendixTitle ?? 'Appendix 69'); ?></div>
-
     <div class="main-title">INSPECTION AND ACCEPTANCE REPORT</div>
 
     <!-- Info row: uses a 4-column grid so right side aligns with IAR No (which occupies cols 3-4 in the items table) -->

@@ -9649,6 +9649,22 @@ function persistCurrentWizardStep() {
       invoice_number: modal.querySelector('#iar_invoice_no')?.value || '',
       invoice_date: modal.querySelector('#iar_invoice_date')?.value || '',
       po_number: modal.querySelector('#iar_po_no')?.value || '',
+      po_date: modal.querySelector('#iar_po_date')?.value || '',
+      requisitioning_office:
+        modal.querySelector('#iar_requisitioning_office')?.value || '',
+      responsibility_center_code:
+        modal.querySelector('#iar_responsibility_center_code')?.value || '',
+      responsibility_date:
+        modal.querySelector('#iar_responsibility_date')?.value || '',
+      date_inspected: modal.querySelector('#iar_date_inspected')?.value || '',
+      date_received: modal.querySelector('#iar_date_received')?.value || '',
+      inspection_status:
+        modal.querySelector('#iar_inspection_status')?.value || '',
+      inspection_officer_label:
+        modal.querySelector('#iar_inspection_officer_label')?.value || '',
+      acceptance_status:
+        modal.querySelector('#iar_acceptance_status')?.value || '',
+      custodian_label: modal.querySelector('#iar_custodian_label')?.value || '',
       inspected_by_name:
         modal.querySelector('#iar_inspected_by_name')?.value || '',
       inspected_by_position:
@@ -9662,6 +9678,8 @@ function persistCurrentWizardStep() {
       inspected_by_date_2:
         modal.querySelector('#iar_inspected_by_date_2')?.value || '',
     }
+    // Debug: Log IAR form data
+    console.log('IAR Form Data Saved:', AppState.purchaseOrderDraft.iarFormData)
   } else if (step === 4) {
     AppState.purchaseOrderDraft.orsNo =
       modal.querySelector('#po-ors-no')?.value || ''
