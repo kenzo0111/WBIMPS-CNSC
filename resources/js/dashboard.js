@@ -8520,8 +8520,8 @@ function openDownloadFormsChooser(triggerEl, requestId) {
         'requisitionIssueSlipView',
         '/requisition-issue-slip/view/{id}'
       ),
-      downloadUrl: `${baseUrl}/requisition-issue-slip/generate`,
-      method: 'POST',
+      downloadUrl: `${baseUrl}/requisition-issue-slip/{id}/pdf`,
+      method: 'GET',
     },
     {
       id: 'par',
