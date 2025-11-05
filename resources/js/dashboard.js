@@ -10815,22 +10815,71 @@ function renderDynamicPOForms() {
   // If no forms are checked, show a message
   if (!hasICS && !hasRIS && !hasPAR && !hasIAR) {
     container.innerHTML = `
-      <div style="padding: 24px; background: #f9fafb; border: 2px dashed #d1d5db; border-radius: 12px; text-align: center;">
-        <i data-lucide="file-text" style="width: 48px; height: 48px; color: #9ca3af; margin-bottom: 12px;"></i>
-        <p style="margin: 0; color: #6b7280; font-size: 14px;">Select forms from the items table above to configure them here</p>
+      <div style="padding: 32px; background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%); border: 2px dashed #d1d5db; border-radius: 16px; text-align: center; animation: fadeIn 0.3s ease;">
+        <div style="display: inline-flex; width: 80px; height: 80px; background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%); border-radius: 50%; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+          <i data-lucide="file-text" style="width: 40px; height: 40px; color: #9ca3af;"></i>
+        </div>
+        <h4 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #374151;">No Forms Selected</h4>
+        <p style="margin: 0; color: #6b7280; font-size: 14px; max-width: 400px; margin: 0 auto;">Select form checkboxes (ICS, RIS, PAR, IAR) from the items table above to configure and generate them</p>
+        <div style="margin-top: 20px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+          <span style="padding: 6px 12px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; font-size: 12px; font-weight: 500; color: #0369a1;">ICS - Inventory Custodian Slip</span>
+          <span style="padding: 6px 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; font-size: 12px; font-weight: 500; color: #15803d;">RIS - Requisition Issue Slip</span>
+          <span style="padding: 6px 12px; background: #fefce8; border: 1px solid #fde68a; border-radius: 8px; font-size: 12px; font-weight: 500; color: #a16207;">PAR - Property Acknowledgement Receipt</span>
+          <span style="padding: 6px 12px; background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 8px; font-size: 12px; font-weight: 500; color: #be185d;">IAR - Inspection Acceptance Report</span>
+        </div>
       </div>
     `
     lucide.createIcons()
     return
   }
 
+  // Count selected forms for progress
+  const selectedFormsCount = [hasICS, hasRIS, hasPAR, hasIAR].filter(
+    Boolean
+  ).length
+  const totalFormsAvailable = 4
+
   let formsHTML = `
-    <div style="border-top: 2px solid #e5e7eb; padding-top: 24px;">
-      <h4 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 8px;">
-        <i data-lucide="file-check" style="width: 18px; height: 18px; color: #2563eb;"></i>
-        Form Configuration
-      </h4>
-      <p style="margin: 0 0 20px 0; font-size: 13px; color: #6b7280;">Fill in the details for the selected forms. These will be generated upon purchase order completion.</p>
+    <div style="border-top: 2px solid #e5e7eb; padding-top: 24px; animation: fadeIn 0.3s ease;">
+      <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-radius: 12px; padding: 20px; margin-bottom: 24px; border: 1px solid #bfdbfe;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+          <h4 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e40af; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="file-check" style="width: 20px; height: 20px; color: #2563eb;"></i>
+            Form Configuration
+          </h4>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="padding: 6px 12px; background: white; border-radius: 8px; font-size: 13px; font-weight: 600; color: #2563eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+              ${selectedFormsCount} of ${totalFormsAvailable} Forms Selected
+            </span>
+          </div>
+        </div>
+        <p style="margin: 0 0 12px 0; font-size: 13px; color: #1e40af; line-height: 1.5;">
+          <i data-lucide="info" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i>
+          Fill in the details for each selected form below. These will be automatically generated when you complete the purchase order.
+        </p>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+          ${
+            hasICS
+              ? '<span style="padding: 4px 10px; background: #0369a1; color: white; border-radius: 6px; font-size: 11px; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">✓ ICS</span>'
+              : ''
+          }
+          ${
+            hasRIS
+              ? '<span style="padding: 4px 10px; background: #15803d; color: white; border-radius: 6px; font-size: 11px; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">✓ RIS</span>'
+              : ''
+          }
+          ${
+            hasPAR
+              ? '<span style="padding: 4px 10px; background: #a16207; color: white; border-radius: 6px; font-size: 11px; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">✓ PAR</span>'
+              : ''
+          }
+          ${
+            hasIAR
+              ? '<span style="padding: 4px 10px; background: #be185d; color: white; border-radius: 6px; font-size: 11px; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">✓ IAR</span>'
+              : ''
+          }
+        </div>
+      </div>
   `
 
   // ICS Form Section
@@ -10839,77 +10888,115 @@ function renderDynamicPOForms() {
       (item) => item.generateICS
     )
     formsHTML += `
-      <div style="background: #f0f9ff; border: 2px solid #bae6fd; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
-        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
-          <i data-lucide="package" style="width: 20px; height: 20px; color: #0369a1;"></i>
-          <h5 style="margin: 0; font-size: 15px; font-weight: 600; color: #0369a1;">Inventory Custodian Slip (ICS)</h5>
-          <span style="margin-left: auto; padding: 4px 12px; background: #0369a1; color: white; border-radius: 12px; font-size: 12px; font-weight: 500;">${
-            icsItems.length
-          } item${icsItems.length !== 1 ? 's' : ''}</span>
+      <div class="form-section-card" style="background: white; border: 2px solid #bae6fd; border-radius: 12px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 2px 8px rgba(3, 105, 161, 0.1); transition: all 0.3s ease;">
+        <div onclick="toggleFormSection('ics')" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 18px 20px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: all 0.2s ease; user-select: none;" onmouseover="this.style.background='linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%)'" onmouseout="this.style.background='linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)'">
+          <div style="width: 40px; height: 40px; background: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <i data-lucide="package" style="width: 22px; height: 22px; color: #0369a1;"></i>
+          </div>
+          <div style="flex: 1;">
+            <h5 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: #0369a1; display: flex; align-items: center; gap: 8px;">
+              Inventory Custodian Slip (ICS)
+              <span style="padding: 3px 8px; background: #0369a1; color: white; border-radius: 10px; font-size: 11px; font-weight: 600;">${
+                icsItems.length
+              } item${icsItems.length !== 1 ? 's' : ''}</span>
+            </h5>
+            <p style="margin: 0; font-size: 12px; color: #0369a1; opacity: 0.8;">Semi-expendable property items</p>
+          </div>
+          <i data-lucide="chevron-down" id="ics-toggle-icon" style="width: 24px; height: 24px; color: #0369a1; transition: transform 0.3s ease;"></i>
         </div>
-        <div class="grid-2" style="gap: 16px;">
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="hash" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              ICS No.
-            </label>
-            <input type="text" class="form-input" id="ics_ics_no" placeholder="ICS Number" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+        <div id="ics-form-content" style="padding: 24px 20px; display: block;">
+          <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #0369a1;">
+            <div style="display: flex; align-items: start; gap: 10px;">
+              <i data-lucide="lightbulb" style="width: 18px; height: 18px; color: #0369a1; margin-top: 2px; flex-shrink: 0;"></i>
+              <div>
+                <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: 600; color: #0369a1;">Quick Tip</p>
+                <p style="margin: 0; font-size: 12px; color: #475569; line-height: 1.5;">ICS is used for semi-expendable property items. Fill in the custodian and issuer information below.</p>
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="building-2" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Entity Name
-            </label>
-            <input type="text" class="form-input" id="ics_entity_name" placeholder="Entity Name" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          <div class="grid-2" style="gap: 16px;">
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="hash" style="width: 14px; height: 14px; color: #64748b;"></i>
+                ICS No.
+                <span style="color: #dc2626; margin-left: 2px;">*</span>
+              </label>
+              <input type="text" class="form-input" id="ics_ics_no" placeholder="e.g., ICS-2025-001" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="building-2" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Entity Name
+              </label>
+              <input type="text" class="form-input" id="ics_entity_name" placeholder="e.g., Camarines Norte State College" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="layers" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Fund Cluster
+              </label>
+              <input type="text" class="form-input" id="ics_fund_cluster" placeholder="e.g., 01 - Regular Agency Fund" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="layers" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Fund Cluster
-            </label>
-            <input type="text" class="form-input" id="ics_fund_cluster" placeholder="Fund Cluster" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          
+          <div style="margin: 24px 0 16px 0; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;">
+            <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="user-check" style="width: 16px; height: 16px; color: #0369a1;"></i>
+              Received By (Custodian)
+            </h6>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="user" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Received By (Name)
-            </label>
-            <input type="text" class="form-input" id="ics_received_by_name" placeholder="Name of custodian receiving items" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          <div class="grid-3" style="gap: 16px;">
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Name
+              </label>
+              <input type="text" class="form-input" id="ics_received_by_name" placeholder="Full name of custodian" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Position
+              </label>
+              <input type="text" class="form-input" id="ics_received_by_position" placeholder="e.g., Property Custodian" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Date
+              </label>
+              <input type="date" class="form-input" id="ics_received_by_date" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Received By (Position)
-            </label>
-            <input type="text" class="form-input" id="ics_received_by_position" placeholder="e.g., Property Custodian" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          
+          <div style="margin: 24px 0 16px 0; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;">
+            <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="user" style="width: 16px; height: 16px; color: #0369a1;"></i>
+              Received From (Issuer)
+            </h6>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Received By (Date)
-            </label>
-            <input type="date" class="form-input" id="ics_received_by_date" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="user" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Received From (Name)
-            </label>
-            <input type="text" class="form-input" id="ics_received_from_name" placeholder="Name of person issuing items" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Received From (Position)
-            </label>
-            <input type="text" class="form-input" id="ics_received_from_position" placeholder="e.g., Supply Officer" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Received From (Date)
-            </label>
-            <input type="date" class="form-input" id="ics_received_from_date" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          <div class="grid-3" style="gap: 16px;">
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Name
+              </label>
+              <input type="text" class="form-input" id="ics_received_from_name" placeholder="Full name of issuer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Position
+              </label>
+              <input type="text" class="form-input" id="ics_received_from_position" placeholder="e.g., Supply Officer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Date
+              </label>
+              <input type="date" class="form-input" id="ics_received_from_date" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
           </div>
         </div>
       </div>
@@ -10922,147 +11009,211 @@ function renderDynamicPOForms() {
       (item) => item.generateRIS
     )
     formsHTML += `
-      <div style="background: #f0fdf4; border: 2px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
-        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
-          <i data-lucide="file-text" style="width: 20px; height: 20px; color: #15803d;"></i>
-          <h5 style="margin: 0; font-size: 15px; font-weight: 600; color: #15803d;">Requisition and Issue Slip (RIS)</h5>
-          <span style="margin-left: auto; padding: 4px 12px; background: #15803d; color: white; border-radius: 12px; font-size: 12px; font-weight: 500;">${
-            risItems.length
-          } item${risItems.length !== 1 ? 's' : ''}</span>
+      <div class="form-section-card" style="background: white; border: 2px solid #bbf7d0; border-radius: 12px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 2px 8px rgba(21, 128, 61, 0.1); transition: all 0.3s ease;">
+        <div onclick="toggleFormSection('ris')" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding: 18px 20px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: all 0.2s ease; user-select: none;" onmouseover="this.style.background='linear-gradient(135deg, #dcfce7 0%, #d1fae5 100%)'" onmouseout="this.style.background='linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'">
+          <div style="width: 40px; height: 40px; background: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <i data-lucide="file-text" style="width: 22px; height: 22px; color: #15803d;"></i>
+          </div>
+          <div style="flex: 1;">
+            <h5 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: #15803d; display: flex; align-items: center; gap: 8px;">
+              Requisition and Issue Slip (RIS)
+              <span style="padding: 3px 8px; background: #15803d; color: white; border-radius: 10px; font-size: 11px; font-weight: 600;">${
+                risItems.length
+              } item${risItems.length !== 1 ? 's' : ''}</span>
+            </h5>
+            <p style="margin: 0; font-size: 12px; color: #15803d; opacity: 0.8;">Expendable property items</p>
+          </div>
+          <i data-lucide="chevron-down" id="ris-toggle-icon" style="width: 24px; height: 24px; color: #15803d; transition: transform 0.3s ease;"></i>
         </div>
-        <div class="grid-2" style="gap: 16px;">
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="hash" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              RIS No.
-            </label>
-            <input type="text" class="form-input" id="ris_ris_no" placeholder="RIS Number" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+        <div id="ris-form-content" style="padding: 24px 20px; display: block;">
+          <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #15803d;">
+            <div style="display: flex; align-items: start; gap: 10px;">
+              <i data-lucide="lightbulb" style="width: 18px; height: 18px; color: #15803d; margin-top: 2px; flex-shrink: 0;"></i>
+              <div>
+                <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: 600; color: #15803d;">Quick Tip</p>
+                <p style="margin: 0; font-size: 12px; color: #475569; line-height: 1.5;">RIS is used for expendable supplies and materials. Complete the basic information and all signature fields below.</p>
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="building-2" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Entity Name
-            </label>
-            <input type="text" class="form-input" id="ris_entity_name" placeholder="Entity Name" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          
+          <div style="margin-bottom: 20px; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;">
+            <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="file-check" style="width: 16px; height: 16px; color: #15803d;"></i>
+              Basic Information
+            </h6>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="layers" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Fund Cluster
-            </label>
-            <input type="text" class="form-input" id="ris_fund_cluster" placeholder="Fund Cluster" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          <div class="grid-2" style="gap: 16px; margin-bottom: 24px;">
+          <div class="grid-2" style="gap: 16px; margin-bottom: 24px;">
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="hash" style="width: 14px; height: 14px; color: #64748b;"></i>
+                RIS No.
+                <span style="color: #dc2626; margin-left: 2px;">*</span>
+              </label>
+              <input type="text" class="form-input" id="ris_ris_no" placeholder="e.g., RIS-2025-001" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="building-2" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Entity Name
+              </label>
+              <input type="text" class="form-input" id="ris_entity_name" placeholder="e.g., Camarines Norte State College" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="layers" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Fund Cluster
+              </label>
+              <input type="text" class="form-input" id="ris_fund_cluster" placeholder="e.g., 01 - Regular Agency Fund" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="building" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Division
+              </label>
+              <input type="text" class="form-input" id="ris_division" placeholder="Division name" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Office
+              </label>
+              <input type="text" class="form-input" id="ris_office" placeholder="Office name" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="hash" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Responsibility Center Code
+              </label>
+              <input type="text" class="form-input" id="ris_responsibility_center_code" placeholder="RCC number" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="message-square" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Purpose
+              </label>
+              <input type="text" class="form-input" id="ris_purpose" placeholder="Purpose of requisition" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="building" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Division
-            </label>
-            <input type="text" class="form-input" id="ris_division" placeholder="Division name" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          
+          <div style="margin: 24px 0 16px 0; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;">
+            <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="user" style="width: 16px; height: 16px; color: #15803d;"></i>
+              Requested By
+            </h6>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Office
-            </label>
-            <input type="text" class="form-input" id="ris_office" placeholder="Office name" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          <div class="grid-3" style="gap: 16px; margin-bottom: 24px;">
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Name
+              </label>
+              <input type="text" class="form-input" id="ris_requested_by_name" placeholder="Full name of requester" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Designation
+              </label>
+              <input type="text" class="form-input" id="ris_requested_by_designation" placeholder="Position/title" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Date
+              </label>
+              <input type="date" class="form-input" id="ris_requested_by_date" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="hash" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Responsibility Center Code
-            </label>
-            <input type="text" class="form-input" id="ris_responsibility_center_code" placeholder="RCC number" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          
+          <div style="margin: 24px 0 16px 0; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;">
+            <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="user-check" style="width: 16px; height: 16px; color: #15803d;"></i>
+              Approved By
+            </h6>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="message-square" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Purpose
-            </label>
-            <input type="text" class="form-input" id="ris_purpose" placeholder="Purpose of requisition" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          <div class="grid-3" style="gap: 16px; margin-bottom: 24px;">
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Name
+              </label>
+              <input type="text" class="form-input" id="ris_approved_by_name" placeholder="Full name of approver" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Designation
+              </label>
+              <input type="text" class="form-input" id="ris_approved_by_designation" placeholder="Position/title" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Date
+              </label>
+              <input type="date" class="form-input" id="ris_approved_by_date" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="user" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Requested By (Name)
-            </label>
-            <input type="text" class="form-input" id="ris_requested_by_name" placeholder="Name of requester" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          
+          <div style="margin: 24px 0 16px 0; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;">
+            <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="package-check" style="width: 16px; height: 16px; color: #15803d;"></i>
+              Issued By
+            </h6>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Requested By (Designation)
-            </label>
-            <input type="text" class="form-input" id="ris_requested_by_designation" placeholder="Position/title" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          <div class="grid-3" style="gap: 16px; margin-bottom: 24px;">
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Name
+              </label>
+              <input type="text" class="form-input" id="ris_issued_by_name" placeholder="Full name of issuer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Designation
+              </label>
+              <input type="text" class="form-input" id="ris_issued_by_designation" placeholder="Position/title" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Date
+              </label>
+              <input type="date" class="form-input" id="ris_issued_by_date" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Requested By (Date)
-            </label>
-            <input type="date" class="form-input" id="ris_requested_by_date" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          
+          <div style="margin: 24px 0 16px 0; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;">
+            <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="user-check" style="width: 16px; height: 16px; color: #15803d;"></i>
+              Received By
+            </h6>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="user-check" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Approved By (Name)
-            </label>
-            <input type="text" class="form-input" id="ris_approved_by_name" placeholder="Name of approver" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Approved By (Designation)
-            </label>
-            <input type="text" class="form-input" id="ris_approved_by_designation" placeholder="Position/title" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Approved By (Date)
-            </label>
-            <input type="date" class="form-input" id="ris_approved_by_date" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="user" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Issued By (Name)
-            </label>
-            <input type="text" class="form-input" id="ris_issued_by_name" placeholder="Name of issuer" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Issued By (Designation)
-            </label>
-            <input type="text" class="form-input" id="ris_issued_by_designation" placeholder="Position/title" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Issued By (Date)
-            </label>
-            <input type="date" class="form-input" id="ris_issued_by_date" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="user" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Received By (Name)
-            </label>
-            <input type="text" class="form-input" id="ris_received_by_name" placeholder="Name of receiver" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Received By (Designation)
-            </label>
-            <input type="text" class="form-input" id="ris_received_by_designation" placeholder="Position/title" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Received By (Date)
-            </label>
-            <input type="date" class="form-input" id="ris_received_by_date" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          <div class="grid-3" style="gap: 16px;">
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Name
+              </label>
+              <input type="text" class="form-input" id="ris_received_by_name" placeholder="Full name of receiver" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Designation
+              </label>
+              <input type="text" class="form-input" id="ris_received_by_designation" placeholder="Position/title" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Date
+              </label>
+              <input type="date" class="form-input" id="ris_received_by_date" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
           </div>
         </div>
       </div>
@@ -11075,77 +11226,115 @@ function renderDynamicPOForms() {
       (item) => item.generatePAR
     )
     formsHTML += `
-      <div style="background: #fefce8; border: 2px solid #fde68a; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
-        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
-          <i data-lucide="clipboard-check" style="width: 20px; height: 20px; color: #a16207;"></i>
-          <h5 style="margin: 0; font-size: 15px; font-weight: 600; color: #a16207;">Property Acknowledgement Receipt (PAR)</h5>
-          <span style="margin-left: auto; padding: 4px 12px; background: #a16207; color: white; border-radius: 12px; font-size: 12px; font-weight: 500;">${
-            parItems.length
-          } item${parItems.length !== 1 ? 's' : ''}</span>
+      <div class="form-section-card" style="background: white; border: 2px solid #fde68a; border-radius: 12px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 2px 8px rgba(161, 98, 7, 0.1); transition: all 0.3s ease;">
+        <div onclick="toggleFormSection('par')" style="background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%); padding: 18px 20px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: all 0.2s ease; user-select: none;" onmouseover="this.style.background='linear-gradient(135deg, #fef9c3 0%, #fef08a 100%)'" onmouseout="this.style.background='linear-gradient(135deg, #fefce8 0%, #fef9c3 100%)'">
+          <div style="width: 40px; height: 40px; background: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <i data-lucide="clipboard-check" style="width: 22px; height: 22px; color: #a16207;"></i>
+          </div>
+          <div style="flex: 1;">
+            <h5 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: #a16207; display: flex; align-items: center; gap: 8px;">
+              Property Acknowledgement Receipt (PAR)
+              <span style="padding: 3px 8px; background: #a16207; color: white; border-radius: 10px; font-size: 11px; font-weight: 600;">${
+                parItems.length
+              } item${parItems.length !== 1 ? 's' : ''}</span>
+            </h5>
+            <p style="margin: 0; font-size: 12px; color: #a16207; opacity: 0.8;">High-value property items (₱50,000+)</p>
+          </div>
+          <i data-lucide="chevron-down" id="par-toggle-icon" style="width: 24px; height: 24px; color: #a16207; transition: transform 0.3s ease;"></i>
         </div>
-        <div class="grid-2" style="gap: 16px;">
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="hash" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              PAR No.
-            </label>
-            <input type="text" class="form-input" id="par_par_no" placeholder="PAR Number" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+        <div id="par-form-content" style="padding: 24px 20px; display: block;">
+          <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #a16207;">
+            <div style="display: flex; align-items: start; gap: 10px;">
+              <i data-lucide="lightbulb" style="width: 18px; height: 18px; color: #a16207; margin-top: 2px; flex-shrink: 0;"></i>
+              <div>
+                <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: 600; color: #a16207;">Quick Tip</p>
+                <p style="margin: 0; font-size: 12px; color: #475569; line-height: 1.5;">PAR is used for high-value property, plant, and equipment (PPE) with acquisition cost of ₱50,000 or more. Fill in custodian and issuer details.</p>
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="building-2" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Entity Name
-            </label>
-            <input type="text" class="form-input" id="par_entity_name" placeholder="Entity Name" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          <div class="grid-3" style="gap: 16px; margin-bottom: 24px;">
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="hash" style="width: 14px; height: 14px; color: #64748b;"></i>
+                PAR No.
+                <span style="color: #dc2626; margin-left: 2px;">*</span>
+              </label>
+              <input type="text" class="form-input" id="par_par_no" placeholder="e.g., PAR-2025-001" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="building-2" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Entity Name
+              </label>
+              <input type="text" class="form-input" id="par_entity_name" placeholder="e.g., Camarines Norte State College" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="layers" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Fund Cluster
+              </label>
+              <input type="text" class="form-input" id="par_fund_cluster" placeholder="e.g., 01 - Regular Agency Fund" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="layers" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Fund Cluster
-            </label>
-            <input type="text" class="form-input" id="par_fund_cluster" placeholder="Fund Cluster" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          
+          <div style="margin: 24px 0 16px 0; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;">
+            <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="user-check" style="width: 16px; height: 16px; color: #a16207;"></i>
+              Received By (Property Custodian)
+            </h6>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="user" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Received By (Name)
-            </label>
-            <input type="text" class="form-input" id="par_received_by_name" placeholder="Name of property custodian" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          <div class="grid-3" style="gap: 16px; margin-bottom: 24px;">
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Name
+              </label>
+              <input type="text" class="form-input" id="par_received_by_name" placeholder="Full name of property custodian" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Position
+              </label>
+              <input type="text" class="form-input" id="par_received_by_position" placeholder="e.g., Property Custodian" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Date
+              </label>
+              <input type="date" class="form-input" id="par_received_date" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Received By (Position)
-            </label>
-            <input type="text" class="form-input" id="par_received_by_position" placeholder="e.g., Property Custodian" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          
+          <div style="margin: 24px 0 16px 0; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;">
+            <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="user" style="width: 16px; height: 16px; color: #a16207;"></i>
+              Issued By
+            </h6>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Received Date
-            </label>
-            <input type="date" class="form-input" id="par_received_date" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="user-check" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Issued By (Name)
-            </label>
-            <input type="text" class="form-input" id="par_issued_by_name" placeholder="Name of person issuing property" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Issued By (Position)
-            </label>
-            <input type="text" class="form-input" id="par_issued_by_position" placeholder="e.g., Supply Officer" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Issued Date
-            </label>
-            <input type="date" class="form-input" id="par_issued_date" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+          <div class="grid-3" style="gap: 16px;">
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Name
+              </label>
+              <input type="text" class="form-input" id="par_issued_by_name" placeholder="Full name of issuer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Position
+              </label>
+              <input type="text" class="form-input" id="par_issued_by_position" placeholder="e.g., Supply Officer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Date
+              </label>
+              <input type="date" class="form-input" id="par_issued_date" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
           </div>
         </div>
       </div>
@@ -11158,143 +11347,254 @@ function renderDynamicPOForms() {
       (item) => item.generateIAR
     )
     formsHTML += `
-      <div style="background: #fdf2f8; border: 2px solid #fbcfe8; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
-        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
-          <i data-lucide="clipboard-list" style="width: 20px; height: 20px; color: #be185d;"></i>
-          <h5 style="margin: 0; font-size: 15px; font-weight: 600; color: #be185d;">Inspection and Acceptance Report (IAR)</h5>
-          <span style="margin-left: auto; padding: 4px 12px; background: #be185d; color: white; border-radius: 12px; font-size: 12px; font-weight: 500;">${
+      <div style="background: white; border: 2px solid #fbcfe8; border-radius: 16px; overflow: hidden; margin-bottom: 16px; box-shadow: 0 4px 6px -1px rgba(190, 24, 93, 0.1), 0 2px 4px -1px rgba(190, 24, 93, 0.06);">
+        <!-- Collapsible Header -->
+        <div onclick="toggleFormSection('iar')" style="cursor: pointer; background: linear-gradient(135deg, #be185d 0%, #9f1239 100%); padding: 20px; display: flex; align-items: center; gap: 12px; transition: all 0.2s ease;" 
+             onmouseover="this.style.background='linear-gradient(135deg, #9f1239 0%, #881337 100%)'" 
+             onmouseout="this.style.background='linear-gradient(135deg, #be185d 0%, #9f1239 100%)'">
+          <div style="background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(10px); border-radius: 12px; padding: 8px; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;">
+            <i data-lucide="clipboard-list" style="width: 24px; height: 24px; color: white;"></i>
+          </div>
+          <div style="flex: 1;">
+            <h5 style="margin: 0; font-size: 16px; font-weight: 600; color: white; letter-spacing: 0.3px;">Inspection and Acceptance Report (IAR)</h5>
+            <p style="margin: 4px 0 0 0; font-size: 13px; color: rgba(255, 255, 255, 0.9);">Quality verification and acceptance documentation</p>
+          </div>
+          <span style="padding: 6px 14px; background: rgba(255, 255, 255, 0.25); backdrop-filter: blur(10px); color: white; border-radius: 20px; font-size: 13px; font-weight: 600; border: 1px solid rgba(255, 255, 255, 0.3);">${
             iarItems.length
           } item${iarItems.length !== 1 ? 's' : ''}</span>
+          <i data-lucide="chevron-down" id="iar-toggle-icon" style="width: 20px; height: 20px; color: rgba(255, 255, 255, 0.9); transition: transform 0.3s ease;"></i>
         </div>
-        <div class="grid-2" style="gap: 16px;">
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="hash" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              IAR No.
-            </label>
-            <input type="text" class="form-input" id="iar_iar_no" placeholder="IAR Number" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+        
+        <!-- Form Content -->
+        <div id="iar-form-content" style="padding: 24px; background: #fdf2f8;">
+          <!-- Quick Tip -->
+          <div style="background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%); border-left: 4px solid #be185d; border-radius: 8px; padding: 14px 16px; margin-bottom: 24px; display: flex; align-items: start; gap: 12px;">
+            <i data-lucide="lightbulb" style="width: 18px; height: 18px; color: #be185d; margin-top: 2px; flex-shrink: 0;"></i>
+            <div>
+              <p style="margin: 0; font-size: 13px; color: #831843; line-height: 1.6;">
+                <strong style="font-weight: 600;">Quick Tip:</strong> Document the physical inspection, quality verification, and formal acceptance of delivered goods. This ensures compliance and accountability.
+              </p>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="building-2" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Entity Name
-            </label>
-            <input type="text" class="form-input" id="iar_entity_name" placeholder="Entity Name" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+
+          <!-- Basic Information Section -->
+          <div style="margin-bottom: 24px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #fbcfe8;">
+              <i data-lucide="info" style="width: 18px; height: 18px; color: #be185d;"></i>
+              <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #be185d; text-transform: uppercase; letter-spacing: 0.5px;">Basic Information</h6>
+            </div>
+            <div class="grid-2" style="gap: 16px;">
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="hash" style="width: 14px; height: 14px; color: #be185d;"></i>
+                  IAR No. <span style="color: #be185d;">*</span>
+                </label>
+                <input type="text" class="form-input" id="iar_iar_no" placeholder="e.g., IAR-2024-001" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="calendar" style="width: 14px; height: 14px; color: #be185d;"></i>
+                  IAR Date <span style="color: #be185d;">*</span>
+                </label>
+                <input type="date" class="form-input" id="iar_iar_date" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="building-2" style="width: 14px; height: 14px; color: #be185d;"></i>
+                  Entity Name
+                </label>
+                <input type="text" class="form-input" id="iar_entity_name" placeholder="e.g., Department of Education" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="layers" style="width: 14px; height: 14px; color: #be185d;"></i>
+                  Fund Cluster
+                </label>
+                <input type="text" class="form-input" id="iar_fund_cluster" placeholder="e.g., 01 - General Fund" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="layers" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Fund Cluster
-            </label>
-            <input type="text" class="form-input" id="iar_fund_cluster" placeholder="Fund Cluster" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+
+          <!-- Purchase Order Details Section -->
+          <div style="margin-bottom: 24px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #fbcfe8;">
+              <i data-lucide="file-text" style="width: 18px; height: 18px; color: #be185d;"></i>
+              <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #be185d; text-transform: uppercase; letter-spacing: 0.5px;">Purchase Order Details</h6>
+            </div>
+            <div class="grid-2" style="gap: 16px;">
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="file-text" style="width: 14px; height: 14px; color: #be185d;"></i>
+                  PO No.
+                </label>
+                <input type="text" class="form-input" id="iar_po_no" placeholder="Purchase Order Number" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="calendar" style="width: 14px; height: 14px; color: #be185d;"></i>
+                  PO Date
+                </label>
+                <input type="date" class="form-input" id="iar_po_date" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #be185d;"></i>
+                  Requisitioning Office
+                </label>
+                <input type="text" class="form-input" id="iar_requisitioning_office" placeholder="Office requesting items" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="hash" style="width: 14px; height: 14px; color: #be185d;"></i>
+                  Responsibility Center Code
+                </label>
+                <input type="text" class="form-input" id="iar_responsibility_center_code" placeholder="RCC number" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="calendar" style="width: 14px; height: 14px; color: #be185d;"></i>
+                  Responsibility Date
+                </label>
+                <input type="date" class="form-input" id="iar_responsibility_date" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="file-text" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              PO No.
-            </label>
-            <input type="text" class="form-input" id="iar_po_no" placeholder="Purchase Order Number" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+
+          <!-- Invoice Information Section -->
+          <div style="margin-bottom: 24px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #fbcfe8;">
+              <i data-lucide="receipt" style="width: 18px; height: 18px; color: #be185d;"></i>
+              <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #be185d; text-transform: uppercase; letter-spacing: 0.5px;">Invoice Information</h6>
+            </div>
+            <div class="grid-2" style="gap: 16px;">
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="file-text" style="width: 14px; height: 14px; color: #be185d;"></i>
+                  Invoice Number
+                </label>
+                <input type="text" class="form-input" id="iar_invoice_no" placeholder="Invoice number from supplier" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="calendar" style="width: 14px; height: 14px; color: #be185d;"></i>
+                  Invoice Date
+                </label>
+                <input type="date" class="form-input" id="iar_invoice_date" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              PO Date
-            </label>
-            <input type="date" class="form-input" id="iar_po_date" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              IAR Date
-            </label>
-            <input type="date" class="form-input" id="iar_iar_date" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Requisitioning Office
-            </label>
-            <input type="text" class="form-input" id="iar_requisitioning_office" placeholder="Office requesting items" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="hash" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Responsibility Center Code
-            </label>
-            <input type="text" class="form-input" id="iar_responsibility_center_code" placeholder="RCC number" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Responsibility Date
-            </label>
-            <input type="date" class="form-input" id="iar_responsibility_date" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="file-text" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Invoice Number
-            </label>
-            <input type="text" class="form-input" id="iar_invoice_no" placeholder="Invoice number from supplier" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Invoice Date
-            </label>
-            <input type="date" class="form-input" id="iar_invoice_date" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Date Inspected
-            </label>
-            <input type="date" class="form-input" id="iar_date_inspected" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Date Received
-            </label>
-            <input type="date" class="form-input" id="iar_date_received" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="check-circle" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Inspection Status
-            </label>
-            <select class="form-select" id="iar_inspection_status" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-              <option value="">Select status</option>
-              <option value="complete">Complete</option>
-              <option value="partial">Partial</option>
-              <option value="incomplete">Incomplete</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="user-check" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Inspection Officer Label
-            </label>
-            <input type="text" class="form-input" id="iar_inspection_officer_label" placeholder="Name/title of inspection officer" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="check-circle" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Acceptance Status
-            </label>
-            <select class="form-select" id="iar_acceptance_status" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
-              <option value="">Select status</option>
-              <option value="accepted">Accepted</option>
-              <option value="accepted-with-remarks">Accepted with Remarks</option>
-              <option value="rejected">Rejected</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-              <i data-lucide="user" style="width: 14px; height: 14px; color: #6b7280;"></i>
-              Custodian Label
-            </label>
-            <input type="text" class="form-input" id="iar_custodian_label" placeholder="Name/title of custodian" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;">
+
+          <!-- Inspection & Acceptance Details Section -->
+          <div style="margin-bottom: 24px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #fbcfe8;">
+              <i data-lucide="clipboard-check" style="width: 18px; height: 18px; color: #be185d;"></i>
+              <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #be185d; text-transform: uppercase; letter-spacing: 0.5px;">Inspection & Acceptance Details</h6>
+            </div>
+            <div class="grid-2" style="gap: 16px;">
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="calendar" style="width: 14px; height: 14px; color: #be185d;"></i>
+                  Date Inspected
+                </label>
+                <input type="date" class="form-input" id="iar_date_inspected" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="calendar" style="width: 14px; height: 14px; color: #be185d;"></i>
+                  Date Received
+                </label>
+                <input type="date" class="form-input" id="iar_date_received" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="check-circle" style="width: 14px; height: 14px; color: #be185d;"></i>
+                  Inspection Status
+                </label>
+                <select class="form-select" id="iar_inspection_status" 
+                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+                  <option value="">Select status</option>
+                  <option value="complete">Complete</option>
+                  <option value="partial">Partial</option>
+                  <option value="incomplete">Incomplete</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="user-check" style="width: 14px; height: 14px; color: #be185d;"></i>
+                  Inspection Officer Label
+                </label>
+                <input type="text" class="form-input" id="iar_inspection_officer_label" placeholder="Name/title of inspection officer" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="check-circle" style="width: 14px; height: 14px; color: #be185d;"></i>
+                  Acceptance Status
+                </label>
+                <select class="form-select" id="iar_acceptance_status" 
+                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+                  <option value="">Select status</option>
+                  <option value="accepted">Accepted</option>
+                  <option value="accepted-with-remarks">Accepted with Remarks</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
+                  <i data-lucide="user" style="width: 14px; height: 14px; color: #be185d;"></i>
+                  Custodian Label
+                </label>
+                <input type="text" class="form-input" id="iar_custodian_label" placeholder="Name/title of custodian" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -11306,6 +11606,27 @@ function renderDynamicPOForms() {
   container.innerHTML = formsHTML
   lucide.createIcons()
 }
+
+// Toggle form section collapse/expand
+function toggleFormSection(formType) {
+  const content = document.getElementById(`${formType}-form-content`)
+  const icon = document.getElementById(`${formType}-toggle-icon`)
+
+  if (!content || !icon) return
+
+  if (content.style.display === 'none') {
+    content.style.display = 'block'
+    icon.style.transform = 'rotate(0deg)'
+    // Add smooth animation
+    content.style.animation = 'slideDown 0.3s ease'
+  } else {
+    content.style.display = 'none'
+    icon.style.transform = 'rotate(-90deg)'
+  }
+}
+
+// Make it globally accessible
+window.toggleFormSection = toggleFormSection
 
 function updateStockSummary() {
   const summary = document.getElementById('stock-summary')
