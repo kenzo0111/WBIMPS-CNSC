@@ -28,7 +28,7 @@ class CategoryController extends Controller
         // Generate a new category code like C001 if not provided
         if (empty($request->input('code'))) {
             $last = Category::whereNotNull('code')
-                ->orderByRaw("CAST(SUBSTRING(code, 2) AS UNSIGNED) DESC")
+                ->orderByRaw('CAST(SUBSTRING(code, 2) AS UNSIGNED) DESC')
                 ->first();
 
             $next = 1;
@@ -40,6 +40,7 @@ class CategoryController extends Controller
         }
 
         $category = Category::create($validated);
+
         return response()->json(['data' => $category], 201);
     }
 
@@ -62,6 +63,7 @@ class CategoryController extends Controller
         ]);
 
         $category->update($validated);
+
         return response()->json(['data' => $category]);
     }
 
@@ -71,6 +73,7 @@ class CategoryController extends Controller
     public function destroy(Category $category)
     {
         $category->delete();
+
         return response()->json(['message' => 'Category deleted']);
     }
 }

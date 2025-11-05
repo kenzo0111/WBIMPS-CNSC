@@ -12,7 +12,6 @@ class PurchaseRequestObserver
     /**
      * Handle the PurchaseRequest "updated" event.
      *
-     * @param  \App\Models\PurchaseRequest  $purchaseRequest
      * @return void
      */
     public function updated(PurchaseRequest $purchaseRequest)
@@ -29,7 +28,7 @@ class PurchaseRequestObserver
             $mail = new StatusChangedMail($modelName, $modelId, $old, $new, $notes);
 
             // Send to requester email if present
-            if (!empty($purchaseRequest->email)) {
+            if (! empty($purchaseRequest->email)) {
                 try {
                     Mail::to($purchaseRequest->email)->send($mail);
                 } catch (\Throwable $e) {

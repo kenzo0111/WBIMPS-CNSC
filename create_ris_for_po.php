@@ -1,8 +1,8 @@
 <?php
 
-require __DIR__ . '/vendor/autoload.php';
+require __DIR__.'/vendor/autoload.php';
 
-$app = require_once __DIR__ . '/bootstrap/app.php';
+$app = require_once __DIR__.'/bootstrap/app.php';
 $app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
 
 use App\Models\RequisitionIssueSlip;
@@ -24,7 +24,7 @@ $ris = RequisitionIssueSlip::create([
             'quantity' => '10',
             'stock_available' => 'Yes',
             'issue_quantity' => '10',
-            'remarks' => 'Urgent'
+            'remarks' => 'Urgent',
         ],
         [
             'stock_no' => 'STK-002',
@@ -33,7 +33,7 @@ $ris = RequisitionIssueSlip::create([
             'quantity' => '5',
             'stock_available' => 'Yes',
             'issue_quantity' => '5',
-            'remarks' => ''
+            'remarks' => '',
         ],
     ],
     'requested_by_name' => 'Juan Dela Cruz',

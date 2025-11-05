@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use App\Models\User;
-use Illuminate\Support\Facades\Password;
 
 class AccountSetupController extends Controller
 {
@@ -17,13 +16,13 @@ class AccountSetupController extends Controller
             ->where('token', $token)
             ->first();
 
-        if (!$tokenData) {
+        if (! $tokenData) {
             return redirect('/login')->with('error', 'Invalid or expired setup link.');
         }
 
         $user = User::where('email', $tokenData->email)->first();
 
-        if (!$user || $user->status !== 'pending_activation') {
+        if (! $user || $user->status !== 'pending_activation') {
             return redirect('/login')->with('error', 'Account already activated or invalid.');
         }
 
@@ -41,13 +40,13 @@ class AccountSetupController extends Controller
             ->where('token', $request->token)
             ->first();
 
-        if (!$tokenData) {
+        if (! $tokenData) {
             return back()->withErrors(['token' => 'Invalid or expired setup link.']);
         }
 
         $user = User::where('email', $tokenData->email)->first();
 
-        if (!$user || $user->status !== 'pending_activation') {
+        if (! $user || $user->status !== 'pending_activation') {
             return back()->withErrors(['token' => 'Account already activated or invalid.']);
         }
 

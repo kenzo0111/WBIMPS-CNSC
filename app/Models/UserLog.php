@@ -29,7 +29,7 @@ class UserLog extends Model
         'timestamp',
         'ip_address',
         'device',
-        'status'
+        'status',
     ];
 
     protected $casts = [

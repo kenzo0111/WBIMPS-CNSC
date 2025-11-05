@@ -13,25 +13,25 @@ return new class extends Migration
     {
         Schema::table('stock_out', function (Blueprint $table) {
             // New fields to match UI table header
-            if (!Schema::hasColumn('stock_out', 'issue_id')) {
+            if (! Schema::hasColumn('stock_out', 'issue_id')) {
                 $table->string('issue_id')->unique()->nullable()->after('transaction_id');
             }
-            if (!Schema::hasColumn('stock_out', 'unit_cost')) {
+            if (! Schema::hasColumn('stock_out', 'unit_cost')) {
                 $table->decimal('unit_cost', 10, 2)->default(0)->after('quantity');
             }
-            if (!Schema::hasColumn('stock_out', 'total_cost')) {
+            if (! Schema::hasColumn('stock_out', 'total_cost')) {
                 $table->decimal('total_cost', 12, 2)->default(0)->after('unit_cost');
             }
-            if (!Schema::hasColumn('stock_out', 'department')) {
+            if (! Schema::hasColumn('stock_out', 'department')) {
                 $table->string('department')->nullable()->after('total_cost');
             }
-            if (!Schema::hasColumn('stock_out', 'issued_to')) {
+            if (! Schema::hasColumn('stock_out', 'issued_to')) {
                 $table->string('issued_to')->nullable()->after('department');
             }
-            if (!Schema::hasColumn('stock_out', 'issued_by')) {
+            if (! Schema::hasColumn('stock_out', 'issued_by')) {
                 $table->string('issued_by')->nullable()->after('issued_to');
             }
-            if (!Schema::hasColumn('stock_out', 'status')) {
+            if (! Schema::hasColumn('stock_out', 'status')) {
                 $table->string('status')->nullable()->after('issued_by');
             }
         });

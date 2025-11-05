@@ -18,7 +18,7 @@ class ProductController extends Controller
         if ($request->has('search')) {
             $search = $request->search;
             $query->where('name', 'like', "%{$search}%")
-                  ->orWhere('sku', 'like', "%{$search}%");
+                ->orWhere('sku', 'like', "%{$search}%");
         }
 
         if ($request->has('category_id')) {
@@ -51,6 +51,7 @@ class ProductController extends Controller
         ]);
 
         $product = Product::create($validated);
+
         return response()->json(['data' => $product->load('category')], 201);
     }
 
@@ -68,7 +69,7 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         $validated = $request->validate([
-            'sku' => 'required|string|unique:products,sku,' . $product->id,
+            'sku' => 'required|string|unique:products,sku,'.$product->id,
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'category_id' => 'nullable|exists:categories,id',
@@ -79,6 +80,7 @@ class ProductController extends Controller
         ]);
 
         $product->update($validated);
+
         return response()->json(['data' => $product->load('category')]);
     }
 
@@ -88,6 +90,7 @@ class ProductController extends Controller
     public function destroy(Product $product)
     {
         $product->delete();
+
         return response()->json(['message' => 'Product deleted']);
     }
 
@@ -97,7 +100,7 @@ class ProductController extends Controller
     public function lowStock(Request $request)
     {
         $threshold = $request->get('threshold', 20);
-        
+
         $products = Product::with('category')
             ->where('quantity', '<=', $threshold)
             ->orderBy('quantity', 'asc')

@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class InspectionAcceptanceReportController extends Controller
 {
@@ -63,13 +62,13 @@ class InspectionAcceptanceReportController extends Controller
     {
         // First, try to find IAR by its own ID
         $iar = \App\Models\InspectionAcceptanceReport::find($id);
-        
+
         // If not found, try to find IAR by purchase_order_id
-        if (!$iar) {
+        if (! $iar) {
             $iar = \App\Models\InspectionAcceptanceReport::where('purchase_order_id', $id)->first();
         }
-        
-        if (!$iar) {
+
+        if (! $iar) {
             abort(404, 'Inspection Acceptance Report not found');
         }
 
@@ -96,7 +95,7 @@ class InspectionAcceptanceReportController extends Controller
         try {
             \App\Models\Activity::create([
                 'action' => 'Downloaded Inspection Acceptance Report PDF',
-                'meta' => json_encode(['iar_no' => $iar->iar_no, 'id' => $id])
+                'meta' => json_encode(['iar_no' => $iar->iar_no, 'id' => $id]),
             ]);
         } catch (\Throwable $e) {
             logger()->warning('Failed to record activity for IAR PDF download', ['error' => $e->getMessage()]);
@@ -105,7 +104,7 @@ class InspectionAcceptanceReportController extends Controller
         $pdf = Pdf::loadView('pdf.inspection_acceptance_report_pdf', $viewData)
             ->setPaper('a4', 'portrait');
 
-        return $pdf->download('inspection_acceptance_report_' . ($iar->iar_no ?? $id) . '.pdf');
+        return $pdf->download('inspection_acceptance_report_'.($iar->iar_no ?? $id).'.pdf');
     }
 
     /**
@@ -119,13 +118,13 @@ class InspectionAcceptanceReportController extends Controller
         if ($id) {
             // First, try to find IAR by its own ID
             $iar = \App\Models\InspectionAcceptanceReport::find($id);
-            
+
             // If not found, try to find IAR by purchase_order_id
-            if (!$iar) {
+            if (! $iar) {
                 $iar = \App\Models\InspectionAcceptanceReport::where('purchase_order_id', $id)->first();
             }
-            
-            if (!$iar) {
+
+            if (! $iar) {
                 abort(404, 'Inspection Acceptance Report not found');
             }
 
@@ -150,7 +149,8 @@ class InspectionAcceptanceReportController extends Controller
             ];
 
             $pdf = Pdf::loadView('pdf.inspection_acceptance_report_pdf', $viewData)->setPaper('a4', 'portrait');
-            return $pdf->stream('inspection_acceptance_report_' . ($iar->iar_no ?? $id) . '.pdf');
+
+            return $pdf->stream('inspection_acceptance_report_'.($iar->iar_no ?? $id).'.pdf');
         }
 
         // Preview with clean/empty placeholders (no sample data)

@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (Schema::hasTable('stock_out') && !Schema::hasColumn('stock_out', 'recipient')) {
+        if (Schema::hasTable('stock_out') && ! Schema::hasColumn('stock_out', 'recipient')) {
             Schema::table('stock_out', function (Blueprint $table) {
                 $table->string('recipient')->nullable()->after('quantity');
             });

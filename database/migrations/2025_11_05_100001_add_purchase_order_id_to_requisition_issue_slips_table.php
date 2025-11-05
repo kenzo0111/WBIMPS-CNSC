@@ -14,9 +14,9 @@ return new class extends Migration
         Schema::table('requisition_issue_slips', function (Blueprint $table) {
             $table->unsignedBigInteger('purchase_order_id')->nullable()->after('id');
             $table->foreign('purchase_order_id')
-                  ->references('id')
-                  ->on('purchase_orders')
-                  ->onDelete('set null');
+                ->references('id')
+                ->on('purchase_orders')
+                ->onDelete('set null');
         });
     }
 

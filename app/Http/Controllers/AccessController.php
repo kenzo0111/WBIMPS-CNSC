@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use App\Models\Activity;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -51,7 +51,7 @@ class AccessController extends Controller
         // Record login activity
         try {
             Activity::create([
-                'action' => 'User logged in: ' . ($user->email ?? $user->name ?? 'Unknown'),
+                'action' => 'User logged in: '.($user->email ?? $user->name ?? 'Unknown'),
                 'meta' => json_encode(['user_id' => $user->id ?? null]),
             ]);
         } catch (\Throwable $e) {
@@ -87,7 +87,7 @@ class AccessController extends Controller
         // Record logout activity
         try {
             Activity::create([
-                'action' => 'User logged out: ' . ($user?->email ?? $user?->name ?? 'Unknown'),
+                'action' => 'User logged out: '.($user?->email ?? $user?->name ?? 'Unknown'),
                 'meta' => json_encode(['user_id' => $user?->id ?? null]),
             ]);
         } catch (\Throwable $e) {

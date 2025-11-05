@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Activity;
+use Illuminate\Http\Request;
 
 class ActivityController extends Controller
 {
@@ -12,6 +12,7 @@ class ActivityController extends Controller
     {
         $limit = (int) $request->query('limit', 8);
         $items = Activity::orderBy('created_at', 'desc')->limit($limit)->get();
+
         return response()->json(['data' => $items]);
     }
 

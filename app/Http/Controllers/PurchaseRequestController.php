@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
-
+use Illuminate\Http\Request;
 
 class PurchaseRequestController extends Controller
 {
@@ -69,8 +68,8 @@ class PurchaseRequestController extends Controller
         // If an ID is provided, load the purchase request from the database
         if ($id) {
             $pr = \App\Models\PurchaseRequest::find($id);
-            
-            if (!$pr) {
+
+            if (! $pr) {
                 abort(404, 'Purchase Request not found');
             }
 
@@ -88,7 +87,8 @@ class PurchaseRequestController extends Controller
             ];
 
             $pdf = Pdf::loadView('pdf.purchase_request_pdf', $data)->setPaper('a4', 'portrait');
-            return $pdf->stream('purchase_request_' . ($pr->pr_no ?? $id) . '.pdf');
+
+            return $pdf->stream('purchase_request_'.($pr->pr_no ?? $id).'.pdf');
         }
 
         // Preview with clean/empty placeholders (no sample data)

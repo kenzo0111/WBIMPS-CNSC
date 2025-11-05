@@ -3,9 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\PurchaseRequest;
-use Illuminate\Support\Str;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PurchaseRequestController extends Controller
@@ -22,16 +21,17 @@ class PurchaseRequestController extends Controller
         }
 
         $results = $q->orderBy('submitted_at', 'desc')->get();
-        
+
         // Calculate total_cost for each request (unit_cost * quantity)
         $results = $results->map(function ($request) {
             $data = $request->toArray();
             $unitCost = $request->unit_cost ?? 0;
             $quantity = $request->quantity ?? 0;
             $data['total_cost'] = $unitCost * $quantity;
+
             return $data;
         });
-        
+
         return response()->json($results);
     }
 
@@ -53,13 +53,13 @@ class PurchaseRequestController extends Controller
 
         // Accept items as string or array; normalize to array
         $items = $data['items'];
-        if (!is_array($items)) {
+        if (! is_array($items)) {
             // split lines as simple heuristic, or keep as single item
             $items = preg_split('/\r?\n/', $items);
             $items = array_values(array_filter(array_map('trim', $items)));
         }
 
-    $currentYear = now()->year;
+        $currentYear = now()->year;
 
         // Determine the next sequence number for the current year by inspecting
         // existing request_id values of the form "REQ-<year>-<nnn>". Using
@@ -81,23 +81,23 @@ class PurchaseRequestController extends Controller
             $requestId = sprintf('REQ-%d-%03d', $currentYear, $nextSeq);
             try {
                 $pr = PurchaseRequest::create([
-            'request_id' => $requestId,
-            'email' => $data['email'],
-            'requester' => $data['requester'],
-            'department' => $data['department'],
-            'items' => $items,
-            'unit' => $data['unit'] ?? null,
-            // normalize quantity and unit_cost names from JS (unitCost) or API clients (unit_cost)
-            'quantity' => isset($data['quantity']) ? (int) $data['quantity'] : (isset($data['qty']) ? (int) $data['qty'] : null),
-            'unit_cost' => isset($data['unit_cost']) ? $data['unit_cost'] : (isset($data['unitCost']) ? $data['unitCost'] : null),
-            'needed_date' => $data['neededDate'] ?? null,
-            'priority' => $data['priority'] ?? 'Low',
-            'status' => 'Incoming',
-            'submitted_at' => now(),
-            'metadata' => [
-                'ip' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-            ],
+                    'request_id' => $requestId,
+                    'email' => $data['email'],
+                    'requester' => $data['requester'],
+                    'department' => $data['department'],
+                    'items' => $items,
+                    'unit' => $data['unit'] ?? null,
+                    // normalize quantity and unit_cost names from JS (unitCost) or API clients (unit_cost)
+                    'quantity' => isset($data['quantity']) ? (int) $data['quantity'] : (isset($data['qty']) ? (int) $data['qty'] : null),
+                    'unit_cost' => isset($data['unit_cost']) ? $data['unit_cost'] : (isset($data['unitCost']) ? $data['unitCost'] : null),
+                    'needed_date' => $data['neededDate'] ?? null,
+                    'priority' => $data['priority'] ?? 'Low',
+                    'status' => 'Incoming',
+                    'submitted_at' => now(),
+                    'metadata' => [
+                        'ip' => $request->ip(),
+                        'user_agent' => $request->userAgent(),
+                    ],
                 ]);
             } catch (\Illuminate\Database\QueryException $e) {
                 // If there's a duplicate key for request_id, bump the sequence and retry.
@@ -105,6 +105,7 @@ class PurchaseRequestController extends Controller
                 if ($sqlState === '23000' || strpos($e->getMessage(), 'Duplicate') !== false) {
                     $nextSeq++;
                     $attempts++;
+
                     continue;
                 }
                 // rethrow unexpected DB errors
@@ -123,7 +124,7 @@ class PurchaseRequestController extends Controller
             // send to requester
             \Illuminate\Support\Facades\Mail::to($pr->email)->send(new \App\Mail\PurchaseRequestSubmitted($pr));
             // send to admins (if any)
-            if (!empty($admins)) {
+            if (! empty($admins)) {
                 \Illuminate\Support\Facades\Mail::to($admins)->send(new \App\Mail\PurchaseRequestSubmitted($pr));
             }
             $emailSent = true;
@@ -145,7 +146,7 @@ class PurchaseRequestController extends Controller
 
                     // retry send once
                     \Illuminate\Support\Facades\Mail::to($pr->email)->send(new \App\Mail\PurchaseRequestSubmitted($pr));
-                    if (!empty($admins)) {
+                    if (! empty($admins)) {
                         \Illuminate\Support\Facades\Mail::to($admins)->send(new \App\Mail\PurchaseRequestSubmitted($pr));
                     }
                     $emailSent = true;
@@ -174,11 +175,11 @@ class PurchaseRequestController extends Controller
 
         // Try to locate by request_id first (eg. REQ-2025-007), then by numeric id
         $pr = PurchaseRequest::where('request_id', $id)->first();
-        if (!$pr && is_numeric($id)) {
+        if (! $pr && is_numeric($id)) {
             $pr = PurchaseRequest::find((int) $id);
         }
 
-        if (!$pr) {
+        if (! $pr) {
             return response()->json(['error' => 'Purchase request not found'], 404);
         }
 

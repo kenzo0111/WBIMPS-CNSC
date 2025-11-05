@@ -1,14 +1,14 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AccessController;
 use App\Http\Controllers\Admin\DashboardController;
-use App\Http\Controllers\PurchaseRequestController;
-use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\InspectionAcceptanceReportController;
 use App\Http\Controllers\InventoryCustodianSlipController;
-use App\Http\Controllers\RequisitionIssueSlipController;
 use App\Http\Controllers\PropertyAcknowledgementReceiptController;
+use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\PurchaseRequestController;
+use App\Http\Controllers\RequisitionIssueSlipController;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return auth()->check()
@@ -17,18 +17,24 @@ Route::get('/', function () {
 });
 
 Route::get('/login', [AccessController::class, 'show'])->name('login');
-Route::post('/login', [AccessController::class, 'authenticate'])->name('login.perform');
+Route::post('/login', [AccessController::class, 'authenticate'])
+    ->middleware('throttle:5,1') // 5 attempts per minute
+    ->name('login.perform');
 Route::post('/logout', [AccessController::class, 'logout'])->name('logout');
 
 // Password reset routes
 Route::get('/forgot-password', [App\Http\Controllers\PasswordResetController::class, 'showForgotForm'])->name('password.forgot');
-Route::post('/forgot-password', [App\Http\Controllers\PasswordResetController::class, 'sendResetLink'])->name('password.reset.send');
+Route::post('/forgot-password', [App\Http\Controllers\PasswordResetController::class, 'sendResetLink'])
+    ->middleware('throttle:3,1') // 3 attempts per minute
+    ->name('password.reset.send');
 Route::get('/reset-password/{token}', [App\Http\Controllers\PasswordResetController::class, 'showResetForm'])->name('password.reset.form');
 Route::post('/reset-password', [App\Http\Controllers\PasswordResetController::class, 'resetPassword'])->name('password.reset.update');
 
 // Account setup routes
 Route::get('/account/setup/{token}', [App\Http\Controllers\AccountSetupController::class, 'showSetupForm'])->name('account.setup');
-Route::post('/account/setup', [App\Http\Controllers\AccountSetupController::class, 'setupAccount'])->name('account.setup.post');
+Route::post('/account/setup', [App\Http\Controllers\AccountSetupController::class, 'setupAccount'])
+    ->middleware('throttle:5,1') // 5 attempts per minute
+    ->name('account.setup.post');
 Route::post('/purchase-request/generate', [PurchaseRequestController::class, 'generatePDF'])->name('purchase-request.generate');
 Route::get('/purchase-request/preview', [PurchaseRequestController::class, 'preview'])->name('purchase-request.preview');
 Route::post('/purchase-order/generate', [PurchaseOrderController::class, 'generatePDF'])->name('purchase-order.generate');
@@ -70,20 +76,26 @@ Route::get('/property-acknowledgement-receipt/view/{id}', [PropertyAcknowledgeme
 Route::get('/pdf/preview/appendix71', [PropertyAcknowledgementReceiptController::class, 'preview'])->name('pdf.preview.appendix71');
 
 Route::middleware('auth')->group(function () {
-    Route::get('/contact-support', function () { return view('contact-support'); })->name('contact.support');
+    Route::get('/contact-support', function () {
+        return view('contact-support');
+    })->name('contact.support');
     Route::post('/contact-support', [App\Http\Controllers\SupportController::class, 'store'])->name('support.submit');
     Route::get('/support/attachment/{id}', [App\Http\Controllers\SupportController::class, 'attachment'])->name('support.attachment');
     Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
-    Route::get('/admin/home', function () { return view('admin.home-page'); });
-    Route::get('/user/home', function () { return view('user.user-home-page'); })->name('user.user-home-page');
-    Route::get('/user/request', function () { return view('user.user-request'); })->name('user.request');
+    Route::get('/admin/home', function () {
+        return view('admin.home-page');
+    });
+    Route::get('/user/home', function () {
+        return view('user.user-home-page');
+    })->name('user.user-home-page');
+    Route::get('/user/request', function () {
+        return view('user.user-request');
+    })->name('user.request');
 });
 
 // API-style route for recent activities (uses web middleware so it shows in route:list)
 // This provides a simple endpoint consumed by the dashboard client at /api/activities
 use App\Http\Controllers\Api\ActivityController;
+
 Route::get('/api/activities', [ActivityController::class, 'index']);
 Route::post('/api/activities', [ActivityController::class, 'store']);
-
-
-?>

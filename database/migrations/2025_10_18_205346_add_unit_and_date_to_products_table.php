@@ -12,10 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('products', function (Blueprint $table) {
-            if (!Schema::hasColumn('products', 'unit')) {
+            if (! Schema::hasColumn('products', 'unit')) {
                 $table->string('unit')->nullable()->after('quantity');
             }
-            if (!Schema::hasColumn('products', 'date')) {
+            if (! Schema::hasColumn('products', 'date')) {
                 $table->date('date')->nullable()->after('total_value');
             }
         });

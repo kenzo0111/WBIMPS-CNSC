@@ -2,15 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use App\Mail\PasswordResetRequestMail;
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
-use Illuminate\Http\JsonResponse;
 
 class PasswordResetController extends Controller
 {
@@ -33,7 +33,7 @@ class PasswordResetController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'message' => 'We could not find a user with that email address.',
             ], 404);
@@ -44,7 +44,7 @@ class PasswordResetController extends Controller
 
         // Generate new reset token
         $token = Str::random(64);
-        
+
         DB::table('password_reset_tokens')->insert([
             'email' => $request->email,
             'token' => $token,
@@ -68,7 +68,7 @@ class PasswordResetController extends Controller
             ->where('token', $token)
             ->first();
 
-        if (!$tokenData) {
+        if (! $tokenData) {
             abort(404, 'Invalid or expired reset token.');
         }
 
@@ -99,7 +99,7 @@ class PasswordResetController extends Controller
             ->where('token', $request->token)
             ->first();
 
-        if (!$tokenData) {
+        if (! $tokenData) {
             return response()->json([
                 'message' => 'Invalid or expired reset token.',
             ], 404);
@@ -109,6 +109,7 @@ class PasswordResetController extends Controller
         $createdAt = \Carbon\Carbon::parse($tokenData->created_at);
         if ($createdAt->addHours(24)->isPast()) {
             DB::table('password_reset_tokens')->where('token', $request->token)->delete();
+
             return response()->json([
                 'message' => 'This reset link has expired. Please request a new one.',
             ], 410);
@@ -116,7 +117,7 @@ class PasswordResetController extends Controller
 
         $user = User::where('email', $tokenData->email)->first();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'message' => 'User not found.',
             ], 404);

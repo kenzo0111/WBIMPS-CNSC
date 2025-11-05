@@ -38,7 +38,7 @@ class StockOut extends Model
         'issued_by',
         'purpose',
         'status',
-        'date_issued'
+        'date_issued',
     ];
 
     protected $casts = [

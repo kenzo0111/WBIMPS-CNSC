@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\Product;
 use App\Models\Category;
+use App\Models\Product;
+use Illuminate\Database\Seeder;
 
 class ProductSeeder extends Seeder
 {
@@ -35,7 +35,7 @@ class ProductSeeder extends Seeder
             'quantity' => 100,
             'unit' => 'pieces',
             'unit_cost' => 15.00,
-            'date' => now()->format('Y-m-d')
+            'date' => now()->format('Y-m-d'),
         ]);
 
         Product::create([
@@ -46,7 +46,7 @@ class ProductSeeder extends Seeder
             'quantity' => 50,
             'unit' => 'reams',
             'unit_cost' => 120.00,
-            'date' => now()->format('Y-m-d')
+            'date' => now()->format('Y-m-d'),
         ]);
 
         Product::create([
@@ -57,7 +57,7 @@ class ProductSeeder extends Seeder
             'quantity' => 25,
             'unit' => 'pieces',
             'unit_cost' => 450.00,
-            'date' => now()->format('Y-m-d')
+            'date' => now()->format('Y-m-d'),
         ]);
 
         Product::create([
@@ -68,7 +68,7 @@ class ProductSeeder extends Seeder
             'quantity' => 30,
             'unit' => 'pieces',
             'unit_cost' => 250.00,
-            'date' => now()->format('Y-m-d')
+            'date' => now()->format('Y-m-d'),
         ]);
 
         Product::create([
@@ -79,7 +79,7 @@ class ProductSeeder extends Seeder
             'quantity' => 20,
             'unit' => 'bottles',
             'unit_cost' => 85.00,
-            'date' => now()->format('Y-m-d')
+            'date' => now()->format('Y-m-d'),
         ]);
 
         Product::create([
@@ -90,7 +90,7 @@ class ProductSeeder extends Seeder
             'quantity' => 15,
             'unit' => 'pieces',
             'unit_cost' => 1200.00,
-            'date' => now()->format('Y-m-d')
+            'date' => now()->format('Y-m-d'),
         ]);
     }
 }

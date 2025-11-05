@@ -34,6 +34,7 @@ class UserLogController extends Controller
         $query->orderBy('timestamp', 'desc');
 
         $limit = $request->get('limit', 50);
+
         return response()->json(['data' => $query->limit($limit)->get()]);
     }
 
@@ -53,15 +54,16 @@ class UserLogController extends Controller
             'status' => 'nullable|string',
         ]);
 
-        if (!isset($validated['timestamp'])) {
+        if (! isset($validated['timestamp'])) {
             $validated['timestamp'] = now();
         }
 
-        if (!isset($validated['status'])) {
+        if (! isset($validated['status'])) {
             $validated['status'] = 'Success';
         }
 
         $log = UserLog::create($validated);
+
         return response()->json(['data' => $log], 201);
     }
 
@@ -90,6 +92,7 @@ class UserLogController extends Controller
         ]);
 
         $userLog->update($validated);
+
         return response()->json(['data' => $userLog->load('user')]);
     }
 
@@ -99,6 +102,7 @@ class UserLogController extends Controller
     public function destroy(UserLog $userLog)
     {
         $userLog->delete();
+
         return response()->json(['message' => 'User log deleted']);
     }
 }

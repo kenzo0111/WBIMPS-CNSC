@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\SupportAttachment;
+use App\Models\SupportTicket;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use App\Models\SupportTicket;
-use App\Models\SupportAttachment;
 
 class SupportController extends Controller
 {
@@ -28,7 +28,9 @@ class SupportController extends Controller
 
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $file) {
-                if (!$file->isValid()) continue;
+                if (! $file->isValid()) {
+                    continue;
+                }
                 $path = $file->store('support_attachments');
                 $ticket->attachments()->create([
                     'filename' => $path,
@@ -51,10 +53,15 @@ class SupportController extends Controller
     public function attachment($id)
     {
         $att = SupportAttachment::find($id);
-        if (!$att) abort(404);
+        if (! $att) {
+            abort(404);
+        }
         $diskPath = $att->filename;
-        if (!\Illuminate\Support\Facades\Storage::exists($diskPath)) abort(404);
+        if (! \Illuminate\Support\Facades\Storage::exists($diskPath)) {
+            abort(404);
+        }
         $stream = \Illuminate\Support\Facades\Storage::download($diskPath, $att->original_name);
+
         return $stream;
     }
 }

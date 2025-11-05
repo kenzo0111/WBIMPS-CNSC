@@ -78,13 +78,11 @@ class StockInController extends Controller
 
     /**
      * Update the specified resource in storage.
-     * @param Request $request
-     * @param StockIn $stockIn
      */
     public function update(Request $request, StockIn $stockIn)
     {
         $validated = $request->validate([
-            'transaction_id' => 'required|string|unique:stock_in,transaction_id,' . $stockIn->getKey(),
+            'transaction_id' => 'required|string|unique:stock_in,transaction_id,'.$stockIn->getKey(),
             'sku' => 'required|string|exists:products,sku',
             'product_name' => 'required|string',
             'quantity' => 'required|integer|min:1',

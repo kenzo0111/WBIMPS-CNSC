@@ -2,10 +2,10 @@
 
 namespace App\Mail;
 
+use App\Models\PurchaseRequest;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
-use App\Models\PurchaseRequest;
 
 class PurchaseRequestSubmitted extends Mailable
 {
@@ -16,8 +16,6 @@ class PurchaseRequestSubmitted extends Mailable
 
     /**
      * Create a new message instance.
-     *
-     * @param PurchaseRequest $pr
      */
     public function __construct(PurchaseRequest $pr)
     {
@@ -46,12 +44,12 @@ class PurchaseRequestSubmitted extends Mailable
         }
 
         return $this->subject($subject)
-                    ->view('emails.request_submitted')
-                    ->with([
-                        'pr' => $this->pr,
-                        'logoCid' => $logoCid,
-                        // keep logoUrl available as a fallback for clients that block inline images
-                        'logoUrl' => asset('images/UCN1.png'),
-                    ]);
+            ->view('emails.request_submitted')
+            ->with([
+                'pr' => $this->pr,
+                'logoCid' => $logoCid,
+                // keep logoUrl available as a fallback for clients that block inline images
+                'logoUrl' => asset('images/UCN1.png'),
+            ]);
     }
 }

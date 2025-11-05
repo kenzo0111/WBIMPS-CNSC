@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('received_from_name')->nullable()->after('status');
             $table->string('received_from_position')->nullable()->after('received_from_name');
             $table->date('received_from_date')->nullable()->after('received_from_position');
-            
+
             // Received By fields
             $table->string('received_by_name')->nullable()->after('received_from_date');
             $table->string('received_by_position')->nullable()->after('received_by_name');

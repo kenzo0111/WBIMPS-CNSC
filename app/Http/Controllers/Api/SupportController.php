@@ -3,10 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\SupportTicket;
-use App\Models\SupportAttachment;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\Request;
 
 class SupportController extends Controller
 {
@@ -14,6 +12,7 @@ class SupportController extends Controller
     public function index(Request $request)
     {
         $tickets = SupportTicket::with('attachments')->orderBy('id', 'desc')->get();
+
         return response()->json($tickets);
     }
 
@@ -21,7 +20,10 @@ class SupportController extends Controller
     public function show($id)
     {
         $ticket = SupportTicket::with('attachments')->find($id);
-        if (!$ticket) return response()->json(['message' => 'Not found'], 404);
+        if (! $ticket) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
+
         return response()->json($ticket);
     }
 
@@ -30,9 +32,12 @@ class SupportController extends Controller
     {
         $request->validate(['status' => 'required|string']);
         $ticket = SupportTicket::find($id);
-        if (!$ticket) return response()->json(['message' => 'Not found'], 404);
+        if (! $ticket) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
         $ticket->status = $request->input('status');
         $ticket->save();
+
         return response()->json($ticket);
     }
 

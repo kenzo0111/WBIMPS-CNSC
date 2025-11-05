@@ -2,11 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Arr;
-use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class PurchaseOrderController extends Controller
 {
@@ -117,6 +115,7 @@ class PurchaseOrderController extends Controller
         } catch (\Throwable $e) {
             // Log at debug level so we can inspect problematic payloads if needed
             logger()->debug('safeDateForBlade: could not parse date', ['value' => $value, 'error' => $e->getMessage()]);
+
             return null;
         }
     }
@@ -149,8 +148,8 @@ class PurchaseOrderController extends Controller
         // If an ID is provided, load the purchase order from the database
         if ($id) {
             $purchaseOrder = \App\Models\PurchaseOrder::find($id);
-            
-            if (!$purchaseOrder) {
+
+            if (! $purchaseOrder) {
                 abort(404, 'Purchase Order not found');
             }
 
@@ -159,7 +158,7 @@ class PurchaseOrderController extends Controller
                 ->map(function ($item) {
                     // Use detailedDescription if description is not present
                     $description = $item['description'] ?? $item['detailedDescription'] ?? '';
-                    
+
                     return [
                         'stock_number' => $item['stockPropertyNumber'] ?? $item['stock_number'] ?? '',
                         'unit' => $item['unit'] ?? '',
@@ -197,7 +196,8 @@ class PurchaseOrderController extends Controller
             ];
 
             $pdf = Pdf::loadView('pdf.purchase_order_pdf', $data)->setPaper('a4', 'portrait');
-            return $pdf->stream('purchase_order_' . $purchaseOrder->po_number . '.pdf');
+
+            return $pdf->stream('purchase_order_'.$purchaseOrder->po_number.'.pdf');
         }
 
         // Provide empty/blank data so the preview renders a clean sheet (layout only)
@@ -237,8 +237,8 @@ class PurchaseOrderController extends Controller
     public function downloadPDF($id)
     {
         $purchaseOrder = \App\Models\PurchaseOrder::find($id);
-        
-        if (!$purchaseOrder) {
+
+        if (! $purchaseOrder) {
             abort(404, 'Purchase Order not found');
         }
 
@@ -247,7 +247,7 @@ class PurchaseOrderController extends Controller
             ->map(function ($item) {
                 // Use detailedDescription if description is not present
                 $description = $item['description'] ?? $item['detailedDescription'] ?? '';
-                
+
                 return [
                     'stock_number' => $item['stockPropertyNumber'] ?? $item['stock_number'] ?? '',
                     'unit' => $item['unit'] ?? '',
@@ -292,13 +292,13 @@ class PurchaseOrderController extends Controller
                 'action' => 'Downloaded Purchase Order PDF',
                 'meta' => json_encode([
                     'po_number' => $purchaseOrder->po_number,
-                    'id' => $id
-                ])
+                    'id' => $id,
+                ]),
             ]);
         } catch (\Throwable $e) {
             logger()->warning('Failed to record activity for PurchaseOrder PDF download', ['error' => $e->getMessage()]);
         }
 
-        return $pdf->download('purchase_order_' . $purchaseOrder->po_number . '.pdf');
+        return $pdf->download('purchase_order_'.$purchaseOrder->po_number.'.pdf');
     }
 }

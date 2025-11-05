@@ -2,19 +2,19 @@
 
 namespace App\Mail;
 
+use App\Models\User;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use App\Models\User;
 
 class AccountSetupMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     public $user;
+
     public $token;
 
     /**
@@ -45,7 +45,7 @@ class AccountSetupMail extends Mailable
             view: 'emails.account_setup',
             with: [
                 'user' => $this->user,
-                'url' => url('/account/setup/' . $this->token),
+                'url' => url('/account/setup/'.$this->token),
             ],
         );
     }

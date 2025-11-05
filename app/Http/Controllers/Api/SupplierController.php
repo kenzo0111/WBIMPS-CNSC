@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Supplier;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 class SupplierController extends Controller
@@ -12,6 +12,7 @@ class SupplierController extends Controller
     public function index(Request $request)
     {
         $suppliers = Supplier::orderBy('name')->paginate(50);
+
         return response()->json($suppliers);
     }
 
@@ -24,15 +25,19 @@ class SupplierController extends Controller
             'contact' => 'nullable|string|max:128',
             'email' => 'nullable|email|max:255',
         ]);
-        if ($v->fails()) return response()->json(['errors' => $v->errors()], 422);
+        if ($v->fails()) {
+            return response()->json(['errors' => $v->errors()], 422);
+        }
 
         $supplier = Supplier::create($v->validated());
+
         return response()->json($supplier, 201);
     }
 
     public function show($id)
     {
         $s = Supplier::findOrFail($id);
+
         return response()->json($s);
     }
 
@@ -46,9 +51,12 @@ class SupplierController extends Controller
             'contact' => 'nullable|string|max:128',
             'email' => 'nullable|email|max:255',
         ]);
-        if ($v->fails()) return response()->json(['errors' => $v->errors()], 422);
+        if ($v->fails()) {
+            return response()->json(['errors' => $v->errors()], 422);
+        }
 
         $s->update($v->validated());
+
         return response()->json($s);
     }
 
@@ -56,6 +64,7 @@ class SupplierController extends Controller
     {
         $s = Supplier::findOrFail($id);
         $s->delete();
+
         return response()->json(['deleted' => true]);
     }
 }

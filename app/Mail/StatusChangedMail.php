@@ -11,9 +11,13 @@ class StatusChangedMail extends Mailable
     use Queueable, SerializesModels;
 
     public $modelName;
+
     public $modelId;
+
     public $oldStatus;
+
     public $newStatus;
+
     public $notes;
 
     /**

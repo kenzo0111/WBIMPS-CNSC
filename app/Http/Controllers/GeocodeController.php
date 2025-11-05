@@ -28,14 +28,14 @@ class GeocodeController extends Controller
         $countrycodes = (string) $request->query('countrycodes', 'ph');
 
         // Simple cache key to reduce duplicate calls
-        $cacheKey = 'geocode:' . md5($q . '|' . $limit . '|' . $countrycodes);
+        $cacheKey = 'geocode:'.md5($q.'|'.$limit.'|'.$countrycodes);
         $cached = Cache::get($cacheKey);
         if ($cached) {
             return response()->json($cached);
         }
 
         // Include a User-Agent per Nominatim usage policy
-        $userAgent = config('app.name') . ' (contact: ' . config('mail.from.address', 'no-reply@example.com') . ')';
+        $userAgent = config('app.name').' (contact: '.config('mail.from.address', 'no-reply@example.com').')';
 
         $url = 'https://nominatim.openstreetmap.org/search';
         try {
@@ -54,6 +54,7 @@ class GeocodeController extends Controller
                 $body = $res->json();
                 // Cache short-term (30s)
                 Cache::put($cacheKey, $body, 30);
+
                 return response()->json($body);
             }
 

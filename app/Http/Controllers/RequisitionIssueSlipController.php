@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\RequisitionIssueSlip;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
 
 class RequisitionIssueSlipController extends Controller
 {
@@ -14,6 +14,7 @@ class RequisitionIssueSlipController extends Controller
     public function index()
     {
         $risRecords = RequisitionIssueSlip::orderBy('created_at', 'desc')->get();
+
         return view('ris.index', compact('risRecords'));
     }
 
@@ -50,7 +51,7 @@ class RequisitionIssueSlipController extends Controller
         try {
             \App\Models\Activity::create([
                 'action' => 'Created Requisition Issue Slip',
-                'meta' => json_encode(['ris_no' => $ris->ris_no, 'ris_id' => $ris->id])
+                'meta' => json_encode(['ris_no' => $ris->ris_no, 'ris_id' => $ris->id]),
             ]);
         } catch (\Throwable $e) {
             logger()->warning('Failed to record activity for RIS creation', ['error' => $e->getMessage()]);
@@ -59,7 +60,7 @@ class RequisitionIssueSlipController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'RIS created successfully',
-            'data' => $ris
+            'data' => $ris,
         ]);
     }
 
@@ -69,6 +70,7 @@ class RequisitionIssueSlipController extends Controller
     public function show($id)
     {
         $ris = RequisitionIssueSlip::findOrFail($id);
+
         return response()->json($ris);
     }
 
@@ -98,7 +100,7 @@ class RequisitionIssueSlipController extends Controller
         $data['entity_name'] = $data['entity_name'] ?? 'Camarines Norte State College';
         $data['fund_cluster'] = $data['fund_cluster'] ?? '';
 
-        $pdf = Pdf::loadView('pdf.requisition_issue_slips_pdf', ['ris' => (object)$data])->setPaper('a4', 'portrait');
+        $pdf = Pdf::loadView('pdf.requisition_issue_slips_pdf', ['ris' => (object) $data])->setPaper('a4', 'portrait');
 
         // Record activity
         try {
@@ -119,22 +121,23 @@ class RequisitionIssueSlipController extends Controller
         if ($id) {
             // First, try to find RIS by its own ID
             $ris = \App\Models\RequisitionIssueSlip::find($id);
-            
+
             // If not found, try to find RIS by purchase_order_id
-            if (!$ris) {
+            if (! $ris) {
                 $ris = \App\Models\RequisitionIssueSlip::where('purchase_order_id', $id)->first();
             }
-            
-            if (!$ris) {
+
+            if (! $ris) {
                 abort(404, 'Requisition Issue Slip not found');
             }
 
             $pdf = Pdf::loadView('pdf.requisition_issue_slips_pdf', ['ris' => $ris])->setPaper('a4', 'portrait');
-            return $pdf->stream('requisition_issue_slip_' . $ris->ris_no . '.pdf');
+
+            return $pdf->stream('requisition_issue_slip_'.$ris->ris_no.'.pdf');
         }
 
         // Provide empty/blank data so the preview renders a clean sheet (layout only)
-        $sample = (object)[
+        $sample = (object) [
             'ris_no' => '',
             'entity_name' => '',
             'fund_cluster' => '',
@@ -170,13 +173,13 @@ class RequisitionIssueSlipController extends Controller
     {
         // First, try to find RIS by its own ID
         $ris = \App\Models\RequisitionIssueSlip::find($id);
-        
+
         // If not found, try to find RIS by purchase_order_id
-        if (!$ris) {
+        if (! $ris) {
             $ris = \App\Models\RequisitionIssueSlip::where('purchase_order_id', $id)->first();
         }
-        
-        if (!$ris) {
+
+        if (! $ris) {
             abort(404, 'Requisition Issue Slip not found');
         }
 
@@ -188,13 +191,13 @@ class RequisitionIssueSlipController extends Controller
                 'action' => 'Downloaded Requisition Issue Slip PDF',
                 'meta' => json_encode([
                     'ris_no' => $ris->ris_no,
-                    'id' => $ris->id
-                ])
+                    'id' => $ris->id,
+                ]),
             ]);
         } catch (\Throwable $e) {
             logger()->warning('Failed to record activity for RIS PDF download', ['error' => $e->getMessage()]);
         }
 
-        return $pdf->download('requisition_issue_slip_' . $ris->ris_no . '.pdf');
+        return $pdf->download('requisition_issue_slip_'.$ris->ris_no.'.pdf');
     }
 }

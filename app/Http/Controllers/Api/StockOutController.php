@@ -57,7 +57,7 @@ class StockOutController extends Controller
 
         // Check if sufficient stock is available
         $product = Product::where('sku', $validated['sku'])->first();
-        if (!$product) {
+        if (! $product) {
             return response()->json(['error' => 'Product not found'], 404);
         }
         if ($product->quantity < $validated['quantity']) {
@@ -69,7 +69,7 @@ class StockOutController extends Controller
         $remaining = $product->quantity - $validated['quantity'];
         if ($remaining <= 20) {
             return response()->json([
-                'error' => "Cannot create stock out: remaining stock for {$product->sku} would be {$remaining}, which is at or below the minimum allowed (20)."
+                'error' => "Cannot create stock out: remaining stock for {$product->sku} would be {$remaining}, which is at or below the minimum allowed (20).",
             ], 422);
         }
 
@@ -97,14 +97,12 @@ class StockOutController extends Controller
 
     /**
      * Update the specified resource in storage.
-     * @param Request $request
-     * @param StockOut $stockOut
      */
     public function update(Request $request, StockOut $stockOut)
     {
         $validated = $request->validate([
-            'issue_id' => 'required|string|unique:stock_out,issue_id,' . $stockOut->getKey(),
-            'transaction_id' => 'nullable|string|unique:stock_out,transaction_id,' . $stockOut->getKey(),
+            'issue_id' => 'required|string|unique:stock_out,issue_id,'.$stockOut->getKey(),
+            'transaction_id' => 'nullable|string|unique:stock_out,transaction_id,'.$stockOut->getKey(),
             'sku' => 'required|string|exists:products,sku',
             'product_name' => 'required|string',
             'quantity' => 'required|integer|min:1',
@@ -124,7 +122,7 @@ class StockOutController extends Controller
 
         $newSku = $validated['sku'];
         $newProduct = Product::where('sku', $newSku)->first();
-        if (!$newProduct) {
+        if (! $newProduct) {
             return response()->json(['error' => 'Product not found'], 404);
         }
 
@@ -137,7 +135,7 @@ class StockOutController extends Controller
             }
             if ($newRemaining <= 20) {
                 return response()->json([
-                    'error' => "Cannot update stock out: resulting remaining stock for {$currentProduct->sku} would be {$newRemaining}, which is at or below the minimum allowed (20)."
+                    'error' => "Cannot update stock out: resulting remaining stock for {$currentProduct->sku} would be {$newRemaining}, which is at or below the minimum allowed (20).",
                 ], 422);
             }
         } else {
@@ -148,7 +146,7 @@ class StockOutController extends Controller
             $newRemaining = $newProduct->quantity - $validated['quantity'];
             if ($newRemaining <= 20) {
                 return response()->json([
-                    'error' => "Cannot update stock out: resulting remaining stock for {$newProduct->sku} would be {$newRemaining}, which is at or below the minimum allowed (20)."
+                    'error' => "Cannot update stock out: resulting remaining stock for {$newProduct->sku} would be {$newRemaining}, which is at or below the minimum allowed (20).",
                 ], 422);
             }
         }

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('products', function (Blueprint $table) {
             // Only add if missing to be safe
-            if (!Schema::hasColumn('products', 'category_id')) {
+            if (! Schema::hasColumn('products', 'category_id')) {
                 $table->foreignId('category_id')->nullable()->constrained('categories')->onDelete('set null')->after('description');
             }
         });
