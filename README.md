@@ -48,7 +48,19 @@ These seed values land you on the admin dashboard after authentication.
 php artisan test
 ```
 
-## 📁 Relevant Routes
+## � Architecture
+
+See **[ARCHITECTURE.md](ARCHITECTURE.md)** for detailed system architecture including:
+
+- High-level architecture diagram
+- Procurement workflow visualization
+- Database entity relationships
+- API architecture
+- Security architecture
+- Deployment architecture
+- Technology stack details
+
+## �📁 Relevant Routes
 
 - `/login` — Access System login screen
 - `/admin/dashboard` — Authenticated admin SPA dashboard
@@ -65,6 +77,13 @@ php artisan test
 
 Please run tests and `npm run build` before submitting PRs.
 
-## 📄 License
+## � Documentation
+
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Complete system architecture with diagrams
+- **[CORE_MODULES.md](CORE_MODULES.md)** - Core modules and responsibilities
+- **[MAILER_SETUP.md](MAILER_SETUP.md)** - Email configuration guide
+- **[TODOLIST.md](TODOLIST.md)** - Project completion status
+
+## �📄 License
 
 This project follows the MIT license. See the [LICENSE](LICENSE) file for details.
