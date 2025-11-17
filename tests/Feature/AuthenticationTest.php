@@ -21,7 +21,7 @@ test('users can authenticate with valid credentials', function () {
 
     $response = $this->post('/login', [
         'email' => 'test@example.com',
-        'pin' => 'password123', // System uses 'pin' field
+        'password' => 'password123',
     ]);
 
     $response->assertStatus(200)
@@ -40,7 +40,7 @@ test('users cannot authenticate with invalid password', function () {
 
     $response = $this->post('/login', [
         'email' => 'test@example.com',
-        'pin' => 'wrong-password',
+        'password' => 'wrong-password',
     ]);
 
     $response->assertStatus(422);
@@ -56,7 +56,7 @@ test('users cannot authenticate with inactive status', function () {
 
     $response = $this->post('/login', [
         'email' => 'test@example.com',
-        'pin' => 'password123',
+        'password' => 'password123',
     ]);
 
     $response->assertStatus(422);
@@ -88,7 +88,7 @@ test('login route has rate limiting', function () {
     for ($i = 0; $i < 6; $i++) {
         $response = $this->post('/login', [
             'email' => 'test@example.com',
-            'pin' => 'wrong-password',
+            'password' => 'wrong-password',
         ]);
     }
 

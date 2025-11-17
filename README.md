@@ -38,7 +38,7 @@ php artisan migrate --seed
 ## 🔐 Test Credentials
 
 - **Email:** `admin@example.com`
-- **Security PIN:** `admin123`
+- **Password:** `admin123`
 
 These seed values land you on the admin dashboard after authentication.
 

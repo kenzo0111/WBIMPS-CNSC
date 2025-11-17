@@ -61,12 +61,10 @@ The Supply and Property Management System (SPMO) is a web-based application desi
 
 ✅ **User-Friendly Interface**: Intuitive dashboard with easy navigation  
 ✅ **Real-Time Updates**: Live notifications and activity feed  
-✅ **Automated Workflows**: Streamlined procurement process  
 ✅ **Document Generation**: Automatic PDF generation for official forms  
 ✅ **Role-Based Access**: Secure access control for different user types  
 ✅ **Activity Logging**: Complete audit trail of all system activities  
-✅ **Email Notifications**: Automated email alerts for important events  
-✅ **Mobile Responsive**: Access from desktop, tablet, or mobile devices
+✅ **Email Notifications**: Automated email alerts for important events
 
 ---
 
@@ -84,23 +82,22 @@ If you're a new user, you'll receive an account setup email:
 
 1. **Check Your Email**: Look for an email with subject "Set Up Your Account"
 2. **Click the Setup Link**: Click the "Set Up Account" button in the email
-3. **Create Your Security PIN**:
-   - Enter a secure 6-digit PIN
-   - Confirm the PIN by entering it again
+3. **Create Your Password**:
+   - Enter a secure password
+   - Confirm the password by entering it again
    - Click "Complete Setup"
 4. **Success**: You'll be redirected to the login page
 
 **Important Notes:**
 
 - The setup link expires after 60 minutes
-- Your PIN must be exactly 6 digits
-- Keep your PIN secure and don't share it with others
+- Keep your password secure and don't share it with others
 
 ### 2.3 Standard Login Process
 
 1. Navigate to the login page
 2. Enter your **Email Address**
-3. Enter your **Security PIN** (6 digits)
+3. Enter your **Password**
 4. Click **"Access System"**
 5. You'll be redirected to your dashboard
 
@@ -110,17 +107,17 @@ If you're a new user, you'll receive an account setup email:
 - Account lockout after multiple failed attempts
 - Automatic session timeout after inactivity
 
-### 2.4 Password/PIN Recovery
+### 2.4 Password Recovery
 
-**Forgot Your PIN?**
+**Forgot Your Password?**
 
-1. Click **"Forgot PIN?"** on the login page
+1. Click **"Forgot Password?"** on the login page
 2. Enter your registered email address
 3. Click **"Send Reset Link"**
 4. Check your email for the password reset link
-5. Click the link and enter your new PIN
-6. Confirm the new PIN
-7. Click **"Reset PIN"**
+5. Click the link and enter your new password
+6. Confirm the new password
+7. Click **"Reset Password"**
 
 **Important:**
 
@@ -1146,8 +1143,8 @@ You'll receive automatic emails when:
 **Solutions:**
 
 1. Verify your email address is correct
-2. Check if your PIN is exactly 6 digits
-3. Use the "Forgot PIN?" link to reset
+2. Check if your password meets the minimum requirements (8 characters)
+3. Use the "Forgot Password?" link to reset
 4. Contact administrator if account is locked
 5. Clear browser cache and try again
 
@@ -1367,8 +1364,8 @@ Frequency: Happens every time I try
 
 ### General Questions
 
-**Q: How do I change my PIN?**
-A: Use the "Forgot PIN?" link on the login page to reset your PIN. You'll receive a reset email with instructions.
+**Q: How do I change my password?**
+A: Use the "Forgot Password?" link on the login page to reset your password. You'll receive a reset email with instructions.
 
 **Q: Can I access the system from my phone?**
 A: Yes, the system is mobile-responsive and can be accessed from smartphones and tablets.
@@ -1482,8 +1479,6 @@ A: Not currently, but the web interface works well on mobile browsers.
 
 **PAR**: Property Acknowledgement Receipt - document for acknowledging property receipt
 
-**PIN**: Personal Identification Number - 6-digit code used for login
-
 **PO**: Purchase Order - official order document sent to suppliers
 
 **PR**: Purchase Request - initial request for procurement
@@ -1565,7 +1560,7 @@ A: Not currently, but the web interface works well on mobile browsers.
 - Maximum items per purchase request: 100
 - Maximum characters in description fields: 1000
 - Email length: 255 characters
-- PIN length: Exactly 6 digits
+- Password length: Minimum 8 characters
 
 **Rate Limits:**
 
@@ -1577,8 +1572,8 @@ A: Not currently, but the web interface works well on mobile browsers.
 
 **For All Users:**
 ✅ Log out when finished, especially on shared computers  
-✅ Keep your PIN secure and don't share it  
-✅ Use a strong, unique PIN  
+✅ Keep your password secure and don't share it  
+✅ Use a strong, unique password  
 ✅ Check email notifications regularly  
 ✅ Report issues promptly to support  
 ✅ Keep your profile information up to date  
@@ -1609,7 +1604,7 @@ A: Not currently, but the web interface works well on mobile browsers.
 ✅ Review your activity log periodically  
 ✅ Be cautious of phishing emails  
 ✅ Lock your computer when stepping away  
-✅ Update your password/PIN regularly
+✅ Update your password regularly
 
 ### 11.6 Document Templates
 
