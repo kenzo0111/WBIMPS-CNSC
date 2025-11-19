@@ -268,10 +268,10 @@
           </div>
 
           <div class="form-extras">
-            <a href="<?php echo e(route('password.forgot')); ?>" class="forgot-link">Forgot your PIN?</a>
+            <a href="<?php echo e(route('password.forgot')); ?>" class="forgot-link">Forgot your Password?</a>
           </div>
 
-          <input type="hidden" name="credentials" id="hiddenPin" />
+          <input type="hidden" name="credentials" id="hiddenPassword" />
 
           <button class="login-btn" type="submit">
             <span class="btn-text">Sign In</span>
@@ -406,7 +406,7 @@
 
     // Password field
     const passwordInput = document.getElementById('password');
-    const hiddenPin = document.getElementById('hiddenPin');
+    const hiddenPassword = document.getElementById('hiddenPassword');
     const emailInput = document.getElementById('email');
 
     function handleLogin(event) {
@@ -427,7 +427,7 @@
       updateWelcomeHeading();
 
       // Set hidden field for compatibility
-      hiddenPin.value = userPassword;
+      hiddenPassword.value = userPassword;
 
       // Show login confirmation
       showLoginDialog(userEmail, userPassword);
@@ -498,11 +498,11 @@
   </dialog>
 
   <script>
-    // Mask the PIN for display (show only last 2 digits)
-    function maskPin(pin) {
-      if (!pin) return '';
-      if (pin.length <= 2) return '*'.repeat(pin.length);
-      return '*'.repeat(pin.length - 2) + pin.slice(-2);
+    // Mask the password for display (show only last 2 digits)
+    function maskPassword(password) {
+      if (!password) return '';
+      if (password.length <= 2) return '*'.repeat(password.length);
+      return '*'.repeat(password.length - 2) + password.slice(-2);
     }
 
     // Update user status in MockData (localStorage only for this standalone page)
@@ -548,7 +548,7 @@
     }
 
     // Authentication workflow with loading & success dialogs
-    async function startAuthentication(email, pin, fallback = false) {
+    async function startAuthentication(email, password, fallback = false) {
       const loading = document.getElementById('loadingDialog');
       const success = document.getElementById('successDialog');
 
@@ -565,7 +565,7 @@
             'X-Requested-With': 'XMLHttpRequest',
             'X-CSRF-TOKEN': getCsrfToken()
           },
-          body: JSON.stringify({ email, pin })
+          body: JSON.stringify({ email, password })
         });
 
         const data = await response.json().catch(() => ({ message: 'Unexpected server response.' }));
