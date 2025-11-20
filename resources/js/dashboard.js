@@ -8273,16 +8273,34 @@ function openViewForms(triggerEl, requestId) {
     '/requisition-issue-slip/view/{id}'
   )
 
+  // Determine which forms to show based on the request's configuration
+  let formLinks = ''
+
+  // Always show PO and PR
+  formLinks += `<a class="chooser-link" href="${poHref}" target="_blank" rel="noopener">Purchase Order (PO)</a>\n`
+  formLinks += `<a class="chooser-link" href="${prHref}" target="_blank" rel="noopener">Purchase Request (PR)</a>\n`
+
+  // Show dynamic forms only if they were checked
+  if (request) {
+    if (request.generateICS) {
+      formLinks += `<a class="chooser-link" href="${icsHref}" target="_blank" rel="noopener">Inventory Custodian Slip (ICS)</a>\n`
+    }
+    if (request.generateRIS) {
+      formLinks += `<a class="chooser-link" href="${risHref}" target="_blank" rel="noopener">Requisition &amp; Issue Slip (RIS)</a>\n`
+    }
+    if (request.generatePAR) {
+      formLinks += `<a class="chooser-link" href="${parHref}" target="_blank" rel="noopener">Property Acknowledgement Receipt (PAR)</a>\n`
+    }
+    if (request.generateIAR) {
+      formLinks += `<a class="chooser-link" href="${iarHref}" target="_blank" rel="noopener">Inspection &amp; Acceptance Report (IAR)</a>\n`
+    }
+  }
+
   container.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:10px;min-width:220px;">
       <div id="${headingId}" style="font-weight:700;font-size:14px;color:#0f172a;">View / Open</div>
       <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px;">
-    <a class="chooser-link" href="${poHref}" target="_blank" rel="noopener">Purchase Order (PO)</a>
-    <a class="chooser-link" href="${prHref}" target="_blank" rel="noopener">Purchase Request (PR)</a>
-  <a class="chooser-link" href="${icsHref}" target="_blank" rel="noopener">Inventory Custodian Slip (ICS)</a>
-  <a class="chooser-link" href="${risHref}" target="_blank" rel="noopener">Requisition &amp; Issue Slip (RIS)</a>
-  <a class="chooser-link" href="${parHref}" target="_blank" rel="noopener">Property Acknowledgement Receipt (PAR)</a>
-  <a class="chooser-link" href="${iarHref}" target="_blank" rel="noopener">Inspection &amp; Acceptance Report (IAR)</a>
+        ${formLinks}
       </div>
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;">
         <button type="button" class="chooser-close-btn" id="chooser-close">Close</button>
@@ -14662,30 +14680,25 @@ function generateUserModal(mode = 'view', userData = null) {
                                 <select class="form-select" id="userRole" style="width: 100%; border: 2px solid #e5e7eb; padding: 14px 16px; font-size: 15px; border-radius: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #fafbfc; font-weight: 400; cursor: pointer;">
                                     <option value="">Select role</option>
                                     <option ${
-                                      userData?.role === 'Admin'
-                                        ? 'selected'
-                                        : ''
-                                    }>Admin</option>
-                                    <option ${
-                                      userData?.role === 'Manager'
-                                        ? 'selected'
-                                        : ''
-                                    }>Manager</option>
-                                    <option ${
-                                      userData?.role === 'User'
-                                        ? 'selected'
-                                        : ''
-                                    }>User</option>
-                                    <option ${
                                       userData?.role === 'Student Assistant'
                                         ? 'selected'
                                         : ''
                                     }>Student Assistant</option>
                                     <option ${
-                                      userData?.role === 'Viewer'
+                                      userData?.role === 'Office Assistant'
                                         ? 'selected'
                                         : ''
-                                    }>Viewer</option>
+                                    }>Office Assistant</option>
+                                    <option ${
+                                      userData?.role === 'Administrator'
+                                        ? 'selected'
+                                        : ''
+                                    }>Administrator</option>
+                                    <option ${
+                                      userData?.role === 'System Admin'
+                                        ? 'selected'
+                                        : ''
+                                    }>System Admin</option>
                                 </select>
                             `
                             }
@@ -20389,11 +20402,6 @@ async function initStatusManagement(filter = 'all') {
                 <input type="text" id="deptInput" placeholder="Filter by Department">
                 <select id="deptSelect">
                     <option>All Department</option>
-                    <option>IT Department</option>
-                    <option>HR Department</option>
-                    <option>Finance Department</option>
-                    <option>Marketing Department</option>
-                    <option>Operations</option>
                 </select>
                 <select id="prioritySelect">
                     <option>Filter by Priority</option>
@@ -20520,6 +20528,10 @@ async function initStatusManagement(filter = 'all') {
           AppState.currentStatusFilter || filter || 'all'
         )
       refreshStatusCards()
+
+      // Populate department dropdown dynamically based on data
+      populateDepartmentFilter()
+
       lucide.createIcons()
     } catch (e) {
       // ignore UI update errors
@@ -20557,6 +20569,43 @@ function refreshStatusCards() {
     const el = document.querySelector(`.status-card .count[data-count="${s}"]`)
     if (el) el.textContent = counts[s] || 0
   })
+}
+
+// Populate department filter dropdown dynamically based on table data
+function populateDepartmentFilter() {
+  const deptSelect = document.getElementById('deptSelect')
+  if (!deptSelect) return
+
+  // Extract unique departments from statusRequests
+  const departments = [
+    ...new Set(
+      (AppState.statusRequests || []).map((r) => r.department).filter(Boolean) // Remove empty/null/undefined values
+    ),
+  ].sort()
+
+  // Keep the current selection if it exists
+  const currentValue = deptSelect.value
+
+  // Clear existing options except "All Department"
+  deptSelect.innerHTML = '<option>All Department</option>'
+
+  // Add unique departments as options
+  departments.forEach((dept) => {
+    const option = document.createElement('option')
+    option.value = dept
+    option.textContent = dept
+    deptSelect.appendChild(option)
+  })
+
+  // Restore previous selection if it still exists
+  if (currentValue && currentValue !== 'All Department') {
+    const optionExists = Array.from(deptSelect.options).some(
+      (opt) => opt.value === currentValue
+    )
+    if (optionExists) {
+      deptSelect.value = currentValue
+    }
+  }
 }
 
 // ===== Dummy Rows =====
