@@ -853,11 +853,23 @@ async function loadLowStockItems(threshold = 20) {
 
       if (tbody) {
         if (lowStockItems.length === 0) {
+          // Check if there are any products at all
+          const totalProducts = MockData.products ? MockData.products.length : 0
+          const hasProducts = totalProducts > 0
+
           tbody.innerHTML = `
             <tr>
-              <td colspan="6" class="text-center" style="padding: 24px; color: #10b981;">
-                <i data-lucide="check-circle" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;"></i>
-                All items are well stocked!
+              <td colspan="6" class="text-center" style="padding: 24px; color: ${
+                hasProducts ? '#10b981' : '#6b7280'
+              };">
+                <i data-lucide="${
+                  hasProducts ? 'check-circle' : 'package'
+                }" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;"></i>
+                ${
+                  hasProducts
+                    ? 'All items are well stocked!'
+                    : 'No products in inventory yet'
+                }
               </td>
             </tr>
           `
@@ -5022,7 +5034,7 @@ function generateStockOutPage() {
                 <div class="card-header-inline">
                     <h3 class="card-title-small">
                         <i data-lucide="alert-triangle" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;color:#ff9800;"></i>
-                        Running Low on Stock
+                        Stock Alert - Low Inventory
                     </h3>
                     <span id="low-stock-count-badge" class="badge red">0 items</span>
                 </div>
