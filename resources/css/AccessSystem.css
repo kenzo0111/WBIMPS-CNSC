@@ -334,6 +334,27 @@ header {
   text-shadow: 0 0 10px rgba(255, 213, 0, 0.5);
 }
 
+.back-to-home {
+  margin-top: 1.5rem;
+  text-align: center;
+  animation: fadeInUp 0.8s ease-out 0.9s both;
+}
+
+.back-to-home a {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: inline-block;
+}
+
+.back-to-home a:hover {
+  color: #ffd500;
+  transform: translateX(-3px);
+  text-shadow: 0 0 10px rgba(255, 213, 0, 0.3);
+}
+
 /* Login Button */
 .login-btn {
   width: 100%;

@@ -3031,13 +3031,13 @@ function generateDashboardPage() {
                             </div>
                             <!-- Menu Actions -->
                             <div style="padding: 8px;">
-                                <button class="user-menu-item" style="display:block;width:100%;text-align:left;padding:12px 16px;border:none;background:none;cursor:pointer;border-radius:8px;display:flex;align-items:center;gap:10px;color:#374151;font-size:14px;font-weight:500;margin-bottom:2px;transition:all 0.2s;" onmouseover="this.style.background='#f3f4f6'; this.style.transform='translateX(2px)';" onmouseout="this.style.background='none'; this.style.transform='translateX(0)';" onclick="openUserModal('edit','current'); closeUserMenu();">
+                                <button class="user-menu-item" style="display:block;width:100%;text-align:left;padding:12px 16px;border:none;background:none;cursor:pointer;border-radius:8px;display:flex;align-items:center;gap:10px;color:#374151;font-size:14px;font-weight:500;margin-bottom:2px;transition:all 0.2s;" onmouseover="this.style.background='#f3f4f6'; this.style.transform='translateX(2px)';" onmouseout="this.style.background='none'; this.style.transform='translateX(0)';" onclick="openUserModal('view','current'); closeUserMenu();">
                                     <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                                         <i data-lucide="user" style="width: 16px; height: 16px; color: white;"></i>
                                     </div>
                                     <div style="flex: 1;">
                                         <div style="font-weight: 600;">Profile</div>
-                                        <div style="font-size: 12px; color: #6b7280;">Manage your account</div>
+                                        <div style="font-size: 12px; color: #6b7280;">View your account details</div>
                                     </div>
                                     <i data-lucide="chevron-right" style="width: 14px; height: 14px; color: #9ca3af;"></i>
                                 </button>
@@ -3048,16 +3048,6 @@ function generateDashboardPage() {
                                     <div style="flex: 1;">
                                         <div style="font-weight: 600;">Activity Log</div>
                                         <div style="font-size: 12px; color: #6b7280;">View your recent activity</div>
-                                    </div>
-                                    <i data-lucide="chevron-right" style="width: 14px; height: 14px; color: #9ca3af;"></i>
-                                </button>
-                                <button class="user-menu-item" style="display:block;width:100%;text-align:left;padding:12px 16px;border:none;background:none;cursor:pointer;border-radius:8px;display:flex;align-items:center;gap:10px;color:#374151;font-size:14px;font-weight:500;margin-bottom:2px;transition:all 0.2s;" onmouseover="this.style.background='#f3f4f6'; this.style.transform='translateX(2px)';" onmouseout="this.style.background='none'; this.style.transform='translateX(0)';" onclick="navigateToPage('settings'); closeUserMenu();">
-                                    <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                        <i data-lucide="settings" style="width: 16px; height: 16px; color: white;"></i>
-                                    </div>
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: 600;">Settings</div>
-                                        <div style="font-size: 12px; color: #6b7280;">App preferences</div>
                                     </div>
                                     <i data-lucide="chevron-right" style="width: 14px; height: 14px; color: #9ca3af;"></i>
                                 </button>
@@ -7990,6 +7980,14 @@ function openPurchaseOrderModal(mode = 'create', requestId = null) {
   if (mode === 'create') {
     AppState.purchaseOrderWizardStep = 1
     AppState.purchaseOrderDraft = {} // reset draft on fresh create
+
+    // Ensure suppliers are loaded for the dropdown
+    if (!AppState.suppliers || AppState.suppliers.length === 0) {
+      if (!AppState._suppliersLoaded) {
+        AppState._suppliersLoaded = true
+        loadSuppliersFromAPI()
+      }
+    }
   }
 
   // Load existing request if not create mode
@@ -8997,9 +8995,23 @@ function renderPurchaseOrderWizardStep(requestData) {
                                     <i data-lucide="building" style="width: 14px; height: 14px; color: #6b7280;"></i>
                                     Supplier<span style="color:#dc2626"> *</span>
                                 </label>
-                                <input type="text" class="form-input" id="po-supplier" placeholder="e.g. ABC Office Supplies" value="${
+                                <input type="text" class="form-input" id="po-supplier" list="supplier-datalist" placeholder="e.g. ABC Office Supplies" value="${
                                   AppState.purchaseOrderDraft.supplier || ''
                                 }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                                <datalist id="supplier-datalist">
+                                    ${(AppState.suppliers || [])
+                                      .map(
+                                        (s) =>
+                                          `<option value="${escapeHtml(
+                                            s.name || ''
+                                          )}" data-id="${
+                                            s.id || ''
+                                          }">${escapeHtml(
+                                            s.name || ''
+                                          )}</option>`
+                                      )
+                                      .join('')}
+                                </datalist>
                             </div>
                             <div class="form-group" style="margin-bottom: 16px;">
                                 <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
@@ -9040,6 +9052,42 @@ function renderPurchaseOrderWizardStep(requestData) {
             </div>
         `
     footer.innerHTML = footerButtons(true, 'Next')
+
+    // Add event listener for supplier autocomplete
+    setTimeout(() => {
+      const supplierInput = document.getElementById('po-supplier')
+      const addressInput = document.getElementById('po-supplier-address')
+      const tinInput = document.getElementById('po-supplier-tin')
+
+      if (supplierInput) {
+        supplierInput.addEventListener('input', function (e) {
+          const selectedSupplierName = e.target.value
+          const supplier = (AppState.suppliers || []).find(
+            (s) => s.name === selectedSupplierName
+          )
+
+          if (supplier) {
+            // Auto-fill address and TIN from selected supplier
+            if (addressInput) addressInput.value = supplier.address || ''
+            if (tinInput) tinInput.value = supplier.tin || ''
+          }
+        })
+
+        // Also trigger on change to handle selection from datalist
+        supplierInput.addEventListener('change', function (e) {
+          const selectedSupplierName = e.target.value
+          const supplier = (AppState.suppliers || []).find(
+            (s) => s.name === selectedSupplierName
+          )
+
+          if (supplier) {
+            // Auto-fill address and TIN from selected supplier
+            if (addressInput) addressInput.value = supplier.address || ''
+            if (tinInput) tinInput.value = supplier.tin || ''
+          }
+        })
+      }
+    }, 50)
   } else if (step === 2) {
     const departmentCategories = {
       'Academic Departments': [

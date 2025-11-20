@@ -277,6 +277,10 @@
             <span class="btn-text">Sign In</span>
             <span class="btn-icon">→</span>
           </button>
+
+          <div class="back-to-home">
+            <a href="/admin/home">← Back to Home</a>
+          </div>
         </form>
       </div>
     </div>
