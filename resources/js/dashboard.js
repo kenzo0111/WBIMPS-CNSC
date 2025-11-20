@@ -1713,7 +1713,7 @@ function loadAboutUsContent() {
         heroSubtitle:
           'Revolutionizing Inventory & Procurement Management for Camarines Norte State College',
         mission:
-          'To provide a comprehensive, user-friendly platform that streamlines inventory management, automates procurement processes, and ensures transparency in resource allocation across all departments of CNSC.',
+          'To provide a comprehensive, user-friendly platform that streamlines inventory management, procurement processes, and ensures transparency in resource allocation across all departments of CNSC.',
         vision:
           'To be the leading digital solution for educational institutions, setting the standard for efficient resource management, data-driven decision making, and operational excellence.',
         institution:
@@ -1732,7 +1732,7 @@ function loadAboutUsContent() {
       heroSubtitle:
         'Revolutionizing Inventory & Procurement Management for Camarines Norte State College',
       mission:
-        'To provide a comprehensive, user-friendly platform that streamlines inventory management, automates procurement processes, and ensures transparency in resource allocation across all departments of CNSC.',
+        'To provide a comprehensive, user-friendly platform that streamlines inventory management, procurement processes, and ensures transparency in resource allocation across all departments of CNSC.',
       vision:
         'To be the leading digital solution for educational institutions, setting the standard for efficient resource management, data-driven decision making, and operational excellence.',
       institution:
@@ -15427,7 +15427,7 @@ function generateAboutPage() {
     heroSubtitle:
       'Revolutionizing Inventory & Procurement Management for Camarines Norte State College',
     mission:
-      'To provide a comprehensive, user-friendly platform that streamlines inventory management, automates procurement processes, and ensures transparency in resource allocation across all departments of CNSC.',
+      'To provide a comprehensive, user-friendly platform that streamlines inventory management, procurement processes, and ensures transparency in resource allocation across all departments of CNSC.',
     vision:
       'To be the leading digital solution for educational institutions, setting the standard for efficient resource management, data-driven decision making, and operational excellence.',
     institution:
@@ -15535,7 +15535,7 @@ function generateAboutPage() {
               <div style="width:72px;height:72px;background:linear-gradient(135deg,#764ba2 0%,#667eea 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 0 20px 0;" aria-hidden="true">
                 <i data-lucide="shopping-cart" style="width:36px;height:36px;color:white;"></i>
               </div>
-              <h3 style="margin:0 0 12px 0;color:#111827;font-size:18px;font-weight:600;">Procurement Automation</h3>
+              <h3 style="margin:0 0 12px 0;color:#111827;font-size:18px;font-weight:600;">Procurement Page</h3>
               <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">Streamlined purchase order creation, approval workflows, and vendor management</p>
             </article>
 
@@ -16503,7 +16503,7 @@ function editAboutUs() {
     heroSubtitle:
       'Revolutionizing Inventory & Procurement Management for Camarines Norte State College',
     mission:
-      'To provide a comprehensive, user-friendly platform that streamlines inventory management, automates procurement processes, and ensures transparency in resource allocation across all departments of CNSC.',
+      'To provide a comprehensive, user-friendly platform that streamlines inventory management, procurement processes, and ensures transparency in resource allocation across all departments of CNSC.',
     vision:
       'To be the leading digital solution for educational institutions, setting the standard for efficient resource management, data-driven decision making, and operational excellence.',
     institution:
