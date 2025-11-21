@@ -15,7 +15,6 @@ use Illuminate\Notifications\Notifiable;
  * @property string|null $role
  * @property bool $is_admin
  * @property string $status
- * @property string|null $department
  * @property \Illuminate\Support\Carbon|null $email_verified_at
  * @property string|null $remember_token
  * @property \Illuminate\Support\Carbon|null $created_at
@@ -38,7 +37,6 @@ class User extends Authenticatable
         'role',
         'is_admin',
         'status',
-        'department',
     ];
 
     /**

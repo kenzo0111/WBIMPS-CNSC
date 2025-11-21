@@ -6,7 +6,7 @@ use App\Models\Category;
 use App\Models\Item;
 use Illuminate\Database\Seeder;
 
-class ProductSeeder extends Seeder
+class ItemSeeder extends Seeder
 {
     public function run()
     {
