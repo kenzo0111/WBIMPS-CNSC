@@ -16,7 +16,6 @@ This guide will help you deploy the Supply and Property Management System to Rai
    - `composer.json`
    - `package.json`
    - `artisan`
-   - `railway.json` (created)
    - `.env.example`
 
 ### Step 2: Connect to Railway
@@ -29,9 +28,13 @@ This guide will help you deploy the Supply and Property Management System to Rai
 
 ### Step 3: Configure the Project
 Railway will automatically detect this as a Laravel application and set up:
-- PHP runtime
-- MySQL database
-- Redis (optional, for caching)
+- PHP 8.2 runtime environment
+- MySQL database with automatic provisioning
+- Node.js for asset compilation
+- Automatic SSL certificate generation
+- Optimized build process for Laravel
+
+**Note**: The application uses Railway's default Laravel detection. Custom nixpacks configurations have been removed to ensure compatibility.
 
 ### Step 4: Environment Variables
 Set these environment variables in Railway:
