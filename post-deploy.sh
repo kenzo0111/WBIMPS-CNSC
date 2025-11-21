@@ -9,13 +9,19 @@ echo "🔧 Running post-deployment setup..."
 echo "🔑 Generating application key..."
 php artisan key:generate
 
-# Run database migrations
+# Run database migrations (use migrate:fresh if there are migration issues)
 echo "🗄️ Running database migrations..."
 php artisan migrate --force
 
-# Seed the database with initial data
-echo "🌱 Seeding database..."
-php artisan db:seed
+# If migration fails with duplicate column errors, try fresh migration
+if [ $? -ne 0 ]; then
+    echo "⚠️ Migration failed. Trying fresh migration..."
+    php artisan migrate:fresh --seed
+else
+    # Seed the database with initial data
+    echo "🌱 Seeding database..."
+    php artisan db:seed
+fi
 
 # Clear and cache configuration
 echo "⚡ Caching configuration..."

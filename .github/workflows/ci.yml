@@ -81,3 +81,6 @@ jobs:
           echo "🚀 Deployment triggered via GitHub integration"
           echo "Railway will automatically deploy from this commit"
           echo "Monitor deployment at: https://railway.app/dashboard"
+          echo ""
+          echo "📋 If migration fails, you may need to reset the database:"
+          echo "railway run php artisan migrate:fresh --seed"

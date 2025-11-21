@@ -155,7 +155,12 @@ Railway provides:
    - Ensure Node.js version is compatible
    - Check package.json for build scripts
 
-4. **Permissions**
+4. **Migration Failures**
+   - If you see "duplicate column name" errors, the database may have stale migration state
+   - Reset the database: `railway run php artisan migrate:fresh --seed`
+   - This will drop all tables and re-run all migrations from scratch
+
+5. **Permissions**
    - Laravel needs write permissions for storage/ and bootstrap/cache/
    - Railway handles this automatically
 
