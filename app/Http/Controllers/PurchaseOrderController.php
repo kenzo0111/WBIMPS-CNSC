@@ -135,7 +135,7 @@ class PurchaseOrderController extends Controller
         }
 
         // If it's already a Carbon instance, format it
-        if ($date instanceof Carbon) {
+        if ($date instanceof \Carbon\Carbon) {
             return $date->format('Y-m-d');
         }
 

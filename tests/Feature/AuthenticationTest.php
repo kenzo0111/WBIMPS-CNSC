@@ -13,17 +13,15 @@ test('login page can be rendered', function () {
 });
 
 test('users can authenticate with valid credentials', function () {
-    $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);
-
     $user = User::factory()->create([
-        'email' => 'admin@example.com',
-        'password' => Hash::make('admin123'),
+        'email' => 'test@example.com',
+        'password' => Hash::make('password123'),
         'status' => 'active',
     ]);
 
-    $response = $this->postJson('/login', [
-        'email' => 'admin@example.com',
-        'password' => 'admin123',
+    $response = $this->post('/login', [
+        'email' => 'test@example.com',
+        'password' => 'password123',
     ]);
 
     $response->assertStatus(200)
@@ -34,16 +32,14 @@ test('users can authenticate with valid credentials', function () {
 });
 
 test('users cannot authenticate with invalid password', function () {
-    $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);
-
     $user = User::factory()->create([
-        'email' => 'admin@example.com',
-        'password' => Hash::make('admin123'),
+        'email' => 'test@example.com',
+        'password' => Hash::make('password123'),
         'status' => 'active',
     ]);
 
-    $response = $this->postJson('/login', [
-        'email' => 'admin@example.com',
+    $response = $this->post('/login', [
+        'email' => 'test@example.com',
         'password' => 'wrong-password',
     ]);
 
@@ -52,17 +48,15 @@ test('users cannot authenticate with invalid password', function () {
 });
 
 test('users cannot authenticate with inactive status', function () {
-    $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);
-
     $user = User::factory()->create([
-        'email' => 'admin@example.com',
-        'password' => Hash::make('admin123'),
+        'email' => 'test@example.com',
+        'password' => Hash::make('password123'),
         'status' => 'inactive',
     ]);
 
-    $response = $this->postJson('/login', [
-        'email' => 'admin@example.com',
-        'password' => 'admin123',
+    $response = $this->post('/login', [
+        'email' => 'test@example.com',
+        'password' => 'password123',
     ]);
 
     $response->assertStatus(422);
@@ -70,13 +64,11 @@ test('users cannot authenticate with inactive status', function () {
 });
 
 test('authenticated users can logout', function () {
-    $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);
-
     $user = User::factory()->create(['status' => 'active']);
 
     $this->actingAs($user);
 
-    $response = $this->postJson('/logout');
+    $response = $this->post('/logout');
 
     $this->assertGuest();
     $response->assertStatus(200)
@@ -86,18 +78,16 @@ test('authenticated users can logout', function () {
 });
 
 test('login route has rate limiting', function () {
-    $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);
-
     $user = User::factory()->create([
-        'email' => 'admin@example.com',
-        'password' => Hash::make('admin123'),
+        'email' => 'test@example.com',
+        'password' => Hash::make('password123'),
         'status' => 'active',
     ]);
 
     // Make 6 login attempts (limit is 5 per minute)
     for ($i = 0; $i < 6; $i++) {
-        $response = $this->postJson('/login', [
-            'email' => 'admin@example.com',
+        $response = $this->post('/login', [
+            'email' => 'test@example.com',
             'password' => 'wrong-password',
         ]);
     }
@@ -113,14 +103,12 @@ test('password reset link request page can be rendered', function () {
 });
 
 test('password reset link can be requested', function () {
-    $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);
-
     $user = User::factory()->create([
-        'email' => 'admin@example.com',
+        'email' => 'test@example.com',
     ]);
 
-    $response = $this->postJson('/forgot-password', [
-        'email' => 'admin@example.com',
+    $response = $this->post('/forgot-password', [
+        'email' => 'test@example.com',
     ]);
 
     // Password reset should succeed with 200 or redirect with 302
@@ -128,14 +116,12 @@ test('password reset link can be requested', function () {
 });
 
 test('password reset has rate limiting', function () {
-    $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);
-
-    $user = User::factory()->create(['email' => 'admin@example.com']);
+    $user = User::factory()->create(['email' => 'test@example.com']);
 
     // Make 4 reset attempts (limit is 3 per minute)
     for ($i = 0; $i < 4; $i++) {
-        $response = $this->postJson('/forgot-password', [
-            'email' => 'admin@example.com',
+        $response = $this->post('/forgot-password', [
+            'email' => 'test@example.com',
         ]);
     }
 

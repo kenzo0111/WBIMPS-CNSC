@@ -1,19 +1,13 @@
 <?php
 
-/**
- * @mixin \Tests\TestCase
- * @property \App\Models\User $user
- */
 use App\Models\Item;
 use App\Models\StockIn;
 use App\Models\StockOut;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
 
-// Test case and refresh DB are configured globally in tests/Pest.php for the Feature folder
+uses(RefreshDatabase::class);
 
-/** @var \Tests\TestCase $this */
 beforeEach(function () {
     // Create an authenticated admin user for tests
     $this->user = User::factory()->create([
