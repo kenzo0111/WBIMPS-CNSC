@@ -27,7 +27,6 @@ class DatabaseSeeder extends Seeder
                 // AccessController requires status === 'active' to allow login
                 'status' => 'active',
                 'role' => 'Administrator',
-                'department' => 'Admin',
                 'is_admin' => true,
             ]
         );
@@ -40,14 +39,13 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('123456'),
                 'email_verified_at' => now(),
                 'role' => 'Administrator',
-                'department' => 'Admin',
                 'is_admin' => true,
             ]
         );
 
         $this->call([
-            ProductSeeder::class,
-            ActivitySeeder::class,
+            // ItemSeeder::class,
+            // ActivitySeeder::class,
         ]);
     }
 }
