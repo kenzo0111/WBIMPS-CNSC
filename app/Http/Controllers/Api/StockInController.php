@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
+use App\Models\Item;
 use App\Models\StockIn;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -41,7 +41,7 @@ class StockInController extends Controller
     {
         $validated = $request->validate([
             'transaction_id' => 'required|string|unique:stock_in',
-            'sku' => 'required|string|exists:products,sku',
+            'sku' => 'required|string|exists:items,sku',
             'product_name' => 'required|string',
             'quantity' => 'required|integer|min:1',
             'unit_cost' => 'numeric|min:0',
@@ -54,12 +54,12 @@ class StockInController extends Controller
         DB::transaction(function () use ($validated, &$created) {
             $created = StockIn::create($validated);
 
-            // Update product inventory
-            $product = Product::where('sku', $validated['sku'])->first();
-            if ($product) {
-                $product->increment('quantity', $validated['quantity']);
-                $product->unit_cost = $validated['unit_cost'];
-                $product->save();
+            // Update item inventory
+            $item = Item::where('sku', $validated['sku'])->first();
+            if ($item) {
+                $item->increment('quantity', $validated['quantity']);
+                $item->unit_cost = $validated['unit_cost'];
+                $item->save();
             }
 
             return $created;
@@ -82,8 +82,8 @@ class StockInController extends Controller
     public function update(Request $request, StockIn $stockIn)
     {
         $validated = $request->validate([
-            'transaction_id' => 'required|string|unique:stock_in,transaction_id,'.$stockIn->getKey(),
-            'sku' => 'required|string|exists:products,sku',
+            'transaction_id' => 'required|string|unique:stock_in,transaction_id,' . $stockIn->getKey(),
+            'sku' => 'required|string|exists:items,sku',
             'product_name' => 'required|string',
             'quantity' => 'required|integer|min:1',
             'unit_cost' => 'numeric|min:0',
@@ -98,28 +98,28 @@ class StockInController extends Controller
 
             $stockIn->update($validated);
 
-            // Update product inventory
+            // Update item inventory
             if ($oldSku !== $validated['sku']) {
-                // SKU changed, adjust both old and new products
-                $oldProduct = Product::where('sku', $oldSku)->first();
-                if ($oldProduct) {
-                    $oldProduct->decrement('quantity', $oldQuantity);
+                // SKU changed, adjust both old and new items
+                $oldItem = Item::where('sku', $oldSku)->first();
+                if ($oldItem) {
+                    $oldItem->decrement('quantity', $oldQuantity);
                 }
 
-                $newProduct = Product::where('sku', $validated['sku'])->first();
-                if ($newProduct) {
-                    $newProduct->increment('quantity', $validated['quantity']);
-                    $newProduct->unit_cost = $validated['unit_cost'];
-                    $newProduct->save();
+                $newItem = Item::where('sku', $validated['sku'])->first();
+                if ($newItem) {
+                    $newItem->increment('quantity', $validated['quantity']);
+                    $newItem->unit_cost = $validated['unit_cost'];
+                    $newItem->save();
                 }
             } else {
                 // Same SKU, adjust quantity difference
                 $quantityDiff = $validated['quantity'] - $oldQuantity;
-                $product = Product::where('sku', $validated['sku'])->first();
-                if ($product) {
-                    $product->increment('quantity', $quantityDiff);
-                    $product->unit_cost = $validated['unit_cost'];
-                    $product->save();
+                $item = Item::where('sku', $validated['sku'])->first();
+                if ($item) {
+                    $item->increment('quantity', $quantityDiff);
+                    $item->unit_cost = $validated['unit_cost'];
+                    $item->save();
                 }
             }
         });
@@ -133,10 +133,10 @@ class StockInController extends Controller
     public function destroy(StockIn $stockIn)
     {
         DB::transaction(function () use ($stockIn) {
-            // Remove from product inventory
-            $product = Product::where('sku', $stockIn->sku)->first();
-            if ($product) {
-                $product->decrement('quantity', $stockIn->quantity);
+            // Remove from item inventory
+            $item = Item::where('sku', $stockIn->sku)->first();
+            if ($item) {
+                $item->decrement('quantity', $stockIn->quantity);
             }
 
             $stockIn->delete();

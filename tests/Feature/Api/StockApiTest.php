@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\Product;
+use App\Models\Item;
 use App\Models\StockIn;
 use App\Models\StockOut;
 use App\Models\User;
@@ -33,7 +33,7 @@ test('can list stock in transactions', function () {
 });
 
 test('can create a stock in transaction', function () {
-    $product = Product::factory()->create([
+    $item = Item::factory()->create([
         'sku' => 'SKU-12345',
         'quantity' => 100,
     ]);
@@ -41,7 +41,7 @@ test('can create a stock in transaction', function () {
     $stockInData = [
         'transaction_id' => 'SI-2025-001',
         'sku' => 'SKU-12345',
-        'product_name' => 'Test Product',
+        'product_name' => 'Test Item',
         'quantity' => 50,
         'unit_cost' => 100.00,
         'supplier' => 'ABC Supplier',
@@ -80,10 +80,10 @@ test('can show a specific stock in transaction', function () {
 });
 
 test('can update a stock in transaction', function () {
-    $product = Product::factory()->create([
+    $item = Item::factory()->create([
         'sku' => 'SKU-UPDATE-001',
     ]);
-    
+
     $stockIn = StockIn::factory()->create([
         'sku' => 'SKU-UPDATE-001',
         'quantity' => 50,
@@ -141,7 +141,7 @@ test('can list stock out transactions', function () {
 });
 
 test('can create a stock out transaction', function () {
-    $product = Product::factory()->create([
+    $item = Item::factory()->create([
         'sku' => 'SKU-12345',
         'quantity' => 100,
     ]);
@@ -150,7 +150,7 @@ test('can create a stock out transaction', function () {
         'transaction_id' => 'SO-2025-001',
         'issue_id' => 'ISS-2025-001',
         'sku' => 'SKU-12345',
-        'product_name' => 'Test Product',
+        'product_name' => 'Test Item',
         'quantity' => 10,
         'unit_cost' => 100.00,
         'department' => 'IT Department',
@@ -192,10 +192,10 @@ test('can show a specific stock out transaction', function () {
 });
 
 test('can update a stock out transaction', function () {
-    $product = Product::factory()->create([
+    $item = Item::factory()->create([
         'sku' => 'SKU-UPDATE-002',
     ]);
-    
+
     $stockOut = StockOut::factory()->create([
         'sku' => 'SKU-UPDATE-002',
         'quantity' => 10,
@@ -238,15 +238,15 @@ test('validates required fields when creating stock out', function () {
 });
 
 test('calculates total cost for stock out transaction', function () {
-    $product = Product::factory()->create([
+    $item = Item::factory()->create([
         'sku' => 'SKU-99999',
     ]);
-    
+
     $stockOutData = [
         'transaction_id' => 'SO-2025-002',
         'issue_id' => 'ISS-2025-002',
         'sku' => 'SKU-99999',
-        'product_name' => 'Calculated Product',
+        'product_name' => 'Calculated Item',
         'quantity' => 5,
         'unit_cost' => 100.50,
         'date_issued' => now()->format('Y-m-d'),
@@ -255,7 +255,7 @@ test('calculates total cost for stock out transaction', function () {
     $response = $this->postJson('/api/stock-out', $stockOutData);
 
     $response->assertStatus(201);
-    
+
     $totalCost = $response->json('data.total_cost');
     expect((float) $totalCost)->toBe(502.5);
 });

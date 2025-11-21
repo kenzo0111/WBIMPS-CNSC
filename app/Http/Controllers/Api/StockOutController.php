@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
+use App\Models\Item;
 use App\Models\StockOut;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -42,7 +42,7 @@ class StockOutController extends Controller
         $validated = $request->validate([
             'issue_id' => 'required|string|unique:stock_out,issue_id',
             'transaction_id' => 'nullable|string|unique:stock_out',
-            'sku' => 'required|string|exists:products,sku',
+            'sku' => 'required|string|exists:items,sku',
             'product_name' => 'required|string',
             'quantity' => 'required|integer|min:1',
             'unit_cost' => 'nullable|numeric|min:0',
@@ -56,20 +56,20 @@ class StockOutController extends Controller
         ]);
 
         // Check if sufficient stock is available
-        $product = Product::where('sku', $validated['sku'])->first();
-        if (! $product) {
-            return response()->json(['error' => 'Product not found'], 404);
+        $item = Item::where('sku', $validated['sku'])->first();
+        if (!$item) {
+            return response()->json(['error' => 'Item not found'], 404);
         }
-        if ($product->quantity < $validated['quantity']) {
+        if ($item->quantity < $validated['quantity']) {
             return response()->json(['error' => 'Insufficient stock'], 400);
         }
 
         // Enforce minimum remaining stock threshold: do not allow creating a stock out
-        // which would leave the product with 20 units or less.
-        $remaining = $product->quantity - $validated['quantity'];
+        // which would leave the item with 20 units or less.
+        $remaining = $item->quantity - $validated['quantity'];
         if ($remaining <= 20) {
             return response()->json([
-                'error' => "Cannot create stock out: remaining stock for {$product->sku} would be {$remaining}, which is at or below the minimum allowed (20).",
+                'error' => "Cannot create stock out: remaining stock for {$item->sku} would be {$remaining}, which is at or below the minimum allowed (20).",
             ], 422);
         }
 
@@ -79,12 +79,12 @@ class StockOutController extends Controller
             if (!isset($validated['total_cost']) && isset($validated['unit_cost'])) {
                 $validated['total_cost'] = $validated['quantity'] * $validated['unit_cost'];
             }
-            
+
             $created = StockOut::create($validated);
 
-            // Update product inventory
-            $product = Product::where('sku', $validated['sku'])->first();
-            $product->decrement('quantity', $validated['quantity']);
+            // Update item inventory
+            $item = Item::where('sku', $validated['sku'])->first();
+            $item->decrement('quantity', $validated['quantity']);
 
             return $created;
         });
@@ -106,9 +106,9 @@ class StockOutController extends Controller
     public function update(Request $request, StockOut $stockOut)
     {
         $validated = $request->validate([
-            'issue_id' => 'required|string|unique:stock_out,issue_id,'.$stockOut->getKey(),
-            'transaction_id' => 'nullable|string|unique:stock_out,transaction_id,'.$stockOut->getKey(),
-            'sku' => 'required|string|exists:products,sku',
+            'issue_id' => 'required|string|unique:stock_out,issue_id,' . $stockOut->getKey(),
+            'transaction_id' => 'nullable|string|unique:stock_out,transaction_id,' . $stockOut->getKey(),
+            'sku' => 'required|string|exists:items,sku',
             'product_name' => 'required|string',
             'quantity' => 'required|integer|min:1',
             'unit_cost' => 'nullable|numeric|min:0',
@@ -121,37 +121,37 @@ class StockOutController extends Controller
             'date_issued' => 'required|date',
         ]);
 
-        // Validate product(s) and ensure resulting stock after update doesn't violate minimum threshold
+        // Validate item(s) and ensure resulting stock after update doesn't violate minimum threshold
         $oldQuantity = $stockOut->quantity;
         $oldSku = $stockOut->sku;
 
         $newSku = $validated['sku'];
-        $newProduct = Product::where('sku', $newSku)->first();
-        if (! $newProduct) {
-            return response()->json(['error' => 'Product not found'], 404);
+        $newItem = Item::where('sku', $newSku)->first();
+        if (!$newItem) {
+            return response()->json(['error' => 'Item not found'], 404);
         }
 
         if ($oldSku === $newSku) {
-            // Same SKU: product currently reflects stock after original issuance, so restore old qty then apply new qty
-            $currentProduct = $newProduct; // same product
-            $newRemaining = $currentProduct->quantity + $oldQuantity - $validated['quantity'];
+            // Same SKU: item currently reflects stock after original issuance, so restore old qty then apply new qty
+            $currentItem = $newItem; // same item
+            $newRemaining = $currentItem->quantity + $oldQuantity - $validated['quantity'];
             if ($newRemaining < 0) {
                 return response()->json(['error' => 'Insufficient stock'], 400);
             }
             if ($newRemaining <= 20) {
                 return response()->json([
-                    'error' => "Cannot update stock out: resulting remaining stock for {$currentProduct->sku} would be {$newRemaining}, which is at or below the minimum allowed (20).",
+                    'error' => "Cannot update stock out: resulting remaining stock for {$currentItem->sku} would be {$newRemaining}, which is at or below the minimum allowed (20).",
                 ], 422);
             }
         } else {
-            // SKU changed: check new product availability after applying requested quantity
-            if ($newProduct->quantity < $validated['quantity']) {
-                return response()->json(['error' => 'Insufficient stock for target product'], 400);
+            // SKU changed: check new item availability after applying requested quantity
+            if ($newItem->quantity < $validated['quantity']) {
+                return response()->json(['error' => 'Insufficient stock for target item'], 400);
             }
-            $newRemaining = $newProduct->quantity - $validated['quantity'];
+            $newRemaining = $newItem->quantity - $validated['quantity'];
             if ($newRemaining <= 20) {
                 return response()->json([
-                    'error' => "Cannot update stock out: resulting remaining stock for {$newProduct->sku} would be {$newRemaining}, which is at or below the minimum allowed (20).",
+                    'error' => "Cannot update stock out: resulting remaining stock for {$newItem->sku} would be {$newRemaining}, which is at or below the minimum allowed (20).",
                 ], 422);
             }
         }
@@ -162,24 +162,24 @@ class StockOutController extends Controller
 
             $stockOut->update($validated);
 
-            // Update product inventory
+            // Update item inventory
             if ($oldSku !== $validated['sku']) {
-                // SKU changed, adjust both old and new products
-                $oldProduct = Product::where('sku', $oldSku)->first();
-                if ($oldProduct) {
-                    $oldProduct->increment('quantity', $oldQuantity);
+                // SKU changed, adjust both old and new items
+                $oldItem = Item::where('sku', $oldSku)->first();
+                if ($oldItem) {
+                    $oldItem->increment('quantity', $oldQuantity);
                 }
 
-                $newProduct = Product::where('sku', $validated['sku'])->first();
-                if ($newProduct) {
-                    $newProduct->decrement('quantity', $validated['quantity']);
+                $newItem = Item::where('sku', $validated['sku'])->first();
+                if ($newItem) {
+                    $newItem->decrement('quantity', $validated['quantity']);
                 }
             } else {
                 // Same SKU, adjust quantity difference
                 $quantityDiff = $validated['quantity'] - $oldQuantity;
-                $product = Product::where('sku', $validated['sku'])->first();
-                if ($product) {
-                    $product->decrement('quantity', $quantityDiff);
+                $item = Item::where('sku', $validated['sku'])->first();
+                if ($item) {
+                    $item->decrement('quantity', $quantityDiff);
                 }
             }
         });
@@ -193,10 +193,10 @@ class StockOutController extends Controller
     public function destroy(StockOut $stockOut)
     {
         DB::transaction(function () use ($stockOut) {
-            // Restore to product inventory
-            $product = Product::where('sku', $stockOut->sku)->first();
-            if ($product) {
-                $product->increment('quantity', $stockOut->quantity);
+            // Restore to item inventory
+            $item = Item::where('sku', $stockOut->sku)->first();
+            if ($item) {
+                $item->increment('quantity', $stockOut->quantity);
             }
 
             $stockOut->delete();

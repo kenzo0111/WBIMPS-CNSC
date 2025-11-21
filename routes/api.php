@@ -2,7 +2,7 @@
 
 use App\Http\Controllers\Api\ActivityController;
 use App\Http\Controllers\Api\CategoryController;
-use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\ItemController;
 use App\Http\Controllers\Api\PurchaseRequestController;
 use App\Http\Controllers\Api\StockInController;
 use App\Http\Controllers\Api\StockOutController;
@@ -17,8 +17,8 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::post('/activities', [ActivityController::class, 'store']);
 
     Route::apiResource('categories', CategoryController::class);
-    Route::get('/products/low-stock', [ProductController::class, 'lowStock']);
-    Route::apiResource('products', ProductController::class);
+    Route::get('/items/low-stock', [ItemController::class, 'lowStock']);
+    Route::apiResource('items', ItemController::class);
     Route::apiResource('suppliers', App\Http\Controllers\Api\SupplierController::class);
     Route::apiResource('stock-in', StockInController::class);
     Route::apiResource('stock-out', StockOutController::class);

@@ -74,9 +74,9 @@
                                 <span>Categories</span>
                             </button>
                         </div>
-                        <div class="nav-item" data-page="products">
+                        <div class="nav-item" data-page="items">
                             <button class="nav-button">
-                                <span>Products</span>
+                                <span>Items</span>
                             </button>
                         </div>
                         <div class="nav-item" data-page="stock-in">
@@ -116,7 +116,7 @@
                     <button class="nav-button nav-header" data-group="requisition">
                         <div class="nav-content">
                             <i data-lucide="file-text" class="icon"></i>
-                            <span>Requisition System</span>
+                            <span>Requisition</span>
                         </div>
                         <i data-lucide="chevron-right" class="chevron"></i>
                     </button>
@@ -281,8 +281,8 @@
         </div>
     </div>
 
-    <!-- Product Modal -->
-    <div class="modal-overlay" id="product-modal">
+    <!-- Item Modal -->
+    <div class="modal-overlay" id="item-modal">
         <div class="modal-content">
             <!-- Modal content will be dynamically loaded here -->
         </div>

@@ -31,7 +31,7 @@
 
 The Supply and Property Management System (SPMO) is a web-based application designed to streamline and automate the inventory management and procurement workflows for Camarines Norte State College. The system provides a comprehensive solution for managing:
 
-- **Inventory Management**: Track products, stock levels, and warehouse operations
+- **Inventory Management**: Track items, stock levels, and warehouse operations
 - **Procurement Process**: Create and manage purchase requests and purchase orders
 - **Document Generation**: Generate official documents (PO, RIS, ICS, IAR, PAR)
 - **Activity Tracking**: Monitor all system activities and user actions
@@ -156,7 +156,7 @@ The system has two primary user roles:
 - All regular user permissions, plus:
 - Approve/reject purchase requests
 - Create and manage purchase orders
-- Manage inventory (categories, products, stock)
+- Manage inventory (categories, items, stock)
 - Manage suppliers
 - Manage user accounts
 - Generate all types of documents
@@ -202,7 +202,7 @@ The dashboard is divided into several sections:
 ### 4.2 Header Elements
 
 **Logo**: Click to return to the dashboard home  
-**Search Bar**: Quick search for products, requests, or orders  
+**Search Bar**: Quick search for items, requests, or orders  
 **Notification Bell**: View recent notifications (click to see all)  
 **Profile Menu**: Access account settings and logout
 
@@ -213,10 +213,10 @@ The sidebar contains the main navigation menu:
 **Dashboard Home** 🏠: Overview and statistics  
 **Purchase Requests** 📝: Manage purchase requests  
 **Purchase Orders** 📋: View and create purchase orders  
-**Inventory** 📦: Product and stock management
+**Inventory** 📦: item and stock management
 
 - Categories
-- Products
+- items
 - Stock In
 - Stock Out  
   **Suppliers** 🏢: Supplier management  
@@ -233,7 +233,7 @@ The main content area displays:
 - **Dashboard Cards**: Key metrics and statistics
 - **Recent Activity Feed**: Latest system activities
 - **Quick Actions**: Common tasks and shortcuts
-- **Data Tables**: Lists of requests, orders, products, etc.
+- **Data Tables**: Lists of requests, orders, items, etc.
 - **Forms**: Input forms for creating/editing records
 
 ### 4.5 Notification Center
@@ -551,7 +551,7 @@ You'll receive automatic emails when:
 **View Categories:**
 
 1. Go to **"Inventory"** → **"Categories"**
-2. View list of all product categories
+2. View list of all item categories
 
 **Add New Category:**
 
@@ -572,14 +572,14 @@ You'll receive automatic emails when:
 
 1. Click the delete icon
 2. Confirm deletion
-3. **Note**: Cannot delete categories with associated products
+3. **Note**: Cannot delete categories with associated items
 
-#### 6.4.2 Managing Products
+#### 6.4.2 Managing items
 
-**View Products:**
+**View items:**
 
-1. Go to **"Inventory"** → **"Products"**
-2. View all products with:
+1. Go to **"Inventory"** → **"items"**
+2. View all items with:
    - SKU (Stock Keeping Unit)
    - Name
    - Category
@@ -587,36 +587,36 @@ You'll receive automatic emails when:
    - Unit cost
    - Total value
 
-**Add New Product:**
+**Add New item:**
 
-1. Click **"Add Product"** button
-2. Enter product information:
-   - **SKU**: Unique product code
-   - **Name**: Product name
+1. Click **"Add item"** button
+2. Enter item information:
+   - **SKU**: Unique item code
+   - **Name**: item name
    - **Category**: Select from dropdown
    - **Description**: Detailed description
    - **Unit**: Unit of measure
    - **Initial Quantity**: Starting stock level
    - **Unit Cost**: Cost per unit
    - **Date**: Date added
-3. Click **"Save Product"**
+3. Click **"Save item"**
 
-**Edit Product:**
+**Edit item:**
 
-1. Click the edit icon next to a product
+1. Click the edit icon next to a item
 2. Modify information
 3. Click **"Update"**
 4. Changes are logged in activity history
 
-**Delete Product:**
+**Delete item:**
 
 1. Click the delete icon
 2. Confirm deletion
 3. **Warning**: This action cannot be undone
 
-**Product Details View:**
+**item Details View:**
 
-- Click on a product to view:
+- Click on a item to view:
   - Complete specifications
   - Stock history
   - Related transactions
@@ -629,7 +629,7 @@ You'll receive automatic emails when:
 1. Go to **"Inventory"** → **"Stock In"**
 2. Click **"New Stock In"** button
 3. Fill in the form:
-   - **Product**: Select from dropdown
+   - **item**: Select from dropdown
    - **Supplier**: Choose supplier
    - **Quantity**: Number of units received
    - **Unit Cost**: Cost per unit
@@ -640,7 +640,7 @@ You'll receive automatic emails when:
 
 **Effect on Inventory:**
 
-- Product quantity is automatically increased
+- item quantity is automatically increased
 - Total value is recalculated
 - Transaction is logged
 - Supplier history is updated
@@ -648,7 +648,7 @@ You'll receive automatic emails when:
 **View Stock In History:**
 
 - See all stock receipt transactions
-- Filter by date, product, or supplier
+- Filter by date, item, or supplier
 - Export to Excel for reporting
 
 #### 6.4.4 Stock Out (Issuing Stock)
@@ -658,7 +658,7 @@ You'll receive automatic emails when:
 1. Go to **"Inventory"** → **"Stock Out"**
 2. Click **"New Stock Out"** button
 3. Fill in the form:
-   - **Product**: Select from dropdown
+   - **item**: Select from dropdown
    - **Quantity**: Number of units to issue
    - **Issued To**: Department or person receiving
    - **Issued By**: Person issuing the stock
@@ -669,7 +669,7 @@ You'll receive automatic emails when:
 
 **Effect on Inventory:**
 
-- Product quantity is automatically decreased
+- item quantity is automatically decreased
 - Transaction is logged
 - Low stock alerts may be triggered
 - Cannot issue more than available quantity
@@ -784,7 +784,7 @@ You'll receive automatic emails when:
 
 - **User**: Who performed the action
 - **Action**: What was done (Created, Updated, Deleted, etc.)
-- **Entity**: What was affected (Product, Request, Order, etc.)
+- **Entity**: What was affected (item, Request, Order, etc.)
 - **Timestamp**: When it occurred
 - **Details**: Additional information
 
@@ -801,7 +801,7 @@ You'll receive automatic emails when:
 - Purchase request created
 - Purchase request approved/rejected
 - Purchase order created
-- Product added/updated
+- item added/updated
 - Stock in/out transactions
 - User login/logout
 - Document generated
@@ -1035,20 +1035,20 @@ You'll receive automatic emails when:
 **Stock Level Report:**
 
 1. Go to **"Reports"** → **"Inventory"** → **"Stock Levels"**
-2. View current stock for all products
+2. View current stock for all items
 3. Filter by category
 4. Export to Excel
 
 **Low Stock Alert:**
 
-- Products below minimum quantity
+- items below minimum quantity
 - Suggested reorder quantities
 - Lead times for restocking
 
 **Stock Movement Report:**
 
 1. Select date range
-2. Choose product or category
+2. Choose item or category
 3. View all stock in/out transactions
 4. See net change in inventory
 
@@ -1463,11 +1463,11 @@ A: Not currently, but the web interface works well on mobile browsers.
 
 **Administrator (Admin)**: User with elevated permissions to manage the system
 
-**Category**: Classification or grouping of products (e.g., Office Supplies, Equipment)
+**Category**: Classification or grouping of items (e.g., Office Supplies, Equipment)
 
 **Dashboard**: Main overview page showing key metrics and quick actions
 
-**Entity**: A database object such as a product, request, or order
+**Entity**: A database object such as a item, request, or order
 
 **Grand Total**: Sum of all item costs in a request or order
 
@@ -1485,7 +1485,7 @@ A: Not currently, but the web interface works well on mobile browsers.
 
 **RIS**: Requisition and Issue Slip - document for requesting stock from warehouse
 
-**SKU**: Stock Keeping Unit - unique identifier for each product
+**SKU**: Stock Keeping Unit - unique identifier for each item
 
 **SPMO**: Supply and Property Management Office
 
@@ -1493,7 +1493,7 @@ A: Not currently, but the web interface works well on mobile browsers.
 
 **Stock Out**: Transaction for issuing inventory
 
-**Supplier**: Vendor or company that provides products/services
+**Supplier**: Vendor or company that provides items/services
 
 **TIN**: Tax Identification Number
 
@@ -1618,7 +1618,7 @@ Purchase Orders: `PO-YYYY-NNN`
 
 - Example: PO-2025-045
 
-Product SKUs: `CAT-XXXX`
+item SKUs: `CAT-XXXX`
 
 - Example: OFF-0012 (Office Supplies)
 
@@ -1695,3 +1695,4 @@ Your input helps us make the system better for everyone.
 **Thank you for using the Supply and Property Management System!**
 
 For the latest updates and announcements, check the system dashboard or contact your administrator.
+

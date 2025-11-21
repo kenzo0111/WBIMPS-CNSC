@@ -53,7 +53,7 @@ window.initTheme = initTheme
 if (typeof window !== 'undefined') {
   if (typeof window.LS_KEYS === 'undefined') {
     window.LS_KEYS = {
-      PRODUCTS: 'spmo_products',
+      ITEMS: 'spmo_Items',
       STOCK_IN: 'spmo_stock_in',
       STOCK_OUT: 'spmo_stock_out',
     }
@@ -184,10 +184,10 @@ const AppState = {
     status: 'Active',
     created: new Date().toISOString().split('T')[0],
   },
-  currentProductTab: 'expendable',
-  productSearchTerm: '',
-  productSortBy: 'Sort By',
-  productFilterBy: 'Filter By',
+  currentItemTab: 'expendable',
+  ItemSearchTerm: '',
+  ItemSortBy: 'Sort By',
+  ItemFilterBy: 'Filter By',
   lowStockThreshold: 20,
   purchaseOrderItems: [
     {
@@ -338,7 +338,7 @@ AppState.loginActivityPageSize = 10 // show 10 records per page by default
 const MockData = {
   inventory: [],
   categories: [],
-  products: [],
+  ITEMS: [],
   newRequests: [],
   pendingRequests: [],
   completedRequests: [],
@@ -350,7 +350,7 @@ const MockData = {
 // Local Storage Persistence Layer
 // ==============================
 const LS_KEYS = {
-  PRODUCTS: 'spmo_products',
+  ITEMS: 'spmo_Items',
   STOCK_IN: 'spmo_stock_in',
   STOCK_OUT: 'spmo_stock_out',
 }
@@ -364,25 +364,23 @@ function lsAvailable() {
   return false
 }
 
-function persistProducts() {
-  // Save products to database via API
+function persistItems() {
+  // Save Items to database via API
   // This function is called when inventory changes, but since we use API for CRUD,
-  // individual product saves are handled in the modal functions
-  // Here we can optionally sync all products if needed
+  // individual Item saves are handled in the modal functions
+  // Here we can optionally sync all Items if needed
 }
 
-async function saveProductToAPI(product) {
-  // Minimal safe implementation: attempt to POST/PUT to /api/products if available,
-  // otherwise return the product object. This avoids build/runtime errors
+async function saveItemToAPI(Item) {
+  // Minimal safe implementation: attempt to POST/PUT to /api/items if available,
+  // otherwise return the Item object. This avoids build/runtime errors
   // while preserving a reasonable behavior for callers.
   try {
-    if (!product) return null
+    if (!Item) return null
     try {
-      const isUpdate = product.databaseId && product.databaseId !== ''
+      const isUpdate = Item.databaseId && Item.databaseId !== ''
       const method = isUpdate ? 'PUT' : 'POST'
-      const url = isUpdate
-        ? `/api/products/${product.databaseId}`
-        : '/api/products'
+      const url = isUpdate ? `/api/items/${Item.databaseId}` : '/api/items'
 
       const res = await fetch(url, {
         method: method,
@@ -393,34 +391,34 @@ async function saveProductToAPI(product) {
         },
         credentials: 'same-origin',
         body: JSON.stringify({
-          sku: product.id || product.sku,
-          name: product.name,
-          description: product.description,
-          category_id: product.category_id,
-          quantity: product.quantity,
-          unit: product.unit,
-          unit_cost: product.unitCost || product.unit_cost,
-          date: product.date,
+          sku: Item.id || Item.sku,
+          name: Item.name,
+          description: Item.description,
+          category_id: Item.category_id,
+          quantity: Item.quantity,
+          unit: Item.unit,
+          unit_cost: Item.unitCost || Item.unit_cost,
+          date: Item.date,
         }),
       })
       if (res.ok) {
         const data = await res.json()
-        return data.data || data || product
+        return data.data || data || Item
       }
     } catch (err) {
-      // If API isn't reachable, fall back to returning product object
-      console.warn('saveProductToAPI: API request failed, falling back', err)
+      // If API isn't reachable, fall back to returning Item object
+      console.warn('saveItemToAPI: API request failed, falling back', err)
     }
-    return product
+    return Item
   } catch (error) {
-    console.error('Error in saveProductToAPI:', error)
+    console.error('Error in saveItemToAPI:', error)
     throw error
   }
 }
 
-async function deleteProductFromAPI(productId) {
+async function deleteItemFromAPI(ItemId) {
   try {
-    const response = await fetch(`/api/products/${productId}`, {
+    const response = await fetch(`/api/items/${ItemId}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -432,14 +430,14 @@ async function deleteProductFromAPI(productId) {
 
     if (response.ok) {
       // Remove from local data
-      MockData.products = MockData.products.filter((p) => p.id !== productId)
+      MockData.Items = MockData.Items.filter((p) => p.id !== ItemId)
       return true
     } else {
       const error = await response.json()
-      throw new Error(error.message || 'Failed to delete product')
+      throw new Error(error.message || 'Failed to delete Item')
     }
   } catch (error) {
-    console.error('Error deleting product:', error)
+    console.error('Error deleting item:', error)
     throw error
   }
 }
@@ -468,7 +466,7 @@ async function saveStockInToAPI(stockInRecord) {
       body: JSON.stringify({
         transaction_id: stockInRecord.transactionId || stockInRecord.id,
         sku: stockInRecord.sku,
-        product_name: stockInRecord.productName,
+        Item_name: stockInRecord.ItemName,
         quantity: stockInRecord.quantity,
         unit_cost: stockInRecord.unitCost,
         supplier: stockInRecord.supplier,
@@ -487,8 +485,8 @@ async function saveStockInToAPI(stockInRecord) {
       const normalized = Object.assign({}, serverRecord)
       normalized.transactionId =
         serverRecord.transaction_id || serverRecord.transactionId || ''
-      normalized.productName =
-        serverRecord.product_name || serverRecord.productName || ''
+      normalized.ItemName =
+        serverRecord.Item_name || serverRecord.ItemName || ''
       normalized.date =
         serverRecord.date_received ||
         serverRecord.date ||
@@ -550,7 +548,7 @@ async function saveStockOutToAPI(stockOutRecord) {
           stockOutRecord.id,
         transaction_id: stockOutRecord.transactionId || null,
         sku: stockOutRecord.sku,
-        product_name: stockOutRecord.productName,
+        Item_name: stockOutRecord.ItemName,
         quantity: stockOutRecord.quantity,
         unit_cost: stockOutRecord.unitCost || stockOutRecord.unit_cost || 0,
         total_cost: stockOutRecord.totalCost || stockOutRecord.total_cost || 0,
@@ -572,8 +570,8 @@ async function saveStockOutToAPI(stockOutRecord) {
       normalized.issueId = serverRecord.issue_id || serverRecord.issueId || ''
       normalized.transactionId =
         serverRecord.transaction_id || serverRecord.transactionId || ''
-      normalized.productName =
-        serverRecord.product_name || serverRecord.productName || ''
+      normalized.ItemName =
+        serverRecord.Item_name || serverRecord.ItemName || ''
       normalized.date = formatDate(
         serverRecord.date_issued ||
           serverRecord.date ||
@@ -688,9 +686,9 @@ async function deleteStockOutFromAPI(recordId) {
 }
 
 // API-based data loading functions
-async function loadProductsFromAPI() {
+async function loadItemsFromAPI() {
   try {
-    const response = await fetch('/api/products', {
+    const response = await fetch('/api/items', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -701,36 +699,33 @@ async function loadProductsFromAPI() {
     })
     if (response.ok) {
       const data = await response.json()
-      MockData.products = data.data || []
+      MockData.Items = data.data || []
       // Store database ID separately and use SKU as id for frontend logic
-      MockData.products.forEach((product) => {
+      MockData.Items.forEach((Item) => {
         // Preserve DB id and use SKU as frontend id
-        product.databaseId = product.id
-        product.id = product.sku
+        Item.databaseId = Item.id
+        Item.id = Item.sku
 
         // Normalize cost fields: API uses snake_case 'unit_cost', UI sometimes expects 'unitCost'
-        const unitCost = Number(product.unit_cost ?? product.unitCost ?? 0)
-        product.unit_cost = unitCost
-        product.unitCost = unitCost
+        const unitCost = Number(Item.unit_cost ?? Item.unitCost ?? 0)
+        Item.unit_cost = unitCost
+        Item.unitCost = unitCost
 
         // Normalize total value from server or compute it
         const totalValue = Number(
-          product.total_value ??
-            product.totalValue ??
-            (product.quantity || 0) * unitCost
+          Item.total_value ?? Item.totalValue ?? (Item.quantity || 0) * unitCost
         )
-        product.total_value = totalValue
-        product.totalValue = totalValue
+        Item.total_value = totalValue
+        Item.totalValue = totalValue
 
         // Ensure unit and date are available (API should provide these, but alias defensively)
-        product.unit = product.unit ?? product.unit_name ?? ''
-        product.date =
-          product.date ?? product.date_received ?? product.created_at ?? ''
+        Item.unit = Item.unit ?? Item.unit_name ?? ''
+        Item.date = Item.date ?? Item.date_received ?? Item.created_at ?? ''
       })
-      return MockData.products
+      return MockData.Items
     }
   } catch (error) {
-    console.error('Error loading products from API:', error)
+    console.error('Error loading Items from API:', error)
   }
   return []
 }
@@ -751,11 +746,11 @@ async function loadStockInFromAPI() {
       // Normalize each record to UI-friendly camelCase fields and safe aliases
       stockInData = (data.data || []).map((r) => {
         const record = Object.assign({}, r)
-        // server uses snake_case: transaction_id, product_name, date_received, unit_cost
+        // server uses snake_case: transaction_id, Item_name, date_received, unit_cost
         record.id = record.id || record.id
         record.transactionId =
           record.transaction_id || record.transactionId || ''
-        record.productName = record.product_name || record.productName || ''
+        record.ItemName = record.Item_name || record.ItemName || ''
         record.date = formatDate(
           record.date_received || record.date || record.created_at || ''
         )
@@ -801,7 +796,7 @@ async function loadStockOutFromAPI() {
         rec.id = rec.id || rec.id
         rec.issueId = rec.issue_id || rec.issueId || ''
         rec.transactionId = rec.transaction_id || rec.transactionId || ''
-        rec.productName = rec.product_name || rec.productName || ''
+        rec.ItemName = rec.Item_name || rec.ItemName || ''
         rec.date = formatDate(
           rec.date_issued || rec.date || rec.created_at || ''
         )
@@ -832,7 +827,7 @@ async function loadStockOutFromAPI() {
 async function loadLowStockItems(threshold = 20) {
   try {
     const response = await fetch(
-      `/api/products/low-stock?threshold=${threshold}`,
+      `/api/items/low-stock?threshold=${threshold}`,
       {
         method: 'GET',
         headers: {
@@ -853,22 +848,22 @@ async function loadLowStockItems(threshold = 20) {
 
       if (tbody) {
         if (lowStockItems.length === 0) {
-          // Check if there are any products at all
-          const totalProducts = MockData.products ? MockData.products.length : 0
-          const hasProducts = totalProducts > 0
+          // Check if there are any Items at all
+          const totalItems = MockData.Items ? MockData.Items.length : 0
+          const hasItems = totalItems > 0
 
           tbody.innerHTML = `
             <tr>
               <td colspan="6" class="text-center" style="padding: 24px; color: ${
-                hasProducts ? '#10b981' : '#6b7280'
+                hasItems ? '#10b981' : '#6b7280'
               };">
                 <i data-lucide="${
-                  hasProducts ? 'check-circle' : 'package'
+                  hasItems ? 'check-circle' : 'package'
                 }" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;"></i>
                 ${
-                  hasProducts
+                  hasItems
                     ? 'All items are well stocked!'
-                    : 'No products in inventory yet'
+                    : 'No Items in inventory yet'
                 }
               </td>
             </tr>
@@ -951,7 +946,7 @@ async function loadLowStockItems(threshold = 20) {
 async function loadPersistedInventoryData() {
   // Load data from API instead of localStorage
   await Promise.all([
-    loadProductsFromAPI(),
+    loadItemsFromAPI(),
     loadCategoriesFromAPI(),
     loadStockInFromAPI(),
     loadStockOutFromAPI(),
@@ -1097,25 +1092,25 @@ function saveStatusRequests() {
 // Low stock notification tracking
 AppState.lowStockAlertedIds = AppState.lowStockAlertedIds || []
 
-function maybeNotifyLowStock(product) {
+function maybeNotifyLowStock(Item) {
   const threshold = AppState.lowStockThreshold || 20
-  if (!product || !product.id) return
-  const currentQty = Number(product.quantity) || 0
-  const already = AppState.lowStockAlertedIds.includes(product.id)
+  if (!Item || !Item.id) return
+  const currentQty = Number(Item.quantity) || 0
+  const already = AppState.lowStockAlertedIds.includes(Item.id)
   if (currentQty < threshold && !already) {
     // push notification (use persistent API when available)
     try {
       if (typeof createNotification === 'function') {
         createNotification({
-          title: 'Low stock: ' + product.name,
-          message: `${product.name} has only ${currentQty} left (Threshold: ${threshold})`,
+          title: 'Low stock: ' + Item.name,
+          message: `${Item.name} has only ${currentQty} left (Threshold: ${threshold})`,
           type: 'warning',
           icon: 'alert-triangle',
         })
       } else {
         addNotification(
-          'Low stock: ' + product.name,
-          `${product.name} has only ${currentQty} left (Threshold: ${threshold})`,
+          'Low stock: ' + Item.name,
+          `${Item.name} has only ${currentQty} left (Threshold: ${threshold})`,
           'warning',
           'alert-triangle'
         )
@@ -1124,51 +1119,51 @@ function maybeNotifyLowStock(product) {
       // fallback to non-persistent addNotification
       try {
         addNotification(
-          'Low stock: ' + product.name,
-          `${product.name} has only ${currentQty} left (Threshold: ${threshold})`,
+          'Low stock: ' + Item.name,
+          `${Item.name} has only ${currentQty} left (Threshold: ${threshold})`,
           'warning',
           'alert-triangle'
         )
       } catch (err) {}
     }
-    AppState.lowStockAlertedIds.push(product.id)
+    AppState.lowStockAlertedIds.push(Item.id)
   } else if (currentQty >= threshold && already) {
     // remove from alerted so future drops will alert again
     AppState.lowStockAlertedIds = AppState.lowStockAlertedIds.filter(
-      (id) => id !== product.id
+      (id) => id !== Item.id
     )
   }
 }
 
-function findProductBySku(sku) {
+function findItemBySku(sku) {
   if (!sku) return null
-  return (MockData.products || []).find((p) => p.id === sku.trim())
+  return (MockData.Items || []).find((p) => p.id === sku.trim())
 }
 
-function recalcProductValue(product) {
-  if (!product) return
-  const qty = Number(product.quantity) || 0
-  const uc = Number(product.unit_cost) || 0
-  product.totalValue = qty * uc
+function recalcItemValue(Item) {
+  if (!Item) return
+  const qty = Number(Item.quantity) || 0
+  const uc = Number(Item.unit_cost) || 0
+  Item.totalValue = qty * uc
 }
 
 function adjustInventoryOnStockIn(newRecord, oldRecord) {
-  const product = findProductBySku(newRecord.sku)
-  if (!product) return // silently ignore if sku not in products list
+  const Item = findItemBySku(newRecord.sku)
+  if (!Item) return // silently ignore if sku not in Items list
   const prevQty = oldRecord ? Number(oldRecord.quantity) || 0 : 0
   const delta = (Number(newRecord.quantity) || 0) - prevQty // add difference
   if (delta !== 0) {
-    product.quantity = (Number(product.quantity) || 0) + delta
+    Item.quantity = (Number(Item.quantity) || 0) + delta
     // Optionally update unitCost if changed (keep the latest cost as reference)
-    if (newRecord.unit_cost && newRecord.unit_cost !== product.unit_cost) {
-      product.unit_cost = newRecord.unit_cost
+    if (newRecord.unit_cost && newRecord.unit_cost !== Item.unit_cost) {
+      Item.unit_cost = newRecord.unit_cost
     }
-    recalcProductValue(product)
-    maybeNotifyLowStock(product)
+    recalcItemValue(Item)
+    maybeNotifyLowStock(Item)
     // Notify stock in updated
     try {
       const title = `Stock In Updated: ${newRecord.transactionId}`
-      const msg = `Updated ${newRecord.quantity} of ${newRecord.productName}`
+      const msg = `Updated ${newRecord.quantity} of ${newRecord.ItemName}`
       if (typeof createNotification === 'function') {
         createNotification({
           title,
@@ -1184,7 +1179,7 @@ function adjustInventoryOnStockIn(newRecord, oldRecord) {
     try {
       postActivity(
         `Stock In: ${
-          newRecord.productName || newRecord.product_name || newRecord.sku || ''
+          newRecord.ItemName || newRecord.Item_name || newRecord.sku || ''
         }`,
         {
           transactionId: newRecord.transactionId || newRecord.id || null,
@@ -1220,20 +1215,20 @@ async function postActivity(action, meta = {}) {
 }
 
 function adjustInventoryOnStockOut(newRecord, oldRecord) {
-  const product = findProductBySku(newRecord.sku)
-  if (!product) return
+  const Item = findItemBySku(newRecord.sku)
+  if (!Item) return
   const prevQty = oldRecord ? Number(oldRecord.quantity) || 0 : 0
   const delta = (Number(newRecord.quantity) || 0) - prevQty // positive if new uses more
   if (delta !== 0) {
     // delta represents change in issued quantity; subtract that from inventory
-    product.quantity = Math.max(0, (Number(product.quantity) || 0) - delta)
-    recalcProductValue(product)
-    maybeNotifyLowStock(product)
+    Item.quantity = Math.max(0, (Number(Item.quantity) || 0) - delta)
+    recalcItemValue(Item)
+    maybeNotifyLowStock(Item)
     // create server-side activity (best-effort)
     try {
       postActivity(
         `Stock Out: ${
-          newRecord.productName || newRecord.product_name || newRecord.sku || ''
+          newRecord.ItemName || newRecord.Item_name || newRecord.sku || ''
         }`,
         {
           issueId:
@@ -1250,18 +1245,18 @@ function adjustInventoryOnStockOut(newRecord, oldRecord) {
 }
 
 function restoreInventoryFromDeletedStockIn(record) {
-  const product = findProductBySku(record?.sku)
-  if (!product) return
-  product.quantity = Math.max(
+  const Item = findItemBySku(record?.sku)
+  if (!Item) return
+  Item.quantity = Math.max(
     0,
-    (Number(product.quantity) || 0) - (Number(record.quantity) || 0) + 0
+    (Number(Item.quantity) || 0) - (Number(record.quantity) || 0) + 0
   ) // removal of an addition => subtract quantity
-  recalcProductValue(product)
-  maybeNotifyLowStock(product)
+  recalcItemValue(Item)
+  maybeNotifyLowStock(Item)
   try {
     postActivity(
       `Stock In deleted: ${
-        record.productName || record.product_name || record.sku || ''
+        record.ItemName || record.Item_name || record.sku || ''
       }`,
       {
         transactionId: record.transactionId || record.id || null,
@@ -1273,17 +1268,16 @@ function restoreInventoryFromDeletedStockIn(record) {
 }
 
 function restoreInventoryFromDeletedStockOut(record) {
-  const product = findProductBySku(record?.sku)
-  if (!product) return
+  const Item = findItemBySku(record?.sku)
+  if (!Item) return
   // Deleting a stock-out means we should add the issued quantity back
-  product.quantity =
-    (Number(product.quantity) || 0) + (Number(record.quantity) || 0)
-  recalcProductValue(product)
-  maybeNotifyLowStock(product)
+  Item.quantity = (Number(Item.quantity) || 0) + (Number(record.quantity) || 0)
+  recalcItemValue(Item)
+  maybeNotifyLowStock(Item)
   try {
     postActivity(
       `Stock Out deleted: ${
-        record.productName || record.product_name || record.sku || ''
+        record.ItemName || record.Item_name || record.sku || ''
       }`,
       {
         issueId: record.issueId || record.transactionId || record.id || null,
@@ -1294,11 +1288,11 @@ function restoreInventoryFromDeletedStockOut(record) {
   } catch (e) {}
 }
 
-function refreshProductsViewIfOpen() {
-  // If current page is products, re-render to reflect counts
-  const productsSection = document.querySelector('.product-tabs')
-  if (productsSection) {
-    loadPageContent('products')
+function refreshItemsViewIfOpen() {
+  // If current page is Items, re-render to reflect counts
+  const itemsSection = document.querySelector('.item-tabs')
+  if (itemsSection) {
+    loadPageContent('items')
   }
   // Also refresh metrics if on dashboard
   if (AppState.currentPage === 'dashboard') {
@@ -1434,7 +1428,7 @@ function logUserLogin(email, name, status = 'Success') {
       name: name || 'Unknown User',
       action: 'Login',
       timestamp: timestamp,
-      ipAddress: 'N/A', // In production, this would come from server
+      ipAddress: 'N/A', // In Itemion, this would come from server
       device: device,
       status: status,
     }
@@ -2372,16 +2366,16 @@ function clearAllNotifications() {
   }
 }
 
-// Clear mock/localStorage data used by the demo app (products, stock, logs, users, notifications)
+// Clear mock/localStorage data used by the demo app (Items, stock, logs, users, notifications)
 async function clearMockLocalData() {
   const ok = await showConfirm(
-    'This will remove demo/mock in-memory data (products, stock in/out, users, logs, notifications). Continue?',
+    'This will remove demo/mock in-memory data (Items, stock in/out, users, logs, notifications). Continue?',
     'Clear Mock Data'
   )
   if (!ok) return
   try {
     const keys = [
-      LS_KEYS.PRODUCTS,
+      LS_KEYS.ItemS,
       LS_KEYS.STOCK_IN,
       LS_KEYS.STOCK_OUT,
       'spmo_userLogs',
@@ -2397,7 +2391,7 @@ async function clearMockLocalData() {
     })
 
     // Reset in-memory mock data
-    MockData.products = []
+    MockData.Items = []
     stockInData = []
     stockOutData = []
     if (window.MockData) {
@@ -2453,6 +2447,11 @@ function addNotification(title, message, type = 'info', icon = 'bell') {
 // Sidebar Toggle Function
 function toggleSidebar() {
   const sidebar = document.getElementById('sidebar')
+  if (!sidebar) {
+    console.error('Sidebar element not found')
+    return
+  }
+
   const isCollapsed = sidebar.classList.toggle('collapsed')
 
   // Store the collapsed state in localStorage
@@ -2492,6 +2491,11 @@ function updateNavTooltips(isCollapsed) {
 // Initialize sidebar state from localStorage
 function initializeSidebarState() {
   const sidebar = document.getElementById('sidebar')
+  if (!sidebar) {
+    console.error('Sidebar element not found in initializeSidebarState')
+    return
+  }
+
   // Persistence disabled: keep default sidebar state (expanded) unless server or AppState changes it
   if (AppState.sidebarCollapsed) {
     sidebar.classList.add('collapsed')
@@ -2618,8 +2622,8 @@ function loadPageContent(pageId) {
     case 'categories':
       mainContent.innerHTML = generateCategoriesPage()
       break
-    case 'products':
-      mainContent.innerHTML = generateProductsPage()
+    case 'items':
+      mainContent.innerHTML = generateItemsPage()
       break
     case 'suppliers':
       mainContent.innerHTML = generateSuppliersPage()
@@ -2764,10 +2768,10 @@ function generateDashboardPage() {
   })
 
   // Calculate real statistics from data sources
-  const totalProducts = MockData.products ? MockData.products.length : 0
+  const totalItems = MockData.Items ? MockData.Items.length : 0
   const lowStockThreshold = 15
-  const lowStockItems = MockData.products
-    ? MockData.products.filter((p) => p.quantity < lowStockThreshold).length
+  const lowStockItems = MockData.Items
+    ? MockData.Items.filter((p) => p.quantity < lowStockThreshold).length
     : 0
 
   // Get total users from MockData
@@ -2802,9 +2806,9 @@ function generateDashboardPage() {
     (r) => r.status === 'finished'
   ).length
 
-  // Calculate total value of all products
-  const totalInventoryValue = MockData.products
-    ? MockData.products.reduce((sum, p) => sum + (p.totalValue || 0), 0)
+  // Calculate total value of all Items
+  const totalInventoryValue = MockData.Items
+    ? MockData.Items.reduce((sum, p) => sum + (p.totalValue || 0), 0)
     : 0
 
   // Calculate trend indicators (mock data for demonstration - in real app, compare with previous period)
@@ -2818,9 +2822,9 @@ function generateDashboardPage() {
   }
 
   // Mock previous values (in real app, these would come from historical data)
-  const previousTotalProducts = Math.max(
+  const previousTotalItems = Math.max(
     0,
-    totalProducts - Math.floor(Math.random() * 10)
+    totalItems - Math.floor(Math.random() * 10)
   )
   const previousLowStockItems = Math.max(
     0,
@@ -2843,7 +2847,7 @@ function generateDashboardPage() {
     totalInventoryValue - Math.random() * 10000
   )
 
-  const productsTrend = getTrendData(totalProducts, previousTotalProducts)
+  const ItemsTrend = getTrendData(totalItems, previousTotalItems)
   const lowStockTrend = getTrendData(lowStockItems, previousLowStockItems)
   const incomingTrend = getTrendData(incomingRequests, previousIncomingRequests)
   const receivedTrend = getTrendData(receivedToday, previousReceivedToday)
@@ -3108,8 +3112,8 @@ function generateDashboardPage() {
             <div class="metrics-grid">
                 ${renderMetricCard(
                   'Items',
-                  totalProducts,
-                  productsTrend,
+                  totalItems,
+                  ItemsTrend,
                   'package',
                   'blue'
                 )}
@@ -3173,12 +3177,12 @@ function generateDashboardPage() {
                                 <p>Start a new purchase order</p>
                             </div>
                         </div>
-                        <div class="action-item" onclick="navigateToPage('products')">
+                        <div class="action-item" onclick="navigateToPage('Items')">
                             <div class="action-icon blue">
                                 <i data-lucide="package-plus" class="icon"></i>
                             </div>
                             <div class="action-content">
-                                <h4>Add New Product</h4>
+                                <h4>Add New Item</h4>
                                 <p>Register new inventory item</p>
                             </div>
                         </div>
@@ -3639,7 +3643,7 @@ function generateCategoriesPage() {
                     </h1>
                     <p class="page-subtitle">Manage inventory categories</p>
                 </div>
-                <button class="add-product-btn" onclick="openCategoryModal('create')">
+                <button class="add-item-btn" onclick="openCategoryModal('create')">
                     <i data-lucide="plus" class="icon"></i>
                     Add Category
                 </button>
@@ -3699,23 +3703,21 @@ function generateCategoriesPage() {
     `
 }
 
-function generateProductsPage() {
-  const currentTab = AppState.currentProductTab || 'expendable'
-  // Filter products according to current tab. Prefer explicit `product.type` when present;
+function generateItemsPage() {
+  const currentTab = AppState.currentItemTab || 'expendable'
+  // Filter Items according to current tab. Prefer explicit `Item.type` when present;
   // otherwise derive type from SKU prefix as a safe fallback (SE -> semi-expendable, N -> non-expendable, else expendable).
-  const allProducts = MockData.products || []
-  const deriveType = (product) => {
-    if (!product) return 'expendable'
-    if (product.type) return product.type
-    const sku = (product.id || '').toString().toUpperCase()
+  const allItems = MockData.Items || []
+  const deriveType = (Item) => {
+    if (!Item) return 'expendable'
+    if (Item.type) return Item.type
+    const sku = (Item.id || '').toString().toUpperCase()
     if (sku.startsWith('SE')) return 'semi-expendable'
     if (sku.startsWith('N')) return 'non-expendable'
     return 'expendable'
   }
 
-  const filteredProducts = allProducts.filter(
-    (p) => deriveType(p) === currentTab
-  )
+  const filteredItems = allItems.filter((p) => deriveType(p) === currentTab)
 
   return `
         <div class="page-header">
@@ -3723,33 +3725,33 @@ function generateProductsPage() {
                 <div>
                     <h1 class="page-title">
                         <i data-lucide="box" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>
-                        List of Products
+                        List of Items
                     </h1>
-                    <p class="page-subtitle">Manage product inventory</p>
+                    <p class="page-subtitle">Manage Item inventory</p>
                 </div>
-                <button class="add-product-btn" onclick="openProductModal()">
+                <button class="add-item-btn" onclick="openItemModal()">
                     <i data-lucide="plus" class="icon"></i>
-                    Add Product
+                    Add Item
                 </button>
             </div>
         </div>
         
         <div class="page-content">
-            <!-- Product Tabs -->
-            <div class="product-tabs">
-                <button class="product-tab ${
+            <!-- Item Tabs -->
+            <div class="item-tabs">
+                <button class="item-tab ${
                   currentTab === 'expendable' ? 'active' : ''
-                }" onclick="switchProductTab('expendable')">
+                }" onclick="switchItemTab('expendable')">
                     Expendable
                 </button>
-                <button class="product-tab ${
+                <button class="item-tab ${
                   currentTab === 'semi-expendable' ? 'active' : ''
-                }" onclick="switchProductTab('semi-expendable')">
+                }" onclick="switchItemTab('semi-expendable')">
                     Semi-Expendable
                 </button>
-                <button class="product-tab ${
+                <button class="item-tab ${
                   currentTab === 'non-expendable' ? 'active' : ''
-                }" onclick="switchProductTab('non-expendable')">
+                }" onclick="switchItemTab('non-expendable')">
                     Non-Expendable
                 </button>
             </div>
@@ -3758,15 +3760,15 @@ function generateProductsPage() {
             <div class="enhanced-filter-bar">
                 <div class="filter-left">
                     <div class="enhanced-search">
-                        <input type="text" class="form-input" placeholder="Search a Product" id="product-search">
+                        <input type="text" class="form-input" placeholder="Search a Item" id="Item-search">
                         <i data-lucide="search" class="search-icon"></i>
                     </div>
                 </div>
                 <div class="filter-right">
                     <select class="filter-dropdown" id="sort-by">
                         <option>Sort By</option>
-                        <option>Product Name (A-Z)</option>
-                        <option>Product Name (Z-A)</option>
+                        <option>Item Name (A-Z)</option>
+                        <option>Item Name (Z-A)</option>
                         <option>Date (Newest)</option>
                         <option>Date (Oldest)</option>
                         <option>Total Value (High to Low)</option>
@@ -3783,13 +3785,13 @@ function generateProductsPage() {
                 </div>
             </div>
             
-            <!-- Products Table -->
+            <!-- Items Table -->
             <div class="table-container">
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Product ID</th>
-                            <th>Product Name</th>
+                            <th>Item ID</th>
+                            <th>Item Name</th>
                             <th>Description</th>
                             <th>Quantity</th>
                             <th>Unit</th>
@@ -3801,36 +3803,32 @@ function generateProductsPage() {
                     </thead>
                     <tbody>
                         ${
-                          filteredProducts.length
-                            ? filteredProducts
-                                .map((product, index) => {
+                          filteredItems.length
+                            ? filteredItems
+                                .map((Item, index) => {
                                   return `
                             <tr>
-                                <td style="font-weight: 500;">${product.id}</td>
-                                <td style="font-weight: 500;">${
-                                  product.name
-                                }</td>
+                                <td style="font-weight: 500;">${Item.id}</td>
+                                <td style="font-weight: 500;">${Item.name}</td>
                                 <td style="color: #6b7280; max-width: 300px;">${
-                                  product.description || ''
+                                  Item.description || ''
                                 }</td>
-                                <td>${product.quantity ?? 0}</td>
-                                <td>${product.unit || '-'}</td>
-                                <td>${formatCurrency(
-                                  product.unit_cost || 0
-                                )}</td>
+                                <td>${Item.quantity ?? 0}</td>
+                                <td>${Item.unit || '-'}</td>
+                                <td>${formatCurrency(Item.unit_cost || 0)}</td>
                                 <td style="font-weight: 500;">${formatCurrency(
-                                  product.totalValue || 0
+                                  Item.totalValue || 0
                                 )}</td>
-                                <td>${product.date || ''}</td>
+                                <td>${Item.date || ''}</td>
                                 <td>
                                     <div class="table-actions">
-                                        <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteProduct('${
-                                          product.id
+                                        <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteItem('${
+                                          Item.id
                                         }')">
                                             <i data-lucide="trash-2"></i>
                                         </button>
-                                        <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openProductModal('edit','${
-                                          product.id
+                                        <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openItemModal('edit','${
+                                          Item.id
                                         }')">
                                             <i data-lucide="edit"></i>
                                         </button>
@@ -3840,7 +3838,7 @@ function generateProductsPage() {
                         `
                                 })
                                 .join('')
-                            : `<tr><td colspan="9" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No products found</td></tr>`
+                            : `<tr><td colspan="9" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No Items found</td></tr>`
                         }
                     </tbody>
                 </table>
@@ -3849,9 +3847,9 @@ function generateProductsPage() {
                 <nav class="enhanced-pagination" aria-label="Pagination">
                     <div class="pagination-left" style="margin-left: 16px">
                         ${
-                          filteredProducts.length === 0
+                          filteredItems.length === 0
                             ? 'No entries to display'
-                            : `Showing 1 to ${filteredProducts.length} of ${filteredProducts.length} entries`
+                            : `Showing 1 to ${filteredItems.length} of ${filteredItems.length} entries`
                         }
                     </div>
                     <div class="pagination-right" style="margin-right: 16px">
@@ -3996,7 +3994,7 @@ function openSupplierModal(mode = 'create', index = null) {
   }
 
   const modalContent = overlay.querySelector('.modal-content')
-  // Render using the product modal style
+  // Render using the Item modal style
   modalContent.innerHTML = generateSupplierModal(mode, supplier, index)
   overlay.classList.add('active')
   if (window.lucide) setTimeout(() => lucide.createIcons(), 10)
@@ -4369,7 +4367,7 @@ function generateSupplierModal(mode = 'create', supplier = {}, index = null) {
       ? 'Update supplier information'
       : 'View supplier details'
   const isReadOnly = mode === 'view'
-  // Use the same structure as product modal for visual parity
+  // Use the same structure as Item modal for visual parity
   return `
     <style>
     /* Hide empty icon placeholders until lucide replaces them with SVGs */
@@ -4847,7 +4845,7 @@ function generateStockInPage() {
         </div>
         
         <div class="page-content">
-            <!-- Enhanced Filter Bar (matching Products page style) -->
+            <!-- Enhanced Filter Bar (matching Items page style) -->
             <div class="enhanced-filter-bar">
                 <div class="filter-left">
                     <div class="enhanced-search">
@@ -4868,7 +4866,7 @@ function generateStockInPage() {
                         <option>Date (Oldest)</option>
                         <option>Amount (High to Low)</option>
                         <option>Amount (Low to High)</option>
-                        <option>Product Name (A-Z)</option>
+                        <option>Item Name (A-Z)</option>
                     </select>
                 </div>
             </div>
@@ -4879,7 +4877,7 @@ function generateStockInPage() {
                         <tr>
                             <th>Transaction ID</th>
                             <th>Date</th>
-                            <th>Product Name</th>
+                            <th>Item Name</th>
                             <th>SKU</th>
                             <th>Quantity</th>
                             <th>Unit Cost</th>
@@ -4982,7 +4980,7 @@ function generateStockOutPage() {
                             <tr>
                                 <th class="sortable" data-sort="issue_id">Issue ID</th>
                                 <th class="sortable" data-sort="date">Date</th>
-                                <th class="sortable" data-sort="product_name">Product Name</th>
+                                <th class="sortable" data-sort="Item_name">Item Name</th>
                                 <th>SKU</th>
                                 <th class="sortable" data-sort="quantity">Quantity</th>
                                 <th class="sortable" data-sort="unit_cost">Unit Cost</th>
@@ -5033,7 +5031,7 @@ function generateStockOutPage() {
                         <thead>
                             <tr>
                                 <th>SKU</th>
-                                <th>Product Name</th>
+                                <th>Item Name</th>
                                 <th>Category</th>
                                 <th>Current Stock</th>
                                 <th>Unit</th>
@@ -6271,7 +6269,7 @@ function exportInventoryCSV() {
   const rowsToExport =
     window.__inventoryFilteredRows && window.__inventoryFilteredRows.length
       ? window.__inventoryFilteredRows
-      : MockData.products || []
+      : MockData.Items || []
   rowsToExport.forEach((i) =>
     rows.push([
       i.id || i.stockNumber || '',
@@ -6351,38 +6349,37 @@ function renderInventoryReport() {
   const tbody = document.querySelector('#inventory-report-table tbody')
   if (!tbody) return
 
-  // Filters (category placeholder & future date filters). Products currently lack category & date metadata.
+  // Filters (category placeholder & future date filters). Items currently lack category & date metadata.
   const category =
     document.getElementById('inventory-category-filter')?.value || 'All'
   const from = document.getElementById('inventory-date-from')?.value
   const to = document.getElementById('inventory-date-to')?.value
 
-  // Source of truth: live products mutated by Stock In/Out
-  let products = (MockData.products || []).map((p) => ({ ...p }))
+  // Source of truth: live Items mutated by Stock In/Out
+  let Items = (MockData.Items || []).map((p) => ({ ...p }))
 
   // (Future) Category/date filters could be applied here when fields exist
   if (category && category !== 'All') {
-    products = products.filter((p) =>
+    Items = Items.filter((p) =>
       (p.category || '').toLowerCase().includes(category.toLowerCase())
     )
   }
-  // if products had dateAdded or lastMovementDate we would filter via from/to
-  // For now, ignore from/to as no date metadata is defined in product objects.
+  // if Items had dateAdded or lastMovementDate we would filter via from/to
+  // For now, ignore from/to as no date metadata is defined in Item objects.
 
   // Persist filtered set for CSV export
-  window.__inventoryFilteredRows = products
+  window.__inventoryFilteredRows = Items
 
   // Build table rows (include total value if present)
-  tbody.innerHTML = products
-    .map((p) => {
-      const qty =
-        typeof p.quantity === 'number' ? p.quantity : p.currentStock || 0
-      const unit = p.unit || p.unitMeasure || ''
-      const unitCost =
-        typeof p.unit_cost === 'number' ? p.unit_cost : p.unitPrice || 0
-      const totalValue =
-        typeof p.totalValue === 'number' ? p.totalValue : qty * unitCost
-      return `
+  tbody.innerHTML = Items.map((p) => {
+    const qty =
+      typeof p.quantity === 'number' ? p.quantity : p.currentStock || 0
+    const unit = p.unit || p.unitMeasure || ''
+    const unitCost =
+      typeof p.unit_cost === 'number' ? p.unit_cost : p.unitPrice || 0
+    const totalValue =
+      typeof p.totalValue === 'number' ? p.totalValue : qty * unitCost
+    return `
             <tr>
                 <td style="font-weight:500;">${p.id || p.stockNumber || ''}</td>
                 <td>${p.name || ''}</td>
@@ -6392,16 +6389,15 @@ function renderInventoryReport() {
                 <td>${totalValue ? formatCurrency(totalValue) : '-'}</td>
             </tr>
         `
-    })
-    .join('')
+  }).join('')
 
-  // Chart (Quantity per product) with sorting, top-N, and threshold coloring
+  // Chart (Quantity per Item) with sorting, top-N, and threshold coloring
   const thresholdInput = document.getElementById('low-stock-threshold')
   const threshold = thresholdInput
     ? parseInt(thresholdInput.value, 10) || 0
     : AppState.lowStockThreshold || 0
 
-  const pairs = products.map((r) => {
+  const pairs = Items.map((r) => {
     const qty =
       typeof r.quantity === 'number' ? r.quantity : r.currentStock || 0
     return { label: r.name || r.id || '', value: qty }
@@ -6421,7 +6417,7 @@ function renderInventoryReport() {
 
   // Low-stock computation (use current threshold input or AppState.lowStockThreshold fallback)
   // Threshold computed above
-  const lowStockItems = products.filter((p) => {
+  const lowStockItems = Items.filter((p) => {
     const qty =
       typeof p.quantity === 'number' ? p.quantity : p.currentStock || 0
     return qty <= threshold
@@ -7130,19 +7126,14 @@ const DoughnutCenterTextPlugin = {
 }
 
 // Chart renderers
-// Function to show detailed product information popup
-function showProductDetailPopup(
-  productName,
-  stockLevel,
-  isLowStock,
-  threshold
-) {
+// Function to show detailed Item information popup
+function showItemDetailPopup(ItemName, stockLevel, isLowStock, threshold) {
   // Remove existing popup if any
-  const existing = document.getElementById('product-detail-popup')
+  const existing = document.getElementById('Item-detail-popup')
   if (existing) existing.remove()
 
   const popup = document.createElement('div')
-  popup.id = 'product-detail-popup'
+  popup.id = 'Item-detail-popup'
   popup.style.cssText = `
     position: fixed;
     top: 50%;
@@ -7164,14 +7155,14 @@ function showProductDetailPopup(
 
   popup.innerHTML = `
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-      <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #111827;">Product Details</h3>
-      <button onclick="this.closest('#product-detail-popup').remove()" style="background: none; border: none; color: #6b7280; cursor: pointer; padding: 4px;">
+      <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #111827;">Item Details</h3>
+      <button onclick="this.closest('#Item-detail-popup').remove()" style="background: none; border: none; color: #6b7280; cursor: pointer; padding: 4px;">
         <i data-lucide="x" style="width: 20px; height: 20px;"></i>
       </button>
     </div>
 
     <div style="margin-bottom: 16px;">
-      <div style="font-size: 16px; font-weight: 600; color: #111827; margin-bottom: 4px;">${productName}</div>
+      <div style="font-size: 16px; font-weight: 600; color: #111827; margin-bottom: 4px;">${ItemName}</div>
       <div style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; background: ${statusBg}; color: ${statusColor}; font-size: 12px; font-weight: 500;">
         <i data-lucide="${
           isLowStock ? 'alert-triangle' : 'check-circle'
@@ -7409,8 +7400,8 @@ function renderInventoryChart(labels, data, opts = {}) {
           display: true,
           text:
             opts?.totalItems && opts?.topN && opts.totalItems > opts.topN
-              ? `Top ${opts.topN} Products by Stock (${opts.totalItems} total products)`
-              : 'Product Stock Levels',
+              ? `Top ${opts.topN} Items by Stock (${opts.totalItems} total Items)`
+              : 'Item Stock Levels',
           color: '#111827',
           font: { weight: '700', size: 16 },
           padding: { top: 10, bottom: 20 },
@@ -7456,13 +7447,13 @@ function renderInventoryChart(labels, data, opts = {}) {
       onClick: (event, elements) => {
         if (elements.length > 0) {
           const dataIndex = elements[0].index
-          const productName = labels[dataIndex]
+          const ItemName = labels[dataIndex]
           const stockLevel = data[dataIndex]
           const isLowStock = !!lowMask[dataIndex]
           const threshold = opts.threshold || 0
 
           // Create a detailed info popup
-          showProductDetailPopup(productName, stockLevel, isLowStock, threshold)
+          showItemDetailPopup(ItemName, stockLevel, isLowStock, threshold)
         }
       },
     },
@@ -9511,7 +9502,7 @@ function renderPurchaseOrderWizardStep(requestData) {
                     <!-- Funding Section -->
                     <div style="margin-bottom: 24px;">
                         <h4 style="margin: 0 0 16px 0; font-size: 14px; font-weight: 600; color: #374151; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; display: flex; align-items: center; gap: 6px;">
-                            <i data-lucide="dollar-sign" style="width: 16px; height: 16px; color: #2563eb;"></i>
+                            <i data-lucide="peso-sign" style="width: 16px; height: 16px; color: #2563eb;"></i>
                             Funding Information
                         </h4>
                         <div class="grid-3">
@@ -10425,7 +10416,7 @@ function generatePurchaseOrderModal(mode, requestData = null) {
             <!-- Funding Information -->
             <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                 <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 8px;">
-                    <i data-lucide="dollar-sign" style="width: 18px; height: 18px; color: #2563eb;"></i>
+                    <i data-lucide="peso-sign" style="width: 18px; height: 18px; color: #2563eb;"></i>
                     Funding Information
                 </h3>
                 
@@ -12193,22 +12184,22 @@ function savePurchaseOrder(existingId = null) {
   console.log('--- Current New Requests State ---', AppState.newRequests)
 }
 
-// Product Tab Functions
-function switchProductTab(tabName) {
-  AppState.currentProductTab = tabName
+// Item Tab Functions
+function switchItemTab(tabName) {
+  AppState.currentItemTab = tabName
   // Reset search and filters when switching tabs
-  AppState.productSearchTerm = ''
-  AppState.productSortBy = 'Sort By'
-  AppState.productFilterBy = 'Filter By'
-  loadPageContent('products')
+  AppState.ItemSearchTerm = ''
+  AppState.ItemSortBy = 'Sort By'
+  AppState.ItemFilterBy = 'Filter By'
+  loadPageContent('items')
 }
 
 // Page-specific event initialization
 function initializePageEvents(pageId) {
   // Add page-specific event listeners here
   switch (pageId) {
-    case 'products':
-      initializeProductsPageEvents()
+    case 'items':
+      initializeItemsPageEvents()
       break
     case 'suppliers':
       initSuppliersPageEvents()
@@ -12241,13 +12232,13 @@ function initializePageEvents(pageId) {
   }
 }
 
-function initializeProductsPageEvents() {
+function initializeItemsPageEvents() {
   // Initialize search functionality
-  const searchInput = document.getElementById('product-search')
+  const searchInput = document.getElementById('Item-search')
   if (searchInput) {
     searchInput.addEventListener('input', function (e) {
-      AppState.productSearchTerm = e.target.value
-      updateProductsTable()
+      AppState.ItemSearchTerm = e.target.value
+      updateItemsTable()
     })
   }
 
@@ -12257,122 +12248,113 @@ function initializeProductsPageEvents() {
 
   if (sortBy) {
     sortBy.addEventListener('change', function (e) {
-      AppState.productSortBy = e.target.value
-      updateProductsTable()
+      AppState.ItemSortBy = e.target.value
+      updateItemsTable()
     })
   }
 
   if (filterBy) {
     filterBy.addEventListener('change', function (e) {
-      AppState.productFilterBy = e.target.value
-      updateProductsTable()
+      AppState.ItemFilterBy = e.target.value
+      updateItemsTable()
     })
   }
 
   // ...existing code...
 }
 
-function updateProductsTable() {
-  const currentTab = AppState.currentProductTab || 'expendable'
-  const allProducts = MockData.products || []
+function updateItemsTable() {
+  const currentTab = AppState.currentItemTab || 'expendable'
+  const allItems = MockData.Items || []
 
-  // Helper to derive product type
-  const deriveType = (product) => {
-    if (!product) return 'expendable'
-    if (product.type) return product.type
-    const sku = (product.id || '').toString().toUpperCase()
+  // Helper to derive Item type
+  const deriveType = (Item) => {
+    if (!Item) return 'expendable'
+    if (Item.type) return Item.type
+    const sku = (Item.id || '').toString().toUpperCase()
     if (sku.startsWith('SE')) return 'semi-expendable'
     if (sku.startsWith('N')) return 'non-expendable'
     return 'expendable'
   }
 
   // Filter by current tab
-  let filteredProducts = allProducts.filter((p) => deriveType(p) === currentTab)
+  let filteredItems = allItems.filter((p) => deriveType(p) === currentTab)
 
   // Apply search filter
-  if (AppState.productSearchTerm) {
-    const searchTerm = AppState.productSearchTerm.toLowerCase()
-    filteredProducts = filteredProducts.filter(
-      (product) =>
-        (product.name || '').toLowerCase().includes(searchTerm) ||
-        (product.description || '').toLowerCase().includes(searchTerm) ||
-        (product.id || '').toString().toLowerCase().includes(searchTerm)
+  if (AppState.ItemSearchTerm) {
+    const searchTerm = AppState.ItemSearchTerm.toLowerCase()
+    filteredItems = filteredItems.filter(
+      (Item) =>
+        (Item.name || '').toLowerCase().includes(searchTerm) ||
+        (Item.description || '').toLowerCase().includes(searchTerm) ||
+        (Item.id || '').toString().toLowerCase().includes(searchTerm)
     )
   }
 
   // Apply filter
-  if (AppState.productFilterBy && AppState.productFilterBy !== 'Filter By') {
-    switch (AppState.productFilterBy) {
+  if (AppState.ItemFilterBy && AppState.ItemFilterBy !== 'Filter By') {
+    switch (AppState.ItemFilterBy) {
       case 'High Value (>₱5,000)':
-        filteredProducts = filteredProducts.filter(
-          (product) => (product.totalValue || 0) > 5000
+        filteredItems = filteredItems.filter(
+          (Item) => (Item.totalValue || 0) > 5000
         )
         break
       case 'Medium Value (₱1,000-₱5,000)':
-        filteredProducts = filteredProducts.filter(
-          (product) =>
-            (product.totalValue || 0) >= 1000 &&
-            (product.totalValue || 0) <= 5000
+        filteredItems = filteredItems.filter(
+          (Item) =>
+            (Item.totalValue || 0) >= 1000 && (Item.totalValue || 0) <= 5000
         )
         break
       case 'Low Value (<₱1,000)':
-        filteredProducts = filteredProducts.filter(
-          (product) => (product.totalValue || 0) < 1000
+        filteredItems = filteredItems.filter(
+          (Item) => (Item.totalValue || 0) < 1000
         )
         break
       case 'Low Quantity (<20)':
-        filteredProducts = filteredProducts.filter(
-          (product) => (product.quantity ?? 0) < 20
+        filteredItems = filteredItems.filter(
+          (Item) => (Item.quantity ?? 0) < 20
         )
         break
       case 'Recent (Last 30 days)':
         const thirtyDaysAgo = new Date()
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-        filteredProducts = filteredProducts.filter((product) => {
-          if (!product.date) return false
-          const productDate = new Date(product.date)
-          return productDate >= thirtyDaysAgo
+        filteredItems = filteredItems.filter((Item) => {
+          if (!Item.date) return false
+          const ItemDate = new Date(Item.date)
+          return ItemDate >= thirtyDaysAgo
         })
         break
     }
   }
 
   // Apply sorting
-  if (AppState.productSortBy && AppState.productSortBy !== 'Sort By') {
-    switch (AppState.productSortBy) {
-      case 'Product Name (A-Z)':
-        filteredProducts.sort((a, b) =>
-          (a.name || '').localeCompare(b.name || '')
-        )
+  if (AppState.ItemSortBy && AppState.ItemSortBy !== 'Sort By') {
+    switch (AppState.ItemSortBy) {
+      case 'Item Name (A-Z)':
+        filteredItems.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
         break
-      case 'Product Name (Z-A)':
-        filteredProducts.sort((a, b) =>
-          (b.name || '').localeCompare(a.name || '')
-        )
+      case 'Item Name (Z-A)':
+        filteredItems.sort((a, b) => (b.name || '').localeCompare(a.name || ''))
         break
       case 'Date (Newest)':
-        filteredProducts.sort((a, b) => {
+        filteredItems.sort((a, b) => {
           const dateA = a.date ? new Date(a.date) : new Date(0)
           const dateB = b.date ? new Date(b.date) : new Date(0)
           return dateB - dateA
         })
         break
       case 'Date (Oldest)':
-        filteredProducts.sort((a, b) => {
+        filteredItems.sort((a, b) => {
           const dateA = a.date ? new Date(a.date) : new Date(0)
           const dateB = b.date ? new Date(b.date) : new Date(0)
           return dateA - dateB
         })
         break
       case 'Total Value (High to Low)':
-        filteredProducts.sort(
-          (a, b) => (b.totalValue || 0) - (a.totalValue || 0)
-        )
+        filteredItems.sort((a, b) => (b.totalValue || 0) - (a.totalValue || 0))
         break
       case 'Total Value (Low to High)':
-        filteredProducts.sort(
-          (a, b) => (a.totalValue || 0) - (b.totalValue || 0)
-        )
+        filteredItems.sort((a, b) => (a.totalValue || 0) - (b.totalValue || 0))
         break
     }
   }
@@ -12380,32 +12362,32 @@ function updateProductsTable() {
   // Update table body
   const tbody = document.querySelector('.table tbody')
   if (tbody) {
-    tbody.innerHTML = filteredProducts.length
-      ? filteredProducts
-          .map((product, index) => {
+    tbody.innerHTML = filteredItems.length
+      ? filteredItems
+          .map((Item, index) => {
             return `
             <tr>
-                <td style="font-weight: 500;">${product.id}</td>
-                <td style="font-weight: 500;">${product.name}</td>
+                <td style="font-weight: 500;">${Item.id}</td>
+                <td style="font-weight: 500;">${Item.name}</td>
                 <td style="color: #6b7280; max-width: 300px;">${
-                  product.description || ''
+                  Item.description || ''
                 }</td>
-                <td>${product.quantity ?? 0}</td>
-                <td>${product.unit || '-'}</td>
-                <td>${formatCurrency(product.unit_cost || 0)}</td>
+                <td>${Item.quantity ?? 0}</td>
+                <td>${Item.unit || '-'}</td>
+                <td>${formatCurrency(Item.unit_cost || 0)}</td>
                 <td style="font-weight: 500;">${formatCurrency(
-                  product.totalValue || 0
+                  Item.totalValue || 0
                 )}</td>
-                <td>${product.date || ''}</td>
+                <td>${Item.date || ''}</td>
                 <td>
                     <div class="table-actions">
-                        <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteProduct('${
-                          product.id
+                        <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteItem('${
+                          Item.id
                         }')">
                             <i data-lucide="trash-2"></i>
                         </button>
-                        <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openProductModal('edit','${
-                          product.id
+                        <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openItemModal('edit','${
+                          Item.id
                         }')">
                             <i data-lucide="edit"></i>
                         </button>
@@ -12415,15 +12397,15 @@ function updateProductsTable() {
         `
           })
           .join('')
-      : `<tr><td colspan="9" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No products found</td></tr>`
+      : `<tr><td colspan="9" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No Items found</td></tr>`
 
     // Update pagination count
     const paginationLeft = document.querySelector('.pagination-left')
     if (paginationLeft) {
       paginationLeft.textContent =
-        filteredProducts.length === 0
+        filteredItems.length === 0
           ? 'No entries to display'
-          : `Showing 1 to ${filteredProducts.length} of ${filteredProducts.length} entries`
+          : `Showing 1 to ${filteredItems.length} of ${filteredItems.length} entries`
     }
 
     // Reinitialize icons
@@ -12479,7 +12461,7 @@ function updateStockInTable() {
     filteredRecords = filteredRecords.filter(
       (record) =>
         (record.transactionId || '').toLowerCase().includes(searchTerm) ||
-        (record.productName || '').toLowerCase().includes(searchTerm) ||
+        (record.ItemName || '').toLowerCase().includes(searchTerm) ||
         (record.sku || '').toLowerCase().includes(searchTerm) ||
         (record.supplier || '').toLowerCase().includes(searchTerm) ||
         (record.receivedBy || '').toLowerCase().includes(searchTerm)
@@ -12529,9 +12511,9 @@ function updateStockInTable() {
       case 'Amount (Low to High)':
         filteredRecords.sort((a, b) => (a.totalCost || 0) - (b.totalCost || 0))
         break
-      case 'Product Name (A-Z)':
+      case 'Item Name (A-Z)':
         filteredRecords.sort((a, b) =>
-          (a.productName || '').localeCompare(b.productName || '')
+          (a.ItemName || '').localeCompare(b.ItemName || '')
         )
         break
     }
@@ -12624,7 +12606,7 @@ function updateStockOutTable() {
     filteredRecords = filteredRecords.filter(
       (record) =>
         (record.issueId || '').toLowerCase().includes(searchTerm) ||
-        (record.productName || '').toLowerCase().includes(searchTerm) ||
+        (record.ItemName || '').toLowerCase().includes(searchTerm) ||
         (record.sku || '').toLowerCase().includes(searchTerm) ||
         (record.department || '').toLowerCase().includes(searchTerm) ||
         (record.issuedTo || '').toLowerCase().includes(searchTerm) ||
@@ -12674,9 +12656,9 @@ function updateStockOutTable() {
           valA = a.date ? new Date(a.date) : new Date(0)
           valB = b.date ? new Date(b.date) : new Date(0)
           return direction * (valA - valB)
-        case 'product_name':
-          valA = a.productName || ''
-          valB = b.productName || ''
+        case 'Item_name':
+          valA = a.ItemName || ''
+          valB = b.ItemName || ''
           return direction * valA.localeCompare(valB)
         case 'quantity':
           return direction * ((a.quantity || 0) - (b.quantity || 0))
@@ -12754,7 +12736,7 @@ function exportStockOut() {
     exportData = exportData.filter(
       (record) =>
         (record.issueId || '').toLowerCase().includes(searchTerm) ||
-        (record.productName || '').toLowerCase().includes(searchTerm) ||
+        (record.ItemName || '').toLowerCase().includes(searchTerm) ||
         (record.sku || '').toLowerCase().includes(searchTerm) ||
         (record.department || '').toLowerCase().includes(searchTerm) ||
         (record.issuedTo || '').toLowerCase().includes(searchTerm) ||
@@ -12789,7 +12771,7 @@ function exportStockOut() {
     [
       'Issue ID',
       'Date',
-      'Product Name',
+      'Item Name',
       'SKU',
       'Quantity',
       'Unit Cost',
@@ -12805,7 +12787,7 @@ function exportStockOut() {
     rows.push([
       record.issueId || '',
       record.date || '',
-      record.productName || '',
+      record.ItemName || '',
       record.sku || '',
       record.quantity || 0,
       record.unitCost || 0,
@@ -13571,8 +13553,8 @@ document.addEventListener('click', function (e) {
 
 // Make functions globally available
 window.navigateToPage = navigateToPage
-window.switchProductTab = switchProductTab
-window.updateProductsTable = updateProductsTable
+window.switchItemTab = switchItemTab
+window.updateItemsTable = updateItemsTable
 window.openPurchaseOrderModal = openPurchaseOrderModal
 window.closePurchaseOrderModal = closePurchaseOrderModal
 window.addPOItem = addPOItem
@@ -15411,7 +15393,7 @@ function generateLoginActivityPage() {
                     </div>
                 </div>
                 
-                <!-- Table Footer Pagination (Product-style) -->
+                <!-- Table Footer Pagination (Item-style) -->
                 <nav class="enhanced-pagination" aria-label="Pagination" style="padding: 12px 0; border-top:1px solid #e5e7eb; background:#f9fafb;">
                     <div class="pagination-left" style="margin-left:16px; font-size:13px; color:#6b7280;">
                         Showing ${showingFrom} to ${showingTo} of ${totalLogs} entries
@@ -17378,7 +17360,7 @@ function generateActivityPage() {
       type: 'system',
       icon: 'package',
       color: '#3b82f6',
-      title: 'New Product Added',
+      title: 'New Item Added',
       message: 'Office Supplies category updated',
       time: '2 hours ago',
       read: true,
@@ -18299,29 +18281,33 @@ function updateNotificationBadge() {
 }
 
 // -----------------------------//
-// Add Product Modal and Functions //
+// Add Item Modal and Functions //
 // -----------------------------//
 
-function openProductModal(mode = 'create', productId = null) {
-  const modal = document.getElementById('product-modal')
+function openItemModal(mode = 'create', ItemId = null) {
+  const modal = document.getElementById('item-modal')
+  if (!modal) {
+    console.error('Item modal not found')
+    return
+  }
   const modalContent = modal.querySelector('.modal-content')
 
-  AppState.currentModal = { mode, productId }
+  AppState.currentModal = { mode, ItemId }
 
-  // Load product data if editing or viewing
-  let productData = null
-  if (productId) {
-    productData = MockData.products.find((p) => p.id === productId)
+  // Load Item data if editing or viewing
+  let ItemData = null
+  if (ItemId) {
+    ItemData = MockData.Items.find((p) => p.id === ItemId)
   }
 
-  modalContent.innerHTML = generateProductModal(mode, productData)
+  modalContent.innerHTML = generateItemModal(mode, ItemData)
   modal.classList.add('active')
 
   lucide.createIcons()
-  // Ensure Product Date cannot be backdated: set min and clamp to today if necessary
+  // Ensure Item Date cannot be backdated: set min and clamp to today if necessary
   try {
     const today = new Date().toISOString().split('T')[0]
-    const dateInput = modal.querySelector('#productDate')
+    const dateInput = modal.querySelector('#ItemDate')
     if (dateInput) {
       dateInput.min = today
       if (!dateInput.value || dateInput.value < today) dateInput.value = today
@@ -18329,11 +18315,11 @@ function openProductModal(mode = 'create', productId = null) {
   } catch (e) {}
   // Attach dynamic SKU handling: update hidden SKU and preview when category changes
   try {
-    const categorySelect = modal.querySelector('#productCategory')
-    const skuHidden = modal.querySelector('#productSku')
-    const skuPreview = modal.querySelector('#product-id-badge')
+    const categorySelect = modal.querySelector('#ItemCategory')
+    const skuHidden = modal.querySelector('#ItemSku')
+    const skuPreview = modal.querySelector('#Item-id-badge')
 
-    function deriveProductTypeFromCategoryId(catId) {
+    function deriveItemTypeFromCategoryId(catId) {
       const sel = (MockData.categories || []).find(
         (c) => String(c.id) === String(catId)
       )
@@ -18354,7 +18340,7 @@ function openProductModal(mode = 'create', productId = null) {
         { expendable: 'E', 'semi-expendable': 'SE', 'non-expendable': 'N' }[
           type
         ] || 'E'
-      const existingSkus = (MockData.products || [])
+      const existingSkus = (MockData.Items || [])
         .map((p) => p.id || p.sku)
         .filter((s) => s && typeof s === 'string' && s.startsWith(prefix))
         .map((s) => parseInt(s.replace(prefix, '')) || 0)
@@ -18366,7 +18352,7 @@ function openProductModal(mode = 'create', productId = null) {
     if (categorySelect) {
       categorySelect.addEventListener('change', () => {
         const selectedId = categorySelect.value
-        const derivedType = deriveProductTypeFromCategoryId(selectedId)
+        const derivedType = deriveItemTypeFromCategoryId(selectedId)
         // If there is already an SKU assigned and user is editing, allow regeneration
         const newSku = generateSkuForType(derivedType)
         if (skuHidden) skuHidden.value = newSku
@@ -18377,54 +18363,80 @@ function openProductModal(mode = 'create', productId = null) {
     // non-fatal
     console.error('Error attaching SKU updater:', e)
   }
+
+  // Attach dynamic Total Value calculation
+  try {
+    const unitCostInput = modal.querySelector('#ItemUnitCost')
+    const quantityInput = modal.querySelector('#ItemQuantity')
+    const totalValueInput = modal.querySelector('#ItemTotalValue')
+
+    function updateTotalValue() {
+      if (!unitCostInput || !quantityInput || !totalValueInput) return
+      const unitCost = parseFloat(unitCostInput.value) || 0
+      const quantity = parseInt(quantityInput.value) || 0
+      const totalValue = unitCost * quantity
+      totalValueInput.value = formatCurrency(totalValue)
+    }
+
+    if (unitCostInput && quantityInput) {
+      unitCostInput.addEventListener('input', updateTotalValue)
+      quantityInput.addEventListener('input', updateTotalValue)
+      // Initial calculation
+      updateTotalValue()
+    }
+  } catch (e) {
+    console.error('Error attaching total value calculator:', e)
+  }
 }
 
-function closeProductModal() {
-  const modal = document.getElementById('product-modal')
+function closeItemModal() {
+  const modal = document.getElementById('item-modal')
+  if (!modal) return
   modal.classList.remove('active')
   AppState.currentModal = null
 }
 
-async function saveProduct(productId) {
-  const modal = document.getElementById('product-modal')
-  const name = modal.querySelector('#productName').value.trim()
-  const selectedCategoryId = modal
-    .querySelector('#productCategory')
-    .value.trim()
-  const description = modal.querySelector('#productDescription').value.trim()
-  const unitCost =
-    parseFloat(modal.querySelector('#productUnitCost').value) || 0
-  const quantity = parseInt(modal.querySelector('#productQuantity').value) || 0
-  const unit = modal.querySelector('#productUnit')
-    ? modal.querySelector('#productUnit').value.trim()
+async function saveItem(ItemId) {
+  const modal = document.getElementById('item-modal')
+  if (!modal) {
+    console.error('Item modal not found')
+    return
+  }
+  const name = modal.querySelector('#ItemName').value.trim()
+  const selectedCategoryId = modal.querySelector('#ItemCategory').value.trim()
+  const description = modal.querySelector('#ItemDescription').value.trim()
+  const unitCost = parseFloat(modal.querySelector('#ItemUnitCost').value) || 0
+  const quantity = parseInt(modal.querySelector('#ItemQuantity').value) || 0
+  const unit = modal.querySelector('#ItemUnit')
+    ? modal.querySelector('#ItemUnit').value.trim()
     : ''
   const date =
-    modal.querySelector('#productDate').value ||
+    modal.querySelector('#ItemDate').value ||
     new Date().toISOString().slice(0, 10)
 
-  // Prevent backdating the product date
-  const clampedProductDate = clampDateToToday(date)
+  // Prevent backdating the Item date
+  const clampedItemDate = clampDateToToday(date)
 
   if (!name) {
-    showAlert('Product name is required', 'error')
+    showAlert('Item name is required', 'error')
     return
   }
 
   const totalValue = unitCost * quantity
 
-  // Generate SKU for new products
+  // Generate SKU for new Items
   // Prefer SKU value supplied by modal (updated when category changes)
-  const modalSkuInput = modal.querySelector('#productSku')
-  let sku = (modalSkuInput && modalSkuInput.value) || productId
+  const modalSkuInput = modal.querySelector('#ItemSku')
+  let sku = (modalSkuInput && modalSkuInput.value) || ItemId
   let databaseId = null
-  // Determine selected category object and derive a product "type" from it
+  // Determine selected category object and derive a Item "type" from it
   const selectedCategory = (MockData.categories || []).find(
     (c) => String(c.id) === String(selectedCategoryId)
   )
 
-  // Derive product type string used for display and SKU prefix detection.
+  // Derive Item type string used for display and SKU prefix detection.
   // Fall back to 'expendable' when unknown.
-  const productTypeFromCategory = (() => {
+  const ItemTypeFromCategory = (() => {
     if (!selectedCategory) return 'expendable'
     const name = String(selectedCategory.name || '').toLowerCase()
     if (name.includes('semi')) return 'semi-expendable'
@@ -18438,17 +18450,17 @@ async function saveProduct(productId) {
     return 'expendable'
   })()
 
-  if (!productId) {
-    // Create new product: generate SKU based on derived product type
+  if (!ItemId) {
+    // Create new item: generate SKU based on derived Item type
     const categoryPrefix =
       {
         expendable: 'E',
         'semi-expendable': 'SE',
         'non-expendable': 'N',
-      }[productTypeFromCategory] || 'E'
+      }[ItemTypeFromCategory] || 'E'
 
     // Find the next available number for this category prefix
-    const existingSkus = (MockData.products || [])
+    const existingSkus = (MockData.Items || [])
       .map((p) => p.id || p.sku)
       .filter((s) => s && typeof s === 'string' && s.startsWith(categoryPrefix))
       .map((s) => parseInt(s.replace(categoryPrefix, '')) || 0)
@@ -18457,62 +18469,62 @@ async function saveProduct(productId) {
     const nextNumber = existingSkus.length > 0 ? existingSkus[0] + 1 : 1
     sku = `${categoryPrefix}${String(nextNumber).padStart(3, '0')}`
   } else {
-    // Edit existing product: productId is the SKU, find the database ID
-    const existingProduct = (MockData.products || []).find(
-      (p) => p.id === productId || p.sku === productId
+    // Edit existing item: ItemId is the SKU, find the database ID
+    const existingItem = (MockData.Items || []).find(
+      (p) => p.id === ItemId || p.sku === ItemId
     )
-    if (existingProduct && existingProduct.databaseId) {
-      databaseId = existingProduct.databaseId
+    if (existingItem && existingItem.databaseId) {
+      databaseId = existingItem.databaseId
     }
     // Keep the existing SKU
-    sku = productId
+    sku = ItemId
   }
 
   try {
-    const productData = {
+    const ItemData = {
       id: sku,
       name,
       description,
       quantity,
       unitCost,
       totalValue,
-      date: clampedProductDate,
+      date: clampedItemDate,
       // store both the category id and a derived type for backward compatibility
       category_id: selectedCategoryId || null,
       category_code: selectedCategory ? selectedCategory.code || null : null,
       type:
-        productTypeFromCategory ||
+        ItemTypeFromCategory ||
         (selectedCategory ? selectedCategory.name : null),
       unit,
       databaseId: databaseId, // Include database ID for updates
     }
 
-    await saveProductToAPI(productData)
+    await saveItemToAPI(ItemData)
     showAlert(
-      `Product "${name}" ${productId ? 'updated' : 'added'} successfully!`,
+      `Item "${name}" ${ItemId ? 'updated' : 'added'} successfully!`,
       'success'
     )
   } catch (error) {
     showAlert(
-      `Failed to ${productId ? 'update' : 'add'} product: ${error.message}`,
+      `Failed to ${ItemId ? 'update' : 'add'} item: ${error.message}`,
       'error'
     )
     return
   }
 
-  closeProductModal()
-  await loadProductsFromAPI()
-  // Try to update products table in-place when present
+  closeItemModal()
+  await loadItemsFromAPI()
+  // Try to update Items table in-place when present
   try {
-    const tbody = document.getElementById('products-table-body')
+    const tbody = document.getElementById('Items-table-body')
     if (tbody) {
       // If existing row, replace; otherwise append. Use authoritative MockData.
-      const prod = MockData.products.find(
-        (p) => p.id === (productData.id || productData.sku)
+      const prod = MockData.Items.find(
+        (p) => p.id === (ItemData.id || ItemData.sku)
       )
       if (prod) {
         const existing = tbody.querySelector(`tr[data-id="${prod.id}"]`)
-        const rowHtml = renderProductRow ? renderProductRow(prod) : null
+        const rowHtml = renderItemRow ? renderItemRow(prod) : null
         if (existing && rowHtml) existing.outerHTML = rowHtml
         else if (rowHtml) tbody.insertAdjacentHTML('beforeend', rowHtml)
         if (window.lucide) lucide.createIcons()
@@ -18523,84 +18535,84 @@ async function saveProduct(productId) {
     // ignore and fallback
   }
   // fallback
-  loadPageContent('products') // refresh list
+  loadPageContent('items') // refresh list
 }
 
-async function deleteProduct(productId) {
-  const ok = await showConfirm('Delete this product?', 'Delete Product')
+async function deleteItem(ItemId) {
+  const ok = await showConfirm('Delete this Item?', 'Delete Item')
   if (!ok) return
 
-  // Find the product name and database ID before deleting
-  const product = MockData.products.find((p) => p.id === productId)
-  const productName = product ? product.name : 'Product'
-  const databaseId = product ? product.databaseId : productId
+  // Find the Item name and database ID before deleting
+  const Item = MockData.Items.find((p) => p.id === ItemId)
+  const ItemName = Item ? Item.name : 'Item'
+  const databaseId = Item ? Item.databaseId : ItemId
 
   try {
-    await deleteProductFromAPI(databaseId)
-    showAlert(`${productName} has been successfully deleted`, 'success')
+    await deleteItemFromAPI(databaseId)
+    showAlert(`${ItemName} has been successfully deleted`, 'success')
   } catch (error) {
-    showAlert(`Failed to delete product: ${error.message}`, 'error')
+    showAlert(`Failed to delete item: ${error.message}`, 'error')
     return
   }
 
-  // Update products table in-place when possible
-  await loadProductsFromAPI()
+  // Update Items table in-place when possible
+  await loadItemsFromAPI()
   try {
-    const tbody = document.getElementById('products-table-body')
+    const tbody = document.getElementById('Items-table-body')
     if (tbody) {
-      const row = tbody.querySelector(`tr[data-id="${productId}"]`)
+      const row = tbody.querySelector(`tr[data-id="${ItemId}"]`)
       if (row) row.remove()
       if (window.lucide) lucide.createIcons()
       return
     }
   } catch (e) {}
-  loadPageContent('products')
+  loadPageContent('items')
 }
 
-// Enhanced Product Modal with modern design
-function generateProductModal(mode = 'create', productData = null) {
+// Enhanced Item Modal with modern design
+function generateItemModal(mode = 'create', ItemData = null) {
   const title =
     mode === 'create'
-      ? 'Add New Product'
+      ? 'Add New Item'
       : mode === 'edit'
-      ? 'Edit Product'
-      : 'Product Details'
+      ? 'Edit Item'
+      : 'Item Details'
   const subtitle =
     mode === 'create'
-      ? 'Add a new product to inventory'
+      ? 'Add a new Item to inventory'
       : mode === 'edit'
-      ? 'Update product information'
-      : 'View product details'
+      ? 'Update Item information'
+      : 'View Item details'
   const isReadOnly = mode === 'view'
 
-  // Product icon based on type
-  const getProductIcon = (type) => {
+  // Item icon based on type
+  const getItemIcon = (type) => {
     if (type === 'expendable') return 'package'
     if (type === 'semi-expendable') return 'box'
     if (type === 'non-expendable') return 'archive'
     return 'package-plus'
   }
 
-  const productIcon = getProductIcon(productData?.type)
+  const ItemIcon = getItemIcon(ItemData?.type)
 
   return `
         <div class="modal-header" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; border-bottom: none; padding: 32px 24px;">
             <div style="display: flex; align-items: center; gap: 16px;">
         <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
-          <i data-lucide="${productIcon}" style="width: 32px; height: 32px; color: white;"></i>
+          <i data-lucide="${ItemIcon}" style="width: 32px; height: 32px; color: white;"></i>
         </div>
                 <div style="flex: 1;">
                     <h2 class="modal-title" style="color: white; font-size: 24px; margin-bottom: 4px;">${title}</h2>
                     <p class="modal-subtitle" style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0;">${subtitle}</p>
                 </div>
             </div>
-            <button class="modal-close" onclick="closeProductModal()" style="color: white; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+            <button class="modal-close" onclick="closeItemModal()" style="color: white; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
                 <i data-lucide="x" style="width: 20px; height: 20px;"></i>
             </button>
         </div>
 
         <div class="modal-body" style="padding: 32px 24px; background: #f9fafb;">
-            <!-- Basic Product Information -->
+            <!-- Basic Item Information -->
             <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                 <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 8px;">
                     <i data-lucide="info" style="width: 18px; height: 18px; color: #dc2626;"></i>
@@ -18610,22 +18622,10 @@ function generateProductModal(mode = 'create', productData = null) {
                 <div class="grid-2">
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                            <i data-lucide="package" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                            Product Name
-                        </label>
-                        <input type="text" class="form-input" id="productName"
-                               value="${productData?.name || ''}"
-                               placeholder="e.g., Bond Paper A4"
-                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                               ${isReadOnly ? 'readonly' : ''}>
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
                             <i data-lucide="layers" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             Category
                         </label>
-                        <select class="form-select" id="productCategory" ${
+                        <select class="form-select" id="ItemCategory" ${
                           isReadOnly ? 'disabled' : ''
                         } style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; ${
     isReadOnly ? 'background: #f9fafb;' : ''
@@ -18635,7 +18635,7 @@ function generateProductModal(mode = 'create', productData = null) {
                               .map((c) => {
                                 const label = `${c.code || c.id} - ${c.name}`
                                 const selected =
-                                  String(productData?.category_id || '') ===
+                                  String(ItemData?.category_id || '') ===
                                   String(c.id)
                                 return `<option value="${c.id}" ${
                                   selected ? 'selected' : ''
@@ -18645,13 +18645,25 @@ function generateProductModal(mode = 'create', productData = null) {
                         </select>
                         <!-- SKU preview and hidden SKU field -->
                         <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
-                            <div id="product-id-badge" style="font-weight:700;color:#111827;background:#eef2ff;padding:6px 10px;border-radius:8px;">${
-                              productData?.id || ''
+                            <div id="Item-id-badge" style="font-weight:700;color:#111827;background:#eef2ff;padding:6px 10px;border-radius:8px;">${
+                              ItemData?.id || ''
                             }</div>
-                            <input type="hidden" id="productSku" value="${
-                              productData?.id || ''
+                            <input type="hidden" id="ItemSku" value="${
+                              ItemData?.id || ''
                             }">
                         </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                            <i data-lucide="package" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                            Item Name
+                        </label>
+                        <input type="text" class="form-input" id="ItemName"
+                               value="${ItemData?.name || ''}"
+                               placeholder="e.g., Bond Paper A4"
+                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
+                               ${isReadOnly ? 'readonly' : ''}>
                     </div>
                 </div>
 
@@ -18660,13 +18672,13 @@ function generateProductModal(mode = 'create', productData = null) {
                         <i data-lucide="file-text" style="width: 14px; height: 14px; color: #6b7280;"></i>
                         Description
                     </label>
-                    <textarea class="form-textarea" id="productDescription"
-                              placeholder="Provide detailed product description..."
+                    <textarea class="form-textarea" id="ItemDescription"
+                              placeholder="Provide detailed Item description..."
                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; min-height: 100px; transition: all 0.2s; ${
                                 isReadOnly ? 'background: #f9fafb;' : ''
                               }"
                               ${isReadOnly ? 'readonly' : ''}>${
-    productData?.description || ''
+    ItemData?.description || ''
   }</textarea>
                 </div>
             </div>
@@ -18674,7 +18686,7 @@ function generateProductModal(mode = 'create', productData = null) {
             <!-- Pricing & Inventory -->
             <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                 <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 8px;">
-                    <i data-lucide="dollar-sign" style="width: 18px; height: 18px; color: #dc2626;"></i>
+                    <i data-lucide="coins" style="width: 18px; height: 18px; color: #dc2626;"></i>
                     Pricing & Inventory
                 </h3>
                 
@@ -18684,9 +18696,9 @@ function generateProductModal(mode = 'create', productData = null) {
                             <i data-lucide="tag" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             Unit Cost
                         </label>
-                        <input type="number" class="form-input" id="productUnitCost"
+                        <input type="number" class="form-input" id="ItemUnitCost"
                                step="0.01" min="0"
-                               value="${productData?.unitCost || ''}"
+                               value="${ItemData?.unitCost || ''}"
                                placeholder="0.00"
                                style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                                ${isReadOnly ? 'readonly' : ''}>
@@ -18697,9 +18709,9 @@ function generateProductModal(mode = 'create', productData = null) {
                             <i data-lucide="hash" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             Quantity
                         </label>
-                        <input type="number" class="form-input" id="productQuantity"
+                        <input type="number" class="form-input" id="ItemQuantity"
                                min="1"
-                               value="${productData?.quantity || ''}"
+                               value="${ItemData?.quantity || ''}"
                                placeholder="1"
                                style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                                ${isReadOnly ? 'readonly' : ''}>
@@ -18712,8 +18724,8 @@ function generateProductModal(mode = 'create', productData = null) {
                             <i data-lucide="ruler" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             Unit
                         </label>
-                        <input type="text" class="form-input" id="productUnit"
-                               value="${productData?.unit || ''}"
+                        <input type="text" class="form-input" id="ItemUnit"
+                               value="${ItemData?.unit || ''}"
                                placeholder="e.g., pcs, box, pack"
                                style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                                ${isReadOnly ? 'readonly' : ''}>
@@ -18729,9 +18741,9 @@ function generateProductModal(mode = 'create', productData = null) {
                             <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             Date Added
                         </label>
-                        <input type="date" class="form-input" id="productDate"
+                        <input type="date" class="form-input" id="ItemDate"
                                value="${
-                                 productData?.date ||
+                                 ItemData?.date ||
                                  new Date().toISOString().split('T')[0]
                                }"
                                min="${new Date().toISOString().split('T')[0]}"
@@ -18746,10 +18758,10 @@ function generateProductModal(mode = 'create', productData = null) {
                             <i data-lucide="calculator" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             Total Value
                         </label>
-                        <input type="text" class="form-input" id="productTotalValue"
+                        <input type="text" class="form-input" id="ItemTotalValue"
                                value="${
-                                 productData
-                                   ? formatCurrency(productData.totalValue || 0)
+                                 ItemData
+                                   ? formatCurrency(ItemData.totalValue || 0)
                                    : '₱0.00'
                                }"
                                style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; background: #f9fafb; font-weight: 600; color: #059669;"
@@ -18758,24 +18770,24 @@ function generateProductModal(mode = 'create', productData = null) {
                 </div>
             </div>
 
-            <!-- Product Info Box -->
+            <!-- Item Info Box -->
             ${
-              productData?.id
+              ItemData?.id
                 ? `
                 <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 12px; padding: 20px; border-left: 4px solid #2563eb;">
                     <div style="display: flex; align-items: start; gap: 12px;">
                         <i data-lucide="info" style="width: 20px; height: 20px; color: #1e40af; flex-shrink: 0; margin-top: 2px;"></i>
                         <div>
-                            <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #1e3a8a;">Product ID: ${
-                              productData.id
+                            <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #1e3a8a;">Item ID: ${
+                              ItemData.id
                             }</h4>
                             <p style="margin: 0; font-size: 13px; color: #1e40af; line-height: 1.5;">
-                                This product is categorized as <strong>${
-                                  productData.category?.name ||
-                                  productData.type ||
+                                This Item is categorized as <strong>${
+                                  ItemData.category?.name ||
+                                  ItemData.type ||
                                   'Uncategorized'
                                 }</strong> and is currently ${
-                    productData.quantity > 0 ? 'in stock' : 'out of stock'
+                    ItemData.quantity > 0 ? 'in stock' : 'out of stock'
                   }.
                             </p>
                         </div>
@@ -18787,7 +18799,7 @@ function generateProductModal(mode = 'create', productData = null) {
         </div>
 
         <div class="modal-footer" style="background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 20px 24px; display: flex; gap: 12px; justify-content: flex-end;">
-            <button class="btn btn-secondary" onclick="closeProductModal()" style="padding: 10px 24px; font-weight: 500; border: 2px solid #d1d5db; transition: all 0.2s;">
+            <button class="btn btn-secondary" onclick="closeItemModal()" style="padding: 10px 24px; font-weight: 500; border: 2px solid #d1d5db; transition: all 0.2s;">
                 <i data-lucide="${
                   isReadOnly ? 'x' : 'arrow-left'
                 }" style="width: 16px; height: 16px; margin-right: 6px;"></i>
@@ -18796,13 +18808,13 @@ function generateProductModal(mode = 'create', productData = null) {
             ${
               !isReadOnly
                 ? `
-                <button class="btn btn-primary" onclick="saveProduct('${
-                  productData?.id || ''
+                <button class="btn btn-primary" onclick="saveItem('${
+                  ItemData?.id || ''
                 }')" style="padding: 10px 24px; font-weight: 500; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); box-shadow: 0 4px 6px rgba(220, 38, 38, 0.25); transition: all 0.2s;">
                     <i data-lucide="${
                       mode === 'create' ? 'plus-circle' : 'save'
                     }" style="width: 16px; height: 16px; margin-right: 6px;"></i>
-                    ${mode === 'create' ? 'Add Product' : 'Save Changes'}
+                    ${mode === 'create' ? 'Add Item' : 'Save Changes'}
                 </button>
             `
                 : ''
@@ -19181,7 +19193,7 @@ function openStockInModal(mode = 'create', stockId = null) {
           const date = formatDate(
             r.date || r.date_received || r.created_at || ''
           )
-          const prod = r.productName || r.product_name || ''
+          const prod = r.ItemName || r.Item_name || ''
           const qty = r.quantity ?? r.qty ?? 0
           return `<tr><td style="font-weight:500;">${tx}</td><td>${date}</td><td style="font-weight:500;">${prod}</td><td>${qty}</td></tr>`
         })
@@ -19199,16 +19211,16 @@ function openStockInModal(mode = 'create', stockId = null) {
     const ucInput = document.getElementById('uc-input')
     const totalInput = document.getElementById('total-input')
     const skuInput = document.getElementById('sku-input')
-    const productInput = document.getElementById('product-input')
+    const ItemInput = document.getElementById('Item-input')
     const currentStockBadgeId = 'current-stock-badge'
 
-    // Insert a live current stock badge below product name if not exists
+    // Insert a live current stock badge below Item name if not exists
     if (!document.getElementById(currentStockBadgeId)) {
       const badge = document.createElement('div')
       badge.id = currentStockBadgeId
       badge.style.cssText =
         'margin-top:6px;font-size:12px;color:#6b7280;font-weight:500;display:flex;align-items:center;gap:6px;'
-      productInput.parentElement.appendChild(badge)
+      ItemInput.parentElement.appendChild(badge)
     }
     const stockBadge = document.getElementById(currentStockBadgeId)
 
@@ -19225,26 +19237,26 @@ function openStockInModal(mode = 'create', stockId = null) {
     function autoFillFromSku() {
       const raw = skuInput.value.trim()
       if (!raw) {
-        productInput.removeAttribute('readonly')
+        ItemInput.removeAttribute('readonly')
         stockBadge.textContent = ''
         return
       }
-      const prod = (MockData.products || []).find(
+      const prod = (MockData.Items || []).find(
         (p) => p.id.toLowerCase() === raw.toLowerCase()
       )
       if (prod) {
-        productInput.value = prod.name
-        // If existing product and unit cost empty or zero, default to product's unitCost (if present)
+        ItemInput.value = prod.name
+        // If existing Item and unit cost empty or zero, default to Item's unitCost (if present)
         if (!ucInput.value || parseFloat(ucInput.value) === 0) {
           if (typeof prod.unitCost === 'number')
             ucInput.value = prod.unitCost.toFixed(2)
         }
-        productInput.setAttribute('readonly', 'readonly')
+        ItemInput.setAttribute('readonly', 'readonly')
         stockBadge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;background:#f3f4f6;padding:4px 8px;border-radius:12px;">Current Stock: <strong>${prod.quantity}</strong></span>`
         updateTotal()
       } else {
-        productInput.removeAttribute('readonly')
-        stockBadge.textContent = 'SKU not found in products list'
+        ItemInput.removeAttribute('readonly')
+        stockBadge.textContent = 'SKU not found in Items list'
       }
     }
     skuInput.addEventListener('blur', autoFillFromSku)
@@ -19283,7 +19295,7 @@ function generateStockInModal(mode = 'create', stockData = null) {
     id: _sd.id || _sd.id || '',
     transactionId: _sd.transactionId || _sd.transaction_id || _sd.id || '',
     sku: _sd.sku || _sd.sku || '',
-    productName: _sd.productName || _sd.product_name || '',
+    ItemName: _sd.ItemName || _sd.Item_name || '',
     quantity: Number(_sd.quantity ?? _sd.qty ?? 0),
     unitCost: Number(_sd.unitCost ?? _sd.unit_cost ?? 0),
     totalCost: Number(
@@ -19302,7 +19314,7 @@ function generateStockInModal(mode = 'create', stockData = null) {
   const unitCostValue = (normalizedStock.unitCost || 0).toFixed(2)
   const totalValue = formatCurrency(normalizedStock.totalCost || 0)
   const skuValue = normalizedStock.sku
-  const productNameValue = normalizedStock.productName
+  const ItemNameValue = normalizedStock.ItemName
   const quantityValue = normalizedStock.quantity || ''
   const supplierValue = normalizedStock.supplier
   const receivedByValue = normalizedStock.receivedBy
@@ -19361,11 +19373,11 @@ function generateStockInModal(mode = 'create', stockData = null) {
                 <div class="form-group" style="margin-bottom: 0;">
                     <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
                         <i data-lucide="package" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                        Product Name
+                        Item Name
                     </label>
-          <input type="text" class="form-input" id="product-input"
-            value="${productNameValue || ''}"
-                           placeholder="Enter product name"
+          <input type="text" class="form-input" id="Item-input"
+            value="${ItemNameValue || ''}"
+                           placeholder="Enter Item name"
                            style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                            ${isReadOnly ? 'readonly' : ''}>
                 </div>
@@ -19408,7 +19420,7 @@ function generateStockInModal(mode = 'create', stockData = null) {
 
                 <div class="form-group" style="margin-bottom: 0;">
                     <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                        <i data-lucide="dollar-sign" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                        <i data-lucide="peso-sign" style="width: 14px; height: 14px; color: #6b7280;"></i>
                         Total Cost
                     </label>
           <input type="text" class="form-input" id="total-input"
@@ -19460,7 +19472,7 @@ function generateStockInModal(mode = 'create', stockData = null) {
             <tr>
               <th style="width:30%">Transaction</th>
               <th style="width:25%">Date</th>
-              <th style="width:35%">Product</th>
+              <th style="width:35%">Item</th>
               <th style="width:10%">Qty</th>
             </tr>
           </thead>
@@ -19509,7 +19521,7 @@ window.clampDateToToday = clampDateToToday
 async function saveStockIn(stockId) {
   const date = document.getElementById('date-input').value
   const sku = document.getElementById('sku-input').value
-  const productName = document.getElementById('product-input').value
+  const ItemName = document.getElementById('Item-input').value
   const quantity = parseInt(document.getElementById('qty-input').value) || 0
   const unitCost = parseFloat(document.getElementById('uc-input').value) || 0
   const totalCost = quantity * unitCost
@@ -19537,7 +19549,7 @@ async function saveStockIn(stockId) {
     // API expects date_received; include both camelCase and snake_case aliases
     dateReceived: clampedDate,
     date_received: clampedDate,
-    productName,
+    ItemName,
     sku,
     quantity,
     unitCost,
@@ -19578,13 +19590,13 @@ async function saveStockIn(stockId) {
         if (existing) existing.outerHTML = rowHtml
         else tbody.insertAdjacentHTML('beforeend', rowHtml)
         if (window.lucide) lucide.createIcons()
-        refreshProductsViewIfOpen()
+        refreshItemsViewIfOpen()
         return
       }
     }
   } catch (e) {}
   loadPageContent('stock-in') // refresh stock-in page
-  refreshProductsViewIfOpen()
+  refreshItemsViewIfOpen()
 }
 
 async function deleteStockIn(id) {
@@ -19597,7 +19609,7 @@ async function deleteStockIn(id) {
   // Find the record before deleting
   const record = stockInData.find((r) => r.id === id)
   const recordInfo = record
-    ? `${record.productName} (${record.transactionId})`
+    ? `${record.ItemName} (${record.transactionId})`
     : 'Stock In record'
 
   try {
@@ -19617,12 +19629,12 @@ async function deleteStockIn(id) {
       const row = tbody.querySelector(`tr[data-id="${id}"]`)
       if (row) row.remove()
       if (window.lucide) lucide.createIcons()
-      refreshProductsViewIfOpen()
+      refreshItemsViewIfOpen()
       return
     }
   } catch (e) {}
   loadPageContent('stock-in')
-  refreshProductsViewIfOpen()
+  refreshItemsViewIfOpen()
 }
 
 function renderStockInRows() {
@@ -19639,7 +19651,7 @@ function renderStockInRow(r, index) {
   const id = r?.id || ''
   const transactionId = r?.transactionId || ''
   const date = r?.date || ''
-  const productName = r?.productName || ''
+  const ItemName = r?.ItemName || ''
   const sku = r?.sku || ''
   const quantity = r?.quantity ?? 0
   const unitCost = Number(r?.unitCost) || 0
@@ -19651,7 +19663,7 @@ function renderStockInRow(r, index) {
     <tr data-id="${id}">
       <td style="font-weight: 500;">${transactionId}</td>
       <td>${date}</td>
-      <td style="font-weight: 500;">${productName}</td>
+      <td style="font-weight: 500;">${ItemName}</td>
       <td style="color: #6b7280;">${sku}</td>
       <td>${quantity}</td>
       <td>${formatCurrency(unitCost)}</td>
@@ -19712,12 +19724,12 @@ function openStockOutModal(mode = 'create', stockId = null) {
     const uc = modal.querySelector('#so-uc')
     const total = modal.querySelector('#so-total')
     const skuInput = modal.querySelector('#so-sku')
-    const productInput = modal.querySelector('#so-product')
+    const ItemInput = modal.querySelector('#so-Item')
 
     // Auto-detect low-stock items when opening the modal (if SKU not pre-filled)
     try {
-      const products = window.MockData?.products || []
-      const lowItems = products.filter((p) => Number(p.quantity || 0) <= 20)
+      const Items = window.MockData?.Items || []
+      const lowItems = Items.filter((p) => Number(p.quantity || 0) <= 20)
       if (
         (!skuInput || !skuInput.value || skuInput.value.trim() === '') &&
         lowItems.length
@@ -19735,14 +19747,14 @@ function openStockOutModal(mode = 'create', stockId = null) {
       }
     } catch (e) {}
 
-    // Add a current stock badge under product input
+    // Add a current stock badge under Item input
     const badgeId = 'so-current-stock-badge'
-    if (productInput && !document.getElementById(badgeId)) {
+    if (ItemInput && !document.getElementById(badgeId)) {
       const badge = document.createElement('div')
       badge.id = badgeId
       badge.style.cssText =
         'margin-top:6px;font-size:12px;color:#6b7280;font-weight:500;display:flex;align-items:center;gap:6px;'
-      productInput.parentElement.appendChild(badge)
+      ItemInput.parentElement.appendChild(badge)
     }
     const stockBadge = document.getElementById(badgeId)
 
@@ -19762,17 +19774,17 @@ function openStockOutModal(mode = 'create', stockId = null) {
       if (!skuInput) return
       const raw = skuInput.value.trim()
       if (!raw) {
-        productInput && productInput.removeAttribute('readonly')
+        ItemInput && ItemInput.removeAttribute('readonly')
         if (stockBadge) stockBadge.textContent = ''
         return
       }
-      const prod = (MockData.products || []).find(
+      const prod = (MockData.Items || []).find(
         (p) => p.id.toLowerCase() === raw.toLowerCase()
       )
       if (prod) {
-        if (productInput) {
-          productInput.value = prod.name
-          productInput.setAttribute('readonly', 'readonly')
+        if (ItemInput) {
+          ItemInput.value = prod.name
+          ItemInput.setAttribute('readonly', 'readonly')
         }
         if (uc && (!uc.value || parseFloat(uc.value) === 0)) {
           if (typeof prod.unitCost === 'number')
@@ -19781,7 +19793,7 @@ function openStockOutModal(mode = 'create', stockId = null) {
         if (stockBadge) {
           stockBadge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;background:#eef2ff;padding:4px 8px;border-radius:12px;">Available: <strong>${prod.quantity}</strong></span>`
         }
-        // Inline banner + alert when product stock is low (threshold: 20)
+        // Inline banner + alert when Item stock is low (threshold: 20)
         try {
           const banner = document.getElementById('so-lowstock-banner')
           if (typeof prod.quantity === 'number' && prod.quantity <= 20) {
@@ -19819,9 +19831,8 @@ function openStockOutModal(mode = 'create', stockId = null) {
         }
         updateTotal()
       } else {
-        if (productInput) productInput.removeAttribute('readonly')
-        if (stockBadge)
-          stockBadge.textContent = 'SKU not found in products list'
+        if (ItemInput) ItemInput.removeAttribute('readonly')
+        if (stockBadge) stockBadge.textContent = 'SKU not found in Items list'
         if (qty) qty.removeAttribute('max')
       }
     }
@@ -19850,7 +19861,7 @@ function openStockOutModal(mode = 'create', stockId = null) {
       updateTotal()
     }
 
-    // Hide inline banner when modal closes or when SKU changes to a different product
+    // Hide inline banner when modal closes or when SKU changes to a different Item
     // Ensure banner is hidden initially if no low stock
     try {
       const banner = document.getElementById('so-lowstock-banner')
@@ -19958,11 +19969,11 @@ function generateStockOutModal(mode = 'create', stockData = null) {
                 <div class="form-group" style="margin-bottom: 0;">
                     <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
                         <i data-lucide="package" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                        Product Name
+                        Item Name
                     </label>
-                    <input id="so-product" type="text" class="form-input"
-                           value="${stockData?.productName || ''}"
-                           placeholder="Enter product name"
+                    <input id="so-Item" type="text" class="form-input"
+                           value="${stockData?.ItemName || ''}"
+                           placeholder="Enter Item name"
                            style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                            ${isReadOnly ? 'readonly' : ''}>
           <!-- Inline low-stock banner (hidden by default). Visible until modal close or SKU change -->
@@ -20007,7 +20018,7 @@ function generateStockOutModal(mode = 'create', stockData = null) {
 
                 <div class="form-group" style="margin-bottom: 0;">
                     <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                        <i data-lucide="dollar-sign" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                        <i data-lucide="peso-sign" style="width: 14px; height: 14px; color: #6b7280;"></i>
                         Total Cost
                     </label>
                     <input id="so-total" type="text" class="form-input"
@@ -20124,10 +20135,10 @@ async function saveStockOut(stockId) {
     ? document.getElementById('so-sku').value
     : document.querySelector('#stockout-modal input[placeholder="E002"]')
         ?.value || ''
-  const productName = document.getElementById('so-product')
-    ? document.getElementById('so-product').value
+  const ItemName = document.getElementById('so-Item')
+    ? document.getElementById('so-Item').value
     : document.querySelector(
-        '#stockout-modal input[placeholder="Enter product name"]'
+        '#stockout-modal input[placeholder="Enter Item name"]'
       )?.value || ''
   let quantity = parseInt(document.getElementById('so-qty').value) || 0
   const unitCost = parseFloat(document.getElementById('so-uc').value) || 0
@@ -20142,9 +20153,9 @@ async function saveStockOut(stockId) {
   // Prevent backdating: clamp date to today
   const clampedSoDate = clampDateToToday(date)
 
-  // Validate available stock: find product by SKU (case-insensitive)
+  // Validate available stock: find Item by SKU (case-insensitive)
   try {
-    const prod = (window.MockData?.products || []).find(
+    const prod = (window.MockData?.Items || []).find(
       (p) => (p.id || '').toLowerCase() === (sku || '').toLowerCase()
     )
     if (prod) {
@@ -20184,7 +20195,7 @@ async function saveStockOut(stockId) {
       // include both aliases so server accepts 'date_issued'
       dateIssued: clampedSoDate,
       date_issued: clampedSoDate,
-      productName,
+      ItemName,
       sku,
       quantity,
       unitCost,
@@ -20234,7 +20245,7 @@ async function saveStockOut(stockId) {
     loadPageContent('stock-out')
   }
   closeStockOutModal()
-  refreshProductsViewIfOpen()
+  refreshItemsViewIfOpen()
 }
 
 // In-memory stock-out records (initialize from MockData if available)
@@ -20258,7 +20269,7 @@ function renderStockOutRow(s) {
   const id = s?.id || ''
   const issueId = s?.issueId || ''
   const date = s?.date || ''
-  const productName = s?.productName || ''
+  const ItemName = s?.ItemName || ''
   const sku = s?.sku || ''
   const quantity = s?.quantity ?? 0
   const unitCost = Number(s?.unitCost) || 0
@@ -20272,7 +20283,7 @@ function renderStockOutRow(s) {
         <tr data-id="${id}">
             <td class="font-semibold">${issueId}</td>
             <td>${date}</td>
-            <td>${productName}</td>
+            <td>${ItemName}</td>
             <td class="text-sm text-gray-600">${sku}</td>
             <td>${quantity}</td>
             <td>${formatCurrency(unitCost)}</td>
@@ -20316,7 +20327,7 @@ async function deleteStockOut(id) {
   // Find the record before deleting
   const record = stockOutData.find((s) => s.id == id)
   const recordInfo = record
-    ? `${record.productName} (${record.transactionId})`
+    ? `${record.ItemName} (${record.transactionId})`
     : 'Stock Out record'
 
   try {
@@ -20335,12 +20346,12 @@ async function deleteStockOut(id) {
       const row = tbody.querySelector(`tr[data-id="${id}"]`)
       if (row) row.remove()
       if (window.lucide) lucide.createIcons()
-      refreshProductsViewIfOpen()
+      refreshItemsViewIfOpen()
       return
     }
   } catch (e) {}
   loadPageContent('stock-out')
-  refreshProductsViewIfOpen()
+  refreshItemsViewIfOpen()
 }
 
 function viewStockOutDetails(id) {
@@ -21211,7 +21222,7 @@ function viewStatusRequest(id) {
             <dd style="margin: 0; color: #111827;">${rec.updatedAt}</dd>
             
             <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
-                <i data-lucide="dollar-sign" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                <i data-lucide="peso-sign" style="width: 14px; height: 14px; color: #6b7280;"></i>
                 Est. Cost
             </dt>
             <dd style="margin: 0; color: #16a34a; font-weight: 600; font-size: 15px;">${formatCurrency(
@@ -21393,8 +21404,8 @@ const exposedFunctions = {
   toggleUserMenu,
   closeUserMenu,
   navigateToPage,
-  switchProductTab,
-  updateProductsTable,
+  switchItemTab,
+  updateItemsTable,
   openPurchaseOrderModal,
   closePurchaseOrderModal,
   addPOItem,
@@ -21415,10 +21426,10 @@ const exposedFunctions = {
   closeCategoryModal,
   saveCategory,
   deleteCategory,
-  openProductModal,
-  closeProductModal,
-  saveProduct,
-  deleteProduct,
+  openItemModal,
+  closeItemModal,
+  saveItem,
+  deleteItem,
   openStockInModal,
   closeStockInModal,
   saveStockIn,

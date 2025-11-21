@@ -167,10 +167,10 @@ erDiagram
     USERS ||--o{ USER_LOGS : tracks
     USERS ||--o{ SUPPORT_TICKETS : submits
 
-    CATEGORIES ||--o{ PRODUCTS : contains
+    CATEGORIES ||--o{ ITEMS : contains
 
-    PRODUCTS ||--o{ STOCK_IN : receives
-    PRODUCTS ||--o{ STOCK_OUT : issues
+    ITEMS ||--o{ STOCK_IN : receives
+    ITEMS ||--o{ STOCK_OUT : issues
 
     SUPPLIERS ||--o{ STOCK_IN : supplies
 
@@ -201,7 +201,7 @@ erDiagram
         text description
     }
 
-    PRODUCTS {
+    ITEMS {
         int id PK
         int category_id FK
         string sku UK
@@ -227,7 +227,7 @@ erDiagram
 
     STOCK_IN {
         int id PK
-        int product_id FK
+        int item_id FK
         int supplier_id FK
         int quantity
         decimal unit_cost
@@ -238,7 +238,7 @@ erDiagram
 
     STOCK_OUT {
         int id PK
-        int product_id FK
+        int item_id FK
         int quantity
         string transaction_id
         string issued_to
@@ -310,7 +310,7 @@ graph LR
 
     subgraph "API Controllers"
         CategoryAPI[Category API]
-        ProductAPI[Product API]
+        ItemAPI[Item API]
         SupplierAPI[Supplier API]
         StockAPI[Stock API]
         PRAPI[Purchase Request API]
@@ -333,7 +333,7 @@ graph LR
     RateLimit --> Auth
 
     Auth --> CategoryAPI
-    Auth --> ProductAPI
+    Auth --> ItemAPI
     Auth --> SupplierAPI
     Auth --> StockAPI
     Auth --> PRAPI
@@ -342,7 +342,7 @@ graph LR
     Auth --> SupportAPI
 
     CategoryAPI --> Models
-    ProductAPI --> Models
+    ItemAPI --> Models
     SupplierAPI --> Models
     StockAPI --> Models
     PRAPI --> Models
@@ -351,11 +351,11 @@ graph LR
     SupportAPI --> Models
 
     CategoryAPI --> Validation
-    ProductAPI --> Validation
+    ItemAPI --> Validation
     SupplierAPI --> Validation
 
     CategoryAPI --> Transforms
-    ProductAPI --> Transforms
+    ItemAPI --> Transforms
     SupplierAPI --> Transforms
 ```
 
@@ -700,3 +700,4 @@ graph TB
 **Document Version**: 1.0  
 **Last Updated**: November 17, 2025  
 **Author**: Supply System Development Team
+
