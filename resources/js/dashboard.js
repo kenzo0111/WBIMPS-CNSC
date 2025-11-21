@@ -5793,7 +5793,7 @@ function generateRequisitionReportsPage() {
                         <i data-lucide="file-text" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>
                         Requisition Reports
                     </h1>
-                    <p class="page-subtitle">Overview of requisitions and purchase requests</p>
+                    <p class="page-subtitle">Overview of requisitions</p>
                 </div>
                 <div>
                     <button class="btn btn-primary" id="export-requisition-btn">
@@ -10862,6 +10862,255 @@ function renderPOItems() {
   lucide.createIcons()
 }
 
+// Auto-fill ICS Form
+function autoFillICSForm() {
+  // Initialize form data if not exists
+  if (!AppState.purchaseOrderDraft.icsFormData) {
+    AppState.purchaseOrderDraft.icsFormData = {}
+  }
+
+  // Auto-fill common fields
+  if (!AppState.purchaseOrderDraft.icsFormData.entity_name) {
+    updatePOFormDraft('ics', 'entity_name', 'Camarines Norte State College')
+  }
+
+  // Auto-fill fund cluster from PO data
+  const fundCluster = document.getElementById('fundCluster')?.value
+  if (fundCluster && !AppState.purchaseOrderDraft.icsFormData.fund_cluster) {
+    updatePOFormDraft('ics', 'fund_cluster', fundCluster)
+  }
+
+  // Auto-fill custodian details (default values)
+  if (!AppState.purchaseOrderDraft.icsFormData.received_by_name) {
+    updatePOFormDraft('ics', 'received_by_name', 'Property Custodian')
+  }
+  if (!AppState.purchaseOrderDraft.icsFormData.received_by_position) {
+    updatePOFormDraft('ics', 'received_by_position', 'Property Custodian')
+  }
+
+  // Auto-fill issuer details (default values)
+  if (!AppState.purchaseOrderDraft.icsFormData.received_from_name) {
+    updatePOFormDraft('ics', 'received_from_name', 'Supply Officer')
+  }
+  if (!AppState.purchaseOrderDraft.icsFormData.received_from_position) {
+    updatePOFormDraft('ics', 'received_from_position', 'Supply Officer')
+  }
+
+  // Auto-fill dates with current date if not set
+  const currentDate = new Date().toISOString().split('T')[0]
+  if (!AppState.purchaseOrderDraft.icsFormData.received_by_date) {
+    updatePOFormDraft('ics', 'received_by_date', currentDate)
+  }
+  if (!AppState.purchaseOrderDraft.icsFormData.received_from_date) {
+    updatePOFormDraft('ics', 'received_from_date', currentDate)
+  }
+}
+
+// Auto-fill RIS Form
+function autoFillRISForm() {
+  // Initialize form data if not exists
+  if (!AppState.purchaseOrderDraft.risFormData) {
+    AppState.purchaseOrderDraft.risFormData = {}
+  }
+
+  // Auto-fill common fields
+  if (!AppState.purchaseOrderDraft.risFormData.entity_name) {
+    updatePOFormDraft('ris', 'entity_name', 'Camarines Norte State College')
+  }
+
+  // Auto-fill fund cluster from PO data
+  const fundCluster = document.getElementById('fundCluster')?.value
+  if (fundCluster && !AppState.purchaseOrderDraft.risFormData.fund_cluster) {
+    updatePOFormDraft('ris', 'fund_cluster', fundCluster)
+  }
+
+  // Auto-fill department/office from PO data
+  const department = document.getElementById('departmentSelect')?.value
+  if (department) {
+    if (!AppState.purchaseOrderDraft.risFormData.division) {
+      updatePOFormDraft('ris', 'division', department)
+    }
+    if (!AppState.purchaseOrderDraft.risFormData.office) {
+      updatePOFormDraft('ris', 'office', department)
+    }
+  }
+
+  // Auto-fill purpose (default)
+  if (!AppState.purchaseOrderDraft.risFormData.purpose) {
+    updatePOFormDraft('ris', 'purpose', 'For office use and consumption')
+  }
+
+  // Auto-fill signature fields (default values)
+  if (!AppState.purchaseOrderDraft.risFormData.requested_by_name) {
+    updatePOFormDraft('ris', 'requested_by_name', 'Department Head')
+  }
+  if (!AppState.purchaseOrderDraft.risFormData.requested_by_designation) {
+    updatePOFormDraft('ris', 'requested_by_designation', 'Department Head')
+  }
+  if (!AppState.purchaseOrderDraft.risFormData.approved_by_name) {
+    updatePOFormDraft('ris', 'approved_by_name', 'Supply Officer')
+  }
+  if (!AppState.purchaseOrderDraft.risFormData.approved_by_designation) {
+    updatePOFormDraft('ris', 'approved_by_designation', 'Supply Officer')
+  }
+  if (!AppState.purchaseOrderDraft.risFormData.issued_by_name) {
+    updatePOFormDraft('ris', 'issued_by_name', 'Supply Officer')
+  }
+  if (!AppState.purchaseOrderDraft.risFormData.issued_by_designation) {
+    updatePOFormDraft('ris', 'issued_by_designation', 'Supply Officer')
+  }
+  if (!AppState.purchaseOrderDraft.risFormData.received_by_name) {
+    updatePOFormDraft('ris', 'received_by_name', 'End User')
+  }
+  if (!AppState.purchaseOrderDraft.risFormData.received_by_designation) {
+    updatePOFormDraft('ris', 'received_by_designation', 'End User')
+  }
+
+  // Auto-fill dates with current date if not set
+  const currentDate = new Date().toISOString().split('T')[0]
+  if (!AppState.purchaseOrderDraft.risFormData.requested_by_date) {
+    updatePOFormDraft('ris', 'requested_by_date', currentDate)
+  }
+  if (!AppState.purchaseOrderDraft.risFormData.approved_by_date) {
+    updatePOFormDraft('ris', 'approved_by_date', currentDate)
+  }
+  if (!AppState.purchaseOrderDraft.risFormData.issued_by_date) {
+    updatePOFormDraft('ris', 'issued_by_date', currentDate)
+  }
+  if (!AppState.purchaseOrderDraft.risFormData.received_by_date) {
+    updatePOFormDraft('ris', 'received_by_date', currentDate)
+  }
+}
+
+// Auto-fill PAR Form
+function autoFillPARForm() {
+  // Initialize form data if not exists
+  if (!AppState.purchaseOrderDraft.parFormData) {
+    AppState.purchaseOrderDraft.parFormData = {}
+  }
+
+  // Auto-fill common fields
+  if (!AppState.purchaseOrderDraft.parFormData.entity_name) {
+    updatePOFormDraft('par', 'entity_name', 'Camarines Norte State College')
+  }
+
+  // Auto-fill fund cluster from PO data
+  const fundCluster = document.getElementById('fundCluster')?.value
+  if (fundCluster && !AppState.purchaseOrderDraft.parFormData.fund_cluster) {
+    updatePOFormDraft('par', 'fund_cluster', fundCluster)
+  }
+
+  // Auto-fill custodian details (default values)
+  if (!AppState.purchaseOrderDraft.parFormData.received_by_name) {
+    updatePOFormDraft('par', 'received_by_name', 'Property Custodian')
+  }
+  if (!AppState.purchaseOrderDraft.parFormData.received_by_position) {
+    updatePOFormDraft('par', 'received_by_position', 'Property Custodian')
+  }
+
+  // Auto-fill issuer details (default values)
+  if (!AppState.purchaseOrderDraft.parFormData.received_from_name) {
+    updatePOFormDraft('par', 'received_from_name', 'Supply Officer')
+  }
+  if (!AppState.purchaseOrderDraft.parFormData.received_from_position) {
+    updatePOFormDraft('par', 'received_from_position', 'Supply Officer')
+  }
+
+  // Auto-fill dates with current date if not set
+  const currentDate = new Date().toISOString().split('T')[0]
+  if (!AppState.purchaseOrderDraft.parFormData.received_by_date) {
+    updatePOFormDraft('par', 'received_by_date', currentDate)
+  }
+  if (!AppState.purchaseOrderDraft.parFormData.received_from_date) {
+    updatePOFormDraft('par', 'received_from_date', currentDate)
+  }
+}
+
+// Auto-fill IAR Form
+function autoFillIARForm() {
+  // Initialize form data if not exists
+  if (!AppState.purchaseOrderDraft.iarFormData) {
+    AppState.purchaseOrderDraft.iarFormData = {}
+  }
+
+  // Auto-fill common fields
+  if (!AppState.purchaseOrderDraft.iarFormData.entity_name) {
+    updatePOFormDraft('iar', 'entity_name', 'Camarines Norte State College')
+  }
+
+  // Auto-fill fund cluster from PO data
+  const fundCluster = document.getElementById('fundCluster')?.value
+  if (fundCluster && !AppState.purchaseOrderDraft.iarFormData.fund_cluster) {
+    updatePOFormDraft('iar', 'fund_cluster', fundCluster)
+  }
+
+  // Auto-fill PO details from current PO
+  const poNumber = document.getElementById('poNumber')?.value
+  if (poNumber && !AppState.purchaseOrderDraft.iarFormData.po_number) {
+    updatePOFormDraft('iar', 'po_number', poNumber)
+  }
+
+  const purchaseDate = document.getElementById('purchaseDate')?.value
+  if (purchaseDate && !AppState.purchaseOrderDraft.iarFormData.po_date) {
+    updatePOFormDraft('iar', 'po_date', purchaseDate)
+  }
+
+  // Auto-fill requisitioning office from department
+  const department = document.getElementById('departmentSelect')?.value
+  if (
+    department &&
+    !AppState.purchaseOrderDraft.iarFormData.requisitioning_office
+  ) {
+    updatePOFormDraft('iar', 'requisitioning_office', department)
+  }
+
+  // Auto-fill inspection details (default values)
+  if (!AppState.purchaseOrderDraft.iarFormData.inspection_status) {
+    updatePOFormDraft('iar', 'inspection_status', 'complete')
+  }
+  if (!AppState.purchaseOrderDraft.iarFormData.acceptance_status) {
+    updatePOFormDraft('iar', 'acceptance_status', 'accepted')
+  }
+
+  // Auto-fill inspector details (default values)
+  if (!AppState.purchaseOrderDraft.iarFormData.inspection_officer_label) {
+    updatePOFormDraft('iar', 'inspection_officer_label', 'Inspection Officer')
+  }
+  if (!AppState.purchaseOrderDraft.iarFormData.custodian_label) {
+    updatePOFormDraft('iar', 'custodian_label', 'Property Custodian')
+  }
+  if (!AppState.purchaseOrderDraft.iarFormData.inspected_by_name) {
+    updatePOFormDraft('iar', 'inspected_by_name', 'Inspection Officer')
+  }
+  if (!AppState.purchaseOrderDraft.iarFormData.inspected_by_position) {
+    updatePOFormDraft('iar', 'inspected_by_position', 'Inspector')
+  }
+  if (!AppState.purchaseOrderDraft.iarFormData.inspected_by_name_2) {
+    updatePOFormDraft('iar', 'inspected_by_name_2', 'Supply Officer')
+  }
+  if (!AppState.purchaseOrderDraft.iarFormData.inspected_by_position_2) {
+    updatePOFormDraft('iar', 'inspected_by_position_2', 'Supply Officer')
+  }
+
+  // Auto-fill dates with current date if not set
+  const currentDate = new Date().toISOString().split('T')[0]
+  if (!AppState.purchaseOrderDraft.iarFormData.iar_date) {
+    updatePOFormDraft('iar', 'iar_date', currentDate)
+  }
+  if (!AppState.purchaseOrderDraft.iarFormData.date_inspected) {
+    updatePOFormDraft('iar', 'date_inspected', currentDate)
+  }
+  if (!AppState.purchaseOrderDraft.iarFormData.date_received) {
+    updatePOFormDraft('iar', 'date_received', currentDate)
+  }
+  if (!AppState.purchaseOrderDraft.iarFormData.inspected_by_date) {
+    updatePOFormDraft('iar', 'inspected_by_date', currentDate)
+  }
+  if (!AppState.purchaseOrderDraft.iarFormData.inspected_by_date_2) {
+    updatePOFormDraft('iar', 'inspected_by_date_2', currentDate)
+  }
+}
+
 // Render dynamic forms section based on checked items
 function renderDynamicPOForms() {
   const container = document.getElementById('po-dynamic-forms-container')
@@ -10872,6 +11121,12 @@ function renderDynamicPOForms() {
   const hasRIS = AppState.purchaseOrderItems.some((item) => item.generateRIS)
   const hasPAR = AppState.purchaseOrderItems.some((item) => item.generatePAR)
   const hasIAR = AppState.purchaseOrderItems.some((item) => item.generateIAR)
+
+  // Auto-fill forms when they are selected
+  if (hasICS) autoFillICSForm()
+  if (hasRIS) autoFillRISForm()
+  if (hasPAR) autoFillPARForm()
+  if (hasIAR) autoFillIARForm()
 
   // If no forms are checked, show a message
   if (!hasICS && !hasRIS && !hasPAR && !hasIAR) {
@@ -15033,6 +15288,11 @@ function generateUserModal(mode = 'view', userData = null) {
                                         ? 'selected'
                                         : ''
                                     }>Office Assistant</option>
+                                    <option ${
+                                      userData?.role === 'Supply Officer'
+                                        ? 'selected'
+                                        : ''
+                                    }>Supply Officer</option>
                                     <option ${
                                       userData?.role === 'Administrator'
                                         ? 'selected'
@@ -20725,6 +20985,10 @@ async function initStatusManagement(filter = 'all') {
                     <p class="page-subtitle">Track and manage request statuses across all departments</p>
                 </div>
                 <div class="header-actions">
+                    <button class="btn btn-success" id="auto-process-btn">
+                        <i data-lucide="zap" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>
+                        Auto Process
+                    </button>
                     <button class="btn btn-primary" id="export-status-btn">
                         <i data-lucide="download" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>
                         Export Excel
@@ -20791,13 +21055,14 @@ async function initStatusManagement(filter = 'all') {
                     <tr>
                       <th>Request ID</th>
                       <th>Requester</th>
+                      <th>Designation</th>
                       <th>Department</th>
                       <th>Item</th>
                       <th>Quantity</th>
                       <th>Unit</th>
                       <th>Priority</th>
                       <th>Date Updated</th>
-                      <th>Action</th>
+                      <th>Details</th>
                       <th>Cost</th>
                       <th>Remarks</th>
                     </tr>
@@ -20833,6 +21098,7 @@ async function initStatusManagement(filter = 'all') {
           const obj = {}
           obj.id = r.request_id || r.requestId || r.id || ''
           obj.requester = r.requester || r.name || r.requester_name || ''
+          obj.designation = r.designation || ''
           obj.email = r.email || ''
           obj.department = r.department || r.dept || ''
           // items may be an array or a string; show first item or joined list
@@ -20922,6 +21188,10 @@ async function initStatusManagement(filter = 'all') {
   document
     .getElementById('export-status-btn')
     ?.addEventListener('click', exportStatusCSV)
+  // Auto Process handler
+  document
+    .getElementById('auto-process-btn')
+    ?.addEventListener('click', autoProcessRequests)
 
   // Add click handlers for status cards
   const statusCards = document.querySelectorAll('.status-card')
@@ -21008,45 +21278,10 @@ function renderStatusRows(status) {
       const showActions = r.status === 'incoming' || r.status === 'received'
       const actionsHtml = showActions
         ? `
-            <div class="table-actions" style="flex-wrap:wrap;">
-                <button class="icon-action-btn" title="View Details" onclick="viewStatusRequest('${
-                  r.id
-                }')">
+            <div class="table-actions">
+                <button class="icon-action-btn" title="View Details & Actions" onclick="viewStatusRequest('${r.id}')">
                     <i data-lucide="eye"></i>
                 </button>
-                ${
-                  r.status === 'incoming'
-                    ? `
-                    <button class="icon-action-btn icon-action-primary" title="Mark as Received" onclick="updateStatusRow('${r.id}','received')">
-                        <i data-lucide="inbox"></i>
-                    </button>
-                `
-                    : ''
-                }
-                <button class="icon-action-btn icon-action-danger" title="Reject" onclick="updateStatusRow('${
-                  r.id
-                }','rejected')">
-                    <i data-lucide="x-circle"></i>
-                </button>
-                <button class="icon-action-btn icon-action-warning" title="Cancel" onclick="updateStatusRow('${
-                  r.id
-                }','cancelled')">
-                    <i data-lucide="ban"></i>
-                </button>
-                <button class="icon-action-btn icon-action-info" title="Return" onclick="showReturnModal('${
-                  r.id
-                }')">
-                    <i data-lucide="undo-2"></i>
-                </button>
-                ${
-                  r.status !== 'incoming'
-                    ? `
-                    <button class="icon-action-btn icon-action-success" title="Complete" onclick="updateStatusRow('${r.id}','finished')">
-                        <i data-lucide="check-circle"></i>
-                    </button>
-                `
-                    : ''
-                }
             </div>`
         : `<span class="${getBadgeClass(
             r.status
@@ -21079,6 +21314,7 @@ function renderStatusRows(status) {
                     }
                 </td>
                 <td>${r.requester}</td>
+                <td>${r.designation || '-'}</td>
                 <td>${r.department}</td>
                 <td>${r.item}</td>
                 <td>${
@@ -21148,6 +21384,76 @@ async function updateStatusRow(id, newStatus) {
   }
 }
 window.updateStatusRow = updateStatusRow
+
+// ===== Auto Process Requests =====
+async function autoProcessRequests() {
+  const requests = AppState.statusRequests || []
+  let processedCount = 0
+
+  // Define automation rules
+  const rules = [
+    {
+      condition: (r) =>
+        r.status === 'incoming' && r.priority === 'low' && r.cost < 5000,
+      action: 'received',
+      reason: 'Auto-received: Low priority, low cost request',
+    },
+    {
+      condition: (r) =>
+        r.status === 'received' && r.priority === 'low' && r.cost < 10000,
+      action: 'finished',
+      reason: 'Auto-approved: Low priority request under budget threshold',
+    },
+    {
+      condition: (r) =>
+        r.status === 'incoming' && r.priority === 'high' && r.cost > 50000,
+      action: 'returned',
+      reason: 'Auto-returned: High priority, high cost requires manual review',
+    },
+  ]
+
+  for (const request of requests) {
+    for (const rule of rules) {
+      if (rule.condition(request)) {
+        // Apply the rule
+        const oldStatus = request.status
+        request.status = rule.action
+        request.updatedAt = new Date().toISOString().split('T')[0]
+
+        // If returning, add remarks
+        if (rule.action === 'returned') {
+          request.returnRemarks = [rule.reason]
+        }
+
+        // Try to update on server
+        try {
+          await fetch(`/api/status-requests/${request.id}/status`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-TOKEN': getCsrfToken(),
+            },
+            body: JSON.stringify({ status: rule.action }),
+          })
+          processedCount++
+        } catch (e) {
+          // Revert on failure
+          request.status = oldStatus
+          console.warn(`Failed to auto-process request ${request.id}`, e)
+        }
+        break // Only apply first matching rule
+      }
+    }
+  }
+
+  // Update UI
+  refreshStatusCards()
+  const tbody = document.getElementById('status-table-body')
+  if (tbody)
+    tbody.innerHTML = renderStatusRows(AppState.currentStatusFilter || 'all')
+
+  showAlert(`Auto-processed ${processedCount} requests`, 'success')
+}
 
 // ===== Apply Filters =====
 function applyFilters() {
@@ -21451,7 +21757,9 @@ function viewStatusRequest(id) {
                             <i data-lucide="eye" style="width: 32px; height: 32px; color: white;"></i>
                         </div>
                         <div style="flex: 1;">
-                            <h2 id="status-view-title" class="modal-title" style="color: white; font-size: 24px; margin-bottom: 4px;">Request ${rec.id}</h2>
+                            <h2 id="status-view-title" class="modal-title" style="color: white; font-size: 24px; margin-bottom: 4px;">Request ${
+                              rec.id
+                            }</h2>
                             <p class="modal-subtitle" style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0;">Quick status overview</p>
                         </div>
                     </div>
@@ -21468,9 +21776,45 @@ function viewStatusRequest(id) {
                         <dl class="detail-grid" id="status-view-body" style="display: grid; grid-template-columns: 140px 1fr; gap: 16px 24px; margin: 0;"></dl>
                     </div>
                 </div>
-                <div class="modal-footer" style="padding: 20px 24px; background: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; justify-content: flex-end;">
-                    <button class="btn btn-secondary" id="status-view-dismiss" style="padding: 10px 24px; font-weight: 500; border-radius: 8px; transition: all 0.2s;">
-                        <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+                <div class="modal-footer" style="padding: 20px 24px; background: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        ${
+                          rec.status === 'incoming'
+                            ? `<button class="btn btn-primary" onclick="updateStatusRow('${rec.id}','received'); closeStatusView();" style="padding: 8px 16px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+                                <i data-lucide="inbox" style="width: 16px; height: 16px;"></i>
+                                Mark as Received
+                            </button>`
+                            : ''
+                        }
+                        ${
+                          rec.status !== 'incoming'
+                            ? `<button class="btn btn-success" onclick="updateStatusRow('${rec.id}','finished'); closeStatusView();" style="padding: 8px 16px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+                                <i data-lucide="check-circle" style="width: 16px; height: 16px;"></i>
+                                Complete
+                            </button>`
+                            : ''
+                        }
+                        <button class="btn btn-danger" onclick="updateStatusRow('${
+                          rec.id
+                        }','rejected'); closeStatusView();" style="padding: 8px 16px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+                            <i data-lucide="x-circle" style="width: 16px; height: 16px;"></i>
+                            Reject
+                        </button>
+                        <button class="btn btn-warning" onclick="updateStatusRow('${
+                          rec.id
+                        }','cancelled'); closeStatusView();" style="padding: 8px 16px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+                            <i data-lucide="ban" style="width: 16px; height: 16px;"></i>
+                            Cancel
+                        </button>
+                        <button class="btn btn-info" onclick="showReturnModal('${
+                          rec.id
+                        }'); closeStatusView();" style="padding: 8px 16px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+                            <i data-lucide="undo-2" style="width: 16px; height: 16px;"></i>
+                            Return
+                        </button>
+                    </div>
+                    <button class="btn btn-secondary" id="status-view-dismiss" style="padding: 8px 16px; font-size: 14px; font-weight: 500;">
+                        <i data-lucide="x" style="width: 16px; height: 16px; margin-right: 6px;"></i>
                         Close
                     </button>
                 </div>
@@ -21501,19 +21845,19 @@ function viewStatusRequest(id) {
             <dd style="margin: 0; color: #111827;">${rec.requester}</dd>
             
             ${
-              rec.email
+              rec.designation
                 ? `
                 <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
-                    <i data-lucide="mail" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                    Email
+                    <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                    Designation
                 </dt>
-                <dd style="margin: 0; color: #111827;">${rec.email}</dd>
+                <dd style="margin: 0; color: #111827;">${rec.designation}</dd>
             `
                 : ''
             }
             
             <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
-                <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                <i data-lucide="building" style="width: 14px; height: 14px; color: #6b7280;"></i>
                 Department
             </dt>
             <dd style="margin: 0; color: #111827;">${rec.department}</dd>
@@ -21653,6 +21997,12 @@ function viewStatusRequestDetails(requestId) {
                     <label class="form-label">Requester</label>
                     <input type="text" class="form-input" value="${
                       rec.requester || ''
+                    }" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Designation</label>
+                    <input type="text" class="form-input" value="${
+                      rec.designation || ''
                     }" readonly>
                 </div>
                 <div class="form-group">
@@ -21819,6 +22169,7 @@ const exposedFunctions = {
   updateBulkActionsVisibility,
   refreshActivities,
   handleActivityItemClick,
+  autoProcessRequests,
 }
 
 Object.assign(window, exposedFunctions)

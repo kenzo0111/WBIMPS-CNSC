@@ -53,3 +53,25 @@
 ### New Request — Delete button
 
 - [x] Make the Delete button on the New Request page perform server-side deletion (if saved) and remove the request from the UI
+
+## Recommendations
+
+### Product Management
+
+- [x] Rename "Product" to "Item" throughout the system
+- [ ] Implement product name change functionality within category management
+- [x] Add price field to products (using coins/pesos instead of dollars)
+- [ ] Implement dropdown for items in product selection
+- [ ] Add role-based access control for Head Officer and Employees to access the system
+
+### Requisition System
+
+- [x] Rename "Requisition System" to "Requisition"
+- [x] Remove status from requisition (hindi na status dapat nasa requisition)
+- [x] Consolidate all status and request into one unified interface (status management moved into requisition)
+- [ ] Implement reports form functionality
+- [ ] Make P.O. number sequential (may sinusundan)
+- [x] Add fund cluster dropdown
+- [x] Implement automated processes
+- [ ] Create employee accounts system
+- [ ] Add necessary dropdowns throughout the system

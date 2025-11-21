@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $request_id
  * @property string $email
  * @property string $requester
+ * @property string $designation
  * @property string $department
  * @property array $items
  * @property string|null $unit
@@ -33,6 +34,7 @@ class PurchaseRequest extends Model
         'request_id',
         'email',
         'requester',
+        'designation',
         'department',
         'items',
         'unit',

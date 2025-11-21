@@ -10,10 +10,8 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            if (!Schema::hasColumn('users', 'department')) {
-                $table->string('department')->nullable();
-            }
+        Schema::table('purchase_requests', function (Blueprint $table) {
+            $table->string('designation')->nullable()->after('requester');
         });
     }
 
@@ -22,8 +20,8 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('department');
+        Schema::table('purchase_requests', function (Blueprint $table) {
+            $table->dropColumn('designation');
         });
     }
 };

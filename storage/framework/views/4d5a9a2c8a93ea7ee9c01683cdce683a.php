@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Purchase Request • SPMO</title>
-    @vite('resources/css/AccessSystem.css')
+    <?php echo app('Illuminate\Foundation\Vite')('resources/css/AccessSystem.css'); ?>
     <style>
         /* Extend existing AccessSystem styles for textarea & request form */
         .request-card {
@@ -242,7 +242,7 @@
     <header>
         <div class="header-container">
             <div class="logo">
-                <img src="{{ $imagesPath }}/cnscrefine.png" alt="CNSC Logo" />
+                <img src="<?php echo e($imagesPath); ?>/cnscrefine.png" alt="CNSC Logo" />
                 <div class="logo-text">
                     <h1>Supply and Property Management</h1>
                     <hr />
@@ -389,7 +389,7 @@
         }
         function goHome() {
             // Navigate back to user homepage or access system
-            window.location.href = '{{ route("user.user-home-page") }}';
+            window.location.href = '<?php echo e(route("user.user-home-page")); ?>';
         }
         function toast(msg) {
             // Deprecated: kept for backward compatibility - see showToast API below
@@ -695,4 +695,4 @@
     </style>
 </body>
 
-</html>
+</html><?php /**PATH C:\xampp\htdocs\SupplySystem\resources\views/user/user-request.blade.php ENDPATH**/ ?>

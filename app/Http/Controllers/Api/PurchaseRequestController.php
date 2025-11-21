@@ -62,6 +62,7 @@ class PurchaseRequestController extends Controller
         $data = $request->validate([
             'email' => 'required|email',
             'requester' => 'required|string',
+            'designation' => 'nullable|string',
             'department' => 'required|string',
             'items' => 'required',
             'unit' => 'nullable|string',
@@ -113,6 +114,7 @@ class PurchaseRequestController extends Controller
                     'request_id' => $requestId,
                     'email' => $data['email'],
                     'requester' => $data['requester'],
+                    'designation' => $data['designation'] ?? null,
                     'department' => $data['department'],
                     'items' => $items,
                     'unit' => $data['unit'] ?? null,
