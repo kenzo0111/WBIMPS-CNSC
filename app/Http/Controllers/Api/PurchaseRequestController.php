@@ -7,8 +7,22 @@ use App\Models\PurchaseRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * API Controller for managing Purchase Requests
+ *
+ * Handles CRUD operations for purchase requests, including filtering,
+ * status updates, and cost calculations.
+ */
 class PurchaseRequestController extends Controller
 {
+    /**
+     * Display a listing of purchase requests.
+     *
+     * Supports filtering by department and status.
+     * Automatically calculates total cost for each request.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function index(Request $request)
     {
         // Return latest requests, optionally filtered by department or status
@@ -35,6 +49,14 @@ class PurchaseRequestController extends Controller
         return response()->json($results);
     }
 
+    /**
+     * Store a newly created purchase request.
+     *
+     * Validates input data and creates a new purchase request with
+     * a unique request ID in the format: REQ-YYYY-XXX
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -53,7 +75,7 @@ class PurchaseRequestController extends Controller
 
         // Accept items as string or array; normalize to array
         $items = $data['items'];
-        if (! is_array($items)) {
+        if (!is_array($items)) {
             // split lines as simple heuristic, or keep as single item
             $items = preg_split('/\r?\n/', $items);
             $items = array_values(array_filter(array_map('trim', $items)));
@@ -131,35 +153,37 @@ class PurchaseRequestController extends Controller
             // send to requester
             \Illuminate\Support\Facades\Mail::to($pr->email)->send(new \App\Mail\PurchaseRequestSubmitted($pr));
             // send to admins (if any)
-            if (! empty($admins)) {
+            if (!empty($admins)) {
                 \Illuminate\Support\Facades\Mail::to($admins)->send(new \App\Mail\PurchaseRequestSubmitted($pr));
             }
             $emailSent = true;
         } catch (\Exception $e) {
             // If the failure looks like an OpenSSL certificate verification error, try a single insecure fallback
-            \Illuminate\Support\Facades\Log::error('Failed sending purchase request submitted email: '.$e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Failed sending purchase request submitted email: ' . $e->getMessage());
             $msg = $e->getMessage();
             if (stripos($msg, 'certificate verify failed') !== false || stripos($msg, 'stream_socket_enable_crypto') !== false || stripos($msg, 'STARTTLS') !== false) {
                 try {
                     \Illuminate\Support\Facades\Log::warning('Attempting insecure SMTP retry (verify_peer=false) due to TLS certificate verification failure');
                     // set runtime stream options for smtp mailer to bypass peer verification (development only)
-                    config(['mail.mailers.smtp.stream' => [
-                        'ssl' => [
-                            'allow_self_signed' => true,
-                            'verify_peer' => false,
-                            'verify_peer_name' => false,
-                        ],
-                    ]]);
+                    config([
+                        'mail.mailers.smtp.stream' => [
+                            'ssl' => [
+                                'allow_self_signed' => true,
+                                'verify_peer' => false,
+                                'verify_peer_name' => false,
+                            ],
+                        ]
+                    ]);
 
                     // retry send once
                     \Illuminate\Support\Facades\Mail::to($pr->email)->send(new \App\Mail\PurchaseRequestSubmitted($pr));
-                    if (! empty($admins)) {
+                    if (!empty($admins)) {
                         \Illuminate\Support\Facades\Mail::to($admins)->send(new \App\Mail\PurchaseRequestSubmitted($pr));
                     }
                     $emailSent = true;
                     \Illuminate\Support\Facades\Log::warning('Insecure SMTP retry succeeded (email sent)');
                 } catch (\Exception $e2) {
-                    \Illuminate\Support\Facades\Log::error('Insecure SMTP retry failed: '.$e2->getMessage());
+                    \Illuminate\Support\Facades\Log::error('Insecure SMTP retry failed: ' . $e2->getMessage());
                     $emailSent = false;
                 }
             } else {
@@ -172,7 +196,12 @@ class PurchaseRequestController extends Controller
 
     /**
      * Update the status of a purchase request.
-     * Accepts either the numeric DB id or the request_id string (eg. REQ-2025-007).
+     *
+     * Accepts either the numeric DB id or the request_id string (e.g., REQ-2025-007).
+     * Logs status changes to the activity table for audit trail.
+     *
+     * @param  string|int  $id  Purchase request ID (numeric or request_id string)
+     * @return \Illuminate\Http\JsonResponse
      */
     public function updateStatus(Request $request, $id)
     {
@@ -182,11 +211,11 @@ class PurchaseRequestController extends Controller
 
         // Try to locate by request_id first (eg. REQ-2025-007), then by numeric id
         $pr = PurchaseRequest::where('request_id', $id)->first();
-        if (! $pr && is_numeric($id)) {
+        if (!$pr && is_numeric($id)) {
             $pr = PurchaseRequest::find((int) $id);
         }
 
-        if (! $pr) {
+        if (!$pr) {
             return response()->json(['error' => 'Purchase request not found'], 404);
         }
 

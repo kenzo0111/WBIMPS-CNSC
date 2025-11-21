@@ -57,7 +57,7 @@ class StockOutController extends Controller
 
         // Check if sufficient stock is available
         $item = Item::where('sku', $validated['sku'])->first();
-        if (!$item) {
+        if (! $item) {
             return response()->json(['error' => 'Item not found'], 404);
         }
         if ($item->quantity < $validated['quantity']) {
@@ -76,7 +76,7 @@ class StockOutController extends Controller
         $created = null;
         DB::transaction(function () use ($validated, &$created) {
             // Calculate total_cost if not provided
-            if (!isset($validated['total_cost']) && isset($validated['unit_cost'])) {
+            if (! isset($validated['total_cost']) && isset($validated['unit_cost'])) {
                 $validated['total_cost'] = $validated['quantity'] * $validated['unit_cost'];
             }
 
@@ -106,8 +106,8 @@ class StockOutController extends Controller
     public function update(Request $request, StockOut $stockOut)
     {
         $validated = $request->validate([
-            'issue_id' => 'required|string|unique:stock_out,issue_id,' . $stockOut->getKey(),
-            'transaction_id' => 'nullable|string|unique:stock_out,transaction_id,' . $stockOut->getKey(),
+            'issue_id' => 'required|string|unique:stock_out,issue_id,'.$stockOut->getKey(),
+            'transaction_id' => 'nullable|string|unique:stock_out,transaction_id,'.$stockOut->getKey(),
             'sku' => 'required|string|exists:items,sku',
             'product_name' => 'required|string',
             'quantity' => 'required|integer|min:1',
@@ -127,7 +127,7 @@ class StockOutController extends Controller
 
         $newSku = $validated['sku'];
         $newItem = Item::where('sku', $newSku)->first();
-        if (!$newItem) {
+        if (! $newItem) {
             return response()->json(['error' => 'Item not found'], 404);
         }
 

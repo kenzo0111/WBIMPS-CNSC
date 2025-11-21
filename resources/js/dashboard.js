@@ -364,6 +364,79 @@ function lsAvailable() {
   return false
 }
 
+// Purchase Order Draft Persistence
+// Use a per-user key so multiple users on the same browser don't collide
+function getPODraftKey() {
+  try {
+    const uid =
+      (AppState && AppState.currentUser && AppState.currentUser.id) || 'anon'
+    return `spmo_po_draft_${uid}`
+  } catch (e) {
+    return 'spmo_po_draft'
+  }
+}
+
+function savePurchaseOrderDraftToLocalStorage() {
+  try {
+    const key = getPODraftKey()
+    const payload = {
+      draft: AppState.purchaseOrderDraft || {},
+      items: AppState.purchaseOrderItems || [],
+      step: AppState.purchaseOrderWizardStep || 1,
+      updatedAt: new Date().toISOString(),
+    }
+    localStorage.setItem(key, JSON.stringify(payload))
+  } catch (e) {
+    // silently ignore localStorage errors
+    console.debug('savePurchaseOrderDraftToLocalStorage failed', e)
+  }
+}
+
+function loadPurchaseOrderDraftFromLocalStorage() {
+  try {
+    const key = getPODraftKey()
+    const raw = localStorage.getItem(key)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return parsed
+  } catch (e) {
+    console.debug('loadPurchaseOrderDraftFromLocalStorage failed', e)
+    return null
+  }
+}
+
+// Update a specific form's field in the PO draft and immediately persist
+function updatePOFormDraft(formKey, field, value) {
+  try {
+    const dstKey = {
+      ics: 'icsFormData',
+      ris: 'risFormData',
+      par: 'parFormData',
+      iar: 'iarFormData',
+    }[formKey]
+
+    if (!dstKey) return
+    if (!AppState.purchaseOrderDraft) AppState.purchaseOrderDraft = {}
+    if (!AppState.purchaseOrderDraft[dstKey])
+      AppState.purchaseOrderDraft[dstKey] = {}
+    AppState.purchaseOrderDraft[dstKey][field] = value
+    savePurchaseOrderDraftToLocalStorage()
+  } catch (e) {
+    console.debug('updatePOFormDraft failed', e)
+  }
+}
+
+window.updatePOFormDraft = updatePOFormDraft
+
+function clearPurchaseOrderDraftFromLocalStorage() {
+  try {
+    const key = getPODraftKey()
+    localStorage.removeItem(key)
+  } catch (e) {
+    console.debug('clearPurchaseOrderDraftFromLocalStorage failed', e)
+  }
+}
+
 function persistItems() {
   // Save Items to database via API
   // This function is called when inventory changes, but since we use API for CRUD,
@@ -2634,27 +2707,9 @@ function loadPageContent(pageId) {
     case 'stock-out':
       mainContent.innerHTML = generateStockOutPage()
       break
-    case 'status':
+    case 'status-management':
       // Show all statuses
       initStatusManagement('all')
-      break
-    case 'incoming':
-      initStatusManagement('incoming')
-      break
-    case 'received':
-      initStatusManagement('received')
-      break
-    case 'finished':
-      initStatusManagement('finished')
-      break
-    case 'cancelled':
-      initStatusManagement('cancelled')
-      break
-    case 'rejected':
-      initStatusManagement('rejected')
-      break
-    case 'returned':
-      initStatusManagement('returned')
       break
     case 'new-request':
       // Reload purchase orders before displaying
@@ -7967,10 +8022,28 @@ function openPurchaseOrderModal(mode = 'create', requestId = null) {
   const modalContent = modal.querySelector('.modal-content')
 
   AppState.currentModal = { mode, requestId }
-  // Reset wizard step if creating new
+  // Reset wizard step if creating new — do NOT auto-restore any previous draft
   if (mode === 'create') {
     AppState.purchaseOrderWizardStep = 1
-    AppState.purchaseOrderDraft = {} // reset draft on fresh create
+    AppState.purchaseOrderDraft = {} // always reset draft on fresh create
+    // Reset items to a single empty row for a clean new PO
+    AppState.purchaseOrderItems = [
+      {
+        id: Date.now().toString(),
+        stockPropertyNumber: '',
+        unit: '',
+        description: '',
+        detailedDescription: '',
+        quantity: 0,
+        currentStock: 0,
+        unitCost: 0,
+        amount: 0,
+        generateICS: false,
+        generateRIS: false,
+        generatePAR: false,
+        generateIAR: false,
+      },
+    ]
 
     // Ensure suppliers are loaded for the dropdown
     if (!AppState.suppliers || AppState.suppliers.length === 0) {
@@ -8007,6 +8080,12 @@ function openPurchaseOrderModal(mode = 'create', requestId = null) {
 
 function closePurchaseOrderModal() {
   const modal = document.getElementById('purchase-order-modal')
+  // persist any in-progress fields before closing so draft remains
+  try {
+    persistCurrentWizardStep()
+  } catch (e) {
+    console.debug('closePurchaseOrderModal: persist failed', e)
+  }
   modal.classList.remove('active')
   AppState.currentModal = null
 }
@@ -9807,6 +9886,12 @@ function persistCurrentWizardStep() {
     AppState.purchaseOrderDraft.notes =
       modal.querySelector('#po-notes')?.value || ''
   }
+  // Persist draft to localStorage so it survives navigation or page reloads
+  try {
+    savePurchaseOrderDraftToLocalStorage()
+  } catch (e) {
+    console.debug('persistCurrentWizardStep: save failed', e)
+  }
 }
 
 async function finalizePurchaseOrderCreation() {
@@ -9961,6 +10046,11 @@ async function finalizePurchaseOrderCreation() {
     closePurchaseOrderModal()
 
     // Reset wizard state
+    // Clear saved draft after successful creation
+    try {
+      clearPurchaseOrderDraftFromLocalStorage()
+    } catch (e) {}
+
     AppState.purchaseOrderWizardStep = 1
     AppState.purchaseOrderDraft = {}
     AppState.purchaseOrderItems = [
@@ -10626,6 +10716,11 @@ function addPOItem() {
   renderPOItems()
   renderDynamicPOForms()
 
+  // Persist items state after adding a new item
+  try {
+    savePurchaseOrderDraftToLocalStorage()
+  } catch (e) {}
+
   // Auto-scroll to the newly added item with smooth animation
   setTimeout(() => {
     const tbody = document.getElementById('po-items-tbody')
@@ -10677,6 +10772,10 @@ function removePOItem(id) {
             renderDynamicPOForms()
 
             showAlert(`🗑️ Item #${itemNumber} removed successfully`, 'info')
+            // persist removal
+            try {
+              savePurchaseOrderDraftToLocalStorage()
+            } catch (e) {}
           }, 300)
         } else {
           AppState.purchaseOrderItems = AppState.purchaseOrderItems.filter(
@@ -10686,6 +10785,10 @@ function removePOItem(id) {
           renderDynamicPOForms()
 
           showAlert(`🗑️ Item #${itemNumber} removed successfully`, 'info')
+          // persist removal
+          try {
+            savePurchaseOrderDraftToLocalStorage()
+          } catch (e) {}
         }
       }
     })
@@ -10793,6 +10896,11 @@ function updatePOItem(id, field, value) {
   setTimeout(() => {
     if (window.lucide) lucide.createIcons()
   }, 50)
+
+  // persist item edits
+  try {
+    savePurchaseOrderDraftToLocalStorage()
+  } catch (e) {}
 }
 
 function updatePOItemForm(itemId, formField, checked) {
@@ -10807,6 +10915,9 @@ function updatePOItemForm(itemId, formField, checked) {
   AppState.purchaseOrderItems[itemIndex] = item
   // Re-render dynamic forms section when checkboxes change
   renderDynamicPOForms()
+  try {
+    savePurchaseOrderDraftToLocalStorage()
+  } catch (e) {}
 }
 
 function renderPOItems() {
@@ -11150,21 +11261,80 @@ function renderDynamicPOForms() {
                 ICS No.
                 <span style="color: #dc2626; margin-left: 2px;">*</span>
               </label>
-              <input type="text" class="form-input" id="ics_ics_no" placeholder="e.g., ICS-2025-001" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="ics_ics_no" value="${
+                (AppState.purchaseOrderDraft.icsFormData &&
+                  AppState.purchaseOrderDraft.icsFormData.ics_no) ||
+                ''
+              }" onchange="updatePOFormDraft('ics','ics_no', this.value)" placeholder="e.g., ICS-2025-001" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="building-2" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Entity Name
               </label>
-              <input type="text" class="form-input" id="ics_entity_name" placeholder="e.g., Camarines Norte State College" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="ics_entity_name" value="${
+                (AppState.purchaseOrderDraft.icsFormData &&
+                  AppState.purchaseOrderDraft.icsFormData.entity_name) ||
+                ''
+              }" onchange="updatePOFormDraft('ics','entity_name', this.value)" placeholder="e.g., Camarines Norte State College" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="layers" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Fund Cluster
               </label>
-              <input type="text" class="form-input" id="ics_fund_cluster" placeholder="e.g., 01 - Regular Agency Fund" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <select class="form-select" id="ics_fund_cluster" onchange="updatePOFormDraft('ics','fund_cluster', this.value)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+                <option value="">Select fund cluster</option>
+                <option value="01 - Regular Agency Fund" ${
+                  (AppState.purchaseOrderDraft.icsFormData &&
+                    AppState.purchaseOrderDraft.icsFormData.fund_cluster) ===
+                  '01 - Regular Agency Fund'
+                    ? 'selected'
+                    : ''
+                }>01 - Regular Agency Fund</option>
+                <option value="02 - Foreign Assisted Projects Fund" ${
+                  (AppState.purchaseOrderDraft.icsFormData &&
+                    AppState.purchaseOrderDraft.icsFormData.fund_cluster) ===
+                  '02 - Foreign Assisted Projects Fund'
+                    ? 'selected'
+                    : ''
+                }>02 - Foreign Assisted Projects Fund</option>
+                <option value="03 - Special Account - Locally Funded/Domestic Grants Fund" ${
+                  (AppState.purchaseOrderDraft.icsFormData &&
+                    AppState.purchaseOrderDraft.icsFormData.fund_cluster) ===
+                  '03 - Special Account - Locally Funded/Domestic Grants Fund'
+                    ? 'selected'
+                    : ''
+                }>03 - Special Account - Locally Funded/Domestic Grants Fund</option>
+                <option value="04 - Special Account - Foreign Assisted/Foreign Grants Fund" ${
+                  (AppState.purchaseOrderDraft.icsFormData &&
+                    AppState.purchaseOrderDraft.icsFormData.fund_cluster) ===
+                  '04 - Special Account - Foreign Assisted/Foreign Grants Fund'
+                    ? 'selected'
+                    : ''
+                }>04 - Special Account - Foreign Assisted/Foreign Grants Fund</option>
+                <option value="05 - Internally Generated Funds" ${
+                  (AppState.purchaseOrderDraft.icsFormData &&
+                    AppState.purchaseOrderDraft.icsFormData.fund_cluster) ===
+                  '05 - Internally Generated Funds'
+                    ? 'selected'
+                    : ''
+                }>05 - Internally Generated Funds</option>
+                <option value="06 - Business Related Funds" ${
+                  (AppState.purchaseOrderDraft.icsFormData &&
+                    AppState.purchaseOrderDraft.icsFormData.fund_cluster) ===
+                  '06 - Business Related Funds'
+                    ? 'selected'
+                    : ''
+                }>06 - Business Related Funds</option>
+                <option value="07 - Trust Receipts" ${
+                  (AppState.purchaseOrderDraft.icsFormData &&
+                    AppState.purchaseOrderDraft.icsFormData.fund_cluster) ===
+                  '07 - Trust Receipts'
+                    ? 'selected'
+                    : ''
+                }>07 - Trust Receipts</option>
+              </select>
             </div>
           </div>
           
@@ -11180,21 +11350,34 @@ function renderDynamicPOForms() {
                 <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Name
               </label>
-              <input type="text" class="form-input" id="ics_received_by_name" placeholder="Full name of custodian" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="ics_received_by_name" value="${
+                (AppState.purchaseOrderDraft.icsFormData &&
+                  AppState.purchaseOrderDraft.icsFormData.received_by_name) ||
+                ''
+              }" onchange="updatePOFormDraft('ics','received_by_name', this.value)" placeholder="Full name of custodian" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Position
               </label>
-              <input type="text" class="form-input" id="ics_received_by_position" placeholder="e.g., Property Custodian" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="ics_received_by_position" value="${
+                (AppState.purchaseOrderDraft.icsFormData &&
+                  AppState.purchaseOrderDraft.icsFormData
+                    .received_by_position) ||
+                ''
+              }" onchange="updatePOFormDraft('ics','received_by_position', this.value)" placeholder="e.g., Property Custodian" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Date
               </label>
-              <input type="date" class="form-input" id="ics_received_by_date" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="date" class="form-input" id="ics_received_by_date" value="${
+                (AppState.purchaseOrderDraft.icsFormData &&
+                  AppState.purchaseOrderDraft.icsFormData.received_by_date) ||
+                ''
+              }" onchange="updatePOFormDraft('ics','received_by_date', this.value)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
           </div>
           
@@ -11210,21 +11393,34 @@ function renderDynamicPOForms() {
                 <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Name
               </label>
-              <input type="text" class="form-input" id="ics_received_from_name" placeholder="Full name of issuer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="ics_received_from_name" value="${
+                (AppState.purchaseOrderDraft.icsFormData &&
+                  AppState.purchaseOrderDraft.icsFormData.received_from_name) ||
+                ''
+              }" onchange="updatePOFormDraft('ics','received_from_name', this.value)" placeholder="Full name of issuer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Position
               </label>
-              <input type="text" class="form-input" id="ics_received_from_position" placeholder="e.g., Supply Officer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="ics_received_from_position" value="${
+                (AppState.purchaseOrderDraft.icsFormData &&
+                  AppState.purchaseOrderDraft.icsFormData
+                    .received_from_position) ||
+                ''
+              }" onchange="updatePOFormDraft('ics','received_from_position', this.value)" placeholder="e.g., Supply Officer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Date
               </label>
-              <input type="date" class="form-input" id="ics_received_from_date" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="date" class="form-input" id="ics_received_from_date" value="${
+                (AppState.purchaseOrderDraft.icsFormData &&
+                  AppState.purchaseOrderDraft.icsFormData.received_from_date) ||
+                ''
+              }" onchange="updatePOFormDraft('ics','received_from_date', this.value)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
           </div>
         </div>
@@ -11279,49 +11475,125 @@ function renderDynamicPOForms() {
                 RIS No.
                 <span style="color: #dc2626; margin-left: 2px;">*</span>
               </label>
-              <input type="text" class="form-input" id="ris_ris_no" placeholder="e.g., RIS-2025-001" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="ris_ris_no" value="${
+                (AppState.purchaseOrderDraft.risFormData &&
+                  AppState.purchaseOrderDraft.risFormData.ris_no) ||
+                ''
+              }" onchange="updatePOFormDraft('ris','ris_no', this.value)" placeholder="e.g., RIS-2025-001" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="building-2" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Entity Name
               </label>
-              <input type="text" class="form-input" id="ris_entity_name" placeholder="e.g., Camarines Norte State College" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="ris_entity_name" value="${
+                (AppState.purchaseOrderDraft.risFormData &&
+                  AppState.purchaseOrderDraft.risFormData.entity_name) ||
+                ''
+              }" onchange="updatePOFormDraft('ris','entity_name', this.value)" placeholder="e.g., Camarines Norte State College" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="layers" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Fund Cluster
               </label>
-              <input type="text" class="form-input" id="ris_fund_cluster" placeholder="e.g., 01 - Regular Agency Fund" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <select class="form-select" id="ris_fund_cluster" onchange="updatePOFormDraft('ris','fund_cluster', this.value)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+                <option value="">Select fund cluster</option>
+                <option value="01 - Regular Agency Fund" ${
+                  (AppState.purchaseOrderDraft.risFormData &&
+                    AppState.purchaseOrderDraft.risFormData.fund_cluster) ===
+                  '01 - Regular Agency Fund'
+                    ? 'selected'
+                    : ''
+                }>01 - Regular Agency Fund</option>
+                <option value="02 - Foreign Assisted Projects Fund" ${
+                  (AppState.purchaseOrderDraft.risFormData &&
+                    AppState.purchaseOrderDraft.risFormData.fund_cluster) ===
+                  '02 - Foreign Assisted Projects Fund'
+                    ? 'selected'
+                    : ''
+                }>02 - Foreign Assisted Projects Fund</option>
+                <option value="03 - Special Account - Locally Funded/Domestic Grants Fund" ${
+                  (AppState.purchaseOrderDraft.risFormData &&
+                    AppState.purchaseOrderDraft.risFormData.fund_cluster) ===
+                  '03 - Special Account - Locally Funded/Domestic Grants Fund'
+                    ? 'selected'
+                    : ''
+                }>03 - Special Account - Locally Funded/Domestic Grants Fund</option>
+                <option value="04 - Special Account - Foreign Assisted/Foreign Grants Fund" ${
+                  (AppState.purchaseOrderDraft.risFormData &&
+                    AppState.purchaseOrderDraft.risFormData.fund_cluster) ===
+                  '04 - Special Account - Foreign Assisted/Foreign Grants Fund'
+                    ? 'selected'
+                    : ''
+                }>04 - Special Account - Foreign Assisted/Foreign Grants Fund</option>
+                <option value="05 - Internally Generated Funds" ${
+                  (AppState.purchaseOrderDraft.risFormData &&
+                    AppState.purchaseOrderDraft.risFormData.fund_cluster) ===
+                  '05 - Internally Generated Funds'
+                    ? 'selected'
+                    : ''
+                }>05 - Internally Generated Funds</option>
+                <option value="06 - Business Related Funds" ${
+                  (AppState.purchaseOrderDraft.risFormData &&
+                    AppState.purchaseOrderDraft.risFormData.fund_cluster) ===
+                  '06 - Business Related Funds'
+                    ? 'selected'
+                    : ''
+                }>06 - Business Related Funds</option>
+                <option value="07 - Trust Receipts" ${
+                  (AppState.purchaseOrderDraft.risFormData &&
+                    AppState.purchaseOrderDraft.risFormData.fund_cluster) ===
+                  '07 - Trust Receipts'
+                    ? 'selected'
+                    : ''
+                }>07 - Trust Receipts</option>
+              </select>
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="building" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Division
               </label>
-              <input type="text" class="form-input" id="ris_division" placeholder="Division name" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="ris_division" value="${
+                (AppState.purchaseOrderDraft.risFormData &&
+                  AppState.purchaseOrderDraft.risFormData.division) ||
+                ''
+              }" onchange="updatePOFormDraft('ris','division', this.value)" placeholder="Division name" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Office
               </label>
-              <input type="text" class="form-input" id="ris_office" placeholder="Office name" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="ris_office" value="${
+                (AppState.purchaseOrderDraft.risFormData &&
+                  AppState.purchaseOrderDraft.risFormData.office) ||
+                ''
+              }" onchange="updatePOFormDraft('ris','office', this.value)" placeholder="Office name" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="hash" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Responsibility Center Code
               </label>
-              <input type="text" class="form-input" id="ris_responsibility_center_code" placeholder="RCC number" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="ris_responsibility_center_code" value="${
+                (AppState.purchaseOrderDraft.risFormData &&
+                  AppState.purchaseOrderDraft.risFormData
+                    .responsibility_center_code) ||
+                ''
+              }" onchange="updatePOFormDraft('ris','responsibility_center_code', this.value)" placeholder="RCC number" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="message-square" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Purpose
               </label>
-              <input type="text" class="form-input" id="ris_purpose" placeholder="Purpose of requisition" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="ris_purpose" value="${
+                (AppState.purchaseOrderDraft.risFormData &&
+                  AppState.purchaseOrderDraft.risFormData.purpose) ||
+                ''
+              }" onchange="updatePOFormDraft('ris','purpose', this.value)" placeholder="Purpose of requisition" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
           </div>
           
@@ -11337,21 +11609,34 @@ function renderDynamicPOForms() {
                 <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Name
               </label>
-              <input type="text" class="form-input" id="ris_requested_by_name" placeholder="Full name of requester" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="ris_requested_by_name" value="${
+                (AppState.purchaseOrderDraft.risFormData &&
+                  AppState.purchaseOrderDraft.risFormData.requested_by_name) ||
+                ''
+              }" onchange="updatePOFormDraft('ris','requested_by_name', this.value)" placeholder="Full name of requester" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Designation
               </label>
-              <input type="text" class="form-input" id="ris_requested_by_designation" placeholder="Position/title" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="ris_requested_by_designation" value="${
+                (AppState.purchaseOrderDraft.risFormData &&
+                  AppState.purchaseOrderDraft.risFormData
+                    .requested_by_designation) ||
+                ''
+              }" onchange="updatePOFormDraft('ris','requested_by_designation', this.value)" placeholder="Position/title" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Date
               </label>
-              <input type="date" class="form-input" id="ris_requested_by_date" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="date" class="form-input" id="ris_requested_by_date" value="${
+                (AppState.purchaseOrderDraft.risFormData &&
+                  AppState.purchaseOrderDraft.risFormData.requested_by_date) ||
+                ''
+              }" onchange="updatePOFormDraft('ris','requested_by_date', this.value)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
           </div>
           
@@ -11367,21 +11652,34 @@ function renderDynamicPOForms() {
                 <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Name
               </label>
-              <input type="text" class="form-input" id="ris_approved_by_name" placeholder="Full name of approver" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="ris_approved_by_name" value="${
+                (AppState.purchaseOrderDraft.risFormData &&
+                  AppState.purchaseOrderDraft.risFormData.approved_by_name) ||
+                ''
+              }" onchange="updatePOFormDraft('ris','approved_by_name', this.value)" placeholder="Full name of approver" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Designation
               </label>
-              <input type="text" class="form-input" id="ris_approved_by_designation" placeholder="Position/title" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="ris_approved_by_designation" value="${
+                (AppState.purchaseOrderDraft.risFormData &&
+                  AppState.purchaseOrderDraft.risFormData
+                    .approved_by_designation) ||
+                ''
+              }" onchange="updatePOFormDraft('ris','approved_by_designation', this.value)" placeholder="Position/title" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Date
               </label>
-              <input type="date" class="form-input" id="ris_approved_by_date" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="date" class="form-input" id="ris_approved_by_date" value="${
+                (AppState.purchaseOrderDraft.risFormData &&
+                  AppState.purchaseOrderDraft.risFormData.approved_by_date) ||
+                ''
+              }" onchange="updatePOFormDraft('ris','approved_by_date', this.value)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
           </div>
           
@@ -11397,21 +11695,34 @@ function renderDynamicPOForms() {
                 <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Name
               </label>
-              <input type="text" class="form-input" id="ris_issued_by_name" placeholder="Full name of issuer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="ris_issued_by_name" value="${
+                (AppState.purchaseOrderDraft.risFormData &&
+                  AppState.purchaseOrderDraft.risFormData.issued_by_name) ||
+                ''
+              }" onchange="updatePOFormDraft('ris','issued_by_name', this.value)" placeholder="Full name of issuer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Designation
               </label>
-              <input type="text" class="form-input" id="ris_issued_by_designation" placeholder="Position/title" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="ris_issued_by_designation" value="${
+                (AppState.purchaseOrderDraft.risFormData &&
+                  AppState.purchaseOrderDraft.risFormData
+                    .issued_by_designation) ||
+                ''
+              }" onchange="updatePOFormDraft('ris','issued_by_designation', this.value)" placeholder="Position/title" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Date
               </label>
-              <input type="date" class="form-input" id="ris_issued_by_date" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="date" class="form-input" id="ris_issued_by_date" value="${
+                (AppState.purchaseOrderDraft.risFormData &&
+                  AppState.purchaseOrderDraft.risFormData.issued_by_date) ||
+                ''
+              }" onchange="updatePOFormDraft('ris','issued_by_date', this.value)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
           </div>
           
@@ -11427,21 +11738,34 @@ function renderDynamicPOForms() {
                 <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Name
               </label>
-              <input type="text" class="form-input" id="ris_received_by_name" placeholder="Full name of receiver" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="ris_received_by_name" value="${
+                (AppState.purchaseOrderDraft.risFormData &&
+                  AppState.purchaseOrderDraft.risFormData.received_by_name) ||
+                ''
+              }" onchange="updatePOFormDraft('ris','received_by_name', this.value)" placeholder="Full name of receiver" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Designation
               </label>
-              <input type="text" class="form-input" id="ris_received_by_designation" placeholder="Position/title" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="ris_received_by_designation" value="${
+                (AppState.purchaseOrderDraft.risFormData &&
+                  AppState.purchaseOrderDraft.risFormData
+                    .received_by_designation) ||
+                ''
+              }" onchange="updatePOFormDraft('ris','received_by_designation', this.value)" placeholder="Position/title" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Date
               </label>
-              <input type="date" class="form-input" id="ris_received_by_date" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="date" class="form-input" id="ris_received_by_date" value="${
+                (AppState.purchaseOrderDraft.risFormData &&
+                  AppState.purchaseOrderDraft.risFormData.received_by_date) ||
+                ''
+              }" onchange="updatePOFormDraft('ris','received_by_date', this.value)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
           </div>
         </div>
@@ -11488,21 +11812,80 @@ function renderDynamicPOForms() {
                 PAR No.
                 <span style="color: #dc2626; margin-left: 2px;">*</span>
               </label>
-              <input type="text" class="form-input" id="par_par_no" placeholder="e.g., PAR-2025-001" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="par_par_no" value="${
+                (AppState.purchaseOrderDraft.parFormData &&
+                  AppState.purchaseOrderDraft.parFormData.par_no) ||
+                ''
+              }" onchange="updatePOFormDraft('par','par_no', this.value)" placeholder="e.g., PAR-2025-001" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="building-2" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Entity Name
               </label>
-              <input type="text" class="form-input" id="par_entity_name" placeholder="e.g., Camarines Norte State College" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="par_entity_name" value="${
+                (AppState.purchaseOrderDraft.parFormData &&
+                  AppState.purchaseOrderDraft.parFormData.entity_name) ||
+                ''
+              }" onchange="updatePOFormDraft('par','entity_name', this.value)" placeholder="e.g., Camarines Norte State College" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="layers" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Fund Cluster
               </label>
-              <input type="text" class="form-input" id="par_fund_cluster" placeholder="e.g., 01 - Regular Agency Fund" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <select class="form-select" id="par_fund_cluster" onchange="updatePOFormDraft('par','fund_cluster', this.value)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+                <option value="">Select fund cluster</option>
+                <option value="01 - Regular Agency Fund" ${
+                  (AppState.purchaseOrderDraft.parFormData &&
+                    AppState.purchaseOrderDraft.parFormData.fund_cluster) ===
+                  '01 - Regular Agency Fund'
+                    ? 'selected'
+                    : ''
+                }>01 - Regular Agency Fund</option>
+                <option value="02 - Foreign Assisted Projects Fund" ${
+                  (AppState.purchaseOrderDraft.parFormData &&
+                    AppState.purchaseOrderDraft.parFormData.fund_cluster) ===
+                  '02 - Foreign Assisted Projects Fund'
+                    ? 'selected'
+                    : ''
+                }>02 - Foreign Assisted Projects Fund</option>
+                <option value="03 - Special Account - Locally Funded/Domestic Grants Fund" ${
+                  (AppState.purchaseOrderDraft.parFormData &&
+                    AppState.purchaseOrderDraft.parFormData.fund_cluster) ===
+                  '03 - Special Account - Locally Funded/Domestic Grants Fund'
+                    ? 'selected'
+                    : ''
+                }>03 - Special Account - Locally Funded/Domestic Grants Fund</option>
+                <option value="04 - Special Account - Foreign Assisted/Foreign Grants Fund" ${
+                  (AppState.purchaseOrderDraft.parFormData &&
+                    AppState.purchaseOrderDraft.parFormData.fund_cluster) ===
+                  '04 - Special Account - Foreign Assisted/Foreign Grants Fund'
+                    ? 'selected'
+                    : ''
+                }>04 - Special Account - Foreign Assisted/Foreign Grants Fund</option>
+                <option value="05 - Internally Generated Funds" ${
+                  (AppState.purchaseOrderDraft.parFormData &&
+                    AppState.purchaseOrderDraft.parFormData.fund_cluster) ===
+                  '05 - Internally Generated Funds'
+                    ? 'selected'
+                    : ''
+                }>05 - Internally Generated Funds</option>
+                <option value="06 - Business Related Funds" ${
+                  (AppState.purchaseOrderDraft.parFormData &&
+                    AppState.purchaseOrderDraft.parFormData.fund_cluster) ===
+                  '06 - Business Related Funds'
+                    ? 'selected'
+                    : ''
+                }>06 - Business Related Funds</option>
+                <option value="07 - Trust Receipts" ${
+                  (AppState.purchaseOrderDraft.parFormData &&
+                    AppState.purchaseOrderDraft.parFormData.fund_cluster) ===
+                  '07 - Trust Receipts'
+                    ? 'selected'
+                    : ''
+                }>07 - Trust Receipts</option>
+              </select>
             </div>
           </div>
           
@@ -11518,21 +11901,34 @@ function renderDynamicPOForms() {
                 <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Name
               </label>
-              <input type="text" class="form-input" id="par_received_by_name" placeholder="Full name of property custodian" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="par_received_by_name" value="${
+                (AppState.purchaseOrderDraft.parFormData &&
+                  AppState.purchaseOrderDraft.parFormData.received_by_name) ||
+                ''
+              }" onchange="updatePOFormDraft('par','received_by_name', this.value)" placeholder="Full name of property custodian" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Position
               </label>
-              <input type="text" class="form-input" id="par_received_by_position" placeholder="e.g., Property Custodian" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="par_received_by_position" value="${
+                (AppState.purchaseOrderDraft.parFormData &&
+                  AppState.purchaseOrderDraft.parFormData
+                    .received_by_position) ||
+                ''
+              }" onchange="updatePOFormDraft('par','received_by_position', this.value)" placeholder="e.g., Property Custodian" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Date
               </label>
-              <input type="date" class="form-input" id="par_received_by_date" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="date" class="form-input" id="par_received_by_date" value="${
+                (AppState.purchaseOrderDraft.parFormData &&
+                  AppState.purchaseOrderDraft.parFormData.received_by_date) ||
+                ''
+              }" onchange="updatePOFormDraft('par','received_by_date', this.value)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
           </div>
           
@@ -11548,21 +11944,34 @@ function renderDynamicPOForms() {
                 <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Name
               </label>
-              <input type="text" class="form-input" id="par_received_from_name" placeholder="Full name of issuer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="par_received_from_name" value="${
+                (AppState.purchaseOrderDraft.parFormData &&
+                  AppState.purchaseOrderDraft.parFormData.received_from_name) ||
+                ''
+              }" onchange="updatePOFormDraft('par','received_from_name', this.value)" placeholder="Full name of issuer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Position
               </label>
-              <input type="text" class="form-input" id="par_received_from_position" placeholder="e.g., Supply Officer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="text" class="form-input" id="par_received_from_position" value="${
+                (AppState.purchaseOrderDraft.parFormData &&
+                  AppState.purchaseOrderDraft.parFormData
+                    .received_from_position) ||
+                ''
+              }" onchange="updatePOFormDraft('par','received_from_position', this.value)" placeholder="e.g., Supply Officer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Date
               </label>
-              <input type="date" class="form-input" id="par_received_from_date" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <input type="date" class="form-input" id="par_received_from_date" value="${
+                (AppState.purchaseOrderDraft.parFormData &&
+                  AppState.purchaseOrderDraft.parFormData.received_from_date) ||
+                ''
+              }" onchange="updatePOFormDraft('par','received_from_date', this.value)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
           </div>
         </div>
@@ -11618,7 +12027,11 @@ function renderDynamicPOForms() {
                   <i data-lucide="hash" style="width: 14px; height: 14px; color: #be185d;"></i>
                   IAR No. <span style="color: #be185d;">*</span>
                 </label>
-                <input type="text" class="form-input" id="iar_iar_no" placeholder="e.g., IAR-2024-001" 
+                <input type="text" class="form-input" id="iar_iar_no" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData.iar_no) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','iar_no', this.value)" placeholder="e.g., IAR-2024-001" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11628,7 +12041,11 @@ function renderDynamicPOForms() {
                   <i data-lucide="calendar" style="width: 14px; height: 14px; color: #be185d;"></i>
                   IAR Date <span style="color: #be185d;">*</span>
                 </label>
-                <input type="date" class="form-input" id="iar_iar_date" 
+                <input type="date" class="form-input" id="iar_iar_date" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData.iar_date) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','iar_date', this.value)" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11638,7 +12055,11 @@ function renderDynamicPOForms() {
                   <i data-lucide="building-2" style="width: 14px; height: 14px; color: #be185d;"></i>
                   Entity Name
                 </label>
-                <input type="text" class="form-input" id="iar_entity_name" placeholder="e.g., Department of Education" 
+                <input type="text" class="form-input" id="iar_entity_name" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData.entity_name) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','entity_name', this.value)" placeholder="e.g., Department of Education" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11648,10 +12069,58 @@ function renderDynamicPOForms() {
                   <i data-lucide="layers" style="width: 14px; height: 14px; color: #be185d;"></i>
                   Fund Cluster
                 </label>
-                <input type="text" class="form-input" id="iar_fund_cluster" placeholder="e.g., 01 - General Fund" 
-                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
-                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
-                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+                <select class="form-select" id="iar_fund_cluster" onchange="updatePOFormDraft('iar','fund_cluster', this.value)" style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;" onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'" onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+                  <option value="">Select fund cluster</option>
+                  <option value="01 - Regular Agency Fund" ${
+                    (AppState.purchaseOrderDraft.iarFormData &&
+                      AppState.purchaseOrderDraft.iarFormData.fund_cluster) ===
+                    '01 - Regular Agency Fund'
+                      ? 'selected'
+                      : ''
+                  }>01 - Regular Agency Fund</option>
+                  <option value="02 - Foreign Assisted Projects Fund" ${
+                    (AppState.purchaseOrderDraft.iarFormData &&
+                      AppState.purchaseOrderDraft.iarFormData.fund_cluster) ===
+                    '02 - Foreign Assisted Projects Fund'
+                      ? 'selected'
+                      : ''
+                  }>02 - Foreign Assisted Projects Fund</option>
+                  <option value="03 - Special Account - Locally Funded/Domestic Grants Fund" ${
+                    (AppState.purchaseOrderDraft.iarFormData &&
+                      AppState.purchaseOrderDraft.iarFormData.fund_cluster) ===
+                    '03 - Special Account - Locally Funded/Domestic Grants Fund'
+                      ? 'selected'
+                      : ''
+                  }>03 - Special Account - Locally Funded/Domestic Grants Fund</option>
+                  <option value="04 - Special Account - Foreign Assisted/Foreign Grants Fund" ${
+                    (AppState.purchaseOrderDraft.iarFormData &&
+                      AppState.purchaseOrderDraft.iarFormData.fund_cluster) ===
+                    '04 - Special Account - Foreign Assisted/Foreign Grants Fund'
+                      ? 'selected'
+                      : ''
+                  }>04 - Special Account - Foreign Assisted/Foreign Grants Fund</option>
+                  <option value="05 - Internally Generated Funds" ${
+                    (AppState.purchaseOrderDraft.iarFormData &&
+                      AppState.purchaseOrderDraft.iarFormData.fund_cluster) ===
+                    '05 - Internally Generated Funds'
+                      ? 'selected'
+                      : ''
+                  }>05 - Internally Generated Funds</option>
+                  <option value="06 - Business Related Funds" ${
+                    (AppState.purchaseOrderDraft.iarFormData &&
+                      AppState.purchaseOrderDraft.iarFormData.fund_cluster) ===
+                    '06 - Business Related Funds'
+                      ? 'selected'
+                      : ''
+                  }>06 - Business Related Funds</option>
+                  <option value="07 - Trust Receipts" ${
+                    (AppState.purchaseOrderDraft.iarFormData &&
+                      AppState.purchaseOrderDraft.iarFormData.fund_cluster) ===
+                    '07 - Trust Receipts'
+                      ? 'selected'
+                      : ''
+                  }>07 - Trust Receipts</option>
+                </select>
               </div>
             </div>
           </div>
@@ -11668,7 +12137,11 @@ function renderDynamicPOForms() {
                   <i data-lucide="file-text" style="width: 14px; height: 14px; color: #be185d;"></i>
                   PO No.
                 </label>
-                <input type="text" class="form-input" id="iar_po_no" placeholder="Purchase Order Number" 
+                <input type="text" class="form-input" id="iar_po_no" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData.po_number) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','po_number', this.value)" placeholder="Purchase Order Number" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11678,7 +12151,11 @@ function renderDynamicPOForms() {
                   <i data-lucide="calendar" style="width: 14px; height: 14px; color: #be185d;"></i>
                   PO Date
                 </label>
-                <input type="date" class="form-input" id="iar_po_date" 
+                <input type="date" class="form-input" id="iar_po_date" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData.po_date) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','po_date', this.value)" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11688,7 +12165,12 @@ function renderDynamicPOForms() {
                   <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #be185d;"></i>
                   Requisitioning Office
                 </label>
-                <input type="text" class="form-input" id="iar_requisitioning_office" placeholder="Office requesting items" 
+                <input type="text" class="form-input" id="iar_requisitioning_office" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData
+                      .requisitioning_office) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','requisitioning_office', this.value)" placeholder="Office requesting items" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11698,7 +12180,12 @@ function renderDynamicPOForms() {
                   <i data-lucide="hash" style="width: 14px; height: 14px; color: #be185d;"></i>
                   Responsibility Center Code
                 </label>
-                <input type="text" class="form-input" id="iar_responsibility_center_code" placeholder="RCC number" 
+                <input type="text" class="form-input" id="iar_responsibility_center_code" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData
+                      .responsibility_center_code) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','responsibility_center_code', this.value)" placeholder="RCC number" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11708,7 +12195,12 @@ function renderDynamicPOForms() {
                   <i data-lucide="calendar" style="width: 14px; height: 14px; color: #be185d;"></i>
                   Responsibility Date
                 </label>
-                <input type="date" class="form-input" id="iar_responsibility_date" 
+                <input type="date" class="form-input" id="iar_responsibility_date" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData
+                      .responsibility_date) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','responsibility_date', this.value)" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11728,7 +12220,11 @@ function renderDynamicPOForms() {
                   <i data-lucide="file-text" style="width: 14px; height: 14px; color: #be185d;"></i>
                   Invoice Number
                 </label>
-                <input type="text" class="form-input" id="iar_invoice_no" placeholder="Invoice number from supplier" 
+                <input type="text" class="form-input" id="iar_invoice_no" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData.invoice_number) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','invoice_number', this.value)" placeholder="Invoice number from supplier" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11738,7 +12234,11 @@ function renderDynamicPOForms() {
                   <i data-lucide="calendar" style="width: 14px; height: 14px; color: #be185d;"></i>
                   Invoice Date
                 </label>
-                <input type="date" class="form-input" id="iar_invoice_date" 
+                <input type="date" class="form-input" id="iar_invoice_date" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData.invoice_date) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','invoice_date', this.value)" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11758,7 +12258,11 @@ function renderDynamicPOForms() {
                   <i data-lucide="calendar" style="width: 14px; height: 14px; color: #be185d;"></i>
                   Date Inspected
                 </label>
-                <input type="date" class="form-input" id="iar_date_inspected" 
+                <input type="date" class="form-input" id="iar_date_inspected" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData.date_inspected) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','date_inspected', this.value)" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11768,7 +12272,11 @@ function renderDynamicPOForms() {
                   <i data-lucide="calendar" style="width: 14px; height: 14px; color: #be185d;"></i>
                   Date Received
                 </label>
-                <input type="date" class="form-input" id="iar_date_received" 
+                <input type="date" class="form-input" id="iar_date_received" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData.date_received) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','date_received', this.value)" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11778,7 +12286,12 @@ function renderDynamicPOForms() {
                   <i data-lucide="check-circle" style="width: 14px; height: 14px; color: #be185d;"></i>
                   Inspection Status
                 </label>
-                <select class="form-select" id="iar_inspection_status" 
+                <select class="form-select" id="iar_inspection_status" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData
+                      .inspection_status) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','inspection_status', this.value)" 
                         style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                         onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                         onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11793,7 +12306,12 @@ function renderDynamicPOForms() {
                   <i data-lucide="user-check" style="width: 14px; height: 14px; color: #be185d;"></i>
                   Inspection Officer Label
                 </label>
-                <input type="text" class="form-input" id="iar_inspection_officer_label" placeholder="Name/title of inspection officer" 
+                <input type="text" class="form-input" id="iar_inspection_officer_label" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData
+                      .inspection_officer_label) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','inspection_officer_label', this.value)" placeholder="Name/title of inspection officer" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11803,7 +12321,12 @@ function renderDynamicPOForms() {
                   <i data-lucide="check-circle" style="width: 14px; height: 14px; color: #be185d;"></i>
                   Acceptance Status
                 </label>
-                <select class="form-select" id="iar_acceptance_status" 
+                <select class="form-select" id="iar_acceptance_status" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData
+                      .acceptance_status) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','acceptance_status', this.value)" 
                         style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                         onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                         onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11818,7 +12341,11 @@ function renderDynamicPOForms() {
                   <i data-lucide="user" style="width: 14px; height: 14px; color: #be185d;"></i>
                   Custodian Label
                 </label>
-                <input type="text" class="form-input" id="iar_custodian_label" placeholder="Name/title of custodian" 
+                <input type="text" class="form-input" id="iar_custodian_label" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData.custodian_label) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','custodian_label', this.value)" placeholder="Name/title of custodian" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11838,7 +12365,12 @@ function renderDynamicPOForms() {
                   <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
                   Name
                 </label>
-                <input type="text" class="form-input" id="iar_inspected_by_name" placeholder="Full name of inspector" 
+                <input type="text" class="form-input" id="iar_inspected_by_name" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData
+                      .inspected_by_name) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','inspected_by_name', this.value)" placeholder="Full name of inspector" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11848,7 +12380,12 @@ function renderDynamicPOForms() {
                   <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
                   Position
                 </label>
-                <input type="text" class="form-input" id="iar_inspected_by_position" placeholder="e.g., Inspector" 
+                <input type="text" class="form-input" id="iar_inspected_by_position" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData
+                      .inspected_by_position) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','inspected_by_position', this.value)" placeholder="e.g., Inspector" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11858,7 +12395,12 @@ function renderDynamicPOForms() {
                   <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
                   Date
                 </label>
-                <input type="date" class="form-input" id="iar_inspected_by_date" 
+                <input type="date" class="form-input" id="iar_inspected_by_date" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData
+                      .inspected_by_date) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','inspected_by_date', this.value)" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11878,7 +12420,12 @@ function renderDynamicPOForms() {
                   <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
                   Name
                 </label>
-                <input type="text" class="form-input" id="iar_inspected_by_name_2" placeholder="Full name of second inspector" 
+                <input type="text" class="form-input" id="iar_inspected_by_name_2" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData
+                      .inspected_by_name_2) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','inspected_by_name_2', this.value)" placeholder="Full name of second inspector" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11888,7 +12435,12 @@ function renderDynamicPOForms() {
                   <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
                   Position
                 </label>
-                <input type="text" class="form-input" id="iar_inspected_by_position_2" placeholder="e.g., Inspector" 
+                <input type="text" class="form-input" id="iar_inspected_by_position_2" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData
+                      .inspected_by_position_2) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','inspected_by_position_2', this.value)" placeholder="e.g., Inspector" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11898,7 +12450,12 @@ function renderDynamicPOForms() {
                   <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
                   Date
                 </label>
-                <input type="date" class="form-input" id="iar_inspected_by_date_2" 
+                <input type="date" class="form-input" id="iar_inspected_by_date_2" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData
+                      .inspected_by_date_2) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','inspected_by_date_2', this.value)" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -11970,17 +12527,53 @@ async function deleteRequest(requestId) {
     'Delete Request'
   )
   if (!ok) return
+  // Try to find the request locally so we can decide whether to delete server-side
+  const request = (AppState.newRequests || []).find((r) => r.id === requestId)
 
-  // Remove from newRequests
+  // If the request exists and has a databaseId, attempt server-side deletion first
+  if (request && request.databaseId) {
+    try {
+      const response = await fetch(
+        `/api/purchase-orders/${request.databaseId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': getCsrfToken(),
+          },
+          credentials: 'same-origin',
+        }
+      )
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        const message = body.message || 'Failed to delete request on server.'
+        showAlert(message, 'error')
+        return
+      }
+
+      // server deletion succeeded; we'll show a single consolidated success alert below
+    } catch (err) {
+      console.error('Error deleting request from API', err)
+      showAlert(
+        'Failed to delete request from server. Try again later.',
+        'error'
+      )
+      return
+    }
+  }
+
+  // Remove from local lists (always do this client-side so UI updates)
   AppState.newRequests = AppState.newRequests.filter((r) => r.id !== requestId)
-
-  // If you want to handle other tables later:
   AppState.pendingRequests = AppState.pendingRequests.filter(
     (r) => r.id !== requestId
   )
   AppState.completedRequests = AppState.completedRequests.filter(
     (r) => r.id !== requestId
   )
+
+  // Show one consolidated success alert (server deletion succeeded or local removal)
+  showAlert('Request deleted successfully.', 'success')
 
   // Refresh table
   loadPageContent('new-request')
@@ -20609,6 +21202,15 @@ async function initStatusManagement(filter = 'all') {
     .getElementById('export-status-btn')
     ?.addEventListener('click', exportStatusCSV)
 
+  // Add click handlers for status cards
+  const statusCards = document.querySelectorAll('.status-card')
+  statusCards.forEach((card) => {
+    card.addEventListener('click', function () {
+      const status = this.getAttribute('data-status')
+      filterByStatus(status)
+    })
+  })
+
   refreshStatusCards()
 }
 
@@ -20850,6 +21452,35 @@ function applyFilters() {
 
     row.style.display = match ? '' : 'none'
   })
+}
+
+// ===== Filter by Status Card =====
+function filterByStatus(status) {
+  // Update current filter
+  AppState.currentStatusFilter = status
+
+  // Update table rows
+  const tbody = document.getElementById('status-table-body')
+  if (tbody) {
+    tbody.innerHTML = renderStatusRows(status)
+  }
+
+  // Update card active states
+  const statusCards = document.querySelectorAll('.status-card')
+  statusCards.forEach((card) => {
+    const cardStatus = card.getAttribute('data-status')
+    if (cardStatus === status) {
+      card.classList.add('active')
+    } else {
+      card.classList.remove('active')
+    }
+  })
+
+  // Clear other filters when switching status
+  document.getElementById('searchInput').value = ''
+  document.getElementById('deptInput').value = ''
+  document.getElementById('deptSelect').value = 'All Department'
+  document.getElementById('prioritySelect').value = 'Filter by Priority'
 }
 
 // ===== Return Modal with Remarks =====

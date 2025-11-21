@@ -298,6 +298,12 @@ Click the bell icon to view notifications:
 - **Rejected**: Not approved (you'll receive feedback)
 - **Completed**: Purchase order created and processed
 
+### Deleting a Request
+
+- On the **New Request** page there is a delete (trash) button in the Action column. Clicking it shows a confirmation dialog.
+- If the request was saved on the server (created), the system will call the API to delete it and then remove it from the list.
+- If the request exists only locally (a draft or unsaved item), it will be removed from your list immediately after confirmation.
+
 ### 5.2 Viewing Your Purchase Requests
 
 **View All Your Requests:**
@@ -489,6 +495,14 @@ You'll receive automatic emails when:
 - Request status changes to "Completed"
 
 ### 6.3 Document Generation
+
+### 6.2.1 Form Data Retention (Drafts)
+
+- The PO creation wizard automatically retains user inputs as you work across the multi-step form. If you leave the page or navigate away, your in-progress data is saved in your browser (localStorage). Note: automatic restoration has been disabled for the standard "Create Purchase Order" action to avoid unintentionally loading older drafts — Create will open a clean form.
+- This includes the Step 3 "Items" list _and_ the dynamic form sections (ICS, RIS, PAR, IAR) — any values you entered in those forms will also be saved and restored.
+- The system saves a per-user draft in the browser (localStorage) and restores the draft automatically when you open the wizard again.
+- Drafts are cleared after a successful creation of the Purchase Order.
+- If you want to start a brand new PO (discard existing draft) you can clear your browser data for the site or implement a future UI button to reset the draft.
 
 **Available Documents:**
 
@@ -1695,4 +1709,3 @@ Your input helps us make the system better for everyone.
 **Thank you for using the Supply and Property Management System!**
 
 For the latest updates and announcements, check the system dashboard or contact your administrator.
-

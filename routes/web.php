@@ -16,6 +16,16 @@ Route::get('/', function () {
         : redirect()->route('login');
 });
 
+// Health check endpoint for deployment verification
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'ok',
+        'timestamp' => now()->toISOString(),
+        'version' => app()->version(),
+        'environment' => app()->environment(),
+    ]);
+});
+
 Route::get('/login', [AccessController::class, 'show'])->name('login');
 Route::post('/login', [AccessController::class, 'authenticate'])
     ->middleware('throttle:5,1') // 5 attempts per minute

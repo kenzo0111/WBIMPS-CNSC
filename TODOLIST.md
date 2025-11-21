@@ -10,6 +10,18 @@
 - [x] Set Up Conditional Requisition Data Retrieval (Based on Item Form Check)
 - [x] Complete Database Implementation for the Dashboard
 
+## Recent Updates (November 21, 2025)
+
+### Status Management Consolidation
+
+- [x] Consolidated separate status management pages (Incoming, Received, Finished, Cancelled, Rejected, Returned) into a single "Status Management" page
+- [x] Moved the consolidated Status Management page into the Requisition section of the sidebar navigation
+- [x] Updated dashboard.blade.php to reflect the new navigation structure
+- [x] Modified dashboard.js to handle the new "status-management" page and removed unused status page cases
+- [x] Rebuilt frontend assets to apply changes
+
+**Details**: Status management is now accessible from the Requisition submenu as a single page showing all request statuses with filtering capabilities, instead of separate pages for each status type.
+
 ## Recent Updates (November 5, 2025)
 
 ### PAR and IAR PDF Download Feature
@@ -33,3 +45,11 @@
 - [x] Cleaned up unnecessary helper methods
 
 **Details**: See `RIS_REFACTOR_SUMMARY.md` for complete documentation.
+
+### Purchase Order — Form Data Retention
+
+- [x] Added client-side PO draft persistence so the wizard restores user inputs if they navigate away and come back (per-user localStorage key)
+
+### New Request — Delete button
+
+- [x] Make the Delete button on the New Request page perform server-side deletion (if saved) and remove the request from the UI

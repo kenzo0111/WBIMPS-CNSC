@@ -33,7 +33,7 @@ class AccessController extends Controller
         /** @var \App\Models\User|null $user */
         $user = User::where('email', $credentials['email'])->first();
 
-        if (!$user || !Hash::check($credentials['password'], $user->password)) {
+        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             return response()->json([
                 'message' => 'Invalid email or password.',
             ], 422);
@@ -51,7 +51,7 @@ class AccessController extends Controller
         // Record login activity
         try {
             Activity::create([
-                'action' => 'User logged in: ' . ($user->email ?? $user->name ?? 'Unknown'),
+                'action' => 'User logged in: '.($user->email ?? $user->name ?? 'Unknown'),
                 'meta' => json_encode(['user_id' => $user->id ?? null]),
             ]);
         } catch (\Throwable $e) {
@@ -87,7 +87,7 @@ class AccessController extends Controller
         // Record logout activity
         try {
             Activity::create([
-                'action' => 'User logged out: ' . ($user?->email ?? $user?->name ?? 'Unknown'),
+                'action' => 'User logged out: '.($user?->email ?? $user?->name ?? 'Unknown'),
                 'meta' => json_encode(['user_id' => $user?->id ?? null]),
             ]);
         } catch (\Throwable $e) {

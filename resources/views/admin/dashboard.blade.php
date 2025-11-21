@@ -136,47 +136,9 @@
                                 <span>Completed Request</span>
                             </button>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Status Management -->
-                <div class="nav-group">
-                    <button class="nav-button nav-header" data-group="status">
-                        <div class="nav-content">
-                            <i data-lucide="check-square" class="icon"></i>
-                            <span>Status Management</span>
-                        </div>
-                        <i data-lucide="chevron-right" class="chevron"></i>
-                    </button>
-                    <div class="nav-submenu">
-                        <div class="nav-item" data-page="incoming">
+                        <div class="nav-item" data-page="status-management">
                             <button class="nav-button">
-                                <span>Incoming</span>
-                            </button>
-                        </div>
-                        <div class="nav-item" data-page="received">
-                            <button class="nav-button">
-                                <span>Received</span>
-                            </button>
-                        </div>
-                        <div class="nav-item" data-page="finished">
-                            <button class="nav-button">
-                                <span>Finished</span>
-                            </button>
-                        </div>
-                        <div class="nav-item" data-page="cancelled">
-                            <button class="nav-button">
-                                <span>Cancelled</span>
-                            </button>
-                        </div>
-                        <div class="nav-item" data-page="rejected">
-                            <button class="nav-button">
-                                <span>Rejected</span>
-                            </button>
-                        </div>
-                        <div class="nav-item" data-page="returned">
-                            <button class="nav-button">
-                                <span>Returned</span>
+                                <span>Status Management</span>
                             </button>
                         </div>
                     </div>

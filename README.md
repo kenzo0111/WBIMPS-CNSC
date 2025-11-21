@@ -11,11 +11,24 @@ A Laravel-based web application for managing inventory and procurement workflows
 
 ## 🏗️ Tech Stack
 
-- **Backend:** Laravel 11, PHP 8.2+
+- **Backend:** Laravel 12, PHP 8.2+
 - **Frontend:** Blade, Vite, modern ES modules, Lucide icons
 - **Styling:** Tailored CSS modules per view (AccessSystem, dashboard, etc.)
 
-## 🚀 Getting Started
+## 🚀 Deployment
+
+### Railway (Recommended)
+
+The application is configured for easy deployment to Railway:
+
+1. **Connect Repository**: Link your GitHub repository to Railway
+2. **Automatic Deployment**: Railway auto-detects Laravel and deploys automatically
+3. **Database**: MySQL database is provisioned automatically
+4. **Environment**: Set environment variables from `.env.production`
+
+See **[RAILWAY_DEPLOYMENT.md](RAILWAY_DEPLOYMENT.md)** for detailed deployment instructions.
+
+### Local Development
 
 ```bash
 # Install PHP dependencies
@@ -25,7 +38,7 @@ composer install
 npm install
 
 # Build assets (or use `npm run dev` during development)
-
+npm run build
 
 # Configure your environment
 cp .env.example .env

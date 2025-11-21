@@ -3649,6 +3649,29 @@ textarea:focus {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
 }
 
+.status-card.active {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  border-width: 4px;
+  opacity: 0.95;
+}
+
+.status-card.active::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.3),
+    rgba(147, 51, 234, 0.3)
+  );
+  border-radius: 12px;
+  z-index: -1;
+}
+
 .status-card h3 {
   margin: 0;
   font-size: 18px;
