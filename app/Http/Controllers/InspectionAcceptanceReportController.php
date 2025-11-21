@@ -9,10 +9,14 @@ class InspectionAcceptanceReportController extends Controller
 {
     public function generatePDF(Request $request)
     {
+        $user = $request->user();
+        if (!($user && ($user->is_admin === true || $user->isSupplyOfficer() || $user->isOfficeAssistant()))) {
+            abort(403, 'Forbidden');
+        }
         $data = $request->all();
 
         $data['items'] = collect($request->input('items', []))
-            ->filter(fn ($item) => filled($item['description'] ?? null))
+            ->filter(fn($item) => filled($item['description'] ?? null))
             ->map(function ($item) {
                 return [
                     'stock_no' => $item['stock_number'] ?? $item['stock_no'] ?? '',
@@ -60,15 +64,19 @@ class InspectionAcceptanceReportController extends Controller
      */
     public function downloadPDF($id)
     {
+        $user = request()->user();
+        if (!($user && ($user->is_admin === true || $user->isSupplyOfficer() || $user->isOfficeAssistant()))) {
+            abort(403, 'Forbidden');
+        }
         // First, try to find IAR by its own ID
         $iar = \App\Models\InspectionAcceptanceReport::find($id);
 
         // If not found, try to find IAR by purchase_order_id
-        if (! $iar) {
+        if (!$iar) {
             $iar = \App\Models\InspectionAcceptanceReport::where('purchase_order_id', $id)->first();
         }
 
-        if (! $iar) {
+        if (!$iar) {
             abort(404, 'Inspection Acceptance Report not found');
         }
 
@@ -104,7 +112,7 @@ class InspectionAcceptanceReportController extends Controller
         $pdf = Pdf::loadView('pdf.inspection_acceptance_report_pdf', $viewData)
             ->setPaper('a4', 'portrait');
 
-        return $pdf->download('inspection_acceptance_report_'.($iar->iar_no ?? $id).'.pdf');
+        return $pdf->download('inspection_acceptance_report_' . ($iar->iar_no ?? $id) . '.pdf');
     }
 
     /**
@@ -114,17 +122,21 @@ class InspectionAcceptanceReportController extends Controller
      */
     public function preview($id = null)
     {
+        $user = request()->user();
+        if (!($user && ($user->is_admin === true || $user->isSupplyOfficer() || $user->isOfficeAssistant()))) {
+            abort(403, 'Forbidden');
+        }
         // If an ID is provided, load the inspection acceptance report from the database
         if ($id) {
             // First, try to find IAR by its own ID
             $iar = \App\Models\InspectionAcceptanceReport::find($id);
 
             // If not found, try to find IAR by purchase_order_id
-            if (! $iar) {
+            if (!$iar) {
                 $iar = \App\Models\InspectionAcceptanceReport::where('purchase_order_id', $id)->first();
             }
 
-            if (! $iar) {
+            if (!$iar) {
                 abort(404, 'Inspection Acceptance Report not found');
             }
 
@@ -150,7 +162,7 @@ class InspectionAcceptanceReportController extends Controller
 
             $pdf = Pdf::loadView('pdf.inspection_acceptance_report_pdf', $viewData)->setPaper('a4', 'portrait');
 
-            return $pdf->stream('inspection_acceptance_report_'.($iar->iar_no ?? $id).'.pdf');
+            return $pdf->stream('inspection_acceptance_report_' . ($iar->iar_no ?? $id) . '.pdf');
         }
 
         // Preview with clean/empty placeholders (no sample data)

@@ -19,6 +19,11 @@ class UserController extends Controller
      */
     public function index()
     {
+        $user = request()->user();
+        if (!($user && $user->is_admin === true)) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
         return User::select('id', 'name', 'email', 'role', 'status', 'is_admin', 'created_at')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -29,6 +34,10 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
+        $user = $request->user();
+        if (!($user && $user->is_admin === true)) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
@@ -76,6 +85,10 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user)
     {
+        $authUser = $request->user();
+        if (!($authUser && $authUser->is_admin === true)) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
@@ -97,6 +110,10 @@ class UserController extends Controller
      */
     public function destroy(User $user)
     {
+        $authUser = request()->user();
+        if (!($authUser && $authUser->is_admin === true)) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
         $user->delete();
 
         return response()->json([

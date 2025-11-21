@@ -39,6 +39,7 @@ class ItemController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorize('create', Item::class);
         $validated = $request->validate([
             'sku' => 'required|string|unique:items',
             'name' => 'required|string|max:255',
@@ -68,8 +69,9 @@ class ItemController extends Controller
      */
     public function update(Request $request, Item $item)
     {
+        $this->authorize('update', $item);
         $validated = $request->validate([
-            'sku' => 'required|string|unique:items,sku,'.$item->id,
+            'sku' => 'required|string|unique:items,sku,' . $item->id,
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'category_id' => 'nullable|exists:categories,id',
@@ -89,6 +91,7 @@ class ItemController extends Controller
      */
     public function destroy(Item $item)
     {
+        $this->authorize('delete', $item);
         $item->delete();
 
         return response()->json(['message' => 'Item deleted']);

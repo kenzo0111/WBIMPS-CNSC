@@ -10,13 +10,17 @@ class PurchaseOrderController extends Controller
 {
     public function generatePDF(Request $request)
     {
+        $user = $request->user();
+        if (!($user && ($user->is_admin === true || $user->isSupplyOfficer() || $user->isOfficeAssistant()))) {
+            abort(403, 'Forbidden');
+        }
         $data = $request->all();
 
         // Debug: log the incoming payload to help track problematic fields
         logger()->debug('generatePDF payload', is_array($data) ? $data : ['payload' => $data]);
 
         $data['items'] = collect($request->input('items', []))
-            ->filter(fn ($item) => filled($item['description'] ?? $item['detailedDescription'] ?? null))
+            ->filter(fn($item) => filled($item['description'] ?? $item['detailedDescription'] ?? null))
             ->map(function ($item, $index) {
                 $quantity = (float) ($item['quantity'] ?? 0);
                 $unitCost = (float) ($item['unit_cost'] ?? 0);
@@ -145,11 +149,15 @@ class PurchaseOrderController extends Controller
      */
     public function preview($id = null)
     {
+        $user = request()->user();
+        if (!($user && ($user->is_admin === true || $user->isSupplyOfficer() || $user->isOfficeAssistant()))) {
+            abort(403, 'Forbidden');
+        }
         // If an ID is provided, load the purchase order from the database
         if ($id) {
             $purchaseOrder = \App\Models\PurchaseOrder::find($id);
 
-            if (! $purchaseOrder) {
+            if (!$purchaseOrder) {
                 abort(404, 'Purchase Order not found');
             }
 
@@ -197,7 +205,7 @@ class PurchaseOrderController extends Controller
 
             $pdf = Pdf::loadView('pdf.purchase_order_pdf', $data)->setPaper('a4', 'portrait');
 
-            return $pdf->stream('purchase_order_'.$purchaseOrder->po_number.'.pdf');
+            return $pdf->stream('purchase_order_' . $purchaseOrder->po_number . '.pdf');
         }
 
         // Provide empty/blank data so the preview renders a clean sheet (layout only)
@@ -236,9 +244,13 @@ class PurchaseOrderController extends Controller
      */
     public function downloadPDF($id)
     {
+        $user = request()->user();
+        if (!($user && ($user->is_admin === true || $user->isSupplyOfficer() || $user->isOfficeAssistant()))) {
+            abort(403, 'Forbidden');
+        }
         $purchaseOrder = \App\Models\PurchaseOrder::find($id);
 
-        if (! $purchaseOrder) {
+        if (!$purchaseOrder) {
             abort(404, 'Purchase Order not found');
         }
 
@@ -299,6 +311,6 @@ class PurchaseOrderController extends Controller
             logger()->warning('Failed to record activity for PurchaseOrder PDF download', ['error' => $e->getMessage()]);
         }
 
-        return $pdf->download('purchase_order_'.$purchaseOrder->po_number.'.pdf');
+        return $pdf->download('purchase_order_' . $purchaseOrder->po_number . '.pdf');
     }
 }

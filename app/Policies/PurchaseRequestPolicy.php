@@ -58,8 +58,8 @@ class PurchaseRequestPolicy
      */
     public function approve(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        // Only admins can approve purchase requests
-        return $user->is_admin === true && $purchaseRequest->status === 'pending';
+        // Admins and Supply Officers can approve pending purchase requests
+        return ($user->is_admin === true || $user->isSupplyOfficer()) && $purchaseRequest->status === 'pending';
     }
 
     /**
@@ -67,8 +67,8 @@ class PurchaseRequestPolicy
      */
     public function reject(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        // Only admins can reject purchase requests
-        return $user->is_admin === true && $purchaseRequest->status === 'pending';
+        // Admins and Supply Officers can reject pending purchase requests
+        return ($user->is_admin === true || $user->isSupplyOfficer()) && $purchaseRequest->status === 'pending';
     }
 
     /**
@@ -76,7 +76,7 @@ class PurchaseRequestPolicy
      */
     public function restore(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        return $user->is_admin === true;
+        return $user->is_admin === true || $user->isSupplyOfficer();
     }
 
     /**
@@ -84,6 +84,6 @@ class PurchaseRequestPolicy
      */
     public function forceDelete(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        return $user->is_admin === true;
+        return $user->is_admin === true || $user->isSupplyOfficer();
     }
 }

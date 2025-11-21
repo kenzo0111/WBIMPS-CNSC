@@ -76,13 +76,17 @@ class RequisitionIssueSlipController extends Controller
 
     public function generatePDF(Request $request)
     {
+        $user = $request->user();
+        if (!($user && ($user->is_admin === true || $user->isSupplyOfficer() || $user->isOfficeAssistant()))) {
+            abort(403, 'Forbidden');
+        }
         $data = $request->all();
 
         // Debug: log the incoming payload
         logger()->debug('generatePDF RIS payload', is_array($data) ? $data : ['payload' => $data]);
 
         $data['items'] = collect($request->input('items', []))
-            ->filter(fn ($item) => filled($item['description'] ?? null))
+            ->filter(fn($item) => filled($item['description'] ?? null))
             ->map(function ($item) {
                 return [
                     'stock_no' => $item['stock_no'] ?? '',
@@ -117,23 +121,27 @@ class RequisitionIssueSlipController extends Controller
      */
     public function preview($id = null)
     {
+        $user = request()->user();
+        if (!($user && ($user->is_admin === true || $user->isSupplyOfficer() || $user->isOfficeAssistant()))) {
+            abort(403, 'Forbidden');
+        }
         // If an ID is provided, load the requisition issue slip from the database
         if ($id) {
             // First, try to find RIS by its own ID
             $ris = \App\Models\RequisitionIssueSlip::find($id);
 
             // If not found, try to find RIS by purchase_order_id
-            if (! $ris) {
+            if (!$ris) {
                 $ris = \App\Models\RequisitionIssueSlip::where('purchase_order_id', $id)->first();
             }
 
-            if (! $ris) {
+            if (!$ris) {
                 abort(404, 'Requisition Issue Slip not found');
             }
 
             $pdf = Pdf::loadView('pdf.requisition_issue_slips_pdf', ['ris' => $ris])->setPaper('a4', 'portrait');
 
-            return $pdf->stream('requisition_issue_slip_'.$ris->ris_no.'.pdf');
+            return $pdf->stream('requisition_issue_slip_' . $ris->ris_no . '.pdf');
         }
 
         // Provide empty/blank data so the preview renders a clean sheet (layout only)
@@ -171,15 +179,19 @@ class RequisitionIssueSlipController extends Controller
      */
     public function downloadPDF($id)
     {
+        $user = request()->user();
+        if (!($user && ($user->is_admin === true || $user->isSupplyOfficer() || $user->isOfficeAssistant()))) {
+            abort(403, 'Forbidden');
+        }
         // First, try to find RIS by its own ID
         $ris = \App\Models\RequisitionIssueSlip::find($id);
 
         // If not found, try to find RIS by purchase_order_id
-        if (! $ris) {
+        if (!$ris) {
             $ris = \App\Models\RequisitionIssueSlip::where('purchase_order_id', $id)->first();
         }
 
-        if (! $ris) {
+        if (!$ris) {
             abort(404, 'Requisition Issue Slip not found');
         }
 
@@ -198,6 +210,6 @@ class RequisitionIssueSlipController extends Controller
             logger()->warning('Failed to record activity for RIS PDF download', ['error' => $e->getMessage()]);
         }
 
-        return $pdf->download('requisition_issue_slip_'.$ris->ris_no.'.pdf');
+        return $pdf->download('requisition_issue_slip_' . $ris->ris_no . '.pdf');
     }
 }

@@ -30,8 +30,8 @@ class ItemPolicy
      */
     public function create(User $user): bool
     {
-        // Only admins can create items
-        return $user->is_admin === true;
+        // Admins and Supply Officers can create items
+        return $user->is_admin === true || $user->isSupplyOfficer();
     }
 
     /**
@@ -39,8 +39,8 @@ class ItemPolicy
      */
     public function update(User $user, Item $item): bool
     {
-        // Only admins can update items
-        return $user->is_admin === true;
+        // Admins and Supply Officers can update items
+        return $user->is_admin === true || $user->isSupplyOfficer();
     }
 
     /**
@@ -48,8 +48,8 @@ class ItemPolicy
      */
     public function delete(User $user, Item $item): bool
     {
-        // Only admins can delete items
-        return $user->is_admin === true;
+        // Admins and Supply Officers can delete items
+        return $user->is_admin === true || $user->isSupplyOfficer();
     }
 
     /**
@@ -57,8 +57,8 @@ class ItemPolicy
      */
     public function restore(User $user, Item $item): bool
     {
-        // Only admins can restore items
-        return $user->is_admin === true;
+        // Admins and Supply Officers can restore items
+        return $user->is_admin === true || $user->isSupplyOfficer();
     }
 
     /**
@@ -66,7 +66,7 @@ class ItemPolicy
      */
     public function forceDelete(User $user, Item $item): bool
     {
-        // Only admins can force delete items
-        return $user->is_admin === true;
+        // Admins and Supply Officers can force delete items
+        return $user->is_admin === true || $user->isSupplyOfficer();
     }
 }

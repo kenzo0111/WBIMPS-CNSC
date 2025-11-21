@@ -73,4 +73,28 @@ class User extends Authenticatable
     {
         return (bool) ($this->is_admin ?? false);
     }
+
+    /**
+     * Check whether the user has the given role (case-insensitive).
+     */
+    public function hasRole(string $role): bool
+    {
+        return isset($this->role) && strcasecmp(trim($this->role), trim($role)) === 0;
+    }
+
+    /**
+     * Convenience helper to check for Supply Officer role.
+     */
+    public function isSupplyOfficer(): bool
+    {
+        return $this->hasRole('Supply Officer');
+    }
+
+    /**
+     * Convenience helper to check for Office Assistant role.
+     */
+    public function isOfficeAssistant(): bool
+    {
+        return $this->hasRole('Office Assistant');
+    }
 }

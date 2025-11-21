@@ -97,6 +97,41 @@ test('can delete a supplier', function () {
     ]);
 });
 
+test('office assistant can manage suppliers (create, update, delete)', function () {
+    $user = User::factory()->create(['is_admin' => false, 'role' => 'Office Assistant', 'status' => 'active']);
+    $this->actingAs($user, 'web');
+
+    $response = $this->postJson('/api/suppliers', [
+        'name' => 'OA Supplier',
+        'email' => 'oa@supplier.test',
+    ]);
+
+    $response->assertStatus(201)->assertJson(['data' => ['name' => 'OA Supplier']]);
+
+    $id = $response->json('data.id');
+
+    $this->putJson("/api/suppliers/{$id}", ['name' => 'OA Updated'])->assertStatus(200);
+
+    $this->deleteJson("/api/suppliers/{$id}")->assertStatus(200);
+});
+
+test('supply officer has full supplier access', function () {
+    $user = User::factory()->create(['is_admin' => false, 'role' => 'Supply Officer', 'status' => 'active']);
+    $this->actingAs($user, 'web');
+
+    $response = $this->postJson('/api/suppliers', [
+        'name' => 'SO Supplier',
+        'email' => 'so@supplier.test',
+    ]);
+
+    $response->assertStatus(201);
+
+    $id = $response->json('data.id');
+
+    $this->putJson("/api/suppliers/{$id}", ['name' => 'SO Updated'])->assertStatus(200);
+    $this->deleteJson("/api/suppliers/{$id}")->assertStatus(200);
+});
+
 test('validates required fields when creating supplier', function () {
     $response = $this->postJson('/api/suppliers', []);
 

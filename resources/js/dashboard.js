@@ -4892,10 +4892,26 @@ function generateStockInPage() {
                     </h1>
                     <p class="page-subtitle">Record incoming inventory and stock receipts</p>
                 </div>
+                ${
+                  [
+                    'Student Assistant',
+                    'Office Assistant',
+                    'Supply Officer',
+                    'System Admin',
+                    'Administrator',
+                  ].includes(
+                    (AppState.currentUser && AppState.currentUser.role) ||
+                      (window.CURRENT_USER && window.CURRENT_USER.role) ||
+                      'User'
+                  )
+                    ? `
                 <button class="btn btn-primary" onclick="openStockInModal('create')">
                     <i data-lucide="plus" class="icon"></i>
                     Add Stock In
                 </button>
+                `
+                    : ''
+                }
             </div>
         </div>
         
@@ -4985,10 +5001,26 @@ function generateStockOutPage() {
                     </h1>
                     <p class="page-subtitle">Record outgoing inventory and issued items</p>
                 </div>
+                ${
+                  [
+                    'Student Assistant',
+                    'Office Assistant',
+                    'Supply Officer',
+                    'System Admin',
+                    'Administrator',
+                  ].includes(
+                    (AppState.currentUser && AppState.currentUser.role) ||
+                      (window.CURRENT_USER && window.CURRENT_USER.role) ||
+                      'User'
+                  )
+                    ? `
                 <button class="btn btn-primary" onclick="openStockOutModal('create')">
                     <i data-lucide="plus" class="icon"></i>
                     Issue Stock
                 </button>
+                `
+                    : ''
+                }
             </div>
         </div>
         
@@ -15318,6 +15350,11 @@ function generateUserModal(mode = 'view', userData = null) {
                                         : ''
                                     }>Administrator</option>
                                     <option ${
+                                      userData?.role === 'Supply Officer'
+                                        ? 'selected'
+                                        : ''
+                                    }>Supply Officer</option>
+                                    <option ${
                                       userData?.role === 'System Admin'
                                         ? 'selected'
                                         : ''
@@ -20265,12 +20302,31 @@ function renderStockInRow(r, index) {
       <td style="color: #6b7280;">${receivedBy}</td>
       <td>
         <div class="table-actions">
-          <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteStockIn('${id}')">
-            <i data-lucide="trash-2"></i>
+          <button class="icon-action-btn" title="View" onclick="openStockInModal('view','${id}')">
+            <i data-lucide="eye"></i>
           </button>
+          ${
+            [
+              'Student Assistant',
+              'Office Assistant',
+              'Supply Officer',
+              'System Admin',
+              'Administrator',
+            ].includes(
+              (AppState.currentUser && AppState.currentUser.role) ||
+                (window.CURRENT_USER && window.CURRENT_USER.role) ||
+                'User'
+            )
+              ? `
           <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openStockInModal('edit','${id}')">
             <i data-lucide="edit"></i>
           </button>
+          <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteStockIn('${id}')">
+            <i data-lucide="trash-2"></i>
+          </button>
+          `
+              : ''
+          }
         </div>
       </td>
     </tr>
@@ -20895,15 +20951,31 @@ function renderStockOutRow(s) {
             }">${status}</span></td>
             <td>
                 <div class="table-actions">
-                    <button class="icon-action-btn" title="View" onclick="viewStockOutDetails('${id}')">
-                        <i data-lucide="eye"></i>
-                    </button>
-                    <button class="icon-action-btn icon-action-warning" title="Edit" onclick="editStockOut('${id}')">
-                        <i data-lucide="edit"></i>
-                    </button>
-                    <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteStockOut('${id}')">
-                        <i data-lucide="trash-2"></i>
-                    </button>
+                  <button class="icon-action-btn" title="View" onclick="viewStockOutDetails('${id}')">
+                    <i data-lucide="eye"></i>
+                  </button>
+                  ${
+                    [
+                      'Student Assistant',
+                      'Office Assistant',
+                      'Supply Officer',
+                      'System Admin',
+                      'Administrator',
+                    ].includes(
+                      (AppState.currentUser && AppState.currentUser.role) ||
+                        (window.CURRENT_USER && window.CURRENT_USER.role) ||
+                        'User'
+                    )
+                      ? `
+                  <button class="icon-action-btn icon-action-warning" title="Edit" onclick="editStockOut('${id}')">
+                    <i data-lucide="edit"></i>
+                  </button>
+                  <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteStockOut('${id}')">
+                    <i data-lucide="trash-2"></i>
+                  </button>
+                  `
+                      : ''
+                  }
                 </div>
             </td>
         </tr>

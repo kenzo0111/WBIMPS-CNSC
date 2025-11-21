@@ -163,21 +163,9 @@ The system has two primary user roles:
 - Access all reports and analytics
 - View all system activities
 
-### 3.2 Permission Matrix
+### 3.2 Permissions
 
-| Feature                 | Regular User | Administrator |
-| ----------------------- | ------------ | ------------- |
-| Submit Purchase Request | ✅           | ✅            |
-| View Own Requests       | ✅           | ✅            |
-| View All Requests       | ❌           | ✅            |
-| Approve/Reject Requests | ❌           | ✅            |
-| Create Purchase Orders  | ❌           | ✅            |
-| Manage Inventory        | ❌           | ✅            |
-| Manage Suppliers        | ❌           | ✅            |
-| Manage Users            | ❌           | ✅            |
-| Generate Documents      | ❌           | ✅            |
-| View All Activities     | ❌           | ✅            |
-| Access Reports          | Limited      | ✅            |
+The detailed permission matrix has been removed. Permissions are enforced by the system's role-based access control and are described in the role summaries above.
 
 ---
 

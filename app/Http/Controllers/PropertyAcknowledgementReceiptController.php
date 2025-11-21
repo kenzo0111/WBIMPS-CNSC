@@ -15,13 +15,17 @@ class PropertyAcknowledgementReceiptController extends Controller
      */
     public function preview(Request $request, $id = null)
     {
+        $user = $request->user();
+        if (!($user && ($user->is_admin === true || $user->isSupplyOfficer() || $user->isOfficeAssistant()))) {
+            abort(403, 'Forbidden');
+        }
         // If an ID is provided, try to fetch the PAR from database
         if ($id) {
             // First, try to find PAR by its own ID
             $par = PropertyAcknowledgementReceipt::find($id);
 
             // If not found, try to find PAR by purchase_order_id
-            if (! $par) {
+            if (!$par) {
                 $par = PropertyAcknowledgementReceipt::where('purchase_order_id', $id)->first();
             }
 
@@ -68,15 +72,19 @@ class PropertyAcknowledgementReceiptController extends Controller
      */
     public function downloadPDF($id)
     {
+        $user = request()->user();
+        if (!($user && ($user->is_admin === true || $user->isSupplyOfficer() || $user->isOfficeAssistant()))) {
+            abort(403, 'Forbidden');
+        }
         // First, try to find PAR by its own ID
         $par = PropertyAcknowledgementReceipt::find($id);
 
         // If not found, try to find PAR by purchase_order_id
-        if (! $par) {
+        if (!$par) {
             $par = PropertyAcknowledgementReceipt::where('purchase_order_id', $id)->first();
         }
 
-        if (! $par) {
+        if (!$par) {
             abort(404, 'Property Acknowledgement Receipt not found');
         }
 
@@ -109,7 +117,7 @@ class PropertyAcknowledgementReceiptController extends Controller
         $pdf = Pdf::loadView('pdf.property_acknowledge_report_pdf', $data)
             ->setPaper('a4', 'portrait');
 
-        return $pdf->download('property_acknowledgement_receipt_'.($par->par_no ?? $id).'.pdf');
+        return $pdf->download('property_acknowledgement_receipt_' . ($par->par_no ?? $id) . '.pdf');
     }
 
     /**
