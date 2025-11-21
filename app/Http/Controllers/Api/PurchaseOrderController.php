@@ -27,6 +27,7 @@ class PurchaseOrderController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorize('create', PurchaseOrder::class);
         // Log the incoming request for debugging
         \Log::info('Purchase Order Store Request', ['data' => $request->all()]);
 
@@ -85,34 +86,34 @@ class PurchaseOrderController extends Controller
         unset($data['ics_form_data'], $data['ris_form_data'], $data['par_form_data'], $data['iar_form_data']);
 
         // Set default status if not provided
-        if (! isset($data['status'])) {
+        if (!isset($data['status'])) {
             $data['status'] = 'submitted';
         }
 
         // Set default entity info if not provided
-        if (! isset($data['entity_name'])) {
+        if (!isset($data['entity_name'])) {
             $data['entity_name'] = 'Camarines Norte State College';
         }
 
         $purchaseOrder = PurchaseOrder::create($data);
 
         // Create ICS record if ICS form data is provided and items are marked for ICS
-        if ($icsFormData && ! empty($icsFormData['ics_no'])) {
+        if ($icsFormData && !empty($icsFormData['ics_no'])) {
             $this->createInventoryCustodianSlip($purchaseOrder, $icsFormData);
         }
 
         // Create RIS record if RIS form data is provided and items are marked for RIS
-        if ($risFormData && ! empty($risFormData['ris_no'])) {
+        if ($risFormData && !empty($risFormData['ris_no'])) {
             $this->createRequisitionIssueSlip($purchaseOrder, $risFormData);
         }
 
         // Create PAR record if PAR form data is provided and items are marked for PAR
-        if ($parFormData && ! empty($parFormData['par_no'])) {
+        if ($parFormData && !empty($parFormData['par_no'])) {
             $this->createPropertyAcknowledgementReceipt($purchaseOrder, $parFormData);
         }
 
         // Create IAR record if IAR form data is provided and items are marked for IAR
-        if ($iarFormData && ! empty($iarFormData['iar_no'])) {
+        if ($iarFormData && !empty($iarFormData['iar_no'])) {
             $this->createInspectionAcceptanceReport($purchaseOrder, $iarFormData);
         }
 
@@ -144,7 +145,7 @@ class PurchaseOrderController extends Controller
     {
         $purchaseOrder = PurchaseOrder::find($id);
 
-        if (! $purchaseOrder) {
+        if (!$purchaseOrder) {
             return response()->json([
                 'success' => false,
                 'message' => 'Purchase order not found',
@@ -164,15 +165,17 @@ class PurchaseOrderController extends Controller
     {
         $purchaseOrder = PurchaseOrder::find($id);
 
-        if (! $purchaseOrder) {
+        if (!$purchaseOrder) {
             return response()->json([
                 'success' => false,
                 'message' => 'Purchase order not found',
             ], 404);
         }
 
+        $this->authorize('update', $purchaseOrder);
+
         $validator = Validator::make($request->all(), [
-            'po_number' => 'sometimes|string|unique:purchase_orders,po_number,'.$id,
+            'po_number' => 'sometimes|string|unique:purchase_orders,po_number,' . $id,
             'supplier' => 'sometimes|string|max:255',
             'supplier_address' => 'nullable|string',
             'tin_number' => 'nullable|string|max:50',
@@ -231,12 +234,14 @@ class PurchaseOrderController extends Controller
     {
         $purchaseOrder = PurchaseOrder::find($id);
 
-        if (! $purchaseOrder) {
+        if (!$purchaseOrder) {
             return response()->json([
                 'success' => false,
                 'message' => 'Purchase order not found',
             ], 404);
         }
+
+        $this->authorize('delete', $purchaseOrder);
 
         $poNumber = $purchaseOrder->po_number;
         $purchaseOrder->delete();
@@ -264,12 +269,14 @@ class PurchaseOrderController extends Controller
     {
         $purchaseOrder = PurchaseOrder::find($id);
 
-        if (! $purchaseOrder) {
+        if (!$purchaseOrder) {
             return response()->json([
                 'success' => false,
                 'message' => 'Purchase order not found',
             ], 404);
         }
+
+        $this->authorize('update', $purchaseOrder);
 
         $validator = Validator::make($request->all(), [
             'status' => 'required|string|in:draft,submitted,pending,approved,delivered,completed,cancelled',
@@ -350,10 +357,10 @@ class PurchaseOrderController extends Controller
                 'status' => 'Active',
                 'received_from_name' => $formData['received_from_name'] ?? null,
                 'received_from_position' => $formData['received_from_position'] ?? null,
-                'received_from_date' => ! empty($formData['received_from_date']) ? $formData['received_from_date'] : null,
+                'received_from_date' => !empty($formData['received_from_date']) ? $formData['received_from_date'] : null,
                 'received_by_name' => $formData['received_by_name'] ?? null,
                 'received_by_position' => $formData['received_by_position'] ?? null,
-                'received_by_date' => ! empty($formData['received_by_date']) ? $formData['received_by_date'] : null,
+                'received_by_date' => !empty($formData['received_by_date']) ? $formData['received_by_date'] : null,
             ]);
 
             // Log activity
@@ -422,16 +429,16 @@ class PurchaseOrderController extends Controller
                 'status' => 'Active',
                 'requested_by_name' => $formData['requested_by_name'] ?? null,
                 'requested_by_designation' => $formData['requested_by_designation'] ?? null,
-                'requested_by_date' => ! empty($formData['requested_by_date']) ? $formData['requested_by_date'] : null,
+                'requested_by_date' => !empty($formData['requested_by_date']) ? $formData['requested_by_date'] : null,
                 'approved_by_name' => $formData['approved_by_name'] ?? null,
                 'approved_by_designation' => $formData['approved_by_designation'] ?? null,
-                'approved_by_date' => ! empty($formData['approved_by_date']) ? $formData['approved_by_date'] : null,
+                'approved_by_date' => !empty($formData['approved_by_date']) ? $formData['approved_by_date'] : null,
                 'issued_by_name' => $formData['issued_by_name'] ?? null,
                 'issued_by_designation' => $formData['issued_by_designation'] ?? null,
-                'issued_by_date' => ! empty($formData['issued_by_date']) ? $formData['issued_by_date'] : null,
+                'issued_by_date' => !empty($formData['issued_by_date']) ? $formData['issued_by_date'] : null,
                 'received_by_name' => $formData['received_by_name'] ?? null,
                 'received_by_designation' => $formData['received_by_designation'] ?? null,
-                'received_by_date' => ! empty($formData['received_by_date']) ? $formData['received_by_date'] : null,
+                'received_by_date' => !empty($formData['received_by_date']) ? $formData['received_by_date'] : null,
             ]);
 
             // Log activity
@@ -492,15 +499,15 @@ class PurchaseOrderController extends Controller
                 'par_no' => $formData['par_no'],
                 'entity_name' => $formData['entity_name'] ?? $purchaseOrder->entity_name,
                 'fund_cluster' => $formData['fund_cluster'] ?? $purchaseOrder->fund_cluster,
-                'date' => ! empty($formData['date']) ? $formData['date'] : now(),
+                'date' => !empty($formData['date']) ? $formData['date'] : now(),
                 'items' => $parItems,
                 'grand_total' => $parTotal,
                 'received_by_name' => $formData['received_by_name'] ?? null,
                 'received_by_position' => $formData['received_by_position'] ?? null,
-                'received_date' => ! empty($formData['received_by_date']) ? $formData['received_by_date'] : null,
+                'received_date' => !empty($formData['received_by_date']) ? $formData['received_by_date'] : null,
                 'issued_by_name' => $formData['received_from_name'] ?? null,
                 'issued_by_position' => $formData['received_from_position'] ?? null,
-                'issued_date' => ! empty($formData['received_from_date']) ? $formData['received_from_date'] : null,
+                'issued_date' => !empty($formData['received_from_date']) ? $formData['received_from_date'] : null,
                 'status' => 'Active',
             ]);
 
@@ -565,18 +572,18 @@ class PurchaseOrderController extends Controller
                 'supplier' => $purchaseOrder->supplier,
                 'iar_date' => now(),
                 'po_no' => $formData['po_number'] ?? $purchaseOrder->po_number,
-                'po_date' => ! empty($formData['po_date']) ? $formData['po_date'] : $purchaseOrder->date_of_purchase,
+                'po_date' => !empty($formData['po_date']) ? $formData['po_date'] : $purchaseOrder->date_of_purchase,
                 'requisitioning_office' => $formData['requisitioning_office'] ?? $purchaseOrder->department,
                 'responsibility_center_code' => $formData['responsibility_center_code'] ?? null,
-                'responsibility_date' => ! empty($formData['responsibility_date']) ? $formData['responsibility_date'] : null,
+                'responsibility_date' => !empty($formData['responsibility_date']) ? $formData['responsibility_date'] : null,
                 'invoice_no' => $formData['invoice_number'] ?? null,
-                'invoice_date' => ! empty($formData['invoice_date']) ? $formData['invoice_date'] : null,
-                'date_inspected' => ! empty($formData['date_inspected']) ? $formData['date_inspected'] : (! empty($formData['inspected_by_date']) ? $formData['inspected_by_date'] : null),
-                'date_received' => ! empty($formData['date_received']) ? $formData['date_received'] : (! empty($formData['inspected_by_date_2']) ? $formData['inspected_by_date_2'] : null),
+                'invoice_date' => !empty($formData['invoice_date']) ? $formData['invoice_date'] : null,
+                'date_inspected' => !empty($formData['date_inspected']) ? $formData['date_inspected'] : (!empty($formData['inspected_by_date']) ? $formData['inspected_by_date'] : null),
+                'date_received' => !empty($formData['date_received']) ? $formData['date_received'] : (!empty($formData['inspected_by_date_2']) ? $formData['inspected_by_date_2'] : null),
                 'inspection_status' => $formData['inspection_status'] ?? 'Complete',
-                'inspection_officer_label' => $formData['inspection_officer_label'] ?? ($formData['inspected_by_name'] ? ($formData['inspected_by_name'].' - '.($formData['inspected_by_position'] ?? '')) : null),
+                'inspection_officer_label' => $formData['inspection_officer_label'] ?? ($formData['inspected_by_name'] ? ($formData['inspected_by_name'] . ' - ' . ($formData['inspected_by_position'] ?? '')) : null),
                 'acceptance_status' => $formData['acceptance_status'] ?? 'Accepted',
-                'custodian_label' => $formData['custodian_label'] ?? ($formData['inspected_by_name_2'] ? ($formData['inspected_by_name_2'].' - '.($formData['inspected_by_position_2'] ?? '')) : null),
+                'custodian_label' => $formData['custodian_label'] ?? ($formData['inspected_by_name_2'] ? ($formData['inspected_by_name_2'] . ' - ' . ($formData['inspected_by_position_2'] ?? '')) : null),
                 'items' => $iarItems,
                 'status' => 'Active',
             ]);

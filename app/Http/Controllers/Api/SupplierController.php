@@ -21,6 +21,10 @@ class SupplierController extends Controller
 
     public function store(Request $request)
     {
+        $user = $request->user();
+        if (!($user && ($user->is_admin === true || $user->isSupplyOfficer() || $user->isOfficeAssistant()))) {
+            return response()->json(['success' => false, 'message' => 'Forbidden'], 403);
+        }
         $v = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'address' => 'nullable|string',
@@ -58,6 +62,10 @@ class SupplierController extends Controller
 
     public function update(Request $request, $id)
     {
+        $user = $request->user();
+        if (!($user && ($user->is_admin === true || $user->isSupplyOfficer() || $user->isOfficeAssistant()))) {
+            return response()->json(['success' => false, 'message' => 'Forbidden'], 403);
+        }
         $s = Supplier::findOrFail($id);
         $v = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
@@ -86,6 +94,10 @@ class SupplierController extends Controller
 
     public function destroy($id)
     {
+        $user = request()->user();
+        if (!($user && ($user->is_admin === true || $user->isSupplyOfficer() || $user->isOfficeAssistant()))) {
+            return response()->json(['success' => false, 'message' => 'Forbidden'], 403);
+        }
         $s = Supplier::findOrFail($id);
         $s->delete();
 

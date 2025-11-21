@@ -61,6 +61,62 @@ test('can create a purchase order', function () {
     ]);
 });
 
+test('office assistant can create but cannot update/delete purchase orders', function () {
+    // use an Office Assistant role (non-admin)
+    $user = User::factory()->create([
+        'is_admin' => false,
+        'role' => 'Office Assistant',
+        'status' => 'active',
+    ]);
+    $this->actingAs($user, 'web');
+
+    $poData = [
+        'po_number' => 'PO-OA-001',
+        'supplier' => 'OA Supplier',
+    ];
+
+    $response = $this->postJson('/api/purchase-orders', $poData);
+    $response->assertStatus(201)->assertJson(['data' => ['po_number' => 'PO-OA-001']]);
+
+    $poId = $response->json('data.id');
+
+    // Office Assistant should NOT be able to update
+    $updateResp = $this->putJson("/api/purchase-orders/{$poId}", ['supplier' => 'New Name']);
+    $updateResp->assertStatus(403);
+
+    // Office Assistant should NOT be able to delete
+    $deleteResp = $this->deleteJson("/api/purchase-orders/{$poId}");
+    $deleteResp->assertStatus(403);
+});
+
+test('supply officer has full access to purchase orders', function () {
+    $user = User::factory()->create([
+        'is_admin' => false,
+        'role' => 'Supply Officer',
+        'status' => 'active',
+    ]);
+    $this->actingAs($user, 'web');
+
+    $poData = [
+        'po_number' => 'PO-SO-001',
+        'supplier' => 'SO Supplier',
+    ];
+
+    $response = $this->postJson('/api/purchase-orders', $poData);
+    $response->assertStatus(201);
+
+    $poId = $response->json('data.id');
+
+    // Supply Officer can update
+    $this->putJson("/api/purchase-orders/{$poId}", ['supplier' => 'Updated By SO'])->assertStatus(200);
+
+    // Supply Officer can update status
+    $this->postJson("/api/purchase-orders/{$poId}/status", ['status' => 'approved'])->assertStatus(200);
+
+    // Supply Officer can delete
+    $this->deleteJson("/api/purchase-orders/{$poId}")->assertStatus(200);
+});
+
 test('can show a specific purchase order', function () {
     $po = PurchaseOrder::factory()->create();
 

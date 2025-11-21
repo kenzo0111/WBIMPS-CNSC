@@ -9,6 +9,10 @@ class InventoryCustodianSlipController extends Controller
 {
     public function generatePDF(Request $request)
     {
+        $user = $request->user();
+        if (!($user && ($user->is_admin === true || $user->isSupplyOfficer() || $user->isOfficeAssistant()))) {
+            abort(403, 'Forbidden');
+        }
         $data = $this->prepareData($request);
 
         $pdf = Pdf::loadView('pdf.inventory_custodian_slip_pdf', $data);
@@ -24,13 +28,17 @@ class InventoryCustodianSlipController extends Controller
 
     public function preview(?Request $request = null, $id = null)
     {
+        $user = request()->user();
+        if (!($user && ($user->is_admin === true || $user->isSupplyOfficer() || $user->isOfficeAssistant()))) {
+            abort(403, 'Forbidden');
+        }
         // If an ID is provided, load the inventory custodian slip from the database
         if ($id) {
             // First, try to find ICS by its own ID
             $ics = \App\Models\InventoryCustodianSlip::find($id);
 
             // If not found by ID, try to find by purchase order ID
-            if (! $ics) {
+            if (!$ics) {
                 // Check if this ID is a purchase order ID
                 $purchaseOrder = \App\Models\PurchaseOrder::find($id);
 
@@ -40,12 +48,12 @@ class InventoryCustodianSlipController extends Controller
                 }
 
                 // If still not found, try to find purchase request and then purchase order
-                if (! $ics) {
+                if (!$ics) {
                     $purchaseRequest = \App\Models\PurchaseRequest::find($id);
 
                     if ($purchaseRequest) {
                         // Try to find purchase order by matching request_id or department
-                        $purchaseOrder = \App\Models\PurchaseOrder::where('po_number', 'LIKE', '%'.$purchaseRequest->request_id.'%')
+                        $purchaseOrder = \App\Models\PurchaseOrder::where('po_number', 'LIKE', '%' . $purchaseRequest->request_id . '%')
                             ->orWhere('department', $purchaseRequest->department)
                             ->first();
 
@@ -57,7 +65,7 @@ class InventoryCustodianSlipController extends Controller
                 }
             }
 
-            if (! $ics) {
+            if (!$ics) {
                 // Instead of 404, show empty form with a message
                 $data = [
                     'entityName' => '',
@@ -96,7 +104,7 @@ class InventoryCustodianSlipController extends Controller
 
             $pdf = Pdf::loadView('pdf.inventory_custodian_slip_pdf', $data);
 
-            return $pdf->stream('inventory_custodian_slip_'.($ics->ics_no ?? $id).'.pdf');
+            return $pdf->stream('inventory_custodian_slip_' . ($ics->ics_no ?? $id) . '.pdf');
         }
 
         // If no ID is provided, use request data (for preview/generate)
@@ -112,12 +120,16 @@ class InventoryCustodianSlipController extends Controller
      */
     public function downloadPDF($id)
     {
+        $user = request()->user();
+        if (!($user && ($user->is_admin === true || $user->isSupplyOfficer() || $user->isOfficeAssistant()))) {
+            abort(403, 'Forbidden');
+        }
         // Use the same logic as preview to find the ICS
         // First, try to find ICS by its own ID
         $ics = \App\Models\InventoryCustodianSlip::find($id);
 
         // If not found by ID, try to find by purchase order ID
-        if (! $ics) {
+        if (!$ics) {
             // Check if this ID is a purchase order ID
             $purchaseOrder = \App\Models\PurchaseOrder::find($id);
 
@@ -127,12 +139,12 @@ class InventoryCustodianSlipController extends Controller
             }
 
             // If still not found, try to find purchase request and then purchase order
-            if (! $ics) {
+            if (!$ics) {
                 $purchaseRequest = \App\Models\PurchaseRequest::find($id);
 
                 if ($purchaseRequest) {
                     // Try to find purchase order by matching request_id or department
-                    $purchaseOrder = \App\Models\PurchaseOrder::where('po_number', 'LIKE', '%'.$purchaseRequest->request_id.'%')
+                    $purchaseOrder = \App\Models\PurchaseOrder::where('po_number', 'LIKE', '%' . $purchaseRequest->request_id . '%')
                         ->orWhere('department', $purchaseRequest->department)
                         ->first();
 
@@ -144,7 +156,7 @@ class InventoryCustodianSlipController extends Controller
             }
         }
 
-        if (! $ics) {
+        if (!$ics) {
             // Return empty ICS form with message
             $data = [
                 'entityName' => '',
@@ -205,7 +217,7 @@ class InventoryCustodianSlipController extends Controller
             logger()->warning('Failed to record activity for ICS PDF download', ['error' => $e->getMessage()]);
         }
 
-        return $pdf->download('inventory_custodian_slip_'.($ics->ics_no ?? $id).'.pdf');
+        return $pdf->download('inventory_custodian_slip_' . ($ics->ics_no ?? $id) . '.pdf');
     }
 
     public function generateICS()
@@ -220,7 +232,7 @@ class InventoryCustodianSlipController extends Controller
         $payload = $request->all();
 
         $items = collect($request->input('items', []))
-            ->filter(fn ($item) => filled($item['description'] ?? null))
+            ->filter(fn($item) => filled($item['description'] ?? null))
             ->map(function ($item) {
                 $quantity = (float) ($item['quantity'] ?? 0);
                 $unitCost = (float) ($item['unit_cost'] ?? 0);
@@ -239,15 +251,17 @@ class InventoryCustodianSlipController extends Controller
             ->all();
 
         if (empty($items)) {
-            $items = [[
-                'quantity' => 0,
-                'unit' => '',
-                'unit_cost' => 0,
-                'total_cost' => 0,
-                'description' => '',
-                'item_no' => '',
-                'useful_life' => '',
-            ]];
+            $items = [
+                [
+                    'quantity' => 0,
+                    'unit' => '',
+                    'unit_cost' => 0,
+                    'total_cost' => 0,
+                    'description' => '',
+                    'item_no' => '',
+                    'useful_life' => '',
+                ]
+            ];
         }
 
         // Map to PDF template variable names

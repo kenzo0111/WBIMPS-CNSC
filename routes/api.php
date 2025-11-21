@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // Apply rate limiting to all API routes: 60 requests per minute
-Route::middleware('throttle:60,1')->group(function () {
+Route::middleware(['throttle:60,1', 'auth'])->group(function () {
     Route::get('/activities', [ActivityController::class, 'index']);
     Route::post('/activities', [ActivityController::class, 'store']);
 

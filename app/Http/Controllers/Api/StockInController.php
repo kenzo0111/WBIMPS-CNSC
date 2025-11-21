@@ -39,6 +39,10 @@ class StockInController extends Controller
      */
     public function store(Request $request)
     {
+        $user = $request->user();
+        if (!($user && ($user->is_admin === true || $user->isSupplyOfficer()))) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
         $validated = $request->validate([
             'transaction_id' => 'required|string|unique:stock_in',
             'sku' => 'required|string|exists:items,sku',
@@ -81,8 +85,12 @@ class StockInController extends Controller
      */
     public function update(Request $request, StockIn $stockIn)
     {
+        $user = $request->user();
+        if (!($user && ($user->is_admin === true || $user->isSupplyOfficer()))) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
         $validated = $request->validate([
-            'transaction_id' => 'required|string|unique:stock_in,transaction_id,'.$stockIn->getKey(),
+            'transaction_id' => 'required|string|unique:stock_in,transaction_id,' . $stockIn->getKey(),
             'sku' => 'required|string|exists:items,sku',
             'product_name' => 'required|string',
             'quantity' => 'required|integer|min:1',
@@ -132,6 +140,10 @@ class StockInController extends Controller
      */
     public function destroy(StockIn $stockIn)
     {
+        $user = request()->user();
+        if (!($user && ($user->is_admin === true || $user->isSupplyOfficer()))) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
         DB::transaction(function () use ($stockIn) {
             // Remove from item inventory
             $item = Item::where('sku', $stockIn->sku)->first();

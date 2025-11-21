@@ -59,6 +59,7 @@ class PurchaseRequestController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorize('create', PurchaseRequest::class);
         $data = $request->validate([
             'email' => 'required|email',
             'requester' => 'required|string',
@@ -217,6 +218,14 @@ class PurchaseRequestController extends Controller
 
         if (!$pr) {
             return response()->json(['error' => 'Purchase request not found'], 404);
+        }
+
+        // Authorize based on the new status
+        if (in_array($data['status'], ['Approved', 'Rejected'])) {
+            $this->authorize($data['status'] === 'Approved' ? 'approve' : 'reject', $pr);
+        } else {
+            // For other status changes, perhaps only admins
+            $this->authorize('update', $pr);
         }
 
         $old = $pr->status;
