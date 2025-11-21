@@ -29,21 +29,28 @@ Route::get('/health', function () {
 Route::get('/login', [AccessController::class, 'show'])->name('login');
 Route::post('/login', [AccessController::class, 'authenticate'])
     ->middleware('throttle:5,1') // 5 attempts per minute
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
     ->name('login.perform');
-Route::post('/logout', [AccessController::class, 'logout'])->name('logout');
+Route::post('/logout', [AccessController::class, 'logout'])
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
+    ->name('logout');
 
 // Password reset routes
 Route::get('/forgot-password', [App\Http\Controllers\PasswordResetController::class, 'showForgotForm'])->name('password.forgot');
 Route::post('/forgot-password', [App\Http\Controllers\PasswordResetController::class, 'sendResetLink'])
     ->middleware('throttle:3,1') // 3 attempts per minute
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
     ->name('password.reset.send');
 Route::get('/reset-password/{token}', [App\Http\Controllers\PasswordResetController::class, 'showResetForm'])->name('password.reset.form');
-Route::post('/reset-password', [App\Http\Controllers\PasswordResetController::class, 'resetPassword'])->name('password.reset.update');
+Route::post('/reset-password', [App\Http\Controllers\PasswordResetController::class, 'resetPassword'])
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
+    ->name('password.reset.update');
 
 // Account setup routes
 Route::get('/account/setup/{token}', [App\Http\Controllers\AccountSetupController::class, 'showSetupForm'])->name('account.setup');
 Route::post('/account/setup', [App\Http\Controllers\AccountSetupController::class, 'setupAccount'])
     ->middleware('throttle:5,1') // 5 attempts per minute
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
     ->name('account.setup.post');
 Route::post('/purchase-request/generate', [PurchaseRequestController::class, 'generatePDF'])->name('purchase-request.generate');
 Route::get('/purchase-request/preview', [PurchaseRequestController::class, 'preview'])->name('purchase-request.preview');

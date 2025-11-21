@@ -27,7 +27,19 @@ class DatabaseSeeder extends Seeder
                 // AccessController requires status === 'active' to allow login
                 'status' => 'active',
                 'role' => 'Administrator',
-                'department' => 'Admin',
+                'is_admin' => true,
+            ]
+        );
+
+        // Add user for the placeholder email
+        User::updateOrCreate(
+            ['email' => 'cnsc.spmo@edu.ph'],
+            [
+                'name' => 'CNSC SPMO Admin',
+                'password' => Hash::make('admin123'),
+                'email_verified_at' => now(),
+                'status' => 'active',
+                'role' => 'Administrator',
                 'is_admin' => true,
             ]
         );
@@ -40,13 +52,11 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('123456'),
                 'email_verified_at' => now(),
                 'role' => 'Administrator',
-                'department' => 'Admin',
                 'is_admin' => true,
             ]
         );
 
         $this->call([
-            ProductSeeder::class,
             ActivitySeeder::class,
         ]);
     }
