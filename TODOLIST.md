@@ -70,7 +70,7 @@
 - [x] Remove status from requisition (hindi na status dapat nasa requisition)
 - [x] Consolidate all status and request into one unified interface (status management moved into requisition)
 - [ ] Implement reports form functionality
-- [ ] Make P.O. number sequential (may sinusundan)
+- [x] Make P.O. number sequential (may sinusundan)
 - [x] Add fund cluster dropdown
 - [x] Implement automated processes
 - [ ] Create employee accounts system
