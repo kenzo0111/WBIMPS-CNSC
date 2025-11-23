@@ -508,8 +508,9 @@ class PurchaseOrderController extends Controller
             // Calculate grand total for RIS items
             $risTotal = collect($risItems)->sum('amount');
 
-            // Create RIS record
+            // Create RIS record (ensure it's linked to the Purchase Order)
             $ris = \App\Models\RequisitionIssueSlip::create([
+                'purchase_order_id' => $purchaseOrder->id,
                 'ris_no' => $formData['ris_no'],
                 'entity_name' => $formData['entity_name'] ?? $purchaseOrder->entity_name,
                 'fund_cluster' => $formData['fund_cluster'] ?? $purchaseOrder->fund_cluster,

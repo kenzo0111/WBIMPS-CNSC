@@ -2,6 +2,7 @@
 
 use App\Models\PurchaseOrder;
 use App\Models\User;
+use App\Models\RequisitionIssueSlip;
 
 beforeEach(function () {
     // Create an authenticated admin user for tests
@@ -127,6 +128,33 @@ test('creating a purchase order with provided iar_form_data saves fields on the 
         'purchase_order_id' => $poId,
         'inspection_officer_position' => 'INSPECTION OFFICER / INSPECTION COMMITTEE',
         'custodian_position' => 'Supply Custodian',
+    ]);
+});
+
+test('creating a purchase order with ris_form_data links RIS record to the purchase order', function () {
+    $poData = [
+        'po_number' => 'PO-2025-010',
+        'supplier' => 'RIS Supplier Inc.',
+        'items' => [
+            ['name' => 'RIS Item', 'quantity' => 1, 'unit_cost' => 100, 'generateRIS' => true],
+        ],
+        'ris_form_data' => [
+            'ris_no' => 'RIS-2025-001',
+            'entity_name' => 'Camarines Norte State College',
+        ],
+        'grand_total' => 100.00,
+    ];
+
+    $response = $this->postJson('/api/purchase-orders', $poData);
+
+    $response->assertStatus(201);
+
+    $poId = $response->json('data.id');
+
+    // Ensure RIS was created and linked to the purchase order
+    $this->assertDatabaseHas('requisition_issue_slips', [
+        'purchase_order_id' => $poId,
+        'ris_no' => 'RIS-2025-001',
     ]);
 });
 
