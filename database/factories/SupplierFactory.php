@@ -23,7 +23,8 @@ class SupplierFactory extends Factory
             'name' => fake()->company(),
             'address' => fake()->address(),
             'tin' => fake()->numerify('###-###-###-###'),
-            'contact' => fake()->phoneNumber(),
+            // produce numeric-only contact by default (11 digits common PH mobile prefix)
+            'contact' => fake()->numerify('09#########'),
             'email' => fake()->unique()->safeEmail(),
         ];
     }

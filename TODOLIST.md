@@ -54,6 +54,18 @@
 
 - [x] Make the Delete button on the New Request page perform server-side deletion (if saved) and remove the request from the UI
 
+## Recent Updates (Nov 23, 2025)
+
+### Supplier modal — stricter input, PH TIN validation, and global alerts
+
+- [x] Enforced stronger client-side validation on the Supplier modal (name required, contact format, latitude/longitude range)
+- [x] Made TIN PH-specific: accepts 9 or 12 digits and accepts hyphenated formats (e.g., 123-456-789 or 123-456-789-000)
+- [x] Added client-side TIN input auto-formatting for usability
+- [x] Replaced native alerts in the Supplier modal with the app's Global Alert style (showAlert)
+- [x] Added backend validation for PH TIN format (API) and new tests ensuring invalid TINs are rejected
+
+Manual verification: open the Suppliers page in the dashboard, click Add Supplier, try entering invalid/valid TINs and check the UI uses the global toast alerts; run API tests to confirm server-side checks.
+
 ## Recommendations
 
 ### Product Management

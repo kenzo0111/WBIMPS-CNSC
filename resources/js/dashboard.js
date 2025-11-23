@@ -4295,6 +4295,53 @@ function openSupplierModal(mode = 'create', index = null) {
         fn: onNameInput,
       }
     }
+    // TIN input: auto-format and restrict characters (attach here where modalContent is in scope)
+    const tinInput = modalContent.querySelector('#supplier-tin-input')
+    if (tinInput) {
+      const onTinInput = function (ev) {
+        const v = String(ev.target.value || '')
+        // keep only digits and hyphen
+        const cleaned = v.replace(/[^0-9\-]/g, '')
+        // Try to format: if user types digits, insert hyphens for readability
+        const formatted = formatTinForDisplay(cleaned)
+        ev.target.value = formatted
+      }
+
+      try {
+        tinInput.removeEventListener('input', tinInput._supplierTinHandler)
+      } catch (e) {}
+      tinInput.addEventListener('input', onTinInput)
+      tinInput._supplierTinHandler = onTinInput
+      overlay._supplierModalHandlers = overlay._supplierModalHandlers || {}
+      overlay._supplierModalHandlers.supplierTinHandler = {
+        el: tinInput,
+        fn: onTinInput,
+      }
+    }
+    // Contact input: auto-format and restrict characters
+    const contactInput = modalContent.querySelector('#supplier-contact-input')
+    if (contactInput) {
+      const onContactInput = function (ev) {
+        const v = String(ev.target.value || '')
+        const cleaned = v.replace(/[^0-9+\s\-()]/g, '')
+        const formatted = formatContactForDisplay(cleaned)
+        ev.target.value = formatted
+      }
+
+      try {
+        contactInput.removeEventListener(
+          'input',
+          contactInput._supplierContactHandler
+        )
+      } catch (e) {}
+      contactInput.addEventListener('input', onContactInput)
+      contactInput._supplierContactHandler = onContactInput
+      overlay._supplierModalHandlers = overlay._supplierModalHandlers || {}
+      overlay._supplierModalHandlers.supplierContactHandler = {
+        el: contactInput,
+        fn: onContactInput,
+      }
+    }
   } catch (e) {
     console.warn('Geocoding hookup failed', e)
   }
@@ -4589,9 +4636,10 @@ function generateSupplierModal(mode = 'create', supplier = {}, index = null) {
                         </label>
                         <input type="text" id="supplier-tin-input" class="form-input" value="${escapeHtml(
                           supplier.tin || ''
-                        )}" placeholder="Taxpayer Identification Number" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;" ${
+                        )}" placeholder="e.g. 123-456-789 or 123-456-789-000" inputmode="numeric" pattern="^(\\d{3}-\\d{3}-\\d{3}-\\d{3}|\\d{3}-\\d{3}-\\d{3}|\\d{9}|\\d{12})$" title="9 or 12 digits (hyphens allowed). Examples: 123-456-789 or 123-456-789-000" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;" ${
     isReadOnly ? 'readonly' : ''
   }>
+                        <small style="display:block;margin-top:6px;color:#6b7280;font-size:12px;">PH TIN: accept 9 or 12 digits (hyphens allowed, e.g., 123-456-789 or 123-456-789-000)</small>
                     </div>
 
                     <div class="form-group" style="margin-bottom: 20px;">
@@ -4601,7 +4649,7 @@ function generateSupplierModal(mode = 'create', supplier = {}, index = null) {
                         </label>
                         <input type="text" id="supplier-contact-input" class="form-input" value="${escapeHtml(
                           supplier.contact || ''
-                        )}" placeholder="Phone / Mobile" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;" ${
+                        )}" placeholder="e.g. +63 912-345-6789 or 0912-345-6789" inputmode="tel" pattern="^[0-9+\s\-()]{7,30}$" title="Phone may include digits, +, spaces, - or parentheses. Will be normalized to digits on save." style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;" ${
     isReadOnly ? 'readonly' : ''
   }>
                     </div>
@@ -4614,7 +4662,7 @@ function generateSupplierModal(mode = 'create', supplier = {}, index = null) {
                     </label>
                     <input type="email" id="supplier-email-input" class="form-input" value="${escapeHtml(
                       supplier.email || ''
-                    )}" placeholder="contact@example.com" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;" ${
+                    )}" placeholder="contact@example.com" inputmode="email" pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$" title="Enter a valid email address" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;" ${
     isReadOnly ? 'readonly' : ''
   }>
                 </div>
@@ -4690,6 +4738,7 @@ function generateSupplierModal(mode = 'create', supplier = {}, index = null) {
 }
 
 function closeSupplierModal() {
+  // (clean up handlers / hide)
   const overlay = document.getElementById('supplier-modal-overlay')
   if (!overlay) return
   // Remove attached handlers if any
@@ -4713,6 +4762,32 @@ function closeSupplierModal() {
           )
         } catch (e) {}
       }
+      // remove supplierTinHandler if present
+      if (
+        handlers.supplierTinHandler &&
+        handlers.supplierTinHandler.el &&
+        handlers.supplierTinHandler.fn
+      ) {
+        try {
+          handlers.supplierTinHandler.el.removeEventListener(
+            'input',
+            handlers.supplierTinHandler.fn
+          )
+        } catch (e) {}
+      }
+      // remove supplierContactHandler if present
+      if (
+        handlers.supplierContactHandler &&
+        handlers.supplierContactHandler.el &&
+        handlers.supplierContactHandler.fn
+      ) {
+        try {
+          handlers.supplierContactHandler.el.removeEventListener(
+            'input',
+            handlers.supplierContactHandler.fn
+          )
+        } catch (e) {}
+      }
       delete overlay._supplierModalHandlers
     }
   } catch (e) {}
@@ -4723,6 +4798,50 @@ function closeSupplierModal() {
   if (content) content.innerHTML = ''
 }
 
+// --- Supplier TIN helpers (module scope) ---
+// Accepts 9 or 12 digits (with optional hyphens placed like 123-456-789 or 123-456-789-000)
+function isValidPHTIN(t) {
+  if (!t) return true // tin is nullable
+  const v = String(t).trim()
+  const re = /^(\d{3}-\d{3}-\d{3}-\d{3}|\d{3}-\d{3}-\d{3}|\d{9}|\d{12})$/
+  return re.test(v)
+}
+
+function formatContactForDisplay(raw) {
+  if (!raw) return ''
+  const digits = String(raw).replace(/\D/g, '')
+  // Common PHP mobile number lengths: 11 (0912...), international starts with 63 (11+)
+  if (digits.length === 11) {
+    // 09123456789 -> 0912-345-6789 (4-3-4)
+    return digits.replace(/(\d{4})(\d{3})(\d{4})/, '$1-$2-$3')
+  }
+  if (digits.length === 12 && digits.startsWith('63')) {
+    // 639123456789 -> 63-912-345-6789
+    return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})/, '$1-$2-$3-$4')
+  }
+  // fallback: group by 3s from left
+  const groups = digits.match(/\d{1,3}/g) || []
+  return groups.join('-')
+}
+
+function formatTinForDisplay(raw) {
+  if (!raw) return ''
+  const digits = String(raw).replace(/\D/g, '')
+  if (digits.length <= 9) {
+    // 9-digit format -> 3-3-3
+    return digits.replace(/(\d{3})(\d{3})(\d{0,3})/, function (_, a, b, c) {
+      return c ? `${a}-${b}-${c}` : `${a}-${b}` + (c ? `-${c}` : '')
+    })
+  }
+  // 12-digit format -> 3-3-3-3
+  return digits.replace(
+    /(\d{3})(\d{3})(\d{3})(\d{0,3})/,
+    function (_, a, b, c, d) {
+      return [a, b, c, d].filter(Boolean).join('-')
+    }
+  )
+}
+
 function saveSupplier(mode = 'create', index = null) {
   const name = document.getElementById('supplier-name-input')?.value || ''
   const address = document.getElementById('supplier-address-input')?.value || ''
@@ -4731,8 +4850,54 @@ function saveSupplier(mode = 'create', index = null) {
   const email = document.getElementById('supplier-email-input')?.value || ''
 
   if (!name.trim()) {
-    alert('Supplier name is required')
+    showAlert('Supplier name is required', 'error')
     return
+  }
+
+  // Stronger TIN validation (PH TIN): allow empty (nullable) or 9/12 digits with optional hyphens
+  if (tin && !isValidPHTIN(tin.trim())) {
+    showAlert(
+      'Invalid TIN. Use a Philippine TIN (9 or 12 digits). Examples: 123-456-789 or 123-456-789-000',
+      'error'
+    )
+    return
+  }
+
+  // Contact validation: accept formatted phone numbers (digits, +, spaces, - or parentheses)
+  if (contact && !/^[0-9+\s\-()]{7,30}$/.test(contact.trim())) {
+    showAlert(
+      'Contact appears invalid (allowed: digits, +, spaces, - or parentheses)',
+      'error'
+    )
+    return
+  }
+
+  // Email validation (simple but effective)
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    showAlert('Email address appears invalid', 'error')
+    return
+  }
+
+  // Lat/Lng validation (if present) - keep to numeric ranges
+  const latRaw = (
+    document.getElementById('supplier-lat-input')?.value || ''
+  ).trim()
+  const lngRaw = (
+    document.getElementById('supplier-lng-input')?.value || ''
+  ).trim()
+  if (latRaw) {
+    const lat = parseFloat(latRaw)
+    if (isNaN(lat) || lat < -90 || lat > 90) {
+      showAlert('Latitude must be a number between -90 and 90', 'error')
+      return
+    }
+  }
+  if (lngRaw) {
+    const lng = parseFloat(lngRaw)
+    if (isNaN(lng) || lng < -180 || lng > 180) {
+      showAlert('Longitude must be a number between -180 and 180', 'error')
+      return
+    }
   }
 
   if (!AppState.suppliers) AppState.suppliers = []

@@ -33,7 +33,7 @@ test('can create a supplier', function () {
         'name' => 'ABC Corporation',
         'address' => '123 Business St, Metro Manila',
         'tin' => '123-456-789-000',
-        'contact' => '+63 912 345 6789',
+        'contact' => '09123456789',
         'email' => 'contact@abccorp.com',
     ];
 
@@ -112,6 +112,94 @@ test('validates email format when creating supplier', function () {
 
     $response->assertStatus(422)
         ->assertJsonValidationErrors(['email']);
+});
+
+test('validates PH tin format when creating supplier', function () {
+    $response = $this->postJson('/api/suppliers', [
+        'name' => 'Test Supplier',
+        'tin' => 'invalid-tin-value',
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['tin']);
+});
+
+test('validates PH tin format when updating supplier', function () {
+    $supplier = Supplier::factory()->create();
+
+    $response = $this->putJson("/api/suppliers/{$supplier->id}", [
+        'name' => 'Updated Name',
+        'tin' => 'bad-tin',
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['tin']);
+});
+
+test('validates contact format when creating supplier', function () {
+    $response = $this->postJson('/api/suppliers', [
+        'name' => 'Test Supplier',
+        'contact' => 'invalid_contact_abc'
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['contact']);
+});
+
+test('accepts numeric-only contact when creating supplier', function () {
+    $response = $this->postJson('/api/suppliers', [
+        'name' => 'Numeric Contact',
+        'contact' => '09123456789'
+    ]);
+
+    $response->assertStatus(201)
+        ->assertJsonPath('data.contact', '09123456789');
+});
+
+test('normalizes formatted contact when creating supplier', function () {
+    $response = $this->postJson('/api/suppliers', [
+        'name' => 'Formatted Contact',
+        'contact' => '+63 912-345-6789'
+    ]);
+
+    $response->assertStatus(201)
+        ->assertJsonPath('data.contact', '639123456789');
+});
+
+test('normalizes formatted contact when updating supplier', function () {
+    $supplier = Supplier::factory()->create();
+
+    $response = $this->putJson("/api/suppliers/{$supplier->id}", [
+        'name' => 'Updated Name',
+        'contact' => '+63 912-345-6789'
+    ]);
+
+    $response->assertStatus(200)
+        ->assertJsonPath('data.contact', '639123456789');
+});
+
+test('accepts numeric-only contact when updating supplier', function () {
+    $supplier = Supplier::factory()->create();
+
+    $response = $this->putJson("/api/suppliers/{$supplier->id}", [
+        'name' => 'Updated Name',
+        'contact' => '09123456789'
+    ]);
+
+    $response->assertStatus(200)
+        ->assertJsonPath('data.contact', '09123456789');
+});
+
+test('validates contact format when updating supplier', function () {
+    $supplier = Supplier::factory()->create();
+
+    $response = $this->putJson("/api/suppliers/{$supplier->id}", [
+        'name' => 'Updated Name',
+        'contact' => '!!not-a-phone'
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['contact']);
 });
 
 test('can search suppliers by name', function () {
