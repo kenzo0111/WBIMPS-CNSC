@@ -119,9 +119,9 @@
                         <div class="sig-block">
                             <div class="sig-label">Received from :</div>
                             <div class="sig-line"></div>
-                            <div class="sig-name">{{ $received_from_name ?? 'ARSENIO GEM A. GARCILLANOSA' }}</div>
+                            <div class="sig-name">{{ $received_from_name ?? 'ARSENIO GEM A. GARCILLANSO' }}</div>
                             <div class="sig-subtext">Signature Over Printed Name</div>
-                            <div class="sig-subtext position">{{ $received_from_position ?? 'Supply Officer III/Admin Officer V' }}</div>
+                            <div class="sig-subtext position">{{ $received_from_position ?? 'SUPPLY OFFICER III/ADMIN OFFICER V' }}</div>
                             <div class="sig-subtext position">Date: {{ $received_from_date ?? '_________________' }}</div>
                         </div>
 

@@ -9914,9 +9914,15 @@ function persistCurrentWizardStep() {
       received_by_date:
         modal.querySelector('#ics_received_by_date')?.value || '',
       received_from_name:
-        modal.querySelector('#ics_received_from_name')?.value || '',
+        modal.querySelector('#ics_received_from_name')?.value ||
+        modal.querySelector('#ics_received_from_name')?.textContent?.trim() ||
+        '',
       received_from_position:
-        modal.querySelector('#ics_received_from_position')?.value || '',
+        modal.querySelector('#ics_received_from_position')?.value ||
+        modal
+          .querySelector('#ics_received_from_position')
+          ?.textContent?.trim() ||
+        '',
       received_from_date:
         modal.querySelector('#ics_received_from_date')?.value || '',
     }
@@ -9967,9 +9973,15 @@ function persistCurrentWizardStep() {
       received_by_date:
         modal.querySelector('#par_received_by_date')?.value || '',
       received_from_name:
-        modal.querySelector('#par_received_from_name')?.value || '',
+        modal.querySelector('#par_received_from_name')?.value ||
+        modal.querySelector('#par_received_from_name')?.textContent?.trim() ||
+        '',
       received_from_position:
-        modal.querySelector('#par_received_from_position')?.value || '',
+        modal.querySelector('#par_received_from_position')?.value ||
+        modal
+          .querySelector('#par_received_from_position')
+          ?.textContent?.trim() ||
+        '',
       received_from_date:
         modal.querySelector('#par_received_from_date')?.value || '',
     }
@@ -11326,11 +11338,16 @@ function autoFillICSForm() {
   }
 
   // Auto-fill issuer details (default values)
+  // Set ICS 'Received From' to static person & position
   if (!AppState.purchaseOrderDraft.icsFormData.received_from_name) {
-    updatePOFormDraft('ics', 'received_from_name', 'Supply Officer')
+    updatePOFormDraft('ics', 'received_from_name', 'ARSENIO GEM A. GARCILLANSO')
   }
   if (!AppState.purchaseOrderDraft.icsFormData.received_from_position) {
-    updatePOFormDraft('ics', 'received_from_position', 'Supply Officer')
+    updatePOFormDraft(
+      'ics',
+      'received_from_position',
+      'SUPPLY OFFICER III/ADMIN OFFICER V'
+    )
   }
 
   // Auto-fill dates with current date if not set
@@ -11384,11 +11401,16 @@ function autoFillRISForm() {
   if (!AppState.purchaseOrderDraft.risFormData.requested_by_designation) {
     updatePOFormDraft('ris', 'requested_by_designation', 'Department Head')
   }
+  // Set approved by to the supply officer (Arsenio) by default so printed RIS has the proper approver
   if (!AppState.purchaseOrderDraft.risFormData.approved_by_name) {
-    updatePOFormDraft('ris', 'approved_by_name', 'Supply Officer')
+    updatePOFormDraft('ris', 'approved_by_name', 'ARSENIO GEM A. GARCILLANSO')
   }
   if (!AppState.purchaseOrderDraft.risFormData.approved_by_designation) {
-    updatePOFormDraft('ris', 'approved_by_designation', 'Supply Officer')
+    updatePOFormDraft(
+      'ris',
+      'approved_by_designation',
+      'SUPPLY OFFICER III/ADMIN OFFICER V'
+    )
   }
   if (!AppState.purchaseOrderDraft.risFormData.issued_by_name) {
     updatePOFormDraft('ris', 'issued_by_name', 'Supply Officer')
@@ -11446,11 +11468,16 @@ function autoFillPARForm() {
   }
 
   // Auto-fill issuer details (default values)
+  // Set PAR 'Received From' to static person & position (match ICS)
   if (!AppState.purchaseOrderDraft.parFormData.received_from_name) {
-    updatePOFormDraft('par', 'received_from_name', 'Supply Officer')
+    updatePOFormDraft('par', 'received_from_name', 'ARSENIO GEM A. GARCILLANSO')
   }
   if (!AppState.purchaseOrderDraft.parFormData.received_from_position) {
-    updatePOFormDraft('par', 'received_from_position', 'Supply Officer')
+    updatePOFormDraft(
+      'par',
+      'received_from_position',
+      'SUPPLY OFFICER III/ADMIN OFFICER V'
+    )
   }
 
   // Auto-fill dates with current date if not set
@@ -11806,23 +11833,28 @@ function renderDynamicPOForms() {
                 <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Name
               </label>
-              <input type="text" class="form-input" id="ics_received_from_name" value="${
-                (AppState.purchaseOrderDraft.icsFormData &&
-                  AppState.purchaseOrderDraft.icsFormData.received_from_name) ||
-                ''
-              }" onchange="updatePOFormDraft('ics','received_from_name', this.value)" placeholder="Full name of issuer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <div id="ics_received_from_name" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 6px; background: #fff; font-size: 14px; color: #0f172a;">
+                ${
+                  (AppState.purchaseOrderDraft.icsFormData &&
+                    AppState.purchaseOrderDraft.icsFormData
+                      .received_from_name) ||
+                  'ARSENIO GEM A. GARCILLANSO'
+                }
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Position
               </label>
-              <input type="text" class="form-input" id="ics_received_from_position" value="${
-                (AppState.purchaseOrderDraft.icsFormData &&
-                  AppState.purchaseOrderDraft.icsFormData
-                    .received_from_position) ||
-                ''
-              }" onchange="updatePOFormDraft('ics','received_from_position', this.value)" placeholder="e.g., Supply Officer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <div id="ics_received_from_position" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 6px; background: #fff; font-size: 14px; color: #0f172a;">
+                ${
+                  (AppState.purchaseOrderDraft.icsFormData &&
+                    AppState.purchaseOrderDraft.icsFormData
+                      .received_from_position) ||
+                  'SUPPLY OFFICER III/ADMIN OFFICER V'
+                }
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
@@ -11881,7 +11913,6 @@ function renderDynamicPOForms() {
             </h6>
           </div>
           <div class="grid-2" style="gap: 16px; margin-bottom: 24px;">
-          <div class="grid-2" style="gap: 16px; margin-bottom: 24px;">
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="hash" style="width: 14px; height: 14px; color: #64748b;"></i>
@@ -11892,7 +11923,7 @@ function renderDynamicPOForms() {
                 (AppState.purchaseOrderDraft.risFormData &&
                   AppState.purchaseOrderDraft.risFormData.ris_no) ||
                 ''
-              }" onchange="updatePOFormDraft('ris','ris_no', this.value)" placeholder="sample" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              }" onchange="updatePOFormDraft('ris','ris_no', this.value)" placeholder="e.g., RIS-2025-001" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
@@ -11903,7 +11934,7 @@ function renderDynamicPOForms() {
                 (AppState.purchaseOrderDraft.risFormData &&
                   AppState.purchaseOrderDraft.risFormData.entity_name) ||
                 ''
-              }" onchange="updatePOFormDraft('ris','entity_name', this.value)" placeholder="sample" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              }" onchange="updatePOFormDraft('ris','entity_name', this.value)" placeholder="e.g., Camarines Norte State College" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
@@ -11972,7 +12003,7 @@ function renderDynamicPOForms() {
                 (AppState.purchaseOrderDraft.risFormData &&
                   AppState.purchaseOrderDraft.risFormData.division) ||
                 ''
-              }" onchange="updatePOFormDraft('ris','division', this.value)" placeholder="sample" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              }" onchange="updatePOFormDraft('ris','division', this.value)" placeholder="Division name" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
@@ -11983,7 +12014,7 @@ function renderDynamicPOForms() {
                 (AppState.purchaseOrderDraft.risFormData &&
                   AppState.purchaseOrderDraft.risFormData.office) ||
                 ''
-              }" onchange="updatePOFormDraft('ris','office', this.value)" placeholder="sample" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              }" onchange="updatePOFormDraft('ris','office', this.value)" placeholder="Office name" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
@@ -11995,7 +12026,7 @@ function renderDynamicPOForms() {
                   AppState.purchaseOrderDraft.risFormData
                     .responsibility_center_code) ||
                 ''
-              }" onchange="updatePOFormDraft('ris','responsibility_center_code', this.value)" placeholder="sample" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              }" onchange="updatePOFormDraft('ris','responsibility_center_code', this.value)" placeholder="RCC number" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
@@ -12006,7 +12037,7 @@ function renderDynamicPOForms() {
                 (AppState.purchaseOrderDraft.risFormData &&
                   AppState.purchaseOrderDraft.risFormData.purpose) ||
                 ''
-              }" onchange="updatePOFormDraft('ris','purpose', this.value)" placeholder="sample" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              }" onchange="updatePOFormDraft('ris','purpose', this.value)" placeholder="Purpose of requisition" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
           </div>
           
@@ -12026,7 +12057,7 @@ function renderDynamicPOForms() {
                 (AppState.purchaseOrderDraft.risFormData &&
                   AppState.purchaseOrderDraft.risFormData.requested_by_name) ||
                 ''
-              }" onchange="updatePOFormDraft('ris','requested_by_name', this.value)" placeholder="sample" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              }" onchange="updatePOFormDraft('ris','requested_by_name', this.value)" placeholder="Full name of requester" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
@@ -12038,7 +12069,7 @@ function renderDynamicPOForms() {
                   AppState.purchaseOrderDraft.risFormData
                     .requested_by_designation) ||
                 ''
-              }" onchange="updatePOFormDraft('ris','requested_by_designation', this.value)" placeholder="sample" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              }" onchange="updatePOFormDraft('ris','requested_by_designation', this.value)" placeholder="Position/title" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
@@ -12065,23 +12096,23 @@ function renderDynamicPOForms() {
                 <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Name
               </label>
-              <input type="text" class="form-input" id="ris_approved_by_name" value="${
+              <input type="text" readonly class="form-input" id="ris_approved_by_name" value="${
                 (AppState.purchaseOrderDraft.risFormData &&
                   AppState.purchaseOrderDraft.risFormData.approved_by_name) ||
-                ''
-              }" onchange="updatePOFormDraft('ris','approved_by_name', this.value)" placeholder="sample" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+                'ARSENIO GEM A. GARCILLANSO'
+              }" placeholder="Full name of approver" title="Approved by (static)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s; background: #f8fafc; color: #0f172a; cursor: default;">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Designation
               </label>
-              <input type="text" class="form-input" id="ris_approved_by_designation" value="${
+              <input type="text" readonly class="form-input" id="ris_approved_by_designation" value="${
                 (AppState.purchaseOrderDraft.risFormData &&
                   AppState.purchaseOrderDraft.risFormData
                     .approved_by_designation) ||
-                ''
-              }" onchange="updatePOFormDraft('ris','approved_by_designation', this.value)" placeholder="sample" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+                'SUPPLY OFFICER III/ADMIN OFFICER V'
+              }" placeholder="Position/title" title="Approved by designation (static)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s; background: #f8fafc; color: #0f172a; cursor: default;">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
@@ -12112,7 +12143,7 @@ function renderDynamicPOForms() {
                 (AppState.purchaseOrderDraft.risFormData &&
                   AppState.purchaseOrderDraft.risFormData.issued_by_name) ||
                 ''
-              }" onchange="updatePOFormDraft('ris','issued_by_name', this.value)" placeholder="sample" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              }" onchange="updatePOFormDraft('ris','issued_by_name', this.value)" placeholder="Full name of issuer" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
@@ -12124,7 +12155,7 @@ function renderDynamicPOForms() {
                   AppState.purchaseOrderDraft.risFormData
                     .issued_by_designation) ||
                 ''
-              }" onchange="updatePOFormDraft('ris','issued_by_designation', this.value)" placeholder="sample" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              }" onchange="updatePOFormDraft('ris','issued_by_designation', this.value)" placeholder="Position/title" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
@@ -12155,7 +12186,7 @@ function renderDynamicPOForms() {
                 (AppState.purchaseOrderDraft.risFormData &&
                   AppState.purchaseOrderDraft.risFormData.received_by_name) ||
                 ''
-              }" onchange="updatePOFormDraft('ris','received_by_name', this.value)" placeholder="sample" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              }" onchange="updatePOFormDraft('ris','received_by_name', this.value)" placeholder="Full name of receiver" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
@@ -12167,7 +12198,7 @@ function renderDynamicPOForms() {
                   AppState.purchaseOrderDraft.risFormData
                     .received_by_designation) ||
                 ''
-              }" onchange="updatePOFormDraft('ris','received_by_designation', this.value)" placeholder="sample" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              }" onchange="updatePOFormDraft('ris','received_by_designation', this.value)" placeholder="Position/title" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
@@ -12229,7 +12260,7 @@ function renderDynamicPOForms() {
                 (AppState.purchaseOrderDraft.parFormData &&
                   AppState.purchaseOrderDraft.parFormData.par_no) ||
                 ''
-              }" onchange="updatePOFormDraft('par','par_no', this.value)" placeholder="sample" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              }" onchange="updatePOFormDraft('par','par_no', this.value)" placeholder="e.g., PAR-2025-001" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
@@ -12240,7 +12271,7 @@ function renderDynamicPOForms() {
                 (AppState.purchaseOrderDraft.parFormData &&
                   AppState.purchaseOrderDraft.parFormData.entity_name) ||
                 ''
-              }" onchange="updatePOFormDraft('par','entity_name', this.value)" placeholder="sample" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              }" onchange="updatePOFormDraft('par','entity_name', this.value)" placeholder="e.g., Camarines Norte State College" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
@@ -12318,7 +12349,7 @@ function renderDynamicPOForms() {
                 (AppState.purchaseOrderDraft.parFormData &&
                   AppState.purchaseOrderDraft.parFormData.received_by_name) ||
                 ''
-              }" onchange="updatePOFormDraft('par','received_by_name', this.value)" placeholder="sample" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              }" onchange="updatePOFormDraft('par','received_by_name', this.value)" placeholder="Full name of property custodian" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
@@ -12330,7 +12361,7 @@ function renderDynamicPOForms() {
                   AppState.purchaseOrderDraft.parFormData
                     .received_by_position) ||
                 ''
-              }" onchange="updatePOFormDraft('par','received_by_position', this.value)" placeholder="sample" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              }" onchange="updatePOFormDraft('par','received_by_position', this.value)" placeholder="e.g., Property Custodian" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
@@ -12357,23 +12388,28 @@ function renderDynamicPOForms() {
                 <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Name
               </label>
-              <input type="text" class="form-input" id="par_received_from_name" value="${
-                (AppState.purchaseOrderDraft.parFormData &&
-                  AppState.purchaseOrderDraft.parFormData.received_from_name) ||
-                ''
-              }" onchange="updatePOFormDraft('par','received_from_name', this.value)" placeholder="sample" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <div id="par_received_from_name" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 6px; background: #fff; font-size: 14px; color: #0f172a;">
+                ${
+                  (AppState.purchaseOrderDraft.parFormData &&
+                    AppState.purchaseOrderDraft.parFormData
+                      .received_from_name) ||
+                  'ARSENIO GEM A. GARCILLANSO'
+                }
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Position
               </label>
-              <input type="text" class="form-input" id="par_received_from_position" value="${
-                (AppState.purchaseOrderDraft.parFormData &&
-                  AppState.purchaseOrderDraft.parFormData
-                    .received_from_position) ||
-                ''
-              }" onchange="updatePOFormDraft('par','received_from_position', this.value)" placeholder="sample" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <div id="par_received_from_position" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 6px; background: #fff; font-size: 14px; color: #0f172a;">
+                ${
+                  (AppState.purchaseOrderDraft.parFormData &&
+                    AppState.purchaseOrderDraft.parFormData
+                      .received_from_position) ||
+                  'SUPPLY OFFICER III/ADMIN OFFICER V'
+                }
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
@@ -12444,7 +12480,7 @@ function renderDynamicPOForms() {
                   (AppState.purchaseOrderDraft.iarFormData &&
                     AppState.purchaseOrderDraft.iarFormData.iar_no) ||
                   ''
-                }" onchange="updatePOFormDraft('iar','iar_no', this.value)" placeholder="sample" 
+                }" onchange="updatePOFormDraft('iar','iar_no', this.value)" placeholder="e.g., IAR-2024-001" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -12472,7 +12508,7 @@ function renderDynamicPOForms() {
                   (AppState.purchaseOrderDraft.iarFormData &&
                     AppState.purchaseOrderDraft.iarFormData.entity_name) ||
                   ''
-                }" onchange="updatePOFormDraft('iar','entity_name', this.value)" placeholder="sample" 
+                }" onchange="updatePOFormDraft('iar','entity_name', this.value)" placeholder="e.g., Department of Education" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -12554,7 +12590,7 @@ function renderDynamicPOForms() {
                   (AppState.purchaseOrderDraft.iarFormData &&
                     AppState.purchaseOrderDraft.iarFormData.po_number) ||
                   ''
-                }" onchange="updatePOFormDraft('iar','po_number', this.value)" placeholder="sample" 
+                }" onchange="updatePOFormDraft('iar','po_number', this.value)" placeholder="Purchase Order Number" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -12583,7 +12619,7 @@ function renderDynamicPOForms() {
                     AppState.purchaseOrderDraft.iarFormData
                       .requisitioning_office) ||
                   ''
-                }" onchange="updatePOFormDraft('iar','requisitioning_office', this.value)" placeholder="sample" 
+                }" onchange="updatePOFormDraft('iar','requisitioning_office', this.value)" placeholder="Office requesting items" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -12598,7 +12634,7 @@ function renderDynamicPOForms() {
                     AppState.purchaseOrderDraft.iarFormData
                       .responsibility_center_code) ||
                   ''
-                }" onchange="updatePOFormDraft('iar','responsibility_center_code', this.value)" placeholder="sample" 
+                }" onchange="updatePOFormDraft('iar','responsibility_center_code', this.value)" placeholder="RCC number" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -12637,7 +12673,7 @@ function renderDynamicPOForms() {
                   (AppState.purchaseOrderDraft.iarFormData &&
                     AppState.purchaseOrderDraft.iarFormData.invoice_number) ||
                   ''
-                }" onchange="updatePOFormDraft('iar','invoice_number', this.value)" placeholder="sample" 
+                }" onchange="updatePOFormDraft('iar','invoice_number', this.value)" placeholder="Invoice number from supplier" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -12724,7 +12760,7 @@ function renderDynamicPOForms() {
                     AppState.purchaseOrderDraft.iarFormData
                       .inspection_officer_label) ||
                   ''
-                }" onchange="updatePOFormDraft('iar','inspection_officer_label', this.value)" placeholder="sample" 
+                }" onchange="updatePOFormDraft('iar','inspection_officer_label', this.value)" placeholder="Name/title of inspection officer" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -12758,7 +12794,7 @@ function renderDynamicPOForms() {
                   (AppState.purchaseOrderDraft.iarFormData &&
                     AppState.purchaseOrderDraft.iarFormData.custodian_label) ||
                   ''
-                }" onchange="updatePOFormDraft('iar','custodian_label', this.value)" placeholder="sample" 
+                }" onchange="updatePOFormDraft('iar','custodian_label', this.value)" placeholder="Name/title of custodian" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -12783,7 +12819,7 @@ function renderDynamicPOForms() {
                     AppState.purchaseOrderDraft.iarFormData
                       .inspected_by_name) ||
                   ''
-                }" onchange="updatePOFormDraft('iar','inspected_by_name', this.value)" placeholder="sample" 
+                }" onchange="updatePOFormDraft('iar','inspected_by_name', this.value)" placeholder="Full name of inspector" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -12798,7 +12834,7 @@ function renderDynamicPOForms() {
                     AppState.purchaseOrderDraft.iarFormData
                       .inspected_by_position) ||
                   ''
-                }" onchange="updatePOFormDraft('iar','inspected_by_position', this.value)" placeholder="sample" 
+                }" onchange="updatePOFormDraft('iar','inspected_by_position', this.value)" placeholder="e.g., Inspector" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -12838,7 +12874,7 @@ function renderDynamicPOForms() {
                     AppState.purchaseOrderDraft.iarFormData
                       .inspected_by_name_2) ||
                   ''
-                }" onchange="updatePOFormDraft('iar','inspected_by_name_2', this.value)" placeholder="sample" 
+                }" onchange="updatePOFormDraft('iar','inspected_by_name_2', this.value)" placeholder="Full name of second inspector" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -12853,7 +12889,7 @@ function renderDynamicPOForms() {
                     AppState.purchaseOrderDraft.iarFormData
                       .inspected_by_position_2) ||
                   ''
-                }" onchange="updatePOFormDraft('iar','inspected_by_position_2', this.value)" placeholder="sample" 
+                }" onchange="updatePOFormDraft('iar','inspected_by_position_2', this.value)" placeholder="e.g., Inspector" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">

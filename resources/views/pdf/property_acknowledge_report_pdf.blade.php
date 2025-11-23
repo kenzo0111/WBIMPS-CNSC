@@ -133,10 +133,10 @@
 					<div><strong>Issued by:</strong></div>
 					<div style="height:60px;"></div>
 					<div class="sign-line"></div>
-					<div style="margin-top:4px;">{{ $issuedByName ?? '________________________________________' }}</div>
+					<div style="margin-top:4px;">{{ $issuedByName ?? 'ARSENIO GEM A. GARCILLANSO' }}</div>
 					<div class="small">Signature over Printed Name of Supply and/or Property Custodian</div>
 					<div style="height:6px;"></div>
-					<div>{{ $issuedByPosition ?? '_______________________________' }}</div>
+					<div>{{ $issuedByPosition ?? 'SUPPLY OFFICER III/ADMIN OFFICER V' }}</div>
 					<div class="small">Position/Office</div>
 					<div style="height:6px;"></div>
 					<div>{{ $issuedDate ?? '_________________' }}</div>
