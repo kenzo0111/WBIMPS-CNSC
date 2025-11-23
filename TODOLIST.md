@@ -59,9 +59,10 @@
 ### Product Management
 
 - [x] Rename "Product" to "Item" throughout the system
-- [ ] Implement product name change functionality within category management
-- [x] Add price field to products (using coins/pesos instead of dollars)
-- [ ] Implement dropdown for items in product selection
+- [ ] Implement item name change functionality within category management
+- [x] Add price field to item (using coins/pesos instead of dollars)
+- [ ] Implement dropdown for items in item selection
+- [x] Add rows-per-page selector for Items page (client-side pagination)
 - [ ] Add role-based access control for Head Officer and Employees to access the system
 
 ### Requisition System

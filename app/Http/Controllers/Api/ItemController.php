@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\Item;
 use Illuminate\Http\Request;
 
@@ -50,6 +51,36 @@ class ItemController extends Controller
             'date' => 'nullable|date',
         ]);
 
+        // Get the category to apply category-specific validation
+        $category = null;
+        if ($validated['category_id']) {
+            $category = Category::find($validated['category_id']);
+        }
+
+        // Category-specific validation
+        if ($category) {
+            $categoryName = strtolower($category->name);
+
+            if (str_contains($categoryName, 'non-expendable')) {
+                // Non-expendable items require description and unit
+                $request->validate([
+                    'description' => 'required|string|min:10',
+                    'unit' => 'required|string|max:50',
+                ]);
+            } elseif (str_contains($categoryName, 'semi-expendable')) {
+                // Semi-expendable items require unit and description
+                $request->validate([
+                    'unit' => 'required|string|max:50',
+                    'description' => 'required|string|min:5',
+                ]);
+            } elseif (str_contains($categoryName, 'expendable')) {
+                // Expendable items require unit
+                $request->validate([
+                    'unit' => 'required|string|max:50',
+                ]);
+            }
+        }
+
         $item = Item::create($validated);
 
         return response()->json(['data' => $item->load('category')], 201);
@@ -69,7 +100,7 @@ class ItemController extends Controller
     public function update(Request $request, Item $item)
     {
         $validated = $request->validate([
-            'sku' => 'required|string|unique:items,sku,'.$item->id,
+            'sku' => 'required|string|unique:items,sku,' . $item->id,
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'category_id' => 'nullable|exists:categories,id',
@@ -78,6 +109,36 @@ class ItemController extends Controller
             'unit_cost' => 'numeric|min:0',
             'date' => 'nullable|date',
         ]);
+
+        // Get the category to apply category-specific validation
+        $category = null;
+        if ($validated['category_id']) {
+            $category = Category::find($validated['category_id']);
+        }
+
+        // Category-specific validation
+        if ($category) {
+            $categoryName = strtolower($category->name);
+
+            if (str_contains($categoryName, 'non-expendable')) {
+                // Non-expendable items require description and unit
+                $request->validate([
+                    'description' => 'required|string|min:10',
+                    'unit' => 'required|string|max:50',
+                ]);
+            } elseif (str_contains($categoryName, 'semi-expendable')) {
+                // Semi-expendable items require unit and description
+                $request->validate([
+                    'unit' => 'required|string|max:50',
+                    'description' => 'required|string|min:5',
+                ]);
+            } elseif (str_contains($categoryName, 'expendable')) {
+                // Expendable items require unit
+                $request->validate([
+                    'unit' => 'required|string|max:50',
+                ]);
+            }
+        }
 
         $item->update($validated);
 

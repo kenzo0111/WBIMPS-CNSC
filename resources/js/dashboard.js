@@ -185,6 +185,9 @@ const AppState = {
   ItemSearchTerm: '',
   ItemSortBy: 'Sort By',
   ItemFilterBy: 'Filter By',
+  // Items pagination state
+  currentItemsPage: 1,
+  itemsPageSize: 10,
   lowStockThreshold: 20,
   purchaseOrderItems: [
     {
@@ -1027,6 +1030,36 @@ async function loadPersistedInventoryData() {
 
 // Initialize with no persisted data
 loadPersistedInventoryData()
+
+// Items pagination preference persistence
+function getItemsPageSizeKey() {
+  return 'spmo_items_page_size'
+}
+
+function loadItemsPageSizeFromLocalStorage() {
+  try {
+    const key = getItemsPageSizeKey()
+    const raw = localStorage.getItem(key)
+    if (raw !== null) {
+      const v = Number(raw)
+      if (!isNaN(v)) AppState.itemsPageSize = v
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+function saveItemsPageSizeToLocalStorage() {
+  try {
+    const key = getItemsPageSizeKey()
+    localStorage.setItem(key, String(AppState.itemsPageSize || 10))
+  } catch (e) {
+    // ignore
+  }
+}
+
+// Load persisted preference (best-effort)
+loadItemsPageSizeFromLocalStorage()
 
 // Load purchase orders from API
 async function loadPurchaseOrdersFromAPI() {
@@ -3755,6 +3788,46 @@ function generateCategoriesPage() {
     `
 }
 
+// Global helper to render page buttons in pagination controls
+function renderPageButtons(currentPage, totalPages) {
+  const pages = []
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i)
+  } else {
+    if (currentPage <= 4) {
+      pages.push(1, 2, 3, 4, 5, '...', totalPages)
+    } else if (currentPage > totalPages - 4) {
+      pages.push(
+        1,
+        '...',
+        totalPages - 4,
+        totalPages - 3,
+        totalPages - 2,
+        totalPages - 1,
+        totalPages
+      )
+    } else {
+      pages.push(
+        1,
+        '...',
+        currentPage - 1,
+        currentPage,
+        currentPage + 1,
+        '...',
+        totalPages
+      )
+    }
+  }
+
+  return pages
+    .map((p) => {
+      if (p === '...') return `<span class="pagination-ellipsis">...</span>`
+      const active = Number(p) === Number(currentPage) ? 'active' : ''
+      return `<button class="pagination-btn ${active}" data-page="${p}" onclick="goToItemsPage(${p})">${p}</button>`
+    })
+    .join('')
+}
+
 function generateItemsPage() {
   const currentTab = AppState.currentItemTab || 'expendable'
   // Filter Items according to current tab. Prefer explicit `Item.type` when present;
@@ -3770,6 +3843,20 @@ function generateItemsPage() {
   }
 
   const filteredItems = allItems.filter((p) => deriveType(p) === currentTab)
+
+  // Pagination calculations
+  const rawPageSize = Number(AppState.itemsPageSize || 10)
+  // pageSize === 0 means 'All' - show everything on one page
+  const pageSize = rawPageSize === 0 ? filteredItems.length || 1 : rawPageSize
+  const totalItems = filteredItems.length
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+  const currentPage = Math.min(
+    Math.max(Number(AppState.currentItemsPage || 1), 1),
+    totalPages
+  )
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = Math.min(startIndex + pageSize, totalItems)
+  const pageItems = filteredItems.slice(startIndex, endIndex)
 
   return `
         <div class="page-header">
@@ -3834,6 +3921,23 @@ function generateItemsPage() {
                         <option>Recent (Last 30 days)</option>
                         <option>Low Quantity (<20)</option>
                     </select>
+                    <select class="filter-dropdown" id="rows-per-page" style="width:130px;">
+                      <option value="10" ${
+                        AppState.itemsPageSize == 10 ? 'selected' : ''
+                      }>Rows: 10</option>
+                      <option value="25" ${
+                        AppState.itemsPageSize == 25 ? 'selected' : ''
+                      }>Rows: 25</option>
+                      <option value="50" ${
+                        AppState.itemsPageSize == 50 ? 'selected' : ''
+                      }>Rows: 50</option>
+                      <option value="100" ${
+                        AppState.itemsPageSize == 100 ? 'selected' : ''
+                      }>Rows: 100</option>
+                      <option value="0" ${
+                        AppState.itemsPageSize == 0 ? 'selected' : ''
+                      }>Rows: All</option>
+                    </select>
                 </div>
             </div>
             
@@ -3855,8 +3959,8 @@ function generateItemsPage() {
                     </thead>
                     <tbody>
                         ${
-                          filteredItems.length
-                            ? filteredItems
+                          pageItems.length
+                            ? pageItems
                                 .map((Item, index) => {
                                   return `
                             <tr>
@@ -3899,17 +4003,21 @@ function generateItemsPage() {
                 <nav class="enhanced-pagination" aria-label="Pagination">
                     <div class="pagination-left" style="margin-left: 16px">
                         ${
-                          filteredItems.length === 0
+                          totalItems === 0
                             ? 'No entries to display'
-                            : `Showing 1 to ${filteredItems.length} of ${filteredItems.length} entries`
+                            : `Showing ${
+                                totalItems === 0 ? 0 : startIndex + 1
+                              } to ${endIndex} of ${totalItems} entries`
                         }
                     </div>
                     <div class="pagination-right" style="margin-right: 16px">
-                        <button class="pagination-btn" disabled>Previous</button>
-                        <button class="pagination-btn active">1</button>
-                        <button class="pagination-btn">2</button>
-                        <button class="pagination-btn">3</button>
-                        <button class="pagination-btn">Next</button>
+                      <button class="pagination-btn" data-action="prev" onclick="itemsPreviousPage()" ${
+                        currentPage <= 1 ? 'disabled' : ''
+                      }>Previous</button>
+                      ${renderPageButtons(currentPage, totalPages)}
+                      <button class="pagination-btn" data-action="next" onclick="itemsNextPage()" ${
+                        currentPage >= totalPages ? 'disabled' : ''
+                      }>Next</button>
                     </div>
                 </nav>
             </div>
@@ -12807,6 +12915,8 @@ function initializeItemsPageEvents() {
   if (searchInput) {
     searchInput.addEventListener('input', function (e) {
       AppState.ItemSearchTerm = e.target.value
+      // Reset to first page when search changes
+      AppState.currentItemsPage = 1
       updateItemsTable()
     })
   }
@@ -12818,6 +12928,8 @@ function initializeItemsPageEvents() {
   if (sortBy) {
     sortBy.addEventListener('change', function (e) {
       AppState.ItemSortBy = e.target.value
+      // Reset pagination when sorting changes
+      AppState.currentItemsPage = 1
       updateItemsTable()
     })
   }
@@ -12825,6 +12937,23 @@ function initializeItemsPageEvents() {
   if (filterBy) {
     filterBy.addEventListener('change', function (e) {
       AppState.ItemFilterBy = e.target.value
+      // Reset pagination when filter changes
+      AppState.currentItemsPage = 1
+      updateItemsTable()
+    })
+  }
+
+  // Rows per page control
+  const rowsPerPage = document.getElementById('rows-per-page')
+  if (rowsPerPage) {
+    rowsPerPage.addEventListener('change', function (e) {
+      const v = Number(e.target.value)
+      AppState.itemsPageSize = isNaN(v) ? 10 : v
+      // Reset to first page when page size changes
+      AppState.currentItemsPage = 1
+      try {
+        saveItemsPageSizeToLocalStorage()
+      } catch (e) {}
       updateItemsTable()
     })
   }
@@ -12928,11 +13057,24 @@ function updateItemsTable() {
     }
   }
 
+  // Pagination for items table
+  const rawPageSize = Number(AppState.itemsPageSize || 10)
+  const pageSize = rawPageSize === 0 ? filteredItems.length || 1 : rawPageSize
+  const totalItems = filteredItems.length
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+  const currentPage = Math.min(
+    Math.max(Number(AppState.currentItemsPage || 1), 1),
+    totalPages
+  )
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = Math.min(startIndex + pageSize, totalItems)
+  const pageItems = filteredItems.slice(startIndex, endIndex)
+
   // Update table body
   const tbody = document.querySelector('.table tbody')
   if (tbody) {
-    tbody.innerHTML = filteredItems.length
-      ? filteredItems
+    tbody.innerHTML = pageItems.length
+      ? pageItems
           .map((Item, index) => {
             return `
             <tr>
@@ -12972,15 +13114,61 @@ function updateItemsTable() {
     const paginationLeft = document.querySelector('.pagination-left')
     if (paginationLeft) {
       paginationLeft.textContent =
-        filteredItems.length === 0
+        totalItems === 0
           ? 'No entries to display'
-          : `Showing 1 to ${filteredItems.length} of ${filteredItems.length} entries`
+          : `Showing ${
+              totalItems === 0 ? 0 : startIndex + 1
+            } to ${endIndex} of ${totalItems} entries`
     }
+
+    // Update pagination buttons
+    const paginationRight = document.querySelector('.pagination-right')
+    if (paginationRight) {
+      paginationRight.innerHTML = `
+        <button class="pagination-btn" data-action="prev" onclick="itemsPreviousPage()" ${
+          currentPage <= 1 ? 'disabled' : ''
+        }>Previous</button>
+        ${renderPageButtons(currentPage, totalPages)}
+        <button class="pagination-btn" data-action="next" onclick="itemsNextPage()" ${
+          currentPage >= totalPages ? 'disabled' : ''
+        }>Next</button>
+      `
+    }
+
+    // Keep the rows-per-page control in sync
+    const rowsPerPageControl = document.getElementById('rows-per-page')
+    if (rowsPerPageControl)
+      rowsPerPageControl.value = String(AppState.itemsPageSize || 10)
 
     // Reinitialize icons
     lucide.createIcons()
   }
 }
+
+// Pagination control helpers for Items page
+function goToItemsPage(page) {
+  const p = Number(page) || 1
+  AppState.currentItemsPage = Math.max(1, p)
+  updateItemsTable()
+}
+
+function itemsNextPage() {
+  AppState.currentItemsPage = Number(AppState.currentItemsPage || 1) + 1
+  updateItemsTable()
+}
+
+function itemsPreviousPage() {
+  AppState.currentItemsPage = Math.max(
+    1,
+    Number(AppState.currentItemsPage || 1) - 1
+  )
+  updateItemsTable()
+}
+
+// expose helpers globally for inline onclick usage
+window.goToItemsPage = goToItemsPage
+window.itemsNextPage = itemsNextPage
+window.itemsPreviousPage = itemsPreviousPage
 
 // Initialize Stock In Page Events
 function initializeStockInPageEvents() {
@@ -18996,6 +19184,11 @@ async function saveItem(ItemId) {
     return
   }
 
+  if (!selectedCategoryId) {
+    showAlert('Category is required', 'error')
+    return
+  }
+
   const totalValue = unitCost * quantity
 
   // Generate SKU for new Items
@@ -19023,6 +19216,38 @@ async function saveItem(ItemId) {
     if (code.startsWith('e')) return 'expendable'
     return 'expendable'
   })()
+
+  // Category-based validation
+  if (ItemTypeFromCategory === 'non-expendable') {
+    if (!description || description.length < 10) {
+      showAlert(
+        'Description is required and must be at least 10 characters for non-expendable items.',
+        'error'
+      )
+      return
+    }
+    if (!unit) {
+      showAlert('Unit is required for non-expendable items.', 'error')
+      return
+    }
+  } else if (ItemTypeFromCategory === 'semi-expendable') {
+    if (!description || description.length < 5) {
+      showAlert(
+        'Description is required and must be at least 5 characters for semi-expendable items.',
+        'error'
+      )
+      return
+    }
+    if (!unit) {
+      showAlert('Unit is required for semi-expendable items.', 'error')
+      return
+    }
+  } else if (ItemTypeFromCategory === 'expendable') {
+    if (!unit) {
+      showAlert('Unit is required for expendable items.', 'error')
+      return
+    }
+  }
 
   if (!ItemId) {
     // Create new item: generate SKU based on derived Item type
@@ -19235,7 +19460,7 @@ function generateItemModal(mode = 'create', ItemData = null) {
                         </label>
                         <input type="text" class="form-input" id="ItemName"
                                value="${ItemData?.name || ''}"
-                               placeholder="e.g., Bond Paper A4"
+                               placeholder="e.g., Bond Paper A4, Laptop Dell Inspiron, Office Chair"
                                style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                                ${isReadOnly ? 'readonly' : ''}>
                     </div>
@@ -19247,7 +19472,7 @@ function generateItemModal(mode = 'create', ItemData = null) {
                         Description
                     </label>
                     <textarea class="form-textarea" id="ItemDescription"
-                              placeholder="Provide detailed Item description..."
+                              placeholder="e.g., High-quality A4 bond paper, 80gsm, suitable for printing and copying. Includes specifications like size, weight, and intended use."
                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; min-height: 100px; transition: all 0.2s; ${
                                 isReadOnly ? 'background: #f9fafb;' : ''
                               }"
@@ -19300,7 +19525,7 @@ function generateItemModal(mode = 'create', ItemData = null) {
                         </label>
                         <input type="text" class="form-input" id="ItemUnit"
                                value="${ItemData?.unit || ''}"
-                               placeholder="e.g., pcs, box, pack"
+                               placeholder="e.g., pcs (pieces), box, pack, ream, kg, liter"
                                style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                                ${isReadOnly ? 'readonly' : ''}>
                     </div>
