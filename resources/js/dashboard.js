@@ -10008,7 +10008,11 @@ function persistCurrentWizardStep() {
       inspection_officer_label:
         modal.querySelector('#iar_inspection_officer_label')?.value || '',
       inspection_officer_position:
-        modal.querySelector('#iar_inspection_officer_position')?.value || '',
+        modal.querySelector('#iar_inspection_officer_position')?.value ||
+        modal
+          .querySelector('#iar_inspection_officer_position')
+          ?.textContent?.trim() ||
+        '',
       acceptance_status:
         modal.querySelector('#iar_acceptance_status')?.value || '',
       custodian_label:
@@ -11540,9 +11544,7 @@ function autoFillIARForm() {
   }
 
   // Auto-fill signatory labels (keep labels but remove individual name/position fields)
-  if (!AppState.purchaseOrderDraft.iarFormData.inspection_officer_label) {
-    updatePOFormDraft('iar', 'inspection_officer_label', 'Inspection Officer')
-  }
+  // Leave inspection_officer_label empty by default — user should select a name explicitly
   // Make acceptance signature static by default (custodian)
   if (!AppState.purchaseOrderDraft.iarFormData.custodian_label) {
     updatePOFormDraft('iar', 'custodian_label', 'ARSENIO GEM A. GARCILLANSO')
@@ -12803,25 +12805,74 @@ function renderDynamicPOForms() {
                   <i data-lucide="user-check" style="width:14px; height:14px; color:#64748b;"></i>
                   Inspection label (prints under signature)
                 </label>
-                <input type="text" class="form-input" id="iar_inspection_officer_label" value="${
-                  (AppState.purchaseOrderDraft.iarFormData &&
-                    AppState.purchaseOrderDraft.iarFormData
-                      .inspection_officer_label) ||
-                  ''
-                }" onchange="updatePOFormDraft('iar','inspection_officer_label', this.value)" placeholder="Inspection Officer / Inspection Committee" 
-                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
-                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
-                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+                <select class="form-select" id="iar_inspection_officer_label" onchange="(function(el){ const val = el.value || ''; const staticPos = 'INSPECTION OFFICER / INSPECTION COMMITTEE'; updatePOFormDraft('iar','inspection_officer_label', val); updatePOFormDraft('iar','inspection_officer_position', staticPos); const posEl = document.querySelector('#iar_inspection_officer_position'); if(posEl) posEl.textContent = staticPos; })(this)" style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;" onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'" onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+                  <option value="">Select inspection officer</option>
+                  // No custom or generic options allowed - only names (capitalized)
+                  <option value="ENGR. LEONEL JOHN M. PADRIGON" data-position="Chairman" ${
+                    ((AppState.purchaseOrderDraft.iarFormData &&
+                      (
+                        AppState.purchaseOrderDraft.iarFormData
+                          .inspection_officer_label || ''
+                      ).toUpperCase()) ||
+                      '') === 'ENGR. LEONEL JOHN M. PADRIGON'
+                      ? 'selected'
+                      : ''
+                  }>ENGR. LEONEL JOHN M. PADRIGON</option>
+                  <option value="ENGR. RAMON A. ORBITA" data-position="Member" ${
+                    ((AppState.purchaseOrderDraft.iarFormData &&
+                      (
+                        AppState.purchaseOrderDraft.iarFormData
+                          .inspection_officer_label || ''
+                      ).toUpperCase()) ||
+                      '') === 'ENGR. RAMON A. ORBITA'
+                      ? 'selected'
+                      : ''
+                  }>ENGR. RAMON A. ORBITA</option>
+                  <option value="MR. CHRISTIAN A. PICARDO" data-position="Member" ${
+                    ((AppState.purchaseOrderDraft.iarFormData &&
+                      (
+                        AppState.purchaseOrderDraft.iarFormData
+                          .inspection_officer_label || ''
+                      ).toUpperCase()) ||
+                      '') === 'MR. CHRISTIAN A. PICARDO'
+                      ? 'selected'
+                      : ''
+                  }>MR. CHRISTIAN A. PICARDO</option>
+                  <option value="MR. ARIOSTO DECENA" data-position="Member" ${
+                    ((AppState.purchaseOrderDraft.iarFormData &&
+                      (
+                        AppState.purchaseOrderDraft.iarFormData
+                          .inspection_officer_label || ''
+                      ).toUpperCase()) ||
+                      '') === 'MR. ARIOSTO DECENA'
+                      ? 'selected'
+                      : ''
+                  }>MR. ARIOSTO DECENA</option>
+                  <option value="MR. NOEL S. MANILA" data-position="Member" ${
+                    ((AppState.purchaseOrderDraft.iarFormData &&
+                      (
+                        AppState.purchaseOrderDraft.iarFormData
+                          .inspection_officer_label || ''
+                      ).toUpperCase()) ||
+                      '') === 'MR. NOEL S. MANILA'
+                      ? 'selected'
+                      : ''
+                  }>MR. NOEL S. MANILA</option>
+                  <option value="MS. EMYRUTH B. CHAVEZ" data-position="Member" ${
+                    ((AppState.purchaseOrderDraft.iarFormData &&
+                      (
+                        AppState.purchaseOrderDraft.iarFormData
+                          .inspection_officer_label || ''
+                      ).toUpperCase()) ||
+                      '') === 'MS. EMYRUTH B. CHAVEZ'
+                      ? 'selected'
+                      : ''
+                  }>MS. EMYRUTH B. CHAVEZ</option>
+                </select>
                 <div class="small muted" style="margin-top:6px; font-size:12px; color:#6b7280;">Used as the printed label under the inspection signatory on the PDF</div>
                 <!-- NEW: Position field for inspection signatory -->
                 <div style="margin-top:10px;">
-                  <input type="text" class="form-input" id="iar_inspection_officer_position" value="${
-                    (AppState.purchaseOrderDraft.iarFormData &&
-                      AppState.purchaseOrderDraft.iarFormData
-                        .inspection_officer_position) ||
-                    ''
-                  }" onchange="updatePOFormDraft('iar','inspection_officer_position', this.value)" placeholder="Position (e.g. Chair, Inspection Committee)"
-                         style="border: 2px solid #f3e6ee; padding: 8px 12px; font-size: 13px; border-radius: 6px; width: 100%;" />
+                  <div id="iar_inspection_officer_position" style="padding: 8px 12px; border: 2px solid #f3e6ee; border-radius: 6px; background:#fff; font-size:13px; width:100%; color:#0f172a;">INSPECTION OFFICER / INSPECTION COMMITTEE</div>
                   <div class="small muted" style="margin-top:6px; font-size:12px; color:#6b7280;">Optional: printed under the inspection name on the IAR PDF</div>
                 </div>
               </div>

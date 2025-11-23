@@ -178,15 +178,18 @@
                             <span>Inspected, verified and found in order as to quantity and specifications</span>
                         </div>
                         <div class="signature-block">
-                            <div class="signature-line">{{ $inspectionOfficerLabel ?? 'Inspection Officer / Inspection Committee' }}</div>
-                            <div class="position-line"><strong>Position:</strong>
+                                {{-- inspection signatory (use provided values when available) --}}
+                                <div class="signature-line">{{ $inspectionOfficerName ?? $inspectionOfficerLabel ?? 'Inspection Officer / Inspection Committee' }}</div>
                                 @if(!empty($inspectionOfficerPosition))
-                                    {{ $inspectionOfficerPosition }}
+                                    <div class="position-line">{{ $inspectionOfficerPosition }}</div>
+                                @elseif(!empty($custodianPosition))
+                                    <div class="position-line">{{ $custodianPosition }}</div>
                                 @else
-                                    <span class="position-placeholder">_____________________________</span>
+                                    <div class="position-line"><strong>Position:</strong>
+                                        <span class="position-placeholder">_____________________________</span>
+                                    </div>
                                 @endif
                             </div>
-                        </div>
                     </div>
                 </td>
                 <td colspan="2" style="vertical-align: top;">

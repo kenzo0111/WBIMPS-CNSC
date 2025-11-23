@@ -95,7 +95,8 @@ test('creating a purchase order with provided iar_form_data saves fields on the 
             'iar_no' => 'IAR-2025-999',
             'inspection_status' => 'complete',
             'acceptance_status' => 'accepted',
-            'inspection_officer_position' => 'Chair, Inspection Committee',
+            'inspection_officer_label' => 'ENGR. LEONEL JOHN M. PADRIGON',
+            'inspection_officer_position' => 'INSPECTION OFFICER / INSPECTION COMMITTEE',
             'custodian_position' => 'Supply Custodian',
         ],
         'grand_total' => 750.00,
@@ -115,10 +116,16 @@ test('creating a purchase order with provided iar_form_data saves fields on the 
         'acceptance_status' => 'accepted',
     ]);
 
+    // Assert inspection label was saved
+    $this->assertDatabaseHas('inspection_acceptance_reports', [
+        'purchase_order_id' => $poId,
+        'inspection_officer_label' => 'ENGR. LEONEL JOHN M. PADRIGON',
+    ]);
+
     // Assert positions were saved
     $this->assertDatabaseHas('inspection_acceptance_reports', [
         'purchase_order_id' => $poId,
-        'inspection_officer_position' => 'Chair, Inspection Committee',
+        'inspection_officer_position' => 'INSPECTION OFFICER / INSPECTION COMMITTEE',
         'custodian_position' => 'Supply Custodian',
     ]);
 });

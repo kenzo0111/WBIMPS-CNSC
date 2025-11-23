@@ -179,16 +179,18 @@
                             <span>Inspected, verified and found in order as to quantity and specifications</span>
                         </div>
                         <div class="signature-block">
-                            <div class="signature-line"><?php echo e($inspectionOfficerLabel ?? 'Inspection Officer / Inspection Committee'); ?></div>
-                            <div class="position-line"><strong>Position:</strong>
+                                
+                                <div class="signature-line"><?php echo e($inspectionOfficerName ?? $inspectionOfficerLabel ?? 'Inspection Officer / Inspection Committee'); ?></div>
                                 <?php if(!empty($inspectionOfficerPosition)): ?>
-                                    <?php echo e($inspectionOfficerPosition); ?>
-
+                                    <div class="position-line"><?php echo e($inspectionOfficerPosition); ?></div>
+                                <?php elseif(!empty($custodianPosition)): ?>
+                                    <div class="position-line"><?php echo e($custodianPosition); ?></div>
                                 <?php else: ?>
-                                    <span class="position-placeholder">_____________________________</span>
+                                    <div class="position-line"><strong>Position:</strong>
+                                        <span class="position-placeholder">_____________________________</span>
+                                    </div>
                                 <?php endif; ?>
                             </div>
-                        </div>
                     </div>
                 </td>
                 <td colspan="2" style="vertical-align: top;">
