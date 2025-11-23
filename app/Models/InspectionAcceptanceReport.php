@@ -37,7 +37,6 @@ class InspectionAcceptanceReport extends Model
     protected $table = 'inspection_acceptance_reports';
 
     protected $fillable = [
-        'purchase_order_id',
         'iar_no',
         'entity_name',
         'fund_cluster',
@@ -47,17 +46,18 @@ class InspectionAcceptanceReport extends Model
         'po_date',
         'requisitioning_office',
         'responsibility_center_code',
-        'responsibility_date',
         'invoice_no',
         'invoice_date',
         'date_inspected',
         'date_received',
         'inspection_status',
-        'inspection_officer_label',
         'acceptance_status',
-        'custodian_label',
         'items',
         'status',
+        'responsibility_date',
+        'inspection_officer_label',
+        'custodian_label',
+        'purchase_order_id',
     ];
 
     protected $casts = [

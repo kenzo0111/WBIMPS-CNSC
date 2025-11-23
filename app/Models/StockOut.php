@@ -29,19 +29,18 @@ class StockOut extends Model
 
     protected $fillable = [
         'transaction_id',
-        'issue_id',
         'sku',
         'product_name',
         'quantity',
+        'purpose',
+        'date_issued',
+        'issue_id',
         'unit_cost',
         'total_cost',
         'department',
-        // 'recipient' removed: standardize on 'issued_to'
         'issued_to',
         'issued_by',
-        'purpose',
         'status',
-        'date_issued',
     ];
 
     protected $casts = [

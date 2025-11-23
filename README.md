@@ -15,19 +15,6 @@ A Laravel-based web application for managing inventory and procurement workflows
 - **Frontend:** Blade, Vite, modern ES modules, Lucide icons
 - **Styling:** Tailored CSS modules per view (AccessSystem, dashboard, etc.)
 
-## 🚀 Deployment
-
-### Railway (Recommended)
-
-The application is configured for easy deployment to Railway:
-
-1. **Connect Repository**: Link your GitHub repository to Railway
-2. **Automatic Deployment**: Railway auto-detects Laravel and deploys automatically
-3. **Database**: MySQL database is provisioned automatically
-4. **Environment**: Set environment variables from `.env.production`
-
-See **[RAILWAY_DEPLOYMENT.md](RAILWAY_DEPLOYMENT.md)** for detailed deployment instructions.
-
 ### Local Development
 
 ```bash
@@ -61,18 +48,6 @@ These seed values land you on the admin dashboard after authentication.
 php artisan test
 ```
 
-## � Architecture
-
-See **[ARCHITECTURE.md](ARCHITECTURE.md)** for detailed system architecture including:
-
-- High-level architecture diagram
-- Procurement workflow visualization
-- Database entity relationships
-- API architecture
-- Security architecture
-- Deployment architecture
-- Technology stack details
-
 ## �📁 Relevant Routes
 
 - `/login` — Access System login screen
@@ -92,9 +67,6 @@ Please run tests and `npm run build` before submitting PRs.
 
 ## � Documentation
 
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Complete system architecture with diagrams
-- **[CORE_MODULES.md](CORE_MODULES.md)** - Core modules and responsibilities
-- **[MAILER_SETUP.md](MAILER_SETUP.md)** - Email configuration guide
 - **[TODOLIST.md](TODOLIST.md)** - Project completion status
 
 ## �📄 License

@@ -43,7 +43,6 @@ class RequisitionIssueSlip extends Model
 
     protected $fillable = [
         'ris_no',
-        'purchase_order_id',
         'entity_name',
         'fund_cluster',
         'division',
@@ -68,6 +67,7 @@ class RequisitionIssueSlip extends Model
         'received_by_designation',
         'received_by_date',
         'status',
+        'purchase_order_id',
     ];
 
     protected $casts = [

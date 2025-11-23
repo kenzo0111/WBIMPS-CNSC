@@ -53,7 +53,8 @@ class ItemController extends Controller
 
         // Get the category to apply category-specific validation
         $category = null;
-        if ($validated['category_id']) {
+        // Use a safe check when reading optional category_id to avoid undefined array key errors
+        if (!empty($validated['category_id'])) {
             $category = Category::find($validated['category_id']);
         }
 
@@ -112,7 +113,8 @@ class ItemController extends Controller
 
         // Get the category to apply category-specific validation
         $category = null;
-        if ($validated['category_id']) {
+        // Use a safe check when reading optional category_id to avoid undefined array key errors
+        if (!empty($validated['category_id'])) {
             $category = Category::find($validated['category_id']);
         }
 

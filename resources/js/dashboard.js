@@ -5141,6 +5141,125 @@ async function loadSuppliersFromAPI() {
   }
 }
 
+// Helper: swap a <select> to a text <input> for manual entry and vice-versa
+function makeSupplierManual(id, placeholder = 'Enter supplier name') {
+  const el = document.getElementById(id)
+  if (!el) return null
+  // If already an input, do nothing
+  if (el.tagName.toLowerCase() === 'input') return el
+
+  const input = document.createElement('input')
+  input.type = 'text'
+  input.id = el.id
+  input.className =
+    (el.className || '').replace('form-select', 'form-input') || 'form-input'
+  input.placeholder = placeholder
+  input.setAttribute('data-manual', '1')
+  input.style.cssText = el.style.cssText || ''
+  el.replaceWith(input)
+
+  // wire a convenience listener: if user types an existing supplier name, convert back to select
+  const onInput = (e) => {
+    const v = String(e.target.value || '').trim()
+    if (!v) return
+    const found = (AppState.suppliers || []).find((s) => s.name === v)
+    if (found) {
+      // convert back to select and choose the matching value
+      convertInputBackToSelect(id, found.name)
+    }
+  }
+  input.addEventListener('change', onInput)
+  input.addEventListener('input', onInput)
+  return input
+}
+
+function convertInputBackToSelect(id, selectedValue = '') {
+  const el = document.getElementById(id)
+  if (!el) return null
+  // If already a select, just set value
+  if (el.tagName.toLowerCase() === 'select') {
+    el.value = selectedValue
+    el.dispatchEvent(new Event('change'))
+    return el
+  }
+
+  // Build a select element from AppState.suppliers
+  const select = document.createElement('select')
+  select.id = id
+  select.className = 'form-select'
+  select.style.cssText = el.style.cssText || ''
+  // default option
+  const opts = []
+  opts.push(`<option value="">Select supplier</option>`)
+  ;(AppState.suppliers || []).forEach((s) => {
+    const name = s.name || ''
+    const iddata = s.id || ''
+    opts.push(
+      `<option value="${escapeHtml(name)}" data-id="${iddata}">${escapeHtml(
+        name
+      )}</option>`
+    )
+  })
+  opts.push(`<option value="__other__">Other (enter manually)</option>`)
+  select.innerHTML = opts.join('')
+
+  el.replaceWith(select)
+  if (selectedValue) select.value = selectedValue
+  // fire change to allow any handlers to auto-fill
+  select.dispatchEvent(new Event('change'))
+  return select
+}
+
+// Delegated handler: coordinate selects/inputs used for suppliers across modals
+document.addEventListener('change', (e) => {
+  const id = e.target && e.target.id
+  if (!id) return
+  const val = String(e.target.value || '')
+
+  // If user chose Other on a select - convert to manual input
+  if (e.target.tagName.toLowerCase() === 'select' && val === '__other__') {
+    makeSupplierManual(id)
+    return
+  }
+
+  // If user changed back to a supplier name, auto-fill related fields
+  if (['po-supplier', 'supplierName'].includes(id) && val) {
+    const supplier = (AppState.suppliers || []).find((s) => s.name === val)
+    if (supplier) {
+      if (id === 'po-supplier') {
+        const addr = document.getElementById('po-supplier-address')
+        const tin = document.getElementById('po-supplier-tin')
+        if (addr) addr.value = supplier.address || ''
+        if (tin) tin.value = supplier.tin || ''
+      }
+      if (id === 'supplierName') {
+        const addr = document.getElementById('supplierAddress')
+        const tin = document.getElementById('supplierTIN')
+        if (addr) addr.value = supplier.address || ''
+        if (tin) tin.value = supplier.tin || ''
+      }
+    }
+  }
+})
+
+document.addEventListener('input', (e) => {
+  const id = e.target && e.target.id
+  if (!id) return
+  // If typing inside a manual input and it now exactly matches a supplier name,
+  // convert back to select and set that value.
+  if (
+    e.target.tagName.toLowerCase() === 'input' &&
+    ['po-supplier', 'supplierName', 'supplier-input'].includes(id)
+  ) {
+    const val = String(e.target.value || '').trim()
+    if (!val) return
+    const found = (AppState.suppliers || []).find((s) => s.name === val)
+    if (found) {
+      convertInputBackToSelect(id, found.name)
+    }
+  }
+})
+
 // Supplier helpers are intentionally NOT exposed globally anymore.
 // The UI uses delegated event handlers and data-action attributes. If you
 // must expose any function globally for legacy templates, re-add explicitly.
@@ -8063,6 +8182,38 @@ function openPurchaseOrderModal(mode = 'create', requestId = null) {
     renderPurchaseOrderWizardStep(requestData)
   } else {
     modalContent.innerHTML = generatePurchaseOrderModal(mode, requestData)
+
+    // Wire supplier select in non-wizard PO modal so address/TIN auto-fill
+    setTimeout(() => {
+      try {
+        const sel = modalContent.querySelector('#supplierName')
+        const addr = modalContent.querySelector('#supplierAddress')
+        const tin = modalContent.querySelector('#supplierTIN')
+        if (sel) {
+          const onChange = (e) => {
+            const val = e.target.value
+            if (val === '__other__') {
+              if (addr) addr.value = ''
+              if (tin) tin.value = ''
+              // convert to manual input immediately
+              makeSupplierManual('supplierName', 'Enter supplier name')
+              return
+            }
+            const supplier = (AppState.suppliers || []).find(
+              (s) => s.name === val
+            )
+            if (supplier) {
+              if (addr) addr.value = supplier.address || ''
+              if (tin) tin.value = supplier.tin || ''
+            }
+          }
+          sel.addEventListener('change', onChange)
+          sel.addEventListener('input', onChange)
+        }
+      } catch (e) {
+        console.debug('PO modal supplier wiring failed', e)
+      }
+    }, 30)
   }
   modal.classList.add('active')
 
@@ -9059,10 +9210,8 @@ function renderPurchaseOrderWizardStep(requestData) {
                                     <i data-lucide="building" style="width: 14px; height: 14px; color: #6b7280;"></i>
                                     Supplier<span style="color:#dc2626"> *</span>
                                 </label>
-                                <input type="text" class="form-input" id="po-supplier" list="supplier-datalist" placeholder="e.g. ABC Office Supplies" value="${
-                                  AppState.purchaseOrderDraft.supplier || ''
-                                }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
-                                <datalist id="supplier-datalist">
+                                <select class="form-select" id="po-supplier" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                                    <option value="">Select supplier</option>
                                     ${(AppState.suppliers || [])
                                       .map(
                                         (s) =>
@@ -9075,7 +9224,8 @@ function renderPurchaseOrderWizardStep(requestData) {
                                           )}</option>`
                                       )
                                       .join('')}
-                                </datalist>
+                                    <option value="__other__">Other (enter manually)</option>
+                                </select>
                             </div>
                             <div class="form-group" style="margin-bottom: 16px;">
                                 <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
@@ -9117,39 +9267,36 @@ function renderPurchaseOrderWizardStep(requestData) {
         `
     footer.innerHTML = footerButtons(true, 'Next')
 
-    // Add event listener for supplier autocomplete
+    // Add event listener for supplier selection/autocomplete
     setTimeout(() => {
       const supplierInput = document.getElementById('po-supplier')
       const addressInput = document.getElementById('po-supplier-address')
       const tinInput = document.getElementById('po-supplier-tin')
 
       if (supplierInput) {
-        supplierInput.addEventListener('input', function (e) {
-          const selectedSupplierName = e.target.value
-          const supplier = (AppState.suppliers || []).find(
-            (s) => s.name === selectedSupplierName
-          )
+        function onPoSupplierChange(e) {
+          const val = e.target.value
+          // If user chooses 'Other', swap select for text input for manual entry
+          if (val === '__other__') {
+            if (addressInput) addressInput.value = ''
+            if (tinInput) tinInput.value = ''
+            // convert select element into manual input for this PO supplier
+            makeSupplierManual('po-supplier', 'Enter supplier name')
+            return
+          }
 
+          const supplier = (AppState.suppliers || []).find(
+            (s) => s.name === val
+          )
           if (supplier) {
-            // Auto-fill address and TIN from selected supplier
             if (addressInput) addressInput.value = supplier.address || ''
             if (tinInput) tinInput.value = supplier.tin || ''
           }
-        })
+        }
 
-        // Also trigger on change to handle selection from datalist
-        supplierInput.addEventListener('change', function (e) {
-          const selectedSupplierName = e.target.value
-          const supplier = (AppState.suppliers || []).find(
-            (s) => s.name === selectedSupplierName
-          )
-
-          if (supplier) {
-            // Auto-fill address and TIN from selected supplier
-            if (addressInput) addressInput.value = supplier.address || ''
-            if (tinInput) tinInput.value = supplier.tin || ''
-          }
-        })
+        supplierInput.addEventListener('change', onPoSupplierChange)
+        // keep backwards compat: also listen to input for some browsers
+        supplierInput.addEventListener('input', onPoSupplierChange)
       }
     }, 50)
   } else if (step === 2) {
@@ -10154,11 +10301,28 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                                 <i data-lucide="building" style="width: 14px; height: 14px; color: #6b7280;"></i>
                                 Supplier Name
                             </label>
-                            <input type="text" class="form-input" id="supplierName"
-                                   value="${requestData?.supplier || ''}"
-                                   placeholder="Enter supplier name" 
-                                   style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                                   ${isReadOnly ? 'readonly' : ''}>
+                            <select class="form-select" id="supplierName" ${
+                              isReadOnly ? 'disabled' : ''
+                            } style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                              <option value="">Select supplier</option>
+                              ${(AppState.suppliers || [])
+                                .map(
+                                  (s) =>
+                                    `<option value="${escapeHtml(
+                                      s.name || ''
+                                    )}" data-id="${s.id || ''}" ${
+                                      requestData?.supplier === s.name
+                                        ? 'selected'
+                                        : ''
+                                    }>${escapeHtml(s.name || '')}</option>`
+                                )
+                                .join('')}
+                              <option value="__other__" ${
+                                ['', null].includes(requestData?.supplier)
+                                  ? ''
+                                  : ''
+                              }>Other (enter manually)</option>
+                            </select>
                         </div>
                         
                         <div class="form-group" style="margin-bottom: 20px;">
@@ -10180,7 +10344,7 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                                 TIN Number
                             </label>
                             <input type="text" class="form-input" id="supplierTIN"
-                                   value="${requestData?.supplierTIN || ''}"
+                              value="${requestData?.supplierTIN || ''}"
                                    placeholder="Enter TIN number" 
                                    style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                                    ${isReadOnly ? 'readonly' : ''}>
@@ -20406,11 +20570,22 @@ function generateStockInModal(mode = 'create', stockData = null) {
                         <i data-lucide="truck" style="width: 14px; height: 14px; color: #6b7280;"></i>
                         Supplier
                     </label>
-          <input type="text" class="form-input" id="supplier-input"
-            value="${supplierValue || ''}"
-                           placeholder="Enter supplier name"
-                           style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                           ${isReadOnly ? 'readonly' : ''}>
+          <select class="form-select" id="supplier-input" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" ${
+            isReadOnly ? 'disabled' : ''
+          }>
+              <option value="">Select supplier</option>
+              ${(AppState.suppliers || [])
+                .map(
+                  (s) =>
+                    `<option value="${escapeHtml(s.name || '')}" data-id="${
+                      s.id || ''
+                    }" ${
+                      supplierValue === s.name ? 'selected' : ''
+                    }>${escapeHtml(s.name || '')}</option>`
+                )
+                .join('')}
+              <option value="__other__">Other (enter manually)</option>
+          </select>
                 </div>
 
                 <div class="form-group" style="margin-bottom: 0;">

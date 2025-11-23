@@ -20,7 +20,11 @@ class Category extends Model
     use HasFactory;
 
     // Keep numeric auto-incrementing primary key; add 'code' for display (C001)
-    protected $fillable = ['code', 'name', 'description'];
+    protected $fillable = [
+        'name',
+        'description',
+        'code',
+    ];
 
     public function products(): HasMany
     {

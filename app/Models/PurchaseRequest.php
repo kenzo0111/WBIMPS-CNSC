@@ -34,17 +34,16 @@ class PurchaseRequest extends Model
         'request_id',
         'email',
         'requester',
-        'designation',
         'department',
         'items',
         'unit',
-        'quantity',
-        'unit_cost',
         'needed_date',
         'priority',
         'status',
         'submitted_at',
         'metadata',
+        'quantity',
+        'unit_cost',
     ];
 
     protected $casts = [

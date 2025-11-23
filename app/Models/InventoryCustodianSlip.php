@@ -30,7 +30,6 @@ class InventoryCustodianSlip extends Model
     protected $table = 'inventory_custodian_slips';
 
     protected $fillable = [
-        'purchase_order_id',
         'ics_no',
         'entity_name',
         'fund_cluster',
@@ -43,6 +42,7 @@ class InventoryCustodianSlip extends Model
         'received_by_name',
         'received_by_position',
         'received_by_date',
+        'purchase_order_id',
     ];
 
     protected $casts = [

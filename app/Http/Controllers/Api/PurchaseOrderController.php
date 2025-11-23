@@ -31,7 +31,8 @@ class PurchaseOrderController extends Controller
         \Log::info('Purchase Order Store Request', ['data' => $request->all()]);
 
         $validator = Validator::make($request->all(), [
-            'po_number' => 'nullable|string|unique:purchase_orders,po_number',
+            // PO number is required when creating a purchase order (tests and clients expect validation)
+            'po_number' => 'required|string|unique:purchase_orders,po_number',
             'supplier' => 'nullable|string|max:255',
             'supplier_address' => 'nullable|string',
             'tin_number' => 'nullable|string|max:50',

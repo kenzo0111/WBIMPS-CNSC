@@ -30,13 +30,11 @@ class PropertyAcknowledgementReceipt extends Model
     protected $table = 'property_acknowledgement_receipts';
 
     protected $fillable = [
-        'purchase_order_id',
         'par_no',
         'entity_name',
         'fund_cluster',
         'date',
         'items',
-        'grand_total',
         'received_by_name',
         'received_by_position',
         'received_date',
@@ -44,6 +42,8 @@ class PropertyAcknowledgementReceipt extends Model
         'issued_by_position',
         'issued_date',
         'status',
+        'grand_total',
+        'purchase_order_id',
     ];
 
     protected $casts = [
