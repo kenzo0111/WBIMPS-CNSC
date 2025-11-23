@@ -101,29 +101,29 @@
         </colgroup>
         <tr>
             <td class="label">Entity Name :</td>
-            <td class="field">{{ $entityName ?? '' }}</td>
+            <td class="field"><?php echo e($entityName ?? ''); ?></td>
             <td class="label">Fund Cluster :</td>
-            <td class="field">{{ $fundCluster ?? '' }}</td>
+            <td class="field"><?php echo e($fundCluster ?? ''); ?></td>
         </tr>
     </table>
 
     <table class="items-table">
         <thead>
             <tr>
-                <td colspan="2" style="border: none; border-right: 1px solid #000; text-align: left; padding: 3px; font-size: 9pt;">Supplier : {{ $supplier ?? '' }}</td>
-                <td colspan="2" style="border: none; text-align: left; padding: 3px; font-size: 9pt;">IAR No. : {{ $iarNo ?? '' }}</td>
+                <td colspan="2" style="border: none; border-right: 1px solid #000; text-align: left; padding: 3px; font-size: 9pt;">Supplier : <?php echo e($supplier ?? ''); ?></td>
+                <td colspan="2" style="border: none; text-align: left; padding: 3px; font-size: 9pt;">IAR No. : <?php echo e($iarNo ?? ''); ?></td>
             </tr>
             <tr>
-                <td colspan="2" style="border: none; border-right: 1px solid #000; text-align: left; padding: 3px; font-size: 9pt;">PO No./Date : {{ $poNo ?? '' }} {{ isset($poDate) ? '/ ' . $poDate : '' }}</td>
-                <td colspan="2" style="border: none; text-align: left; padding: 3px; font-size: 9pt;">Date. : {{ $iarDate ?? '' }}</td>
+                <td colspan="2" style="border: none; border-right: 1px solid #000; text-align: left; padding: 3px; font-size: 9pt;">PO No./Date : <?php echo e($poNo ?? ''); ?> <?php echo e(isset($poDate) ? '/ ' . $poDate : ''); ?></td>
+                <td colspan="2" style="border: none; text-align: left; padding: 3px; font-size: 9pt;">Date. : <?php echo e($iarDate ?? ''); ?></td>
             </tr>
             <tr>
-                <td colspan="2" style="border: none; border-right: 1px solid #000; text-align: left; padding: 3px; font-size: 9pt;">Requisitioning Office/Dep : {{ $requisitionOffice ?? $requisitioningOffice ?? '' }}</td>
-                <td colspan="2" style="border: none; text-align: left; padding: 3px; font-size: 9pt;">Invoice No : {{ $invoiceNo ?? '' }}</td>
+                <td colspan="2" style="border: none; border-right: 1px solid #000; text-align: left; padding: 3px; font-size: 9pt;">Requisitioning Office/Dep : <?php echo e($requisitionOffice ?? $requisitioningOffice ?? ''); ?></td>
+                <td colspan="2" style="border: none; text-align: left; padding: 3px; font-size: 9pt;">Invoice No : <?php echo e($invoiceNo ?? ''); ?></td>
             </tr>
             <tr>
-                <td colspan="2" style="border: none; border-right: 1px solid #000; text-align: left; padding: 3px; font-size: 9pt;"> Responsibility Center Code : {{ $responsibilityCenterCode ?? '' }}</td>
-                <td colspan="2" style="border: none; text-align: left; padding: 3px; font-size: 9pt;">Date. : {{ $responsibilityDate ?? $responsibility_date ?? '' }}</td>
+                <td colspan="2" style="border: none; border-right: 1px solid #000; text-align: left; padding: 3px; font-size: 9pt;"> Responsibility Center Code : <?php echo e($responsibilityCenterCode ?? ''); ?></td>
+                <td colspan="2" style="border: none; text-align: left; padding: 3px; font-size: 9pt;">Date. : <?php echo e($responsibilityDate ?? $responsibility_date ?? ''); ?></td>
             </tr>
             <tr>
                 <th class="stock-col">Stock/<br>Property No.</th>
@@ -133,33 +133,33 @@
             </tr>
         </thead>
         <tbody>
-            @if(isset($items) && count($items) > 0)
-                @foreach($items as $item)
+            <?php if(isset($items) && count($items) > 0): ?>
+                <?php $__currentLoopData = $items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <tr>
-                    <td class="stock-col">{{ $item['stock_no'] ?? $item['stock_number'] ?? $item['item_no'] ?? '' }}</td>
-                    <td class="description-col">{{ $item['description'] ?? $item['detailedDescription'] ?? $item['detailed_description'] ?? '' }}</td>
-                    <td class="unit-col">{{ $item['unit'] ?? $item['unitOfMeasure'] ?? $item['unit_of_measure'] ?? '' }}</td>
-                    <td class="quantity-col">{{ $item['quantity'] ?? $item['qty'] ?? '' }}</td>
+                    <td class="stock-col"><?php echo e($item['stock_no'] ?? $item['stock_number'] ?? $item['item_no'] ?? ''); ?></td>
+                    <td class="description-col"><?php echo e($item['description'] ?? $item['detailedDescription'] ?? $item['detailed_description'] ?? ''); ?></td>
+                    <td class="unit-col"><?php echo e($item['unit'] ?? $item['unitOfMeasure'] ?? $item['unit_of_measure'] ?? ''); ?></td>
+                    <td class="quantity-col"><?php echo e($item['quantity'] ?? $item['qty'] ?? ''); ?></td>
                 </tr>
-                @endforeach
-                @for($i = count($items); $i < 8; $i++)
-                <tr>
-                    <td class="stock-col">&nbsp;</td>
-                    <td class="description-col">&nbsp;</td>
-                    <td class="unit-col">&nbsp;</td>
-                    <td class="quantity-col">&nbsp;</td>
-                </tr>
-                @endfor
-            @else
-                @for($i = 0; $i < 8; $i++)
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                <?php for($i = count($items); $i < 8; $i++): ?>
                 <tr>
                     <td class="stock-col">&nbsp;</td>
                     <td class="description-col">&nbsp;</td>
                     <td class="unit-col">&nbsp;</td>
                     <td class="quantity-col">&nbsp;</td>
                 </tr>
-                @endfor
-            @endif
+                <?php endfor; ?>
+            <?php else: ?>
+                <?php for($i = 0; $i < 8; $i++): ?>
+                <tr>
+                    <td class="stock-col">&nbsp;</td>
+                    <td class="description-col">&nbsp;</td>
+                    <td class="unit-col">&nbsp;</td>
+                    <td class="quantity-col">&nbsp;</td>
+                </tr>
+                <?php endfor; ?>
+            <?php endif; ?>
         </tbody>
 
         <tfoot>
@@ -171,20 +171,22 @@
                 <td colspan="2" style="vertical-align: top;">
                     <div class="inspection-section">
                         <div class="date-field">
-                            <strong>Date Inspected :</strong> {{ $dateInspected ?? '' }}
+                            <strong>Date Inspected :</strong> <?php echo e($dateInspected ?? ''); ?>
+
                         </div>
                         <div class="checkbox-group">
-                            <span class="checkbox {{ (isset($inspectionStatus) && $inspectionStatus == 'verified') ? 'checked' : '' }}"></span>
+                            <span class="checkbox <?php echo e((isset($inspectionStatus) && $inspectionStatus == 'verified') ? 'checked' : ''); ?>"></span>
                             <span>Inspected, verified and found in order as to quantity and specifications</span>
                         </div>
                         <div class="signature-block">
-                            <div class="signature-line">{{ $inspectionOfficerLabel ?? 'Inspection Officer / Inspection Committee' }}</div>
+                            <div class="signature-line"><?php echo e($inspectionOfficerLabel ?? 'Inspection Officer / Inspection Committee'); ?></div>
                             <div class="position-line"><strong>Position:</strong>
-                                @if(!empty($inspectionOfficerPosition))
-                                    {{ $inspectionOfficerPosition }}
-                                @else
+                                <?php if(!empty($inspectionOfficerPosition)): ?>
+                                    <?php echo e($inspectionOfficerPosition); ?>
+
+                                <?php else: ?>
                                     <span class="position-placeholder">_____________________________</span>
-                                @endif
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -192,28 +194,29 @@
                 <td colspan="2" style="vertical-align: top;">
                     <div class="acceptance-section">
                         <div class="date-field">
-                            <strong>Date Received :</strong> {{ $dateReceived ?? '' }}
+                            <strong>Date Received :</strong> <?php echo e($dateReceived ?? ''); ?>
+
                         </div>
                         <div class="checkbox-group">
-                            <span class="checkbox {{ (isset($acceptanceStatus) && $acceptanceStatus == 'complete') ? 'checked' : '' }}"></span>
+                            <span class="checkbox <?php echo e((isset($acceptanceStatus) && $acceptanceStatus == 'complete') ? 'checked' : ''); ?>"></span>
                             <span>Complete</span>
                         </div>
                         <div class="checkbox-group">
-                            <span class="checkbox {{ (isset($acceptanceStatus) && $acceptanceStatus == 'partial') ? 'checked' : '' }}"></span>
+                            <span class="checkbox <?php echo e((isset($acceptanceStatus) && $acceptanceStatus == 'partial') ? 'checked' : ''); ?>"></span>
                             <span>Partial (pls. specify quantity)</span>
                         </div>
                         <div class="signature-block">
-                            {{-- acceptance signatory (use provided values when available) --}}
-                            <div class="signature-line">{{ $acceptanceOfficerName ?? 'ARSENIO GEM A. GARCILLANSO' }}</div>
-                            @if(!empty($acceptanceOfficerPosition))
-                                <div class="position-line">{{ $acceptanceOfficerPosition }}</div>
-                            @elseif(!empty($custodianPosition))
-                                <div class="position-line">{{ $custodianPosition }}</div>
-                            @else
+                            
+                            <div class="signature-line"><?php echo e($acceptanceOfficerName ?? 'ARSENIO GEM A. GARCILLANSO'); ?></div>
+                            <?php if(!empty($acceptanceOfficerPosition)): ?>
+                                <div class="position-line"><?php echo e($acceptanceOfficerPosition); ?></div>
+                            <?php elseif(!empty($custodianPosition)): ?>
+                                <div class="position-line"><?php echo e($custodianPosition); ?></div>
+                            <?php else: ?>
                                 <div class="position-line"><strong>Position:</strong>
                                     <span class="position-placeholder">_____________________________</span>
                                 </div>
-                            @endif
+                            <?php endif; ?>
                         </div>
                     </div>
                 </td>
@@ -223,3 +226,4 @@
     </table>
 </body>
 </html>
+<?php /**PATH C:\xampp\htdocs\SupplySystem\resources\views/pdf/inspection_acceptance_report_pdf.blade.php ENDPATH**/ ?>

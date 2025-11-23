@@ -9991,9 +9991,9 @@ function persistCurrentWizardStep() {
       iar_no: modal.querySelector('#iar_iar_no')?.value || '',
       entity_name: modal.querySelector('#iar_entity_name')?.value || '',
       fund_cluster: modal.querySelector('#iar_fund_cluster')?.value || '',
-      invoice_number: modal.querySelector('#iar_invoice_no')?.value || '',
+      invoice_no: modal.querySelector('#iar_invoice_no')?.value || '',
       invoice_date: modal.querySelector('#iar_invoice_date')?.value || '',
-      po_number: modal.querySelector('#iar_po_no')?.value || '',
+      po_no: modal.querySelector('#iar_po_no')?.value || '',
       po_date: modal.querySelector('#iar_po_date')?.value || '',
       requisitioning_office:
         modal.querySelector('#iar_requisitioning_office')?.value || '',
@@ -10007,19 +10007,22 @@ function persistCurrentWizardStep() {
         modal.querySelector('#iar_inspection_status')?.value || '',
       inspection_officer_label:
         modal.querySelector('#iar_inspection_officer_label')?.value || '',
+      inspection_officer_position:
+        modal.querySelector('#iar_inspection_officer_position')?.value || '',
       acceptance_status:
         modal.querySelector('#iar_acceptance_status')?.value || '',
-      custodian_label: modal.querySelector('#iar_custodian_label')?.value || '',
-      inspected_by_name:
-        modal.querySelector('#iar_inspected_by_name')?.value || '',
-      inspected_by_position:
-        modal.querySelector('#iar_inspected_by_position')?.value || '',
+      custodian_label:
+        modal.querySelector('#iar_custodian_label')?.value ||
+        modal.querySelector('#iar_custodian_label')?.textContent?.trim() ||
+        '',
+      custodian_position:
+        modal.querySelector('#iar_custodian_position')?.value ||
+        modal.querySelector('#iar_custodian_position')?.textContent?.trim() ||
+        '',
+      // inspector name/position fields removed per requested change
       inspected_by_date:
         modal.querySelector('#iar_inspected_by_date')?.value || '',
-      inspected_by_name_2:
-        modal.querySelector('#iar_inspected_by_name_2')?.value || '',
-      inspected_by_position_2:
-        modal.querySelector('#iar_inspected_by_position_2')?.value || '',
+      // second inspector name/position fields removed per requested change
       inspected_by_date_2:
         modal.querySelector('#iar_inspected_by_date_2')?.value || '',
     }
@@ -11510,8 +11513,8 @@ function autoFillIARForm() {
 
   // Auto-fill PO details from current PO
   const poNumber = document.getElementById('poNumber')?.value
-  if (poNumber && !AppState.purchaseOrderDraft.iarFormData.po_number) {
-    updatePOFormDraft('iar', 'po_number', poNumber)
+  if (poNumber && !AppState.purchaseOrderDraft.iarFormData.po_no) {
+    updatePOFormDraft('iar', 'po_no', poNumber)
   }
 
   const purchaseDate = document.getElementById('purchaseDate')?.value
@@ -11536,24 +11539,20 @@ function autoFillIARForm() {
     updatePOFormDraft('iar', 'acceptance_status', 'accepted')
   }
 
-  // Auto-fill inspector details (default values)
+  // Auto-fill signatory labels (keep labels but remove individual name/position fields)
   if (!AppState.purchaseOrderDraft.iarFormData.inspection_officer_label) {
     updatePOFormDraft('iar', 'inspection_officer_label', 'Inspection Officer')
   }
+  // Make acceptance signature static by default (custodian)
   if (!AppState.purchaseOrderDraft.iarFormData.custodian_label) {
-    updatePOFormDraft('iar', 'custodian_label', 'Property Custodian')
+    updatePOFormDraft('iar', 'custodian_label', 'ARSENIO GEM A. GARCILLANSO')
   }
-  if (!AppState.purchaseOrderDraft.iarFormData.inspected_by_name) {
-    updatePOFormDraft('iar', 'inspected_by_name', 'Inspection Officer')
-  }
-  if (!AppState.purchaseOrderDraft.iarFormData.inspected_by_position) {
-    updatePOFormDraft('iar', 'inspected_by_position', 'Inspector')
-  }
-  if (!AppState.purchaseOrderDraft.iarFormData.inspected_by_name_2) {
-    updatePOFormDraft('iar', 'inspected_by_name_2', 'Supply Officer')
-  }
-  if (!AppState.purchaseOrderDraft.iarFormData.inspected_by_position_2) {
-    updatePOFormDraft('iar', 'inspected_by_position_2', 'Supply Officer')
+  if (!AppState.purchaseOrderDraft.iarFormData.custodian_position) {
+    updatePOFormDraft(
+      'iar',
+      'custodian_position',
+      'SUPPLY OFFICER III/ADMIN OFFICER V'
+    )
   }
 
   // Auto-fill dates with current date if not set
@@ -12588,9 +12587,9 @@ function renderDynamicPOForms() {
                 </label>
                 <input type="text" class="form-input" id="iar_po_no" value="${
                   (AppState.purchaseOrderDraft.iarFormData &&
-                    AppState.purchaseOrderDraft.iarFormData.po_number) ||
+                    AppState.purchaseOrderDraft.iarFormData.po_no) ||
                   ''
-                }" onchange="updatePOFormDraft('iar','po_number', this.value)" placeholder="Purchase Order Number" 
+                }" onchange="updatePOFormDraft('iar','po_no', this.value)" placeholder="Purchase Order Number" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -12671,9 +12670,9 @@ function renderDynamicPOForms() {
                 </label>
                 <input type="text" class="form-input" id="iar_invoice_no" value="${
                   (AppState.purchaseOrderDraft.iarFormData &&
-                    AppState.purchaseOrderDraft.iarFormData.invoice_number) ||
+                    AppState.purchaseOrderDraft.iarFormData.invoice_no) ||
                   ''
-                }" onchange="updatePOFormDraft('iar','invoice_number', this.value)" placeholder="Invoice number from supplier" 
+                }" onchange="updatePOFormDraft('iar','invoice_no', this.value)" placeholder="Invoice number from supplier" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -12752,21 +12751,6 @@ function renderDynamicPOForms() {
               </div>
               <div class="form-group">
                 <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
-                  <i data-lucide="user-check" style="width: 14px; height: 14px; color: #be185d;"></i>
-                  Inspection Officer Label
-                </label>
-                <input type="text" class="form-input" id="iar_inspection_officer_label" value="${
-                  (AppState.purchaseOrderDraft.iarFormData &&
-                    AppState.purchaseOrderDraft.iarFormData
-                      .inspection_officer_label) ||
-                  ''
-                }" onchange="updatePOFormDraft('iar','inspection_officer_label', this.value)" placeholder="Name/title of inspection officer" 
-                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
-                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
-                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
-              </div>
-              <div class="form-group">
-                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
                   <i data-lucide="check-circle" style="width: 14px; height: 14px; color: #be185d;"></i>
                   Acceptance Status
                 </label>
@@ -12785,20 +12769,8 @@ function renderDynamicPOForms() {
                   <option value="rejected">Rejected</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
-                  <i data-lucide="user" style="width: 14px; height: 14px; color: #be185d;"></i>
-                  Custodian Label
-                </label>
-                <input type="text" class="form-input" id="iar_custodian_label" value="${
-                  (AppState.purchaseOrderDraft.iarFormData &&
-                    AppState.purchaseOrderDraft.iarFormData.custodian_label) ||
-                  ''
-                }" onchange="updatePOFormDraft('iar','custodian_label', this.value)" placeholder="Name/title of custodian" 
-                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
-                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
-                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
-              </div>
+              <!-- moved signature label inputs down into their respective signature blocks (inspection / acceptance)
+                   to match the printed PDF layout -->
             </div>
           </div>
 
@@ -12806,39 +12778,10 @@ function renderDynamicPOForms() {
           <div style="margin-bottom: 24px;">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #fbcfe8;">
               <i data-lucide="user-check" style="width: 18px; height: 18px; color: #be185d;"></i>
-              <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #be185d; text-transform: uppercase; letter-spacing: 0.5px;">Inspector #1</h6>
+              <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #be185d; text-transform: uppercase; letter-spacing: 0.5px;">Inspection — Inspector / Committee</h6>
             </div>
             <div class="grid-3" style="gap: 16px;">
-              <div class="form-group">
-                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
-                  <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
-                  Name
-                </label>
-                <input type="text" class="form-input" id="iar_inspected_by_name" value="${
-                  (AppState.purchaseOrderDraft.iarFormData &&
-                    AppState.purchaseOrderDraft.iarFormData
-                      .inspected_by_name) ||
-                  ''
-                }" onchange="updatePOFormDraft('iar','inspected_by_name', this.value)" placeholder="Full name of inspector" 
-                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
-                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
-                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
-              </div>
-              <div class="form-group">
-                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
-                  <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
-                  Position
-                </label>
-                <input type="text" class="form-input" id="iar_inspected_by_position" value="${
-                  (AppState.purchaseOrderDraft.iarFormData &&
-                    AppState.purchaseOrderDraft.iarFormData
-                      .inspected_by_position) ||
-                  ''
-                }" onchange="updatePOFormDraft('iar','inspected_by_position', this.value)" placeholder="e.g., Inspector" 
-                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
-                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
-                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
-              </div>
+              <!-- Name and Position fields for inspector removed per request -->
               <div class="form-group">
                 <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
                   <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
@@ -12854,6 +12797,34 @@ function renderDynamicPOForms() {
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
               </div>
+              <!-- Inspection signature label (printed under signature in PDF) -->
+                <div class="form-group" style="margin-top:8px;">
+                <label class="form-label" style="display:flex; align-items:center; gap:6px; margin-bottom:8px; font-weight:500; color:#374151; font-size:13px;">
+                  <i data-lucide="user-check" style="width:14px; height:14px; color:#64748b;"></i>
+                  Inspection label (prints under signature)
+                </label>
+                <input type="text" class="form-input" id="iar_inspection_officer_label" value="${
+                  (AppState.purchaseOrderDraft.iarFormData &&
+                    AppState.purchaseOrderDraft.iarFormData
+                      .inspection_officer_label) ||
+                  ''
+                }" onchange="updatePOFormDraft('iar','inspection_officer_label', this.value)" placeholder="Inspection Officer / Inspection Committee" 
+                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
+                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
+                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+                <div class="small muted" style="margin-top:6px; font-size:12px; color:#6b7280;">Used as the printed label under the inspection signatory on the PDF</div>
+                <!-- NEW: Position field for inspection signatory -->
+                <div style="margin-top:10px;">
+                  <input type="text" class="form-input" id="iar_inspection_officer_position" value="${
+                    (AppState.purchaseOrderDraft.iarFormData &&
+                      AppState.purchaseOrderDraft.iarFormData
+                        .inspection_officer_position) ||
+                    ''
+                  }" onchange="updatePOFormDraft('iar','inspection_officer_position', this.value)" placeholder="Position (e.g. Chair, Inspection Committee)"
+                         style="border: 2px solid #f3e6ee; padding: 8px 12px; font-size: 13px; border-radius: 6px; width: 100%;" />
+                  <div class="small muted" style="margin-top:6px; font-size:12px; color:#6b7280;">Optional: printed under the inspection name on the IAR PDF</div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -12861,39 +12832,10 @@ function renderDynamicPOForms() {
           <div style="margin-bottom: 24px;">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #fbcfe8;">
               <i data-lucide="user-check" style="width: 18px; height: 18px; color: #be185d;"></i>
-              <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #be185d; text-transform: uppercase; letter-spacing: 0.5px;">Inspector #2</h6>
+              <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #be185d; text-transform: uppercase; letter-spacing: 0.5px;">Acceptance — Supply / Property Custodian</h6>
             </div>
             <div class="grid-3" style="gap: 16px;">
-              <div class="form-group">
-                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
-                  <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
-                  Name
-                </label>
-                <input type="text" class="form-input" id="iar_inspected_by_name_2" value="${
-                  (AppState.purchaseOrderDraft.iarFormData &&
-                    AppState.purchaseOrderDraft.iarFormData
-                      .inspected_by_name_2) ||
-                  ''
-                }" onchange="updatePOFormDraft('iar','inspected_by_name_2', this.value)" placeholder="Full name of second inspector" 
-                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
-                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
-                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
-              </div>
-              <div class="form-group">
-                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
-                  <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
-                  Position
-                </label>
-                <input type="text" class="form-input" id="iar_inspected_by_position_2" value="${
-                  (AppState.purchaseOrderDraft.iarFormData &&
-                    AppState.purchaseOrderDraft.iarFormData
-                      .inspected_by_position_2) ||
-                  ''
-                }" onchange="updatePOFormDraft('iar','inspected_by_position_2', this.value)" placeholder="e.g., Inspector" 
-                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
-                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
-                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
-              </div>
+              <!-- Acceptance Name and Position fields removed per request -->
               <div class="form-group">
                 <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
                   <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
@@ -12908,6 +12850,25 @@ function renderDynamicPOForms() {
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
+              </div>
+              <!-- Acceptance signature label (prints under custodian signature on PDF) -->
+                <div class="form-group" style="margin-top:8px;">
+                <label class="form-label" style="display:flex; align-items:center; gap:6px; margin-bottom:8px; font-weight:500; color:#374151; font-size:13px;">
+                  <i data-lucide="user" style="width:14px; height:14px; color:#64748b;"></i>
+                  Acceptance label (prints under signature)
+                </label>
+                <!-- Acceptance custodian/name is static (not editable) -->
+                <div id="iar_custodian_label" style="padding: 10px 14px; border: 2px solid #fbcfe8; border-radius: 8px; background: #fff; font-size: 14px; color: #0f172a;">
+                  ARSENIO GEM A. GARCILLANSO
+                </div>
+                <div class="small muted" style="margin-top:6px; font-size:12px; color:#6b7280;">Used as the printed label under the acceptance signatory on the PDF</div>
+                <!-- NEW: Position field for acceptance signatory -->
+                <div style="margin-top:10px;">
+                  <div id="iar_custodian_position" style="padding: 8px 12px; border: 2px solid #f3e6ee; border-radius: 6px; background: #fff; font-size: 13px; color: #0f172a;">
+                    SUPPLY OFFICER III/ADMIN OFFICER V
+                  </div>
+                  <div class="small muted" style="margin-top:6px; font-size:12px; color:#6b7280;">Optional: printed under the acceptance name on the IAR PDF</div>
+                </div>
               </div>
             </div>
           </div>

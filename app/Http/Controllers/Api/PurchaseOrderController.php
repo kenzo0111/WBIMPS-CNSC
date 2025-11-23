@@ -117,8 +117,21 @@ class PurchaseOrderController extends Controller
             $this->createPropertyAcknowledgementReceipt($purchaseOrder, $parFormData);
         }
 
-        // Create IAR record if IAR form data is provided and items are marked for IAR
-        if ($iarFormData && !empty($iarFormData['iar_no'])) {
+        // Create IAR record when there are items marked for IAR
+        $hasIarItems = collect($purchaseOrder->items)->contains(function ($item) {
+            return isset($item['generateIAR']) && $item['generateIAR'] === true;
+        });
+
+        if ($hasIarItems) {
+            // Ensure there is an IAR no. If the frontend didn't provide one, generate a sequential IAR number.
+            if (empty($iarFormData)) {
+                $iarFormData = [];
+            }
+
+            if (empty($iarFormData['iar_no'])) {
+                $iarFormData['iar_no'] = $this->generateSequentialIarNumber();
+            }
+
             $this->createInspectionAcceptanceReport($purchaseOrder, $iarFormData);
         }
 
@@ -210,6 +223,37 @@ class PurchaseOrderController extends Controller
 
         $purchaseOrder->update($request->all());
 
+        // If the update contains iar_form_data or if items are now marked for IAR,
+        // ensure an InspectionAcceptanceReport exists/gets created for this PO.
+        $payload = $request->all();
+        $iarFormData = $payload['iar_form_data'] ?? null;
+
+        $hasIarItems = collect($purchaseOrder->items)->contains(function ($item) {
+            return isset($item['generateIAR']) && $item['generateIAR'] === true;
+        });
+
+        if ($hasIarItems) {
+            if (empty($iarFormData)) {
+                $iarFormData = [];
+            }
+
+            // If PO already has an associated IAR, try to update it instead of creating a duplicate.
+            $existingIar = \App\Models\InspectionAcceptanceReport::where('purchase_order_id', $purchaseOrder->id)->first();
+
+            if ($existingIar) {
+                // Merge provided form data into the existing IAR and save
+                $existingIar->fill(array_merge($existingIar->toArray(), $iarFormData));
+                $existingIar->items = $existingIar->items ?? [];
+                $existingIar->save();
+            } else {
+                if (empty($iarFormData['iar_no'])) {
+                    $iarFormData['iar_no'] = $this->generateSequentialIarNumber();
+                }
+
+                $this->createInspectionAcceptanceReport($purchaseOrder, $iarFormData);
+            }
+        }
+
         // Log activity
         try {
             \App\Models\Activity::create([
@@ -290,6 +334,29 @@ class PurchaseOrderController extends Controller
     }
 
     /**
+     * Generate a sequential IAR number in the format IAR-YYYY-MM-XXX.
+     */
+    protected function generateSequentialIarNumber()
+    {
+        $currentYear = now()->year;
+        $currentMonth = now()->month;
+        $prefix = "IAR-{$currentYear}-" . str_pad($currentMonth, 2, '0', STR_PAD_LEFT) . "-";
+
+        $latest = \App\Models\InspectionAcceptanceReport::where('iar_no', 'like', $prefix . '%')
+            ->orderBy('iar_no', 'desc')
+            ->first();
+
+        if ($latest) {
+            $lastNumber = (int) substr($latest->iar_no, strlen($prefix));
+            $nextNumber = $lastNumber + 1;
+        } else {
+            $nextNumber = 1;
+        }
+
+        return $prefix . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+    }
+
+    /**
      * Update the status of a purchase order.
      */
     public function updateStatus(Request $request, $id)
@@ -353,7 +420,8 @@ class PurchaseOrderController extends Controller
                 })
                 ->map(function ($item) {
                     return [
-                        'stock_number' => $item['stockPropertyNumber'] ?? '',
+                        // normalize to the canonical key used by PDFs / IAR: stock_no
+                        'stock_no' => $item['stockPropertyNumber'] ?? '',
                         'unit' => $item['unit'] ?? '',
                         'description' => $item['description'] ?? $item['detailedDescription'] ?? '',
                         'quantity' => $item['quantity'] ?? 0,
@@ -422,7 +490,7 @@ class PurchaseOrderController extends Controller
                 })
                 ->map(function ($item) {
                     return [
-                        'stock_number' => $item['stockPropertyNumber'] ?? '',
+                        'stock_no' => $item['stockPropertyNumber'] ?? '',
                         'unit' => $item['unit'] ?? '',
                         'description' => $item['description'] ?? $item['detailedDescription'] ?? '',
                         'quantity' => $item['quantity'] ?? 0,
@@ -596,19 +664,23 @@ class PurchaseOrderController extends Controller
                 'fund_cluster' => $formData['fund_cluster'] ?? $purchaseOrder->fund_cluster,
                 'supplier' => $purchaseOrder->supplier,
                 'iar_date' => now(),
-                'po_no' => $formData['po_number'] ?? $purchaseOrder->po_number,
+                'po_no' => $formData['po_no'] ?? $formData['po_number'] ?? $purchaseOrder->po_number,
                 'po_date' => !empty($formData['po_date']) ? $formData['po_date'] : $purchaseOrder->date_of_purchase,
                 'requisitioning_office' => $formData['requisitioning_office'] ?? $purchaseOrder->department,
                 'responsibility_center_code' => $formData['responsibility_center_code'] ?? null,
                 'responsibility_date' => !empty($formData['responsibility_date']) ? $formData['responsibility_date'] : null,
-                'invoice_no' => $formData['invoice_number'] ?? null,
+                'invoice_no' => $formData['invoice_no'] ?? $formData['invoice_number'] ?? null,
                 'invoice_date' => !empty($formData['invoice_date']) ? $formData['invoice_date'] : null,
                 'date_inspected' => !empty($formData['date_inspected']) ? $formData['date_inspected'] : (!empty($formData['inspected_by_date']) ? $formData['inspected_by_date'] : null),
                 'date_received' => !empty($formData['date_received']) ? $formData['date_received'] : (!empty($formData['inspected_by_date_2']) ? $formData['inspected_by_date_2'] : null),
                 'inspection_status' => $formData['inspection_status'] ?? 'Complete',
-                'inspection_officer_label' => $formData['inspection_officer_label'] ?? ($formData['inspected_by_name'] ? ($formData['inspected_by_name'] . ' - ' . ($formData['inspected_by_position'] ?? '')) : null),
+                // Use explicitly provided inspection_officer_label only; we no longer accept separate inspector name/position fields
+                'inspection_officer_label' => $formData['inspection_officer_label'] ?? $formData['inspectionOfficerLabel'] ?? null,
+                'inspection_officer_position' => $formData['inspection_officer_position'] ?? $formData['inspectionOfficerPosition'] ?? null,
                 'acceptance_status' => $formData['acceptance_status'] ?? 'Accepted',
-                'custodian_label' => $formData['custodian_label'] ?? ($formData['inspected_by_name_2'] ? ($formData['inspected_by_name_2'] . ' - ' . ($formData['inspected_by_position_2'] ?? '')) : null),
+                // Use explicitly provided custodian_label only; name/position fields removed
+                'custodian_label' => $formData['custodian_label'] ?? $formData['custodianLabel'] ?? null,
+                'custodian_position' => $formData['custodian_position'] ?? $formData['custodianPosition'] ?? null,
                 'items' => $iarItems,
                 'status' => 'Active',
             ]);

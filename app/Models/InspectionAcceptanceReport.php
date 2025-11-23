@@ -22,8 +22,10 @@ use Illuminate\Database\Eloquent\Model;
  * @property \Illuminate\Support\Carbon|null $date_inspected
  * @property \Illuminate\Support\Carbon|null $date_received
  * @property string|null $inspection_status
+ * @property string|null $inspection_officer_position
  * @property string|null $inspection_officer_label
  * @property string|null $acceptance_status
+ * @property string|null $custodian_position
  * @property string|null $custodian_label
  * @property array|null $items
  * @property string|null $status
@@ -56,7 +58,9 @@ class InspectionAcceptanceReport extends Model
         'status',
         'responsibility_date',
         'inspection_officer_label',
+        'inspection_officer_position',
         'custodian_label',
+        'custodian_position',
         'purchase_order_id',
     ];
 

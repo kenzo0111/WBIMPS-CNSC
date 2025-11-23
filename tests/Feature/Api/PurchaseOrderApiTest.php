@@ -61,6 +61,68 @@ test('can create a purchase order', function () {
     ]);
 });
 
+test('creating a purchase order with items marked generateIAR creates an IAR record (even without iar_no)', function () {
+    $poData = [
+        'po_number' => 'PO-2025-002',
+        'supplier' => 'IAR Supplier Inc.',
+        'items' => [
+            ['name' => 'Item A', 'quantity' => 2, 'unit_cost' => 500, 'generateIAR' => true],
+        ],
+        'grand_total' => 1000.00,
+    ];
+
+    $response = $this->postJson('/api/purchase-orders', $poData);
+
+    $response->assertStatus(201);
+
+    $poId = $response->json('data.id');
+
+    // Assert an IAR was created and linked to the purchase order
+    $this->assertDatabaseHas('inspection_acceptance_reports', [
+        'purchase_order_id' => $poId,
+        'status' => 'Active',
+    ]);
+});
+
+test('creating a purchase order with provided iar_form_data saves fields on the IAR record', function () {
+    $poData = [
+        'po_number' => 'PO-2025-003',
+        'supplier' => 'IAR Supplier Inc.',
+        'items' => [
+            ['name' => 'Item B', 'quantity' => 1, 'unit_cost' => 750, 'generateIAR' => true],
+        ],
+        'iar_form_data' => [
+            'iar_no' => 'IAR-2025-999',
+            'inspection_status' => 'complete',
+            'acceptance_status' => 'accepted',
+            'inspection_officer_position' => 'Chair, Inspection Committee',
+            'custodian_position' => 'Supply Custodian',
+        ],
+        'grand_total' => 750.00,
+    ];
+
+    $response = $this->postJson('/api/purchase-orders', $poData);
+
+    $response->assertStatus(201);
+
+    $poId = $response->json('data.id');
+
+    // Assert the IAR with the provided number was created
+    $this->assertDatabaseHas('inspection_acceptance_reports', [
+        'purchase_order_id' => $poId,
+        'iar_no' => 'IAR-2025-999',
+        'inspection_status' => 'complete',
+        'acceptance_status' => 'accepted',
+    ]);
+
+    // Assert positions were saved
+    $this->assertDatabaseHas('inspection_acceptance_reports', [
+        'purchase_order_id' => $poId,
+        'inspection_officer_position' => 'Chair, Inspection Committee',
+        'custodian_position' => 'Supply Custodian',
+    ]);
+});
+
 test('can show a specific purchase order', function () {
     $po = PurchaseOrder::factory()->create();
 
