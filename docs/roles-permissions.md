@@ -1,6 +1,8 @@
-# Roles & Permissions (canonical)
+# Roles & Permissions (moved)
 
-This document lists the application's canonical roles and the permissions assigned to each role. The authoritative source for this mapping is `config/roles_permissions.php` and the `php artisan roles:sync` command can be used to enforce this mapping in the database.
+This document has been reorganized into a subfolder for clarity.
+
+Please see the canonical, relocated file at: `docs/reference/roles-permissions.md`
 
 > Note: If you update permissions or roles here, also update `config/roles_permissions.php` (the config file is the single source of truth for seeding/syncing).
 

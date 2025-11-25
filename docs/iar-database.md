@@ -1,6 +1,6 @@
-# Inspection Acceptance Report (IAR) — Database / Migration Guide
+# Inspection Acceptance Report (IAR) — Database / Migration Guide (moved)
 
-This short guide explains how to ensure the `inspection_acceptance_reports` table is present in your development database (Option B — use the project's default database).
+This document has been reorganized into a subfolder for clarity. Please see: `docs/database/iar-database.md`
 
 ## Overview
 

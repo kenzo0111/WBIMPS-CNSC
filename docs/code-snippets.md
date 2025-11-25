@@ -1,6 +1,6 @@
-# Code Snippets — Authentication, PR, PO, Inventory, Assets, Notifications, Activity Logs
+# Code Snippets — moved
 
-This document gathers canonical code snippets found in the project related to the requested features. Use these snippets as reference for development, tests or documentation.
+This document has been moved to a clearer location: `docs/guides/code-snippets.md`
 
 ---
 
