@@ -67,6 +67,7 @@ test('can create a purchase request', function () {
             'email' => 'test@example.com',
             'requester' => 'John Doe',
             'department' => 'IT',
+            'total_cost' => 150000.0,
             'status' => 'Incoming',
         ]);
 
@@ -74,6 +75,7 @@ test('can create a purchase request', function () {
         'email' => 'test@example.com',
         'requester' => 'John Doe',
         'department' => 'IT',
+        'total_cost' => 150000.0,
     ]);
 });
 
@@ -98,6 +100,29 @@ test('validates required fields when creating purchase request', function () {
 
     $response->assertStatus(422)
         ->assertJsonValidationErrors(['email', 'requester', 'department', 'items']);
+});
+
+test('stores total_cost when client sends totalCost explicitly', function () {
+    $requestData = [
+        'email' => 'bill@example.com',
+        'requester' => 'Bill Gates',
+        'department' => 'IT',
+        'items' => ['Monitor'],
+        'unit' => 'pcs',
+        'quantity' => 2,
+        // no unitCost provided, client passes totalCost directly
+        'totalCost' => 300.00,
+    ];
+
+    $response = $this->postJson('/api/purchase-requests', $requestData);
+    $response->assertStatus(201);
+
+    $this->assertDatabaseHas('purchase_requests', [
+        'email' => 'bill@example.com',
+        'requester' => 'Bill Gates',
+        'department' => 'IT',
+        'total_cost' => 300.00,
+    ]);
 });
 
 test('can update purchase request status by request_id', function () {

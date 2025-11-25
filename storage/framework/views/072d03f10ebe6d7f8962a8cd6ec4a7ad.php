@@ -4,17 +4,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="shortcut icon" href="{{ asset('images/UCN1.png') }}" type="image/png">
-    <link rel="icon" href="{{ asset('images/UCN1.png') }}" type="image/png">
+    <link rel="shortcut icon" href="<?php echo e(asset('images/UCN1.png')); ?>" type="image/png">
+    <link rel="icon" href="<?php echo e(asset('images/UCN1.png')); ?>" type="image/png">
     <title>Contact Support - SPMO System</title>
-    @vite('resources/css/ContactSupport.css')
+    <?php echo app('Illuminate\Foundation\Vite')('resources/css/ContactSupport.css'); ?>
 </head>
 
 <body>
     <header>
         <div class="header-container">
             <div class="logo">
-                <img src="{{ $imagesPath }}/cnscrefine.png" alt="CNSC Logo" />
+                <img src="<?php echo e($imagesPath); ?>/cnscrefine.png" alt="CNSC Logo" />
                 <div class="logo-text">
                     <h1>Supply and Property Management</h1>
                     <hr />
@@ -22,7 +22,7 @@
                 </div>
             </div>
             <div class="nav-menu">
-                <a href="{{ url('user/home') }}" class="back-btn">
+                <a href="<?php echo e(url('user/home')); ?>" class="back-btn">
                     <span class="btn-icon">←</span>
                     <span class="btn-text">Back to Home</span>
                 </a>
@@ -45,12 +45,12 @@
                     </div>
                 </div>
 
-                @if(session('support_success'))
-                    <div class="support-success">{{ session('support_success') }}</div>
-                @endif
+                <?php if(session('support_success')): ?>
+                    <div class="support-success"><?php echo e(session('support_success')); ?></div>
+                <?php endif; ?>
 
-                <form class="support-form" method="POST" action="{{ route('support.submit') }}" enctype="multipart/form-data">
-                    @csrf
+                <form class="support-form" method="POST" action="<?php echo e(route('support.submit')); ?>" enctype="multipart/form-data">
+                    <?php echo csrf_field(); ?>
                     <div class="form-section">
                         <div class="form-left">
                             <div class="form-group">
@@ -474,7 +474,7 @@
 
             try {
                 const token = document.querySelector('input[name="_token"]').value;
-                const res = await fetch('{{ route('support.submit') }}', {
+                const res = await fetch('<?php echo e(route('support.submit')); ?>', {
                     method: 'POST',
                     headers: { 'X-CSRF-TOKEN': token },
                     body: formData,
@@ -564,4 +564,4 @@
     </script>
 </body>
 
-</html>
+</html><?php /**PATH C:\xampp\htdocs\SupplySystem\resources\views/contact-support.blade.php ENDPATH**/ ?>

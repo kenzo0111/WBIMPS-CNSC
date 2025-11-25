@@ -44,11 +44,15 @@ class PurchaseRequest extends Model
         'metadata',
         'quantity',
         'unit_cost',
+        'total_cost',
     ];
 
     protected $casts = [
         'items' => 'array',
         'submitted_at' => 'datetime',
         'metadata' => 'array',
+        'quantity' => 'integer',
+        'unit_cost' => 'float',
+        'total_cost' => 'float',
     ];
 }

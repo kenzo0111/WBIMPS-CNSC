@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="shortcut icon" href="{{ asset('images/UCN1.png') }}" type="image/png">
+  <link rel="icon" href="{{ asset('images/UCN1.png') }}" type="image/png">
   <title>Set Up Your Account</title>
   <style>
     .preheader { display:none !important; visibility:hidden; mso-hide:all; font-size:1px; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden; }

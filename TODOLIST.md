@@ -12,6 +12,11 @@
 
 ## Recent Updates (November 21, 2025)
 
+### UI Fixes (November 25, 2025)
+
+- [x] Make fields in Step 1 (Purchase Request wizard) expand to full width in the user request form (`resources/views/user/user-request.blade.php`).
+- [x] Add "View Form" preview button on Step 3 (Review & Submit) so users can open and print a preview of the filled request (`resources/views/user/user-request.blade.php`).
+
 ### Status Management Consolidation
 
 - [x] Consolidated separate status management pages (Incoming, Received, Finished, Cancelled, Rejected, Returned) into a single "Status Management" page

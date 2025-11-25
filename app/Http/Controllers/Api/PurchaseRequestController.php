@@ -36,12 +36,17 @@ class PurchaseRequestController extends Controller
 
         $results = $q->orderBy('submitted_at', 'desc')->get();
 
-        // Calculate total_cost for each request (unit_cost * quantity)
+        // Calculate total_cost for each request (prefer stored value; otherwise compute from unit_cost * quantity)
         $results = $results->map(function ($request) {
             $data = $request->toArray();
-            $unitCost = $request->unit_cost ?? 0;
-            $quantity = $request->quantity ?? 0;
-            $data['total_cost'] = $unitCost * $quantity;
+            $unitCost = $request->unit_cost ?? null;
+            $quantity = $request->quantity ?? null;
+            // prefer to compute total_cost from available unit_cost and quantity so it stays accurate
+            if (is_numeric($unitCost) && is_numeric($quantity)) {
+                $data['total_cost'] = (float) $unitCost * (int) $quantity;
+            } else {
+                $data['total_cost'] = is_numeric($request->total_cost) ? (float) $request->total_cost : ($unitCost * ($quantity ?? 0));
+            }
 
             return $data;
         });
@@ -70,6 +75,8 @@ class PurchaseRequestController extends Controller
             'unitCost' => 'nullable|numeric|min:0',
             'unit_cost' => 'nullable|numeric|min:0',
             'quantity' => 'nullable|integer|min:1',
+            'totalCost' => 'nullable|numeric|min:0',
+            'total_cost' => 'nullable|numeric|min:0',
             'neededDate' => 'nullable|date',
             'priority' => 'nullable|string',
         ]);
@@ -121,6 +128,13 @@ class PurchaseRequestController extends Controller
                     // normalize quantity and unit_cost names from JS (unitCost) or API clients (unit_cost)
                     'quantity' => isset($data['quantity']) ? (int) $data['quantity'] : (isset($data['qty']) ? (int) $data['qty'] : null),
                     'unit_cost' => isset($data['unit_cost']) ? $data['unit_cost'] : (isset($data['unitCost']) ? $data['unitCost'] : null),
+                    // compute total_cost when possible and persist it
+                    // If client passed a totalCost/total_cost prefer that; otherwise compute from unit_cost.unitCost * quantity
+                    'total_cost' => isset($data['total_cost']) ? (float) $data['total_cost'] : (isset($data['totalCost']) ? (float) $data['totalCost'] : (
+                        ((isset($data['quantity']) || isset($data['qty'])) && (isset($data['unit_cost']) || isset($data['unitCost']))) ? (
+                            ((int) ($data['quantity'] ?? $data['qty'] ?? 0)) * (float) (isset($data['unit_cost']) ? $data['unit_cost'] : ($data['unitCost'] ?? 0))
+                        ) : null
+                    )),
                     'needed_date' => $data['neededDate'] ?? null,
                     'priority' => $data['priority'] ?? 'Low',
                     'status' => 'Incoming',

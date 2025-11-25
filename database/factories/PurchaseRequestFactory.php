@@ -31,13 +31,19 @@ class PurchaseRequestFactory extends Factory
             ];
         }
 
+        // choose the first item values as the top-level quantity/unit_cost so tests that rely on them work
+        $first = $items[0] ?? ['quantity' => 1, 'unit_cost' => 0];
+
         return [
-            'request_id' => 'REQ-'.date('Y').'-'.fake()->unique()->numberBetween(1000, 9999),
+            'request_id' => 'REQ-' . date('Y') . '-' . fake()->unique()->numberBetween(1000, 9999),
             'email' => fake()->safeEmail(),
             'requester' => fake()->name(),
             'department' => fake()->randomElement(['IT', 'HR', 'Finance', 'Operations', 'Admin']),
             'items' => json_encode($items),
             'unit' => fake()->randomElement(['pcs', 'box', 'pack', 'unit']),
+            'quantity' => $first['quantity'],
+            'unit_cost' => $first['unit_cost'],
+            'total_cost' => round($first['quantity'] * $first['unit_cost'], 2),
             'needed_date' => fake()->dateTimeBetween('now', '+30 days'),
             'priority' => fake()->randomElement(['Low', 'Medium', 'High']),
             'status' => 'Incoming',
@@ -50,7 +56,7 @@ class PurchaseRequestFactory extends Factory
      */
     public function pending(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn(array $attributes) => [
             'status' => 'pending',
         ]);
     }
@@ -60,7 +66,7 @@ class PurchaseRequestFactory extends Factory
      */
     public function approved(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn(array $attributes) => [
             'status' => 'approved',
         ]);
     }
@@ -70,7 +76,7 @@ class PurchaseRequestFactory extends Factory
      */
     public function rejected(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn(array $attributes) => [
             'status' => 'rejected',
         ]);
     }
@@ -80,7 +86,7 @@ class PurchaseRequestFactory extends Factory
      */
     public function completed(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn(array $attributes) => [
             'status' => 'completed',
         ]);
     }
