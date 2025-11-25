@@ -70,6 +70,10 @@
                                     <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-weight:600;color:#444;">Priority</td>
                                     <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;color:#333;">{{ $pr->priority }}</td>
                                 </tr>
+                                <tr>
+                                    <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-weight:600;color:#444;">Purpose</td>
+                                    <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;color:#333;">{{ $pr->purpose ?? '-' }}</td>
+                                </tr>
                                 @if(isset($pr->quantity) || isset($pr->unit) || isset($pr->unit_cost))
                                 <tr>
                                     <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-weight:600;color:#444;">Quantity</td>

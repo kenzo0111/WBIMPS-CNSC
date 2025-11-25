@@ -71,13 +71,15 @@ class PurchaseRequestController extends Controller
             'department' => 'required|string',
             'items' => 'required',
             'unit' => 'nullable|string',
+            'purpose' => 'required|string',
             // support either camelCase (unitCost) from the JS form or snake_case (unit_cost)
             'unitCost' => 'nullable|numeric|min:0',
             'unit_cost' => 'nullable|numeric|min:0',
             'quantity' => 'nullable|integer|min:1',
             'totalCost' => 'nullable|numeric|min:0',
             'total_cost' => 'nullable|numeric|min:0',
-            'neededDate' => 'nullable|date',
+            // 'neededDate' must be today or later to prevent backdating
+            'neededDate' => 'nullable|date|after_or_equal:today',
             'priority' => 'nullable|string',
         ]);
 
@@ -128,6 +130,7 @@ class PurchaseRequestController extends Controller
                     // normalize quantity and unit_cost names from JS (unitCost) or API clients (unit_cost)
                     'quantity' => isset($data['quantity']) ? (int) $data['quantity'] : (isset($data['qty']) ? (int) $data['qty'] : null),
                     'unit_cost' => isset($data['unit_cost']) ? $data['unit_cost'] : (isset($data['unitCost']) ? $data['unitCost'] : null),
+                    'purpose' => $data['purpose'] ?? null,
                     // compute total_cost when possible and persist it
                     // If client passed a totalCost/total_cost prefer that; otherwise compute from unit_cost.unitCost * quantity
                     'total_cost' => isset($data['total_cost']) ? (float) $data['total_cost'] : (isset($data['totalCost']) ? (float) $data['totalCost'] : (

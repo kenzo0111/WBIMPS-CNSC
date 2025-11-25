@@ -58,6 +58,7 @@ test('can create a purchase request', function () {
         'unitCost' => 50000,
         'neededDate' => now()->addDays(7)->format('Y-m-d'),
         'priority' => 'High',
+        'purpose' => 'Equipment for lab experiments',
     ];
 
     $response = $this->postJson('/api/purchase-requests', $requestData);
@@ -67,6 +68,7 @@ test('can create a purchase request', function () {
             'email' => 'test@example.com',
             'requester' => 'John Doe',
             'department' => 'IT',
+            'purpose' => 'Equipment for lab experiments',
             'total_cost' => 150000.0,
             'status' => 'Incoming',
         ]);
@@ -75,6 +77,7 @@ test('can create a purchase request', function () {
         'email' => 'test@example.com',
         'requester' => 'John Doe',
         'department' => 'IT',
+        'purpose' => 'Equipment for lab experiments',
         'total_cost' => 150000.0,
     ]);
 });
@@ -87,6 +90,7 @@ test('generates unique request IDs with current year', function () {
         'requester' => 'John Doe',
         'department' => 'IT',
         'items' => ['Test Item'],
+        'purpose' => 'Test purpose',
     ]);
 
     $response->assertStatus(201);
@@ -99,7 +103,23 @@ test('validates required fields when creating purchase request', function () {
     $response = $this->postJson('/api/purchase-requests', []);
 
     $response->assertStatus(422)
-        ->assertJsonValidationErrors(['email', 'requester', 'department', 'items']);
+        ->assertJsonValidationErrors(['email', 'requester', 'department', 'items', 'purpose']);
+});
+
+test('does not allow backdated neededDate', function () {
+    $yesterday = now()->subDay()->format('Y-m-d');
+
+    $response = $this->postJson('/api/purchase-requests', [
+        'email' => 'past@example.com',
+        'requester' => 'Jane Past',
+        'department' => 'Admin',
+        'items' => ['Paper'],
+        'neededDate' => $yesterday,
+        'purpose' => 'Testing past date',
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['neededDate']);
 });
 
 test('stores total_cost when client sends totalCost explicitly', function () {
@@ -112,6 +132,7 @@ test('stores total_cost when client sends totalCost explicitly', function () {
         'quantity' => 2,
         // no unitCost provided, client passes totalCost directly
         'totalCost' => 300.00,
+        'purpose' => 'Replacement monitors',
     ];
 
     $response = $this->postJson('/api/purchase-requests', $requestData);

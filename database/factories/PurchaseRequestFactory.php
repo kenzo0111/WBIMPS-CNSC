@@ -45,6 +45,7 @@ class PurchaseRequestFactory extends Factory
             'unit_cost' => $first['unit_cost'],
             'total_cost' => round($first['quantity'] * $first['unit_cost'], 2),
             'needed_date' => fake()->dateTimeBetween('now', '+30 days'),
+            'purpose' => fake()->sentence(8),
             'priority' => fake()->randomElement(['Low', 'Medium', 'High']),
             'status' => 'Incoming',
             'submitted_at' => fake()->dateTimeBetween('-30 days', 'now'),

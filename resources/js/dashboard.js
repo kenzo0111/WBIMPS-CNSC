@@ -21731,6 +21731,7 @@ async function initStatusManagement(filter = 'all') {
             obj.item = r.items || r.items_text || r.items_string || ''
           }
           obj.unit = r.unit || ''
+          obj.purpose = r.purpose || r.reason || r.justification || ''
           // map quantity from various possible server fields
           obj.quantity = Number(
             r.quantity || r.qty || (r.metadata && r.metadata.quantity) || 0
@@ -22537,6 +22538,18 @@ function viewStatusRequest(id) {
             <dd style="margin: 0; color: #16a34a; font-weight: 600; font-size: 15px;">${formatCurrency(
               rec.cost || 0
             )}</dd>
+
+            ${
+              rec.purpose
+                ? `
+                <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
+                    <i data-lucide="align-left" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                    Purpose
+                </dt>
+                <dd style="margin: 0; color: #111827;">${rec.purpose}</dd>
+            `
+                : ''
+            }
             
             ${
               rec.source === 'user-form'

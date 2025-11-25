@@ -37,6 +37,7 @@ class PurchaseRequest extends Model
         'designation',
         'department',
         'items',
+        'purpose',
         'unit',
         'needed_date',
         'priority',

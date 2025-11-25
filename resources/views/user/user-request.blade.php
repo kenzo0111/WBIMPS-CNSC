@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="csrf-token" content="{{ csrf_token() }}" />
     <title>Purchase Request • SPMO</title>
     @vite('resources/css/AccessSystem.css')
     <link rel="shortcut icon" href="{{ asset('images/UCN1.png') }}" type="image/png">
@@ -499,6 +500,7 @@
                                     placeholder="List items with optional quantities..." required></textarea>
                             </div>
 
+
                             <div class="form-group">
                                 <label class="form-label" for="unit">Unit of Measurement</label>
                                 <input class="form-input" id="unit" name="unit" type="text" placeholder="e.g., box / pcs"
@@ -526,6 +528,13 @@
                             <div class="form-group full">
                                 <label class="form-label" for="neededDate">Date Needed</label>
                                 <input class="form-input" id="neededDate" name="neededDate" type="date" />
+                            </div>
+
+                            <!-- Purpose field placed below Date Needed -->
+                            <div class="form-group full">
+                                <label class="form-label" for="purpose">Purpose</label>
+                                <textarea class="form-textarea" id="purpose" name="purpose"
+                                    placeholder="Describe the purpose / justification for this request" required></textarea>
                             </div>
 
                         <div class="form-group full">
@@ -587,6 +596,10 @@
                                 <div class="summary-row">
                                     <span class="summary-label">Items:</span>
                                     <span class="summary-value" id="summary-items">-</span>
+                                </div>
+                                <div class="summary-row">
+                                    <span class="summary-label">Purpose:</span>
+                                    <span class="summary-value" id="summary-purpose">-</span>
                                 </div>
                                 <div class="summary-row">
                                     <span class="summary-label">Unit:</span>
@@ -790,7 +803,7 @@
             }
 
             function updateSummary() {
-                const fields = ['email', 'requester', 'department', 'designation', 'items', 'unit', 'quantity', 'unitCost', 'totalCost', 'neededDate', 'priority'];
+                const fields = ['email', 'requester', 'department', 'designation', 'items', 'purpose', 'unit', 'quantity', 'unitCost', 'totalCost', 'neededDate', 'priority'];
                 fields.forEach(field => {
                     const target = byId(`summary-${field}`);
                     if (!target) return;
@@ -857,7 +870,8 @@
                 e.preventDefault();
                 const payload = harvestForm();
 
-                dialogText.textContent = `Submit request for ${payload.items?.slice(0, 60) || ''} (${payload.priority || 'No priority'}) — Qty: ${payload.quantity || '—'} Total cost: ${formatCurrency(payload.totalCost)}?`;
+                const shortPurpose = payload.purpose ? `Purpose: ${String(payload.purpose).slice(0, 80)}${String(payload.purpose).length > 80 ? '…' : ''}` : '';
+                dialogText.textContent = `Submit request for ${payload.items?.slice(0, 60) || ''} (${payload.priority || 'No priority'}) — Qty: ${payload.quantity || '—'} Total cost: ${formatCurrency(payload.totalCost)}${shortPurpose ? ' — ' + shortPurpose : ''}?`;
 
                 const proceed = await new Promise((res) => {
                     if (typeof dialogConfirm.showModal === 'function') {
@@ -920,7 +934,7 @@
                 const ts = new Date().toISOString();
                 const request = Object.assign({}, {
                     requestId, email: d.email, requester: d.requester, department: d.department, designation: d.designation,
-                    items: d.items, unit: d.unit, quantity: d.quantity || null, unitCost: d.unitCost || null, totalCost: d.totalCost || null,
+                    items: d.items, purpose: d.purpose || null, unit: d.unit, quantity: d.quantity || null, unitCost: d.unitCost || null, totalCost: d.totalCost || null,
                     neededDate: d.neededDate || 'Not specified', priority: d.priority, status: 'Incoming', submittedDate: ts, timestamp: ts
                 });
 
@@ -954,10 +968,64 @@
             }
 
             // --- Preview helpers (Step 3 "View Form" button) ---
-            function viewFormPreview() {
+            async function viewFormPreview() {
+                // Try to generate the server-side PDF and open it in a new tab. If the request fails or popups are blocked
+                // fall back to the previous HTML-only preview.
                 const payload = harvestForm();
-                const totalCost = payload.totalCost ? formatCurrency(payload.totalCost) : '—';
 
+                // Build headers (include CSRF token when present)
+                const headers = { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
+                const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+                if (tokenMeta && tokenMeta.content) headers['X-CSRF-TOKEN'] = tokenMeta.content;
+
+                try {
+                    // Normalize items into structured objects so the server can populate the PDF table properly.
+                    const serverPayload = Object.assign({}, payload);
+                    if (typeof payload.items === 'string' && payload.items.trim().length) {
+                        const lines = payload.items.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+                        serverPayload.items = lines.map(line => ({
+                            item_description: line,
+                            quantity: payload.quantity || '',
+                            unit_cost: payload.unitCost || '',
+                            total_cost: payload.totalCost || '',
+                            unit: payload.unit || ''
+                        }));
+                    }
+
+                    // Map a few common field names that the server-side PDF template expects
+                    if (payload.requester) serverPayload.requested_by = payload.requester;
+                    if (payload.purpose) serverPayload.purpose = payload.purpose;
+                    if (payload.designation) serverPayload.designation = payload.designation;
+                    if (payload.neededDate) serverPayload.date = payload.neededDate;
+
+                    const resp = await fetch('/purchase-request/generate', { method: 'POST', headers, body: JSON.stringify(serverPayload) });
+                    if (!resp.ok) throw new Error(`Server returned status ${resp.status}`);
+
+                    const blob = await resp.blob();
+                    const blobUrl = URL.createObjectURL(blob);
+
+                    // Attempt to open in a new tab/window. If blocked, trigger a download as a fallback.
+                    const win = window.open(blobUrl, '_blank');
+                    if (!win) {
+                        // Popup blocked — force download
+                        const a = document.createElement('a');
+                        a.href = blobUrl;
+                        a.download = 'purchase_request.pdf';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                    }
+
+                    // Release the blob url after some time
+                    setTimeout(() => { URL.revokeObjectURL(blobUrl); }, 60 * 1000);
+                    return;
+                } catch (err) {
+                    showToast({ message: 'Could not generate PDF preview on the server — using local preview.', type: 'warning', duration: 3500 });
+                    // Fall through to render local preview like before
+                }
+
+                // Local HTML preview fallback (same as existing behavior)
+                const totalCost = payload.totalCost ? formatCurrency(payload.totalCost) : '—';
                 const itemsHtml = (payload.items || '').replace(/\n/g, '<br/>');
 
                 const preview = window.open('', '_blank', 'width=900,height=700,scrollbars=yes,toolbar=no,menubar=no');
@@ -977,6 +1045,7 @@
                     + tableRow('Total Cost', totalCost)
                     + tableRow('Date Needed', payload.neededDate)
                     + tableRow('Priority', payload.priority)
+                    + tableRow('Purpose', payload.purpose)
                 + `</table><div class="actions"><button class="btn" onclick="window.print()">Print</button><button class="btn" onclick="window.close()">Close</button></div><div style="margin-top:12px;font-size:12px;color:#666">Preview generated locally — not submitted.</div></div></body></html>`;
 
                 preview.document.open(); preview.document.write(html); preview.document.close();
@@ -1016,6 +1085,33 @@
 
                 // calculation listeners
                 ['quantity', 'unitCost'].forEach(id => { const el = byId(id); if (el) el.addEventListener('input', calculateTotalCost); });
+
+                // Prevent selecting a past date for 'neededDate' - set min to today
+                const neededEl = byId('neededDate');
+                if (neededEl) {
+                    const today = new Date();
+                    // format YYYY-MM-DD
+                    const yyyy = today.getFullYear();
+                    const mm = String(today.getMonth() + 1).padStart(2, '0');
+                    const dd = String(today.getDate()).padStart(2, '0');
+                    const minDate = `${yyyy}-${mm}-${dd}`;
+                    neededEl.setAttribute('min', minDate);
+
+                    // If the current value is before min, clear it
+                    if (neededEl.value && neededEl.value < minDate) {
+                        neededEl.value = '';
+                        toast('Date needed cannot be earlier than today');
+                    }
+
+                    // guard manual input/change as well
+                    neededEl.addEventListener('change', () => {
+                        if (neededEl.value && neededEl.value < minDate) {
+                            neededEl.value = '';
+                            showToast({ message: 'Date needed cannot be in the past', type: 'error' });
+                        }
+                        if (currentStep === 3) updateSummary();
+                    });
+                }
 
                 // expose a couple helpers for dev environment
                 window.PurchaseRequest = { openSuccessDialog: () => dialogSuccess.showModal?.(), clearAllRequests };
