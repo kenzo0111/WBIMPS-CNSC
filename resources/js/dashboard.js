@@ -1,5 +1,14 @@
 // Dashboard JavaScript Application
 
+// Import FusionCharts and modules via npm so charts are bundled with Vite (no CDN required)
+import FusionCharts from 'fusioncharts'
+import Charts from 'fusioncharts/fusioncharts.charts'
+import FusionTheme from 'fusioncharts/themes/fusioncharts.theme.fusion'
+
+// initialize additional modules
+Charts(FusionCharts)
+FusionTheme(FusionCharts)
+
 // ==============================
 // Theme Management
 // ==============================
@@ -6164,7 +6173,8 @@ function generateInventoryReportsPage() {
                     </h3>
                 </div>
                 <div class="chart-wrapper">
-                    <canvas id="inventory-chart" width="600" height="200"></canvas>
+                  <!-- FusionCharts renders into a container DIV -->
+                  <div id="inventory-chart" style="width:100%;height:320px;"></div>
                 </div>
             </div>
 
@@ -6329,7 +6339,8 @@ function generateRequisitionReportsPage() {
                     </h3>
                 </div>
                 <div class="chart-wrapper">
-                    <canvas id="requisition-chart" width="800" height="240"></canvas>
+                  <!-- FusionCharts renders into a container DIV -->
+                  <div id="requisition-chart" style="width:100%;height:360px;"></div>
                 </div>
             </div>
 
@@ -6465,7 +6476,8 @@ function generateStatusReportsPage() {
                     </h3>
                 </div>
                 <div class="chart-wrapper">
-                    <canvas id="status-chart" width="600" height="200"></canvas>
+                  <!-- FusionCharts renders into a container DIV -->
+                  <div id="status-chart" style="width:100%;height:320px;"></div>
                 </div>
             </div>
 
@@ -6805,237 +6817,59 @@ function renderRequisitionReport() {
 
 let __requisitionChartInstance = null
 function renderRequisitionChart(labels, data) {
-  const ctx = document.getElementById('requisition-chart')
-  if (!ctx) return
-  if (typeof Chart === 'undefined') return
-  if (__requisitionChartInstance) __requisitionChartInstance.destroy()
+  const container = document.getElementById('requisition-chart')
+  if (!container) return
+  if (typeof FusionCharts === 'undefined') return
+  if (__requisitionChartInstance && __requisitionChartInstance.dispose) {
+    try {
+      __requisitionChartInstance.dispose()
+    } catch (e) {}
+  }
 
-  // Create dynamic gradients based on data values
-  const gradients = labels.map((label, index) => {
-    const value = data[index] || 0
-    const maxValue = Math.max(...data)
-    const intensity = maxValue > 0 ? value / maxValue : 0
+  const maxValue = Math.max(...data, 0)
+  const datasource = {
+    chart: {
+      caption: 'Requisition Totals by Supplier',
+      theme: 'fusion',
+      yAxisName: 'Amount (₱)',
+      numberPrefix: '₱',
+      showValues: '0',
+      formatNumberScale: '0',
+    },
+    data: labels.map((l, i) => ({
+      label: String(l || '-'),
+      value: Number(data[i] || 0),
+      color: (function () {
+        const intensity = maxValue > 0 ? (data[i] || 0) / maxValue : 0
+        if (intensity > 0.8) return '#dc2626'
+        if (intensity > 0.6) return '#ea580c'
+        if (intensity > 0.4) return '#ca8a04'
+        if (intensity > 0.2) return '#16a34a'
+        return '#0891b2'
+      })(),
+    })),
+  }
 
-    return (context) => {
-      const { chart } = context
-      const { ctx: c, chartArea } = chart
-      if (!chartArea) return '#6366f1'
-      const g = c.createLinearGradient(0, chartArea.bottom, 0, chartArea.top)
+  __requisitionChartInstance = new FusionCharts({
+    type: 'column2d',
+    renderAt: 'requisition-chart',
+    width: '100%',
+    height: '360',
+    dataFormat: 'json',
+    dataSource: datasource,
+  })
 
-      // Dynamic color based on value intensity
-      if (intensity > 0.8) {
-        g.addColorStop(0, '#dc2626') // red-600
-        g.addColorStop(0.5, '#ef4444') // red-500
-        g.addColorStop(1, '#f87171') // red-400
-      } else if (intensity > 0.6) {
-        g.addColorStop(0, '#ea580c') // orange-600
-        g.addColorStop(0.5, '#f97316') // orange-500
-        g.addColorStop(1, '#fb923c') // orange-400
-      } else if (intensity > 0.4) {
-        g.addColorStop(0, '#ca8a04') // yellow-600
-        g.addColorStop(0.5, '#eab308') // yellow-500
-        g.addColorStop(1, '#facc15') // yellow-400
-      } else if (intensity > 0.2) {
-        g.addColorStop(0, '#16a34a') // green-600
-        g.addColorStop(0.5, '#22c55e') // green-500
-        g.addColorStop(1, '#4ade80') // green-400
-      } else {
-        g.addColorStop(0, '#0891b2') // cyan-600
-        g.addColorStop(0.5, '#06b6d4') // cyan-500
-        g.addColorStop(1, '#22d3ee') // cyan-400
-      }
-      return g
+  __requisitionChartInstance.addEventListener(
+    'dataplotClick',
+    function (evt, dataObj) {
+      const idx = dataObj.index
+      const supplierName = labels[idx]
+      const totalAmount = data[idx]
+      showSupplierDetailPopup(supplierName, totalAmount, idx + 1, data.length)
     }
-  })
+  )
 
-  __requisitionChartInstance = new Chart(ctx.getContext('2d'), {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'Total Amount (₱)',
-          data,
-          borderRadius: 8,
-          borderSkipped: false,
-          maxBarThickness: 48,
-          backgroundColor: (context) => {
-            const idx = context.dataIndex
-            return gradients[idx] ? gradients[idx](context) : '#6366f1'
-          },
-          borderColor: (context) => {
-            const idx = context.dataIndex
-            const value = data[idx] || 0
-            const maxValue = Math.max(...data)
-            const intensity = maxValue > 0 ? value / maxValue : 0
-
-            if (intensity > 0.8) return '#dc2626'
-            if (intensity > 0.6) return '#ea580c'
-            if (intensity > 0.4) return '#ca8a04'
-            if (intensity > 0.2) return '#16a34a'
-            return '#0891b2'
-          },
-          borderWidth: 2,
-          hoverBorderWidth: 3,
-          hoverBorderColor: (context) => {
-            const idx = context.dataIndex
-            const value = data[idx] || 0
-            const maxValue = Math.max(...data)
-            const intensity = maxValue > 0 ? value / maxValue : 0
-
-            if (intensity > 0.8) return '#b91c1c'
-            if (intensity > 0.6) return '#c2410c'
-            if (intensity > 0.4) return '#a16207'
-            if (intensity > 0.2) return '#15803d'
-            return '#0e7490'
-          },
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      layout: { padding: { top: 20, bottom: 20, left: 10, right: 10 } },
-      scales: {
-        x: {
-          grid: { display: false },
-          ticks: {
-            color: '#6b7280',
-            font: { size: 11, weight: '500' },
-            maxRotation: 45,
-            minRotation: 0,
-          },
-        },
-        y: {
-          beginAtZero: true,
-          grid: { color: 'rgba(0,0,0,0.04)', lineWidth: 1 },
-          ticks: {
-            color: '#6b7280',
-            font: { size: 11, weight: '500' },
-            callback: (v) => formatCurrency(v),
-            padding: 8,
-          },
-          border: { display: false },
-        },
-      },
-      plugins: {
-        legend: {
-          display: true,
-          labels: {
-            color: '#111827',
-            font: { weight: '600', size: 12 },
-            usePointStyle: true,
-            pointStyle: 'rectRounded',
-          },
-          position: 'top',
-        },
-        tooltip: {
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          titleColor: '#ffffff',
-          bodyColor: '#ffffff',
-          borderColor: 'rgba(255, 255, 255, 0.2)',
-          borderWidth: 1,
-          cornerRadius: 8,
-          displayColors: true,
-          callbacks: {
-            title: (context) => {
-              const idx = context[0].dataIndex
-              const value = data[idx] || 0
-              const maxValue = Math.max(...data)
-              const intensity = maxValue > 0 ? value / maxValue : 0
-              let status = 'Low'
-              if (intensity > 0.8) status = 'Very High'
-              else if (intensity > 0.6) status = 'High'
-              else if (intensity > 0.4) status = 'Medium-High'
-              else if (intensity > 0.2) status = 'Medium'
-              return `${context[0].label} (${status} Value)`
-            },
-            label: (context) => {
-              const value = context.raw
-              const maxValue = Math.max(...data)
-              const percentage =
-                maxValue > 0 ? ((value / maxValue) * 100).toFixed(1) : '0.0'
-              return [
-                `Amount: ${formatCurrency(value)}`,
-                `Percentage: ${percentage}% of max`,
-                `Rank: ${data.filter((v) => v > value).length + 1} of ${
-                  data.length
-                } suppliers`,
-              ]
-            },
-          },
-        },
-        title: {
-          display: true,
-          text: 'Requisition Totals by Supplier',
-          color: '#111827',
-          font: { weight: '700', size: 16 },
-          padding: { top: 10, bottom: 20 },
-        },
-        valueDataLabels: {
-          display: true,
-          format: 'currency',
-          color: '#ffffff',
-          font: { weight: 'bold', size: 11 },
-          anchor: 'center',
-          align: 'center',
-          backgroundColor: 'rgba(0, 0, 0, 0.1)',
-          borderRadius: 4,
-        },
-      },
-      animation: {
-        duration: 800,
-        easing: 'easeOutQuart',
-        delay: (context) => context.dataIndex * 50, // Staggered animation
-      },
-      onHover: (event, activeElements) => {
-        event.native.target.style.cursor =
-          activeElements.length > 0 ? 'pointer' : 'default'
-        if (activeElements.length > 0) {
-          const dataIndex = activeElements[0].index
-          const bar = activeElements[0].element
-          // Add subtle glow effect on hover
-          if (bar && bar.options) {
-            bar.options.borderWidth = 4
-            bar.options.shadowBlur = 15
-            bar.options.shadowColor = (() => {
-              const value = data[dataIndex] || 0
-              const maxValue = Math.max(...data)
-              const intensity = maxValue > 0 ? value / maxValue : 0
-
-              if (intensity > 0.8) return '#dc2626'
-              if (intensity > 0.6) return '#ea580c'
-              if (intensity > 0.4) return '#ca8a04'
-              if (intensity > 0.2) return '#16a34a'
-              return '#0891b2'
-            })()
-          }
-        }
-      },
-      onLeave: (event, activeElements) => {
-        // Reset glow effect when leaving
-        if (activeElements.length === 0) {
-          event.native.target.style.cursor = 'default'
-        }
-      },
-      onClick: (event, elements) => {
-        if (elements.length > 0) {
-          const dataIndex = elements[0].index
-          const supplierName = labels[dataIndex]
-          const totalAmount = data[dataIndex]
-
-          // Create a detailed supplier info popup
-          showSupplierDetailPopup(
-            supplierName,
-            totalAmount,
-            dataIndex + 1,
-            data.length
-          )
-        }
-      },
-    },
-    plugins: [ValueDataLabelsPlugin],
-  })
+  __requisitionChartInstance.render()
 }
 
 // Function to show detailed supplier information popup
@@ -7301,83 +7135,7 @@ function numberWithCommas(x) {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
-// Enhanced Value Data Labels Plugin with better styling
-const ValueDataLabelsPlugin = {
-  id: 'valueDataLabels',
-  afterDatasetsDraw(chart, args, pluginOptions) {
-    const display = chart?.options?.plugins?.valueDataLabels?.display
-    if (!display) return
-    const { ctx } = chart
-    const datasetIndex = pluginOptions?.datasetIndex ?? 0
-    const meta = chart.getDatasetMeta(datasetIndex)
-    if (!meta?.data) return
-    ctx.save()
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.font =
-      pluginOptions?.font ||
-      'bold 11px system-ui, -apple-system, Segoe UI, Roboto, Arial'
-
-    meta.data.forEach((el, i) => {
-      const raw = chart.data?.datasets?.[datasetIndex]?.data?.[i]
-      if (raw === undefined || raw === null) return
-      const format = chart.options?.plugins?.valueDataLabels?.format
-      const text =
-        format === 'currency' ? formatCurrency(raw) : numberWithCommas(raw)
-
-      // Position at center of bar
-      const x = el.x
-      const y = el.y + el.height / 2
-
-      // Draw background for better readability
-      const padding = 4
-      const textWidth = ctx.measureText(text).width
-      const bgColor = pluginOptions?.backgroundColor || 'rgba(0, 0, 0, 0.15)'
-      const borderRadius = pluginOptions?.borderRadius || 3
-
-      // Draw rounded background
-      ctx.fillStyle = bgColor
-      ctx.beginPath()
-      ctx.roundRect(
-        x - textWidth / 2 - padding,
-        y - 8,
-        textWidth + padding * 2,
-        16,
-        borderRadius
-      )
-      ctx.fill()
-
-      // Draw text
-      ctx.fillStyle = pluginOptions?.color || '#ffffff'
-      ctx.fillText(text, x, y)
-    })
-    ctx.restore()
-  },
-}
-
-// Center text plugin for doughnut charts to display the total
-const DoughnutCenterTextPlugin = {
-  id: 'doughnutCenterText',
-  afterDraw(chart, args, opts) {
-    if (chart.config.type !== 'doughnut') return
-    const dataset = chart.config.data?.datasets?.[0]
-    if (!dataset || !Array.isArray(dataset.data)) return
-    const total = dataset.data.reduce((a, b) => a + (Number(b) || 0), 0)
-    const { ctx, chartArea } = chart
-    if (!chartArea) return
-    const cx = (chartArea.left + chartArea.right) / 2
-    const cy = (chartArea.top + chartArea.bottom) / 2
-    ctx.save()
-    ctx.textAlign = 'center'
-    ctx.fillStyle = opts?.color || '#111827'
-    ctx.font = '600 16px system-ui, -apple-system, Segoe UI, Roboto, Arial'
-    ctx.fillText(numberWithCommas(total), cx, cy)
-    ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial'
-    ctx.fillStyle = '#6b7280'
-    ctx.fillText('Total', cx, cy + 18)
-    ctx.restore()
-  },
-}
+// Legacy chart plugin code removed — charts now use FusionCharts.
 
 // Chart renderers
 // Function to show detailed Item information popup
@@ -7474,518 +7232,117 @@ function showItemDetailPopup(ItemName, stockLevel, isLowStock, threshold) {
 
 let __inventoryChartInstance = null
 function renderInventoryChart(labels, data, opts = {}) {
-  const ctx = document.getElementById('inventory-chart')
-  if (!ctx) return
-  if (typeof Chart === 'undefined') return
-  if (__inventoryChartInstance) __inventoryChartInstance.destroy()
+  const container = document.getElementById('inventory-chart')
+  if (!container) return
+  if (typeof FusionCharts === 'undefined') return
+
+  try {
+    if (__inventoryChartInstance && __inventoryChartInstance.dispose)
+      __inventoryChartInstance.dispose()
+  } catch (e) {}
+
   const threshold = typeof opts.threshold === 'number' ? opts.threshold : null
   const lowMask = Array.isArray(opts.lowMask)
     ? opts.lowMask
     : labels.map(() => false)
+  const maxValue = Math.max(...data, 0)
 
-  // Enhanced Threshold Line Plugin with better styling
-  const ThresholdLinePlugin = {
-    id: 'thresholdLine',
-    afterDatasetsDraw(chart) {
-      if (threshold == null) return
-      const { ctx, chartArea, scales } = chart
-      if (!chartArea || !scales?.y) return
-      const y = scales.y.getPixelForValue(threshold)
-      ctx.save()
+  const fcData = labels.map((label, idx) => {
+    const value = Number(data[idx] || 0)
+    const color = lowMask[idx]
+      ? '#dc2626'
+      : (function () {
+          const intensity = maxValue > 0 ? value / maxValue : 0
+          if (intensity > 0.6) return '#84cc16'
+          if (intensity > 0.3) return '#06b6d4'
+          return '#7c3aed'
+        })()
+    return { label: String(label || '-'), value, color }
+  })
 
-      // Draw threshold line with gradient effect
-      const gradient = ctx.createLinearGradient(
-        chartArea.left,
-        y,
-        chartArea.right,
-        y
-      )
-      gradient.addColorStop(0, 'rgba(239, 68, 68, 0)')
-      gradient.addColorStop(0.5, 'rgba(239, 68, 68, 0.8)')
-      gradient.addColorStop(1, 'rgba(239, 68, 68, 0)')
-
-      ctx.strokeStyle = gradient
-      ctx.setLineDash([8, 4])
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.moveTo(chartArea.left, y)
-      ctx.lineTo(chartArea.right, y)
-      ctx.stroke()
-
-      // Add threshold label with background
-      ctx.setLineDash([])
-      ctx.fillStyle = '#dc2626'
-      ctx.font = 'bold 12px system-ui, -apple-system, Segoe UI, Roboto, Arial'
-      const label = `Low Stock Threshold: ${numberWithCommas(threshold)}`
-      const labelWidth = ctx.measureText(label).width
-      const labelX = chartArea.right - labelWidth - 8
-      const labelY = y - 8
-
-      // Draw label background
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
-      ctx.fillRect(labelX - 4, labelY - 14, labelWidth + 8, 18)
-      ctx.strokeStyle = '#dc2626'
-      ctx.lineWidth = 1
-      ctx.strokeRect(labelX - 4, labelY - 14, labelWidth + 8, 18)
-
-      // Draw label text
-      ctx.fillStyle = '#dc2626'
-      ctx.fillText(label, labelX, labelY)
-
-      ctx.restore()
+  const datasource = {
+    chart: {
+      caption:
+        opts?.totalItems && opts?.topN && opts.totalItems > opts.topN
+          ? `Top ${opts.topN} Items by Stock (${opts.totalItems} total Items)`
+          : 'Item Stock Levels',
+      theme: 'fusion',
+      xAxisName: 'Items',
+      yAxisName: 'Quantity',
+      showValues: '0',
     },
+    data: fcData,
   }
 
-  __inventoryChartInstance = new Chart(ctx.getContext('2d'), {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'Current Stock',
-          data,
-          borderRadius: 6,
-          borderSkipped: false,
-          maxBarThickness: 50,
-          backgroundColor: (context) => {
-            const idx = context?.dataIndex ?? 0
-            const low = !!lowMask[idx]
-            const { chart } = context
-            const { ctx: c, chartArea } = chart
-            if (!chartArea) return low ? '#f87171' : '#10b981'
-
-            const g = c.createLinearGradient(
-              0,
-              chartArea.bottom,
-              0,
-              chartArea.top
-            )
-            if (low) {
-              // Enhanced low stock gradient (red to orange)
-              g.addColorStop(0, '#f87171') // red-400
-              g.addColorStop(0.5, '#fb923c') // orange-400
-              g.addColorStop(1, '#dc2626') // red-600
-            } else {
-              // Enhanced normal stock gradient (green to teal)
-              g.addColorStop(0, '#10b981') // emerald-500
-              g.addColorStop(0.5, '#14b8a6') // teal-500
-              g.addColorStop(1, '#059669') // emerald-600
-            }
-            return g
-          },
-          borderColor: (context) => {
-            const idx = context?.dataIndex ?? 0
-            return !!lowMask[idx] ? '#dc2626' : '#059669'
-          },
-          borderWidth: 1,
-          hoverBorderWidth: 2,
-          hoverBorderColor: (context) => {
-            const idx = context?.dataIndex ?? 0
-            return !!lowMask[idx] ? '#b91c1c' : '#047857'
-          },
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      layout: { padding: { top: 20, bottom: 20, left: 10, right: 10 } },
-      scales: {
-        x: {
-          grid: { display: false },
-          ticks: {
-            color: '#6b7280',
-            font: { size: 11, weight: '500' },
-            maxRotation: 45,
-            minRotation: 0,
-          },
-        },
-        y: {
-          beginAtZero: true,
-          grid: { color: 'rgba(0,0,0,0.04)', lineWidth: 1 },
-          ticks: {
-            color: '#6b7280',
-            font: { size: 11, weight: '500' },
-            callback: (v) => numberWithCommas(v),
-            padding: 8,
-          },
-          border: { display: false },
-        },
-      },
-      plugins: {
-        legend: {
-          display: true,
-          labels: {
-            color: '#111827',
-            font: { weight: '600', size: 12 },
-            usePointStyle: true,
-            pointStyle: 'rectRounded',
-          },
-          position: 'top',
-        },
-        tooltip: {
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          titleColor: '#ffffff',
-          bodyColor: '#ffffff',
-          borderColor: 'rgba(255, 255, 255, 0.2)',
-          borderWidth: 1,
-          cornerRadius: 8,
-          displayColors: true,
-          callbacks: {
-            title: (context) => {
-              const idx = context[0].dataIndex
-              const low = !!lowMask[idx]
-              return `${context[0].label} ${low ? '(Low Stock)' : ''}`
-            },
-            label: (context) => {
-              const value = context.raw
-              const threshold = opts.threshold || 0
-              const status =
-                value <= threshold ? '⚠️ Low Stock' : '✅ Adequate Stock'
-              return [
-                `Stock: ${numberWithCommas(value)} units`,
-                `Status: ${status}`,
-                `Threshold: ${numberWithCommas(threshold)} units`,
-              ]
-            },
-          },
-        },
-        title: {
-          display: true,
-          text:
-            opts?.totalItems && opts?.topN && opts.totalItems > opts.topN
-              ? `Top ${opts.topN} Items by Stock (${opts.totalItems} total Items)`
-              : 'Item Stock Levels',
-          color: '#111827',
-          font: { weight: '700', size: 16 },
-          padding: { top: 10, bottom: 20 },
-        },
-        valueDataLabels: {
-          display: true,
-          format: 'number',
-          color: '#ffffff',
-          font: { weight: 'bold', size: 11 },
-          anchor: 'center',
-          align: 'center',
-          backgroundColor: 'rgba(0, 0, 0, 0.1)',
-          borderRadius: 4,
-        },
-      },
-      animation: {
-        duration: 800,
-        easing: 'easeOutQuart',
-        delay: (context) => context.dataIndex * 50, // Staggered animation
-      },
-      onHover: (event, activeElements) => {
-        event.native.target.style.cursor =
-          activeElements.length > 0 ? 'pointer' : 'default'
-        if (activeElements.length > 0) {
-          const dataIndex = activeElements[0].index
-          const bar = activeElements[0].element
-          // Add subtle glow effect on hover
-          if (bar && bar.options) {
-            bar.options.borderWidth = 3
-            bar.options.shadowBlur = 10
-            bar.options.shadowColor = !!lowMask[dataIndex]
-              ? '#dc2626'
-              : '#059669'
-          }
-        }
-      },
-      onLeave: (event, activeElements) => {
-        // Reset glow effect when leaving
-        if (activeElements.length === 0) {
-          event.native.target.style.cursor = 'default'
-        }
-      },
-      onClick: (event, elements) => {
-        if (elements.length > 0) {
-          const dataIndex = elements[0].index
-          const ItemName = labels[dataIndex]
-          const stockLevel = data[dataIndex]
-          const isLowStock = !!lowMask[dataIndex]
-          const threshold = opts.threshold || 0
-
-          // Create a detailed info popup
-          showItemDetailPopup(ItemName, stockLevel, isLowStock, threshold)
-        }
-      },
-    },
-    plugins: [ValueDataLabelsPlugin, ThresholdLinePlugin],
+  __inventoryChartInstance = new FusionCharts({
+    type: 'bar2d',
+    renderAt: 'inventory-chart',
+    width: '100%',
+    height: '320',
+    dataFormat: 'json',
+    dataSource: datasource,
   })
+
+  __inventoryChartInstance.addEventListener(
+    'dataplotClick',
+    function (evt, dataObj) {
+      const idx = dataObj.index
+      const name = labels[idx]
+      const qty = data[idx]
+      showItemDetailPopup(name, qty, lowMask[idx], threshold)
+    }
+  )
+
+  __inventoryChartInstance.render()
 }
 
 let __statusChartInstance = null
 function renderStatusChart(labels, data) {
-  const ctx = document.getElementById('status-chart')
-  if (!ctx) return
-  if (typeof Chart === 'undefined') return
-  if (__statusChartInstance) __statusChartInstance.destroy()
+  const container = document.getElementById('status-chart')
+  if (!container) return
+  if (typeof FusionCharts === 'undefined') return
 
-  // Generate enhanced colors and gradients based on status labels
-  const statusConfigs = labels.map((label) => {
-    const status = label.toLowerCase()
-    const baseColor = getStatusColor(status)
+  try {
+    if (__statusChartInstance && __statusChartInstance.dispose)
+      __statusChartInstance.dispose()
+  } catch (e) {}
 
-    // Create gradient for each status
-    const gradient = (context) => {
-      const { chart } = context
-      const { ctx: c, chartArea } = chart
-      if (!chartArea) return baseColor
-
-      const g = c.createLinearGradient(
-        chartArea.left,
-        chartArea.top,
-        chartArea.right,
-        chartArea.bottom
-      )
-
-      // Different gradient patterns for different statuses
-      if (
-        status.includes('active') ||
-        status.includes('completed') ||
-        status.includes('approved')
-      ) {
-        g.addColorStop(0, baseColor)
-        g.addColorStop(0.5, lightenColor(baseColor, 20))
-        g.addColorStop(1, baseColor)
-      } else if (
-        status.includes('pending') ||
-        status.includes('under-review')
-      ) {
-        g.addColorStop(0, baseColor)
-        g.addColorStop(0.5, baseColor)
-        g.addColorStop(1, lightenColor(baseColor, 30))
-      } else if (status.includes('cancelled') || status.includes('returned')) {
-        g.addColorStop(0, darkenColor(baseColor, 20))
-        g.addColorStop(0.5, baseColor)
-        g.addColorStop(1, lightenColor(baseColor, 10))
-      } else {
-        g.addColorStop(0, baseColor)
-        g.addColorStop(1, lightenColor(baseColor, 15))
-      }
-
-      return g
-    }
-
-    return {
-      baseColor,
-      gradient,
-      borderColor: darkenColor(baseColor, 30),
-      hoverColor: lightenColor(baseColor, 10),
-    }
-  })
-
-  // Enhanced Doughnut Center Text Plugin with better styling
-  const EnhancedDoughnutCenterTextPlugin = {
-    id: 'enhancedDoughnutCenterText',
-    afterDraw(chart, args, opts) {
-      if (chart.config.type !== 'doughnut') return
-      const dataset = chart.config.data?.datasets?.[0]
-      if (!dataset || !Array.isArray(dataset.data)) return
-      const total = dataset.data.reduce((a, b) => a + (Number(b) || 0), 0)
-      const { ctx, chartArea } = chart
-      if (!chartArea) return
-      const cx = (chartArea.left + chartArea.right) / 2
-      const cy = (chartArea.top + chartArea.bottom) / 2
-      ctx.save()
-
-      // Draw outer circle background
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
-      ctx.beginPath()
-      ctx.arc(cx, cy, 45, 0, 2 * Math.PI)
-      ctx.fill()
-
-      // Draw inner circle border
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)'
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.arc(cx, cy, 40, 0, 2 * Math.PI)
-      ctx.stroke()
-
-      // Draw total number
-      ctx.textAlign = 'center'
-      ctx.fillStyle = opts?.color || '#111827'
-      ctx.font = 'bold 24px system-ui, -apple-system, Segoe UI, Roboto, Arial'
-      ctx.fillText(numberWithCommas(total), cx, cy - 5)
-
-      // Draw "Total" label
-      ctx.font = '600 12px system-ui, -apple-system, Segoe UI, Roboto, Arial'
-      ctx.fillStyle = '#6b7280'
-      ctx.fillText('Total Requests', cx, cy + 15)
-
-      ctx.restore()
+  const datasource = {
+    chart: {
+      caption: 'Status Distribution',
+      theme: 'fusion',
+      showPercentValues: '1',
+      decimals: '1',
+      showLegend: '1',
+      defaultCenterLabel: 'Total: $value',
+      centerLabel: '$label: $value',
+      showValues: '0',
     },
+    data: labels.map((l, i) => ({
+      label: String(l || '-'),
+      value: Number(data[i] || 0),
+    })),
   }
 
-  __statusChartInstance = new Chart(ctx.getContext('2d'), {
-    type: 'doughnut',
-    data: {
-      labels,
-      datasets: [
-        {
-          data,
-          backgroundColor: (context) => {
-            const idx = context.dataIndex
-            return statusConfigs[idx]?.gradient(context) || '#6366f1'
-          },
-          borderColor: statusConfigs.map((config) => config.borderColor),
-          borderWidth: 3,
-          borderRadius: 8,
-          hoverBorderWidth: 4,
-          hoverBorderColor: statusConfigs.map((config) => config.hoverColor),
-          hoverOffset: 8,
-          shadowOffsetX: 0,
-          shadowOffsetY: 4,
-          shadowBlur: 12,
-          shadowColor: 'rgba(0, 0, 0, 0.15)',
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '70%',
-      layout: { padding: { top: 20, bottom: 20, left: 20, right: 20 } },
-      plugins: {
-        legend: {
-          position: 'bottom',
-          align: 'center',
-          labels: {
-            color: '#111827',
-            font: { weight: '600', size: 13 },
-            usePointStyle: true,
-            pointStyle: 'rectRounded',
-            padding: 20,
-            generateLabels: (chart) => {
-              const data = chart.data
-              if (data.labels.length && data.datasets.length) {
-                return data.labels.map((label, i) => {
-                  const value = data.datasets[0].data[i]
-                  const total = data.datasets[0].data.reduce((a, b) => a + b, 0)
-                  const percentage = total
-                    ? ((value / total) * 100).toFixed(1)
-                    : '0.0'
-
-                  return {
-                    text: `${label}: ${numberWithCommas(
-                      value
-                    )} (${percentage}%)`,
-                    fillStyle: statusConfigs[i]?.baseColor || '#6366f1',
-                    strokeStyle: statusConfigs[i]?.borderColor || '#6366f1',
-                    lineWidth: 2,
-                    hidden: false,
-                    index: i,
-                  }
-                })
-              }
-              return []
-            },
-          },
-        },
-        tooltip: {
-          backgroundColor: 'rgba(0, 0, 0, 0.9)',
-          titleColor: '#ffffff',
-          bodyColor: '#ffffff',
-          borderColor: 'rgba(255, 255, 255, 0.2)',
-          borderWidth: 1,
-          cornerRadius: 12,
-          displayColors: true,
-          padding: 16,
-          titleFont: { size: 14, weight: '600' },
-          bodyFont: { size: 13 },
-          callbacks: {
-            title: (context) => {
-              return context[0].label
-            },
-            label: (context) => {
-              const total = context.dataset.data.reduce(
-                (a, b) => a + (Number(b) || 0),
-                0
-              )
-              const val = Number(context.raw) || 0
-              const pct = total ? ((val / total) * 100).toFixed(1) : '0.0'
-              const status = context.label.toLowerCase()
-
-              let statusEmoji = '📋'
-              if (status.includes('completed') || status.includes('approved'))
-                statusEmoji = '✅'
-              else if (
-                status.includes('pending') ||
-                status.includes('under-review')
-              )
-                statusEmoji = '⏳'
-              else if (status.includes('cancelled')) statusEmoji = '❌'
-              else if (status.includes('active')) statusEmoji = '🔄'
-
-              return [
-                `${statusEmoji} Count: ${numberWithCommas(val)}`,
-                `📊 Percentage: ${pct}%`,
-                `🎯 Status: ${context.label}`,
-              ]
-            },
-          },
-        },
-        title: {
-          display: true,
-          text: 'Request Status Distribution',
-          color: '#111827',
-          font: { weight: '700', size: 18 },
-          padding: { top: 10, bottom: 30 },
-        },
-        enhancedDoughnutCenterText: { color: '#111827' },
-      },
-      animation: {
-        animateScale: true,
-        animateRotate: true,
-        duration: 1200,
-        easing: 'easeOutQuart',
-        delay: (context) => context.dataIndex * 100, // Staggered animation
-      },
-      onHover: (event, activeElements) => {
-        event.native.target.style.cursor =
-          activeElements.length > 0 ? 'pointer' : 'default'
-
-        if (activeElements.length > 0) {
-          const dataIndex = activeElements[0].index
-          const segment = activeElements[0].element
-
-          // Add glow effect on hover
-          if (segment && segment.options) {
-            segment.options.borderWidth = 5
-            segment.options.shadowBlur = 20
-            segment.options.shadowColor =
-              statusConfigs[dataIndex]?.hoverColor || '#6366f1'
-          }
-
-          // Show detailed popup
-          showStatusDetailPopup(
-            labels[dataIndex],
-            data[dataIndex],
-            dataIndex,
-            data
-          )
-        }
-      },
-      onLeave: (event, activeElements) => {
-        // Reset glow effect when leaving
-        if (activeElements.length === 0) {
-          event.native.target.style.cursor = 'default'
-        }
-      },
-      onClick: (event, elements) => {
-        if (elements.length > 0) {
-          const dataIndex = elements[0].index
-          const status = labels[dataIndex]
-          const count = data[dataIndex]
-
-          // Trigger status details modal
-          showStatusDetails(status)
-        }
-      },
-    },
-    plugins: [EnhancedDoughnutCenterTextPlugin],
+  __statusChartInstance = new FusionCharts({
+    type: 'doughnut2d',
+    renderAt: 'status-chart',
+    width: '100%',
+    height: '320',
+    dataFormat: 'json',
+    dataSource: datasource,
   })
+
+  __statusChartInstance.addEventListener(
+    'dataplotClick',
+    function (evt, dataObj) {
+      const idx = dataObj.index
+      const status = labels[idx]
+      showStatusDetails(status)
+    }
+  )
+
+  __statusChartInstance.render()
 }
 
 // Helper functions for color manipulation

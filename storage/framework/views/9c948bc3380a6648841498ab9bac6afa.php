@@ -5,14 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="shortcut icon" href="<?php echo e(asset('images/UCN1.png')); ?>" type="image/png">
   <link rel="icon" href="<?php echo e(asset('images/UCN1.png')); ?>" type="image/png">
-  <title>Password Reset Request</title>
+  <title><?php echo e($modelName ?? 'Record'); ?> Status Updated</title>
   <style>
     .preheader { display:none !important; visibility:hidden; mso-hide:all; font-size:1px; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden; }
-    a.button { display:inline-block;padding:10px 18px;background:<?php echo e($brandPrimary ?? '#3b82f6'); ?>;color:<?php echo e($brandText ?? '#ffffff'); ?>;text-decoration:none;border-radius:4px;font-weight:600 }
   </style>
 </head>
 <body style="margin:0;padding:0;background-color:#f6f6f6;font-family:Arial,Helvetica,sans-serif;color:#333333;">
-  <span class="preheader">Reset your password for <?php echo e($user->name); ?>.</span>
+  <span class="preheader"><?php echo e($modelName ?? 'Record'); ?> <?php echo e($modelId ?? ''); ?> status changed to <?php echo e($newStatus ?? ''); ?>.</span>
 
   <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f6f6f6; padding:20px 0;">
     <tr>
@@ -24,25 +23,13 @@
                 <tr>
                   <td style="vertical-align:middle;width:64px;">
                     <?php
-                      $logoLocal = public_path('images/UCN1.png');
-                      $logoSrc = null;
-                      try {
-                        if (isset($message) && method_exists($message, 'embed') && file_exists($logoLocal)) {
-                          $logoSrc = $message->embed($logoLocal);
-                        }
-                      } catch (\Throwable $e) {
-                        $logoSrc = null;
-                      }
-
-                      if (empty($logoSrc)) {
-                        $logoSrc = $logoCid ?? ($logoUrl ?? asset('images/UCN1.png'));
-                      }
+                      $logoSrc = $logoCid ?? ($logoUrl ?? asset('images/UCN1.png'));
                     ?>
                     <img src="<?php echo e($logoSrc); ?>" alt="Supply System" width="48" height="48" style="display:block;border:0;outline:none;text-decoration:none;" onerror="this.style.display='none'">
                   </td>
                   <td style="vertical-align:middle;padding-left:12px;">
                     <div style="font-size:18px;font-weight:600;line-height:1;color:<?php echo e($brandText ?? '#ffffff'); ?>;">Web-Based Inventory and Procurement Management System</div>
-                    <div style="font-size:12px;opacity:0.95;color:<?php echo e($brandText ?? '#ffffff'); ?>;">Password Reset Request</div>
+                    <div style="font-size:12px;opacity:0.95;color:<?php echo e($brandText ?? '#ffffff'); ?>;">Status Change Notification</div>
                   </td>
                   <td style="text-align:right;vertical-align:middle;font-size:12px;color:<?php echo e($brandText ?? '#ffffff'); ?>;">&nbsp;</td>
                 </tr>
@@ -52,17 +39,35 @@
 
           <tr>
             <td style="padding:22px 24px;">
-              <h1 style="margin:0 0 8px 0;font-size:20px;color:#222;">Password Reset Request</h1>
-              <p style="margin:0 0 14px 0;color:#666;font-size:14px;">Hello <?php echo e($user->name); ?>,</p>
-              <p style="margin:0 0 14px 0;color:#666;font-size:14px;">We received a request to reset your password for your SupplySystem account. To reset your password, click the button below. The link will expire in <strong>24 hours</strong> for security reasons.</p>
+              <h1 style="margin:0 0 8px 0;font-size:20px;color:#222;"><?php echo e($modelName ?? 'Record'); ?> status updated</h1>
+              <p style="margin:0 0 14px 0;color:#666;font-size:14px;">A status change has been recorded for the item below. If you need more information, please contact the Supply System administrator.</p>
 
-              <p style="margin:14px 0;">
-                <a href="<?php echo e(route('password.reset.form', $token)); ?>" class="button" style="display:inline-block;padding:10px 18px;background:<?php echo e($brandPrimary ?? '#3b82f6'); ?>;color:<?php echo e($brandText ?? '#ffffff'); ?>;text-decoration:none;border-radius:4px;font-weight:600;">Reset Your Password</a>
-              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px;border-collapse:collapse;">
+                <tr>
+                  <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;width:180px;font-weight:600;color:#444;">Entity</td>
+                  <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;color:#333;"><?php echo e($modelName ?? '-'); ?></td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-weight:600;color:#444;">ID</td>
+                  <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;color:#333;"><?php echo e($modelId ?? '-'); ?></td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-weight:600;color:#444;">Previous Status</td>
+                  <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;color:#333;"><?php echo e($oldStatus ?? '-'); ?></td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-weight:600;color:#444;">New Status</td>
+                  <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;color:#333;"><strong><?php echo e($newStatus ?? '-'); ?></strong></td>
+                </tr>
+                <?php if(!empty($notes)): ?>
+                <tr>
+                  <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-weight:600;color:#444;">Notes</td>
+                  <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;color:#333;"><?php echo e($notes); ?></td>
+                </tr>
+                <?php endif; ?>
+              </table>
 
-              <p style="margin-top:18px;color:#666;font-size:13px;">If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged. Someone may have entered your email address by mistake.</p>
-              
-              <p style="margin-top:18px;color:#666;font-size:13px;">If you have any questions or need assistance, please contact the administrator.</p>
+              <p style="margin-top:18px;color:#666;font-size:13px;">Reference: <strong style="color:#333;"><?php echo e($modelId ?? ''); ?></strong></p>
             </td>
           </tr>
 
@@ -78,5 +83,4 @@
     </tr>
   </table>
 </body>
-</html>
-<?php /**PATH C:\xampp\htdocs\SupplySystem\resources\views/emails/password-reset-request.blade.php ENDPATH**/ ?>
+</html><?php /**PATH C:\xampp\htdocs\SupplySystem\resources\views/emails/status_changed.blade.php ENDPATH**/ ?>

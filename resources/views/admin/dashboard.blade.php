@@ -11,8 +11,7 @@
     @vite('resources/css/dashboard.css')
     <!-- Lucide Icons CDN -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    <!-- Chart.js CDN for report charts -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Charts are now bundled via npm (imported by Vite). -->
     <script>
         window.APP_ROUTES = window.APP_ROUTES || {};
         window.APP_ROUTES.base = "{{ url('/') }}";
