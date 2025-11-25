@@ -899,8 +899,16 @@
                     showToast({ message: 'Request submitted.', type: 'success', duration: 3500 });
                 }
 
-                if (typeof dialogSuccess.showModal === 'function') dialogSuccess.showModal();
-                form.reset(); currentStep = 1; updateProgress();
+                if (typeof dialogSuccess.showModal === 'function') {
+                    dialogSuccess.showModal();
+                    // only reset once the user closes the success dialog
+                    dialogSuccess.addEventListener('close', function onClose() {
+                        dialogSuccess.removeEventListener('close', onClose);
+                        form.reset(); currentStep = 1; updateProgress();
+                    });
+                } else {
+                    form.reset(); currentStep = 1; updateProgress();
+                }
             }
 
             function showSuccessLocal(d) {
@@ -920,7 +928,16 @@
                 try { localStorage.setItem('userPurchaseRequests', JSON.stringify(existing)); } catch (e) { console.error('Error saving request:', e); }
 
                 successText.textContent = `Request ${requestId} saved locally and will be visible in the dashboard. Please contact admin if you need confirmation.`;
-                if (typeof dialogSuccess.showModal === 'function') dialogSuccess.showModal(); else showToast({ message: `Request ${requestId} saved locally.`, type: 'success' });
+                if (typeof dialogSuccess.showModal === 'function') {
+                    dialogSuccess.showModal();
+                    dialogSuccess.addEventListener('close', function onClose() {
+                        dialogSuccess.removeEventListener('close', onClose);
+                        form.reset(); currentStep = 1; updateProgress();
+                    });
+                } else {
+                    showToast({ message: `Request ${requestId} saved locally.`, type: 'success' });
+                    form.reset(); currentStep = 1; updateProgress();
+                }
 
                 try {
                     const qty = request.quantity ? `Qty ${request.quantity}` : '';
@@ -928,8 +945,6 @@
                     const summary = [qty, cost].filter(Boolean).join(' • ');
                     if (summary) showToast({ message: `${requestId} — ${summary}`, type: 'success', duration: 4200 });
                 } catch (e) { /* ignore */ }
-
-                form.reset(); currentStep = 1; updateProgress();
             }
 
             // Optional helper used in developer console
@@ -969,14 +984,20 @@
 
             // --- Event wiring ---
             function handleActionClick(e) {
-                const action = e.target.closest('button')?.dataset?.action;
+                const btn = e.target.closest('button');
+                const action = btn?.dataset?.action;
+                // Prevent the browser's default submit behavior when we intentionally control submits
+                if (action === 'submit-form') e.preventDefault();
                 if (!action) return;
                 switch (action) {
                     case 'go-home': return goHome();
                     case 'next-step': return nextStep();
                     case 'view-form': return viewFormPreview();
                     case 'prev-step': return prevStep();
-                    case 'submit-form': return form.requestSubmit?.() || form.submit();
+                    case 'submit-form':
+                        // prefer the newer requestSubmit API when available (it triggers the submit event)
+                        if (typeof form.requestSubmit === 'function') return form.requestSubmit();
+                        return form.submit();
                 }
             }
 
