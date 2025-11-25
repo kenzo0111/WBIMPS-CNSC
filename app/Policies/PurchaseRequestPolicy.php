@@ -20,8 +20,10 @@ class PurchaseRequestPolicy
      */
     public function view(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        // Users can view their own purchase requests or admins can view all
-        return $user->isAdmin() || (int) $purchaseRequest->requested_by === $user->id;
+        // Users can view their own purchase requests or admins can view all.
+        // The PurchaseRequest model stores requester information as `email` and/or `requester` (name).
+        // Some installations may include a numeric `requester_id` column — support that as well.
+        return $user->isAdmin() || $this->isOwnedByUser($user, $purchaseRequest);
     }
 
     /**
@@ -39,7 +41,7 @@ class PurchaseRequestPolicy
     public function update(User $user, PurchaseRequest $purchaseRequest): bool
     {
         // Users can update their own pending requests or users with 'manage requests' permission
-        if ($user->id === (int) $purchaseRequest->requested_by && $purchaseRequest->status === 'pending') {
+        if ($this->isOwnedByUser($user, $purchaseRequest) && $purchaseRequest->status === 'pending') {
             return true;
         }
 
@@ -52,7 +54,7 @@ class PurchaseRequestPolicy
     public function delete(User $user, PurchaseRequest $purchaseRequest): bool
     {
         // Only the requester (if pending) or users with 'manage requests' permission can delete
-        if ($user->id === (int) $purchaseRequest->requested_by && $purchaseRequest->status === 'pending') {
+        if ($this->isOwnedByUser($user, $purchaseRequest) && $purchaseRequest->status === 'pending') {
             return true;
         }
 
@@ -91,5 +93,38 @@ class PurchaseRequestPolicy
     public function forceDelete(User $user, PurchaseRequest $purchaseRequest): bool
     {
         return $user->hasPermissionTo('manage requests') || $user->isAdmin();
+    }
+
+    /**
+     * Check whether a purchase request belongs to the given user.
+     *
+     * This tries multiple strategies since older code stores the requester's
+     * name in `requester` or their email in `email`. Some installs might
+     * include a numeric `requester_id` as well.
+     */
+    private function isOwnedByUser(User $user, PurchaseRequest $purchaseRequest): bool
+    {
+        // Prefer a direct numeric foreign key (if present)
+        if (isset($purchaseRequest->requester_id) && (int) $purchaseRequest->requester_id === (int) $user->id) {
+            return true;
+        }
+
+        // Match by email when available
+        if (
+            !empty($purchaseRequest->email) && !empty($user->email)
+            && strcasecmp(trim($purchaseRequest->email), trim($user->email)) === 0
+        ) {
+            return true;
+        }
+
+        // Lastly, match by name if the request stores the requester's name
+        if (
+            !empty($purchaseRequest->requester) && !empty($user->name)
+            && strcasecmp(trim($purchaseRequest->requester), trim($user->name)) === 0
+        ) {
+            return true;
+        }
+
+        return false;
     }
 }
