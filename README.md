@@ -65,6 +65,8 @@ php artisan roles:sync
 
 Add that command to your deployment script or CI/CD pipeline to ensure roles and permissions are kept in sync with the canonical config.
 
+For a human-friendly, canonical listing of each role and its permissions, see: `docs/roles-permissions.md`.
+
 Notes: The `User` model uses `HasRoles` and includes compatibility wrappers so existing `role` and `is_admin` checks continue to work while you migrate to spatie permissions.
 
 ## 🔐 Test Credentials
