@@ -68,6 +68,8 @@ class AccessController extends Controller
             'email' => $user->email,
             'role' => $primaryRole,
             'roles' => $roles,
+            // include permission names to help client-side authorization logic
+            'permissionNames' => method_exists($user, 'getAllPermissions') ? $user->getAllPermissions()->pluck('name')->toArray() : [],
             'is_admin' => (bool) ($user->isAdmin() ?? (bool) data_get($user, 'is_admin', false)),
         ];
 

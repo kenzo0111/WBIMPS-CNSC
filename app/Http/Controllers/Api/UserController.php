@@ -33,6 +33,8 @@ class UserController extends Controller
                 'status' => $u->status,
                 'is_admin' => (bool) ($u->isAdmin() ?? (bool) data_get($u, 'is_admin', false)),
                 'created_at' => $u->created_at,
+                // expose permission names for each user to aid the client UI and authorization decisions
+                'permissionNames' => method_exists($u, 'getAllPermissions') ? $u->getAllPermissions()->pluck('name')->toArray() : [],
             ];
         })->values();
     }
@@ -68,6 +70,8 @@ class UserController extends Controller
                 $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $roleName), '-'));
                 \Spatie\Permission\Models\Role::firstOrCreate(['slug' => $slug], ['name' => $roleName, 'guard_name' => 'web']);
                 $user->assignRole($roleName);
+                // ensure spatie cache is fresh after assignment
+                app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
             }
         }
 
@@ -89,9 +93,22 @@ class UserController extends Controller
         // Send setup email
         Mail::to($user->email)->send(new AccountSetupMail($user, $token));
 
+        // return a richer user payload so clients can populate UI reliably
+        $roles = method_exists($user, 'getRoleNames') ? $user->getRoleNames()->toArray() : [];
+
         return response()->json([
             'message' => 'User created successfully. Account setup email sent.',
-            'user' => $user,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $roles[0] ?? data_get($user, 'role', null),
+                'roles' => $roles,
+                'status' => $user->status,
+                'is_admin' => (bool) ($user->isAdmin() ?? (bool) data_get($user, 'is_admin', false)),
+                'permissionNames' => method_exists($user, 'getAllPermissions') ? $user->getAllPermissions()->pluck('name')->toArray() : [],
+                'created_at' => $user->created_at,
+            ],
         ], 201);
     }
 
@@ -100,7 +117,21 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
-        return $user;
+        // ensure the API representation includes permissions and roles metadata
+        $roles = method_exists($user, 'getRoleNames') ? $user->getRoleNames()->toArray() : [];
+        $primary = $roles[0] ?? data_get($user, 'role', null);
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $primary,
+            'roles' => $roles,
+            'status' => $user->status,
+            'is_admin' => (bool) ($user->isAdmin() ?? (bool) data_get($user, 'is_admin', false)),
+            'created_at' => $user->created_at,
+            'permissionNames' => method_exists($user, 'getAllPermissions') ? $user->getAllPermissions()->pluck('name')->toArray() : [],
+        ];
     }
 
     /**
@@ -129,6 +160,8 @@ class UserController extends Controller
                 $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $request->role), '-'));
                 \Spatie\Permission\Models\Role::firstOrCreate(['slug' => $slug], ['name' => $request->role, 'guard_name' => 'web']);
                 $user->syncRoles([$request->role]);
+                // clear spatie permission cache so subsequent queries reflect latest mappings
+                app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
             }
         }
 
@@ -139,6 +172,7 @@ class UserController extends Controller
                 \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'System Admin', 'guard_name' => 'web']);
                 if (!$user->hasRole('System Admin')) {
                     $user->assignRole('System Admin');
+                    app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
                 }
             } else {
                 // remove the known admin roles if it's being turned off
@@ -151,7 +185,17 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'User updated successfully.',
-            'user' => $user,
+            // return a richer payload so clients can easily refresh their UI
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => method_exists($user, 'getRoleNames') ? $user->getRoleNames()->first() : data_get($user, 'role', null),
+                'roles' => method_exists($user, 'getRoleNames') ? $user->getRoleNames()->toArray() : [],
+                'status' => $user->status,
+                'is_admin' => (bool) ($user->isAdmin() ?? (bool) data_get($user, 'is_admin', false)),
+                'permissionNames' => method_exists($user, 'getAllPermissions') ? $user->getAllPermissions()->pluck('name')->toArray() : [],
+            ],
         ]);
     }
 

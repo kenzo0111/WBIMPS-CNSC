@@ -2063,6 +2063,25 @@ function renderNotifications(filter = 'all') {
                 <div style="width: 64px; height: 64px; background: #f3f4f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
                     <i data-lucide="bell-off" style="width: 32px; height: 32px; opacity: 0.5;"></i>
                 </div>
+
+                <!-- Assigned Permissions (read-only preview) -->
+                <div style="margin-top:16px;">
+                  <label class="form-label" style="display:block; font-weight:600; margin-bottom:8px; color:#374151; font-size:14px;">Assigned Permissions</label>
+                  <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                    ${
+                      userData &&
+                      Array.isArray(userData.permissionNames) &&
+                      userData.permissionNames.length
+                        ? userData.permissionNames
+                            .map(
+                              (p) =>
+                                `<span style=\"padding:6px 10px;border-radius:9999px;background:#eef2ff;color:#3730a3;font-weight:600;font-size:13px;\">${p}</span>`
+                            )
+                            .join('')
+                        : `<span style=\"color:#6b7280;font-size:13px;\">No permissions assigned</span>`
+                    }
+                  </div>
+                </div>
                 <p style="margin: 0; font-size: 14px; font-weight: 500;">No notifications found</p>
                 <p style="margin: 8px 0 0 0; font-size: 12px; opacity: 0.7;">Try adjusting your filter</p>
             </div>
@@ -15129,6 +15148,10 @@ function generateRolesManagementPage() {
         created: user.created_at
           ? new Date(user.created_at).toISOString().split('T')[0]
           : new Date().toISOString().split('T')[0],
+        // server-provided permission names (if available)
+        permissionNames: Array.isArray(user.permissionNames)
+          ? user.permissionNames
+          : [],
       }))
     }
   } catch (e) {
@@ -15361,7 +15384,7 @@ function renderRolesManagementPage(
   return html
 }
 
-function saveUser(userId) {
+async function saveUser(userId) {
   // 1. Get elements by their IDs
   const nameInput = document.getElementById('userName')
   const emailInput = document.getElementById('userEmail')
@@ -15496,12 +15519,51 @@ function saveUser(userId) {
     showAlert('Profile updated successfully!', 'success')
   } else {
     // --- UPDATE EXISTING USER (EDIT) ---
-    // For now, keep the MockData update for existing users
-    // TODO: Implement API call for updating users when needed
-    const existing = window.MockData.users.find((u) => u.id === userId)
-    if (existing) {
-      Object.assign(existing, userData)
+    // Update existing user via API so server-side roles/permissions are synced
+    try {
+      const resp = await fetch(`/api/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: userData.name,
+          email: userData.email,
+          role: userData.role,
+          status: userData.status,
+        }),
+      })
+
+      const payload = await resp.json().catch(() => null)
+
+      if (!resp.ok) {
+        const msg =
+          (payload && payload.message) ||
+          `Failed to update user (HTTP ${resp.status})`
+        throw new Error(msg)
+      }
+
+      // Update client-side snapshot with returned user object (if provided)
+      if (payload && payload.user) {
+        const idx = window.MockData.users.findIndex((u) => u.id === userId)
+        if (idx !== -1) {
+          window.MockData.users[idx] = {
+            ...window.MockData.users[idx],
+            ...payload.user,
+            role: payload.user.role || window.MockData.users[idx].role,
+            permissionNames: Array.isArray(payload.user.permissionNames)
+              ? payload.user.permissionNames
+              : window.MockData.users[idx].permissionNames || [],
+          }
+        }
+      }
+
       showAlert(`User ${userData.name} updated successfully!`, 'success')
+    } catch (err) {
+      const msg =
+        (err && err.message) || 'Failed to update user. Please try again.'
+      showAlert(msg, 'error')
     }
   }
 
