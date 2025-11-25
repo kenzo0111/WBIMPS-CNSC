@@ -8,26 +8,31 @@ use Spatie\Permission\Models\Permission;
  * This test verifies roles exist and permission assignment works for each role.
  */
 beforeEach(function () {
-    // roles to test (exact names provided by the user)
-    $roles = [
-        'System Admin',
-        'Administrator',
-        'Supply Officer',
-        'Office Assistant',
-        'Student Assistant',
-    ];
+    // read canonical mapping from the centralized config
+    $cfg = config('roles_permissions', []);
+    $roles = array_map(function ($r) {
+        return $r['name']; }, $cfg['roles'] ?? [
+            ['name' => 'System Admin', 'slug' => 'system-admin'],
+            ['name' => 'Administrator', 'slug' => 'administrator'],
+            ['name' => 'Supply Officer', 'slug' => 'supply-officer'],
+            ['name' => 'Office Assistant', 'slug' => 'office-assistant'],
+            ['name' => 'Student Assistant', 'slug' => 'student-assistant'],
+        ]);
 
     foreach ($roles as $r) {
         Role::firstOrCreate(['name' => $r, 'guard_name' => 'web']);
     }
 
     // Some example permissions
-    $permissions = [
+    $permissions = $cfg['permissions'] ?? [
         'manage everything',
+        'manage categories',
+        'manage items',
         'manage supplies',
         'manage stock in',
         'manage stock out',
         'create requests',
+        'manage requests',
         'view reports',
     ];
 
@@ -35,12 +40,18 @@ beforeEach(function () {
         Permission::firstOrCreate(['name' => $p, 'guard_name' => 'web']);
     }
 
-    // Assign permissions to roles (representative mapping)
-    Role::where('name', 'System Admin')->first()->syncPermissions($permissions);
-    Role::where('name', 'Administrator')->first()->syncPermissions(['manage supplies', 'view reports']);
-    Role::where('name', 'Supply Officer')->first()->syncPermissions(['manage supplies', 'create requests']);
-    Role::where('name', 'Office Assistant')->first()->syncPermissions(['create requests', 'view reports']);
-    Role::where('name', 'Student Assistant')->first()->syncPermissions(['create requests', 'manage stock in', 'manage stock out']);
+    // Assign permissions to roles using centralized mapping
+    $rolePermissions = $cfg['role_permissions'] ?? [
+        'System Admin' => $permissions,
+        'Administrator' => ['manage supplies', 'view reports'],
+        'Supply Officer' => ['manage supplies', 'create requests'],
+        'Office Assistant' => ['create requests', 'view reports'],
+        'Student Assistant' => ['create requests', 'manage stock in', 'manage stock out'],
+    ];
+
+    foreach ($rolePermissions as $name => $perms) {
+        Role::where('name', $name)->first()->syncPermissions($perms);
+    }
 
     // Clear spatie permission cache so checks reflect updated assignments in tests
     app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
@@ -67,7 +78,8 @@ test('app has the five required roles', function () {
 
 test('each role receives correct permissions and users assigned those roles have expected abilities', function () {
     // create one user per role and test particular permission expectations
-    $map = [
+    // expected mapping is consistent with centralized config
+    $map = $cfg['role_permissions'] ?? [
         'System Admin' => ['manage everything', 'manage supplies', 'view reports'],
         'Administrator' => ['manage supplies', 'view reports'],
         'Supply Officer' => ['manage supplies', 'create requests'],

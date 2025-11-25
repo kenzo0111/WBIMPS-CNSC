@@ -57,6 +57,14 @@ To enable locally after pulling this change:
 
    php artisan db:seed --class=\\Database\\Seeders\\PermissionSeeder
 
+Alternatively, to centrally enforce the roles/permissions mapping (recommended for production deployments), use the new artisan command which reads from config/roles_permissions.php and syncs the database:
+
+```bash
+php artisan roles:sync
+```
+
+Add that command to your deployment script or CI/CD pipeline to ensure roles and permissions are kept in sync with the canonical config.
+
 Notes: The `User` model uses `HasRoles` and includes compatibility wrappers so existing `role` and `is_admin` checks continue to work while you migrate to spatie permissions.
 
 ## 🔐 Test Credentials
