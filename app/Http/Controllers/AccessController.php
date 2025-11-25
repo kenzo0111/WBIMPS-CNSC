@@ -33,7 +33,7 @@ class AccessController extends Controller
         /** @var \App\Models\User|null $user */
         $user = User::where('email', $credentials['email'])->first();
 
-        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+        if (!$user || !Hash::check($credentials['password'], $user->password)) {
             return response()->json([
                 'message' => 'Invalid email or password.',
             ], 422);
@@ -51,19 +51,24 @@ class AccessController extends Controller
         // Record login activity
         try {
             Activity::create([
-                'action' => 'User logged in: '.($user->email ?? $user->name ?? 'Unknown'),
+                'action' => 'User logged in: ' . ($user->email ?? $user->name ?? 'Unknown'),
                 'meta' => json_encode(['user_id' => $user->id ?? null]),
             ]);
         } catch (\Throwable $e) {
             logger()->warning('Failed to record login activity', ['error' => $e->getMessage()]);
         }
 
+        // Build a profile object that is compatible with legacy clients while preferring spatie roles
+        $roles = method_exists($user, 'getRoleNames') ? $user->getRoleNames()->toArray() : [];
+        $primaryRole = $roles[0] ?? data_get($user, 'role', 'Administrator');
+
         $profile = [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
-            'role' => data_get($user, 'role', 'Administrator'),
-            'is_admin' => (bool) data_get($user, 'is_admin', false),
+            'role' => $primaryRole,
+            'roles' => $roles,
+            'is_admin' => (bool) ($user->isAdmin() ?? (bool) data_get($user, 'is_admin', false)),
         ];
 
         return response()->json([
@@ -87,7 +92,7 @@ class AccessController extends Controller
         // Record logout activity
         try {
             Activity::create([
-                'action' => 'User logged out: '.($user?->email ?? $user?->name ?? 'Unknown'),
+                'action' => 'User logged out: ' . ($user?->email ?? $user?->name ?? 'Unknown'),
                 'meta' => json_encode(['user_id' => $user?->id ?? null]),
             ]);
         } catch (\Throwable $e) {

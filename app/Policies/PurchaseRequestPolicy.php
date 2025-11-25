@@ -21,7 +21,7 @@ class PurchaseRequestPolicy
     public function view(User $user, PurchaseRequest $purchaseRequest): bool
     {
         // Users can view their own purchase requests or admins can view all
-        return $user->is_admin === true || (int) $purchaseRequest->requested_by === $user->id;
+        return $user->isAdmin() || (int) $purchaseRequest->requested_by === $user->id;
     }
 
     /**
@@ -38,9 +38,12 @@ class PurchaseRequestPolicy
      */
     public function update(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        // Users can update their own pending requests or admins can update any
-        return ($user->id === (int) $purchaseRequest->requested_by && $purchaseRequest->status === 'pending')
-            || $user->is_admin === true;
+        // Users can update their own pending requests or users with 'manage requests' permission
+        if ($user->id === (int) $purchaseRequest->requested_by && $purchaseRequest->status === 'pending') {
+            return true;
+        }
+
+        return $user->hasPermissionTo('manage requests') || $user->isAdmin();
     }
 
     /**
@@ -48,9 +51,12 @@ class PurchaseRequestPolicy
      */
     public function delete(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        // Only admins or the requester (if pending) can delete
-        return $user->is_admin === true
-            || ($user->id === (int) $purchaseRequest->requested_by && $purchaseRequest->status === 'pending');
+        // Only the requester (if pending) or users with 'manage requests' permission can delete
+        if ($user->id === (int) $purchaseRequest->requested_by && $purchaseRequest->status === 'pending') {
+            return true;
+        }
+
+        return $user->hasPermissionTo('manage requests') || $user->isAdmin();
     }
 
     /**
@@ -58,8 +64,8 @@ class PurchaseRequestPolicy
      */
     public function approve(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        // Only admins can approve purchase requests
-        return $user->is_admin === true && $purchaseRequest->status === 'pending';
+        // Users with 'manage requests' permission can approve pending requests
+        return ($user->hasPermissionTo('manage requests') || $user->isAdmin()) && $purchaseRequest->status === 'pending';
     }
 
     /**
@@ -67,8 +73,8 @@ class PurchaseRequestPolicy
      */
     public function reject(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        // Only admins can reject purchase requests
-        return $user->is_admin === true && $purchaseRequest->status === 'pending';
+        // Users with 'manage requests' permission can reject pending requests
+        return ($user->hasPermissionTo('manage requests') || $user->isAdmin()) && $purchaseRequest->status === 'pending';
     }
 
     /**
@@ -76,7 +82,7 @@ class PurchaseRequestPolicy
      */
     public function restore(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        return $user->is_admin === true;
+        return $user->hasPermissionTo('manage requests') || $user->isAdmin();
     }
 
     /**
@@ -84,6 +90,6 @@ class PurchaseRequestPolicy
      */
     public function forceDelete(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        return $user->is_admin === true;
+        return $user->hasPermissionTo('manage requests') || $user->isAdmin();
     }
 }

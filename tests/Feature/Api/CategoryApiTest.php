@@ -4,8 +4,7 @@ use App\Models\Category;
 use App\Models\User;
 
 beforeEach(function () {
-    $user = User::factory()->create([
-        'is_admin' => true,
+    $user = User::factory()->admin()->create([
         'status' => 'active',
     ]);
     $this->actingAs($user, 'web');

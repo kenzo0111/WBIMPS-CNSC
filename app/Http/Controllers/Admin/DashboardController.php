@@ -19,8 +19,11 @@ class DashboardController extends Controller
             'id' => $currentUser->id,
             'name' => $currentUser->name,
             'email' => $currentUser->email,
-            'role' => data_get($currentUser, 'role', 'Administrator'),
-            'is_admin' => (bool) data_get($currentUser, 'is_admin', false),
+            'roles' => method_exists($currentUser, 'getRoleNames') ? $currentUser->getRoleNames()->toArray() : [],
+            // Use getAllPermissions to include permissions granted via roles and avoid caching issues
+            'permissionNames' => method_exists($currentUser, 'getAllPermissions') ? $currentUser->getAllPermissions()->pluck('name')->toArray() : [],
+            'role' => method_exists($currentUser, 'getRoleNames') ? $currentUser->getRoleNames()->first() ?? data_get($currentUser, 'role', 'Administrator') : data_get($currentUser, 'role', 'Administrator'),
+            'is_admin' => (bool) ($currentUser->isAdmin() ?? (bool) data_get($currentUser, 'is_admin', false)),
         ] : null;
 
         return view('admin.dashboard', [

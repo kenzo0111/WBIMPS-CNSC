@@ -1770,6 +1770,13 @@ function loadUserSession() {
         name: session.name,
         email: session.email,
         role: session.role,
+        // inherit permission names and is_admin flag if provided by server
+        permissionNames:
+          window.CURRENT_USER &&
+          Array.isArray(window.CURRENT_USER.permissionNames)
+            ? window.CURRENT_USER.permissionNames
+            : [],
+        is_admin: window.CURRENT_USER ? !!window.CURRENT_USER.is_admin : false,
         status: 'Active',
         created: session.loginTime.split('T')[0],
       }
@@ -1783,6 +1790,18 @@ function loadUserSession() {
     // Persistence disabled: keep default AppState.currentUser (or window.CURRENT_USER handled above)
   } catch (error) {
     console.error('Error loading user session:', error)
+  }
+}
+
+// Authorization helper: check whether current user has permission (or is admin)
+function can(permissionName) {
+  try {
+    if (!AppState.currentUser) return false
+    if (AppState.currentUser.is_admin) return true
+    const perms = AppState.currentUser.permissionNames || []
+    return perms.includes(permissionName)
+  } catch (e) {
+    return false
   }
 }
 
@@ -3728,10 +3747,16 @@ function generateCategoriesPage() {
                     </h1>
                     <p class="page-subtitle">Manage inventory categories</p>
                 </div>
+                ${
+                  can('manage categories')
+                    ? `
                 <button class="add-item-btn" onclick="openCategoryModal('create')">
-                    <i data-lucide="plus" class="icon"></i>
-                    Add Category
+                  <i data-lucide="plus" class="icon"></i>
+                  Add Category
                 </button>
+                `
+                    : ''
+                }
             </div>
         </div>
         <div class="page-content">
@@ -3763,16 +3788,18 @@ function generateCategoriesPage() {
                                 }</td>
                                 <td style="padding: 16px 24px;">
                                     <div class="table-actions">
-                                        <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openCategoryModal('edit','${
-                                          category.id
-                                        }')">
+                                        ${
+                                          can('manage categories')
+                                            ? `
+                                          <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openCategoryModal('edit','${category.id}')">
                                             <i data-lucide="edit"></i>
-                                        </button>
-                                        <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteCategory('${
-                                          category.id
-                                        }')">
+                                          </button>
+                                          <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteCategory('${category.id}')">
                                             <i data-lucide="trash-2"></i>
-                                        </button>
+                                          </button>
+                                        `
+                                            : ''
+                                        }
                                     </div>
                                 </td>
                             </tr>
@@ -3868,10 +3895,16 @@ function generateItemsPage() {
                     </h1>
                     <p class="page-subtitle">Manage Item inventory</p>
                 </div>
+                ${
+                  can('manage items')
+                    ? `
                 <button class="add-item-btn" onclick="openItemModal()">
-                    <i data-lucide="plus" class="icon"></i>
-                    Add Item
+                  <i data-lucide="plus" class="icon"></i>
+                  Add Item
                 </button>
+                `
+                    : ''
+                }
             </div>
         </div>
         
@@ -3978,16 +4011,18 @@ function generateItemsPage() {
                                 <td>${Item.date || ''}</td>
                                 <td>
                                     <div class="table-actions">
-                                        <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteItem('${
-                                          Item.id
-                                        }')">
+                                        ${
+                                          can('manage items')
+                                            ? `
+                                          <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteItem('${Item.id}')">
                                             <i data-lucide="trash-2"></i>
-                                        </button>
-                                        <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openItemModal('edit','${
-                                          Item.id
-                                        }')">
+                                          </button>
+                                          <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openItemModal('edit','${Item.id}')">
                                             <i data-lucide="edit"></i>
-                                        </button>
+                                          </button>
+                                        `
+                                            : ''
+                                        }
                                     </div>
                                 </td>
                             </tr>
@@ -4048,10 +4083,16 @@ function generateSuppliersPage() {
                     </h1>
                     <p class="page-subtitle">Add, edit and manage suppliers</p>
                 </div>
+        ${
+          can('manage supplies')
+            ? `
         <button class="btn btn-primary" id="add-supplier-btn" data-action="add-supplier">
           <i data-lucide="plus" class="icon"></i>
           Add Supplier
         </button>
+        `
+            : ''
+        }
             </div>
         </div>
 
@@ -4093,6 +4134,9 @@ function renderSuppliersRows() {
             <td>${escapeHtml(s.email || '')}</td>
             <td>
                 <div class="table-actions">
+                    ${
+                      can('manage supplies')
+                        ? `
                     <button class="icon-action-btn icon-action-danger" title="Delete" data-action="delete-supplier" data-id="${
                       s.id || ''
                     }">
@@ -4103,6 +4147,9 @@ function renderSuppliersRows() {
                     }">
                         <i data-lucide="edit"></i>
                     </button>
+                    `
+                        : ''
+                    }
                 </div>
             </td>
         </tr>
@@ -5281,10 +5328,16 @@ function generateStockInPage() {
                     </h1>
                     <p class="page-subtitle">Record incoming inventory and stock receipts</p>
                 </div>
+                ${
+                  can('manage stock in')
+                    ? `
                 <button class="btn btn-primary" onclick="openStockInModal('create')">
-                    <i data-lucide="plus" class="icon"></i>
-                    Add Stock In
+                  <i data-lucide="plus" class="icon"></i>
+                  Add Stock In
                 </button>
+                `
+                    : ''
+                }
             </div>
         </div>
         
@@ -5374,10 +5427,16 @@ function generateStockOutPage() {
                     </h1>
                     <p class="page-subtitle">Record outgoing inventory and issued items</p>
                 </div>
+                ${
+                  can('manage stock out')
+                    ? `
                 <button class="btn btn-primary" onclick="openStockOutModal('create')">
-                    <i data-lucide="plus" class="icon"></i>
-                    Issue Stock
+                  <i data-lucide="plus" class="icon"></i>
+                  Issue Stock
                 </button>
+                `
+                    : ''
+                }
             </div>
         </div>
         
@@ -5529,10 +5588,16 @@ function generateNewRequestPage() {
                     </h1>
                     <p class="page-subtitle">Create and manage new purchase requests</p>
                 </header>
+                ${
+                  can('create requests')
+                    ? `
                 <button class="btn btn-primary" onclick="openPurchaseOrderModal('create')">
-                    <i data-lucide="plus" class="icon"></i>
-                    Create New Request
+                  <i data-lucide="plus" class="icon"></i>
+                  Create New Request
                 </button>
+                `
+                    : ''
+                }
             </div>
         </section>
 
@@ -5613,16 +5678,18 @@ function generateNewRequestPage() {
                   }')">
                     <i data-lucide="eye"></i>
                   </button>
-                  <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openPurchaseOrderModal('edit', '${
-                    request.id
-                  }')">
+                  ${
+                    can('manage requests')
+                      ? `
+                  <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openPurchaseOrderModal('edit', '${request.id}')">
                     <i data-lucide="edit"></i>
                   </button>
-                                    <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteRequest('${
-                                      request.id
-                                    }')">
-                                        <i data-lucide="trash-2"></i>
-                                    </button>
+                  <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteRequest('${request.id}')">
+                    <i data-lucide="trash-2"></i>
+                  </button>
+                  `
+                      : ''
+                  }
                                 </div>
                             </td>
                         </tr>
@@ -5797,21 +5864,21 @@ function generatePendingApprovalPage() {
                       }')">
                         <i data-lucide="eye"></i>
                       </button>
-                      <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openPurchaseOrderModal('edit', '${
-                        request.id
-                      }')">
+                      ${
+                        can('manage requests')
+                          ? `
+                      <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openPurchaseOrderModal('edit', '${request.id}')">
                         <i data-lucide="edit"></i>
                       </button>
-                                            <button class="icon-action-btn icon-action-success" title="Approve" onclick="approveRequest('${
-                                              request.id
-                                            }')">
-                                                <i data-lucide="check-circle"></i>
-                                            </button>
-                                            <button class="icon-action-btn icon-action-danger" title="Reject" onclick="rejectRequest('${
-                                              request.id
-                                            }')">
-                                                <i data-lucide="x-circle"></i>
-                                            </button>
+                      <button class="icon-action-btn icon-action-success" title="Approve" onclick="approveRequest('${request.id}')">
+                        <i data-lucide="check-circle"></i>
+                      </button>
+                      <button class="icon-action-btn icon-action-danger" title="Reject" onclick="rejectRequest('${request.id}')">
+                        <i data-lucide="x-circle"></i>
+                      </button>
+                      `
+                          : ''
+                      }
                                         </div>
                                     </td>
                                 </tr>
@@ -15098,10 +15165,16 @@ function renderRolesManagementPage(
                     <p class="page-subtitle">Manage team members, roles, and organizational structure</p>
                 </div>
                 <div>
-                    <button class="btn btn-primary" onclick="openUserModal('create')" style="display: flex; align-items: center; gap: 8px; padding: 12px 20px; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); border: none; border-radius: 10px; color: white; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3); transition: all 0.2s;">
-                        <i data-lucide="user-plus" style="width:18px;height:18px;"></i>
-                        Add Member
-                    </button>
+                  ${
+                    can('manage everything')
+                      ? `
+                  <button class="btn btn-primary" onclick="openUserModal('create')" style="display: flex; align-items: center; gap: 8px; padding: 12px 20px; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); border: none; border-radius: 10px; color: white; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3); transition: all 0.2s;">
+                    <i data-lucide="user-plus" style="width:18px;height:18px;"></i>
+                    Add Member
+                  </button>
+                  `
+                      : ''
+                  }
                 </div>
             </div>
         </div>
@@ -15256,16 +15329,18 @@ function renderRolesManagementPage(
                                 }</td>
                                 <td style="padding-right: 24px;">
                                     <div class="table-actions">
-                                        <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openUserModal('edit', '${
-                                          member.id
-                                        }')">
-                                            <i data-lucide="edit"></i>
-                                        </button>
-                                        <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteMember('${
-                                          member.id
-                                        }')">
-                                            <i data-lucide="trash-2"></i>
-                                        </button>
+                                      ${
+                                        can('manage everything')
+                                          ? `
+                                      <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openUserModal('edit', '${member.id}')">
+                                        <i data-lucide="edit"></i>
+                                      </button>
+                                      <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteMember('${member.id}')">
+                                        <i data-lucide="trash-2"></i>
+                                      </button>
+                                      `
+                                          : ''
+                                      }
                                     </div>
                                 </td>
                             </tr>
@@ -20858,13 +20933,19 @@ function renderStockInRow(r, index) {
       <td style="color: #6b7280;">${supplier}</td>
       <td style="color: #6b7280;">${receivedBy}</td>
       <td>
-        <div class="table-actions">
-          <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteStockIn('${id}')">
-            <i data-lucide="trash-2"></i>
-          </button>
-          <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openStockInModal('edit','${id}')">
-            <i data-lucide="edit"></i>
-          </button>
+          <div class="table-actions">
+          ${
+            can('manage stock in')
+              ? `
+            <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteStockIn('${id}')">
+              <i data-lucide="trash-2"></i>
+            </button>
+            <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openStockInModal('edit','${id}')">
+              <i data-lucide="edit"></i>
+            </button>
+          `
+              : ''
+          }
         </div>
       </td>
     </tr>
@@ -21492,12 +21573,18 @@ function renderStockOutRow(s) {
                     <button class="icon-action-btn" title="View" onclick="viewStockOutDetails('${id}')">
                         <i data-lucide="eye"></i>
                     </button>
+                    ${
+                      can('manage stock out')
+                        ? `
                     <button class="icon-action-btn icon-action-warning" title="Edit" onclick="editStockOut('${id}')">
-                        <i data-lucide="edit"></i>
+                      <i data-lucide="edit"></i>
                     </button>
                     <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteStockOut('${id}')">
-                        <i data-lucide="trash-2"></i>
+                      <i data-lucide="trash-2"></i>
                     </button>
+                    `
+                        : ''
+                    }
                 </div>
             </td>
         </tr>

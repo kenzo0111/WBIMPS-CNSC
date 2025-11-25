@@ -10,8 +10,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     // Create an authenticated admin user for tests
-    $this->user = User::factory()->create([
-        'is_admin' => true,
+    $this->user = User::factory()->admin()->create([
         'status' => 'active',
     ]);
     $this->actingAs($this->user, 'web');
@@ -194,6 +193,7 @@ test('can show a specific stock out transaction', function () {
 test('can update a stock out transaction', function () {
     $item = Item::factory()->create([
         'sku' => 'SKU-UPDATE-002',
+        'quantity' => 100,
     ]);
 
     $stockOut = StockOut::factory()->create([
@@ -240,6 +240,8 @@ test('validates required fields when creating stock out', function () {
 test('calculates total cost for stock out transaction', function () {
     $item = Item::factory()->create([
         'sku' => 'SKU-99999',
+        // ensure enough starting quantity so remaining after removing 5 stays above threshold
+        'quantity' => 100,
     ]);
 
     $stockOutData = [

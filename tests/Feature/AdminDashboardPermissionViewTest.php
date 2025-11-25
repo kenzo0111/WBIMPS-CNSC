@@ -1,0 +1,45 @@
+<?php
+
+use App\Models\User;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
+
+beforeEach(function () {
+    // make sure canonical permissions / roles exist for tests
+    Permission::firstOrCreate(['name' => 'manage items', 'guard_name' => 'web']);
+    Permission::firstOrCreate(['name' => 'manage stock in', 'guard_name' => 'web']);
+    Permission::firstOrCreate(['name' => 'manage stock out', 'guard_name' => 'web']);
+
+    Role::firstOrCreate(['name' => 'System Admin', 'guard_name' => 'web']);
+    Role::firstOrCreate(['name' => 'Student Assistant', 'guard_name' => 'web']);
+
+    // ensure System Admin has manage items and everything
+    $sa = Role::firstWhere('name', 'System Admin');
+    $sa->syncPermissions(['manage items', 'manage stock in', 'manage stock out']);
+
+    $st = Role::firstWhere('name', 'Student Assistant');
+    $st->syncPermissions(['manage stock in', 'manage stock out']);
+});
+
+test('dashboard includes permissionNames for system admin', function () {
+    $user = User::factory()->create();
+    $user->assignRole('System Admin');
+
+    $resp = $this->actingAs($user)->get('/admin/dashboard');
+    $resp->assertStatus(200);
+
+    // window.CURRENT_USER JSON must include manage items for system admin
+    $resp->assertSee('manage items');
+});
+
+test('student assistant dashboard includes stock permissions but not manage items', function () {
+    $user = User::factory()->create();
+    $user->assignRole('Student Assistant');
+
+    $resp = $this->actingAs($user)->get('/admin/dashboard');
+    $resp->assertStatus(200);
+
+    $resp->assertSee('manage stock in');
+    $resp->assertSee('manage stock out');
+    $resp->assertDontSee('manage items');
+});

@@ -30,8 +30,8 @@ class ItemPolicy
      */
     public function create(User $user): bool
     {
-        // Only admins can create items
-        return $user->is_admin === true;
+        // Only users with the 'manage items' permission (or admins) can create items
+        return $user->hasPermissionTo('manage items') || $user->isAdmin();
     }
 
     /**
@@ -39,8 +39,7 @@ class ItemPolicy
      */
     public function update(User $user, Item $item): bool
     {
-        // Only admins can update items
-        return $user->is_admin === true;
+        return $user->hasPermissionTo('manage items') || $user->isAdmin();
     }
 
     /**
@@ -48,8 +47,7 @@ class ItemPolicy
      */
     public function delete(User $user, Item $item): bool
     {
-        // Only admins can delete items
-        return $user->is_admin === true;
+        return $user->hasPermissionTo('manage items') || $user->isAdmin();
     }
 
     /**
@@ -57,8 +55,7 @@ class ItemPolicy
      */
     public function restore(User $user, Item $item): bool
     {
-        // Only admins can restore items
-        return $user->is_admin === true;
+        return $user->hasPermissionTo('manage items') || $user->isAdmin();
     }
 
     /**
@@ -66,7 +63,6 @@ class ItemPolicy
      */
     public function forceDelete(User $user, Item $item): bool
     {
-        // Only admins can force delete items
-        return $user->is_admin === true;
+        return $user->hasPermissionTo('manage items') || $user->isAdmin();
     }
 }

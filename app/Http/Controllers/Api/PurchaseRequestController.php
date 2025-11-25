@@ -168,7 +168,10 @@ class PurchaseRequestController extends Controller
         // Send notification emails: to requester and to admins
         $emailSent = false;
         try {
-            $admins = \App\Models\User::where('is_admin', true)->pluck('email')->filter()->toArray();
+            // Fetch emails for users who are in one of the admin roles
+            $admins = \App\Models\User::whereHas('roles', function ($q) {
+                $q->whereIn('name', ['System Admin', 'Administrator']);
+            })->pluck('email')->filter()->toArray();
             // send to requester
             \Illuminate\Support\Facades\Mail::to($pr->email)->send(new \App\Mail\PurchaseRequestSubmitted($pr));
             // send to admins (if any)

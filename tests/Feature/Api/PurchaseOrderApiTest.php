@@ -6,8 +6,7 @@ use App\Models\RequisitionIssueSlip;
 
 beforeEach(function () {
     // Create an authenticated admin user for tests
-    $user = User::factory()->create([
-        'is_admin' => true,
+    $user = User::factory()->admin()->create([
         'status' => 'active',
     ]);
     $this->actingAs($user, 'web');

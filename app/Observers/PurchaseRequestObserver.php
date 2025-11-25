@@ -28,23 +28,26 @@ class PurchaseRequestObserver
             $mail = new StatusChangedMail($modelName, $modelId, $old, $new, $notes);
 
             // Send to requester email if present
-            if (! empty($purchaseRequest->email)) {
+            if (!empty($purchaseRequest->email)) {
                 try {
                     Mail::to($purchaseRequest->email)->send($mail);
                 } catch (\Throwable $e) {
                     // Log but don't break
-                    logger()->error('Failed sending status email to requester: '.$e->getMessage());
+                    logger()->error('Failed sending status email to requester: ' . $e->getMessage());
                 }
             }
 
             // Also send to all admin users
             try {
-                $admins = User::where('is_admin', true)->pluck('email')->filter()->unique()->toArray();
+                // Find users who have admin roles (System Admin or Administrator)
+                $admins = User::whereHas('roles', function ($q) {
+                    $q->whereIn('name', ['System Admin', 'Administrator']);
+                })->pluck('email')->filter()->unique()->toArray();
                 foreach (array_chunk($admins, 50) as $batch) {
                     Mail::to($batch)->send($mail);
                 }
             } catch (\Throwable $e) {
-                logger()->error('Failed sending status email to admins: '.$e->getMessage());
+                logger()->error('Failed sending status email to admins: ' . $e->getMessage());
             }
         }
     }

@@ -34,5 +34,12 @@ class AppServiceProvider extends ServiceProvider
 
         // Register model observers
         PurchaseRequest::observe(PurchaseRequestObserver::class);
+
+        // Register spatie middleware aliases (role, permission) when package is available
+        if (class_exists(\Spatie\Permission\Middlewares\RoleMiddleware::class) && $this->app->bound('router')) {
+            $router = $this->app->make(\Illuminate\Routing\Router::class);
+            $router->aliasMiddleware('role', \Spatie\Permission\Middlewares\RoleMiddleware::class);
+            $router->aliasMiddleware('permission', \Spatie\Permission\Middlewares\PermissionMiddleware::class);
+        }
     }
 }

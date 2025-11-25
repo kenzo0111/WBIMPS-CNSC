@@ -28,8 +28,8 @@ class PurchaseOrderPolicy
      */
     public function create(User $user): bool
     {
-        // Only admins can create purchase orders
-        return $user->is_admin === true;
+        // Require 'manage supplies' permission for creating purchase orders
+        return $user->hasPermissionTo('manage supplies') || $user->isAdmin();
     }
 
     /**
@@ -37,8 +37,7 @@ class PurchaseOrderPolicy
      */
     public function update(User $user, PurchaseOrder $purchaseOrder): bool
     {
-        // Only admins can update purchase orders
-        return $user->is_admin === true;
+        return $user->hasPermissionTo('manage supplies') || $user->isAdmin();
     }
 
     /**
@@ -46,8 +45,7 @@ class PurchaseOrderPolicy
      */
     public function delete(User $user, PurchaseOrder $purchaseOrder): bool
     {
-        // Only admins can delete purchase orders
-        return $user->is_admin === true;
+        return $user->hasPermissionTo('manage supplies') || $user->isAdmin();
     }
 
     /**
@@ -55,7 +53,7 @@ class PurchaseOrderPolicy
      */
     public function restore(User $user, PurchaseOrder $purchaseOrder): bool
     {
-        return $user->is_admin === true;
+        return $user->hasPermissionTo('manage supplies') || $user->isAdmin();
     }
 
     /**
@@ -63,6 +61,6 @@ class PurchaseOrderPolicy
      */
     public function forceDelete(User $user, PurchaseOrder $purchaseOrder): bool
     {
-        return $user->is_admin === true;
+        return $user->hasPermissionTo('manage supplies') || $user->isAdmin();
     }
 }

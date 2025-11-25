@@ -35,6 +35,30 @@ php artisan key:generate
 php artisan migrate --seed
 ```
 
+### Role-based permissions (Spatie)
+
+This project now supports spatie/laravel-permission for roles & permissions.
+
+To enable locally after pulling this change:
+
+1. Ensure composer dependencies are installed:
+
+   composer install
+
+2. Publish vendor assets (optional):
+
+   php artisan vendor:publish --provider="Spatie\Permission\PermissionServiceProvider"
+
+3. Run migrations (the repository includes migrations + a data migration that converts the legacy `users.role` and `users.is_admin` values into the new roles tables):
+
+   php artisan migrate
+
+4. Seed the example roles (optional):
+
+   php artisan db:seed --class=\\Database\\Seeders\\PermissionSeeder
+
+Notes: The `User` model uses `HasRoles` and includes compatibility wrappers so existing `role` and `is_admin` checks continue to work while you migrate to spatie permissions.
+
 ## 🔐 Test Credentials
 
 - **Email:** `admin@example.com`
