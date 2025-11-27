@@ -39,6 +39,13 @@ class StockInController extends Controller
      */
     public function store(Request $request)
     {
+        // Accept alternate client field names for backward compatibility
+        if (!$request->has('product_name') && $request->has('Item_name')) {
+            $request->merge(['product_name' => $request->input('Item_name')]);
+        }
+        if (!$request->has('product_name') && $request->has('ItemName')) {
+            $request->merge(['product_name' => $request->input('ItemName')]);
+        }
         $validated = $request->validate([
             'transaction_id' => 'required|string|unique:stock_in',
             'sku' => 'required|string|exists:items,sku',
@@ -81,8 +88,15 @@ class StockInController extends Controller
      */
     public function update(Request $request, StockIn $stockIn)
     {
+        // Accept alternate client field names for backward compatibility
+        if (!$request->has('product_name') && $request->has('Item_name')) {
+            $request->merge(['product_name' => $request->input('Item_name')]);
+        }
+        if (!$request->has('product_name') && $request->has('ItemName')) {
+            $request->merge(['product_name' => $request->input('ItemName')]);
+        }
         $validated = $request->validate([
-            'transaction_id' => 'required|string|unique:stock_in,transaction_id,'.$stockIn->getKey(),
+            'transaction_id' => 'required|string|unique:stock_in,transaction_id,' . $stockIn->getKey(),
             'sku' => 'required|string|exists:items,sku',
             'product_name' => 'required|string',
             'quantity' => 'required|integer|min:1',

@@ -548,7 +548,7 @@ async function saveStockInToAPI(stockInRecord) {
       body: JSON.stringify({
         transaction_id: stockInRecord.transactionId || stockInRecord.id,
         sku: stockInRecord.sku,
-        Item_name: stockInRecord.ItemName,
+        product_name: stockInRecord.ItemName,
         quantity: stockInRecord.quantity,
         unit_cost: stockInRecord.unitCost,
         supplier: stockInRecord.supplier,
@@ -568,7 +568,10 @@ async function saveStockInToAPI(stockInRecord) {
       normalized.transactionId =
         serverRecord.transaction_id || serverRecord.transactionId || ''
       normalized.ItemName =
-        serverRecord.Item_name || serverRecord.ItemName || ''
+        serverRecord.product_name ||
+        serverRecord.Item_name ||
+        serverRecord.ItemName ||
+        ''
       normalized.date =
         serverRecord.date_received ||
         serverRecord.date ||
@@ -630,7 +633,7 @@ async function saveStockOutToAPI(stockOutRecord) {
           stockOutRecord.id,
         transaction_id: stockOutRecord.transactionId || null,
         sku: stockOutRecord.sku,
-        Item_name: stockOutRecord.ItemName,
+        product_name: stockOutRecord.ItemName,
         quantity: stockOutRecord.quantity,
         unit_cost: stockOutRecord.unitCost || stockOutRecord.unit_cost || 0,
         total_cost: stockOutRecord.totalCost || stockOutRecord.total_cost || 0,
@@ -653,7 +656,10 @@ async function saveStockOutToAPI(stockOutRecord) {
       normalized.transactionId =
         serverRecord.transaction_id || serverRecord.transactionId || ''
       normalized.ItemName =
-        serverRecord.Item_name || serverRecord.ItemName || ''
+        serverRecord.product_name ||
+        serverRecord.Item_name ||
+        serverRecord.ItemName ||
+        ''
       normalized.date = formatDate(
         serverRecord.date_issued ||
           serverRecord.date ||
@@ -832,7 +838,8 @@ async function loadStockInFromAPI() {
         record.id = record.id || record.id
         record.transactionId =
           record.transaction_id || record.transactionId || ''
-        record.ItemName = record.Item_name || record.ItemName || ''
+        record.ItemName =
+          record.product_name || record.Item_name || record.ItemName || ''
         record.date = formatDate(
           record.date_received || record.date || record.created_at || ''
         )
@@ -878,7 +885,7 @@ async function loadStockOutFromAPI() {
         rec.id = rec.id || rec.id
         rec.issueId = rec.issue_id || rec.issueId || ''
         rec.transactionId = rec.transaction_id || rec.transactionId || ''
-        rec.ItemName = rec.Item_name || rec.ItemName || ''
+        rec.ItemName = rec.product_name || rec.Item_name || rec.ItemName || ''
         rec.date = formatDate(
           rec.date_issued || rec.date || rec.created_at || ''
         )
@@ -1291,7 +1298,11 @@ function adjustInventoryOnStockIn(newRecord, oldRecord) {
     try {
       postActivity(
         `Stock In: ${
-          newRecord.ItemName || newRecord.Item_name || newRecord.sku || ''
+          newRecord.ItemName ||
+          newRecord.product_name ||
+          newRecord.Item_name ||
+          newRecord.sku ||
+          ''
         }`,
         {
           transactionId: newRecord.transactionId || newRecord.id || null,
@@ -1340,7 +1351,11 @@ function adjustInventoryOnStockOut(newRecord, oldRecord) {
     try {
       postActivity(
         `Stock Out: ${
-          newRecord.ItemName || newRecord.Item_name || newRecord.sku || ''
+          newRecord.ItemName ||
+          newRecord.product_name ||
+          newRecord.Item_name ||
+          newRecord.sku ||
+          ''
         }`,
         {
           issueId:
@@ -1368,7 +1383,11 @@ function restoreInventoryFromDeletedStockIn(record) {
   try {
     postActivity(
       `Stock In deleted: ${
-        record.ItemName || record.Item_name || record.sku || ''
+        record.ItemName ||
+        record.product_name ||
+        record.Item_name ||
+        record.sku ||
+        ''
       }`,
       {
         transactionId: record.transactionId || record.id || null,
@@ -1389,7 +1408,11 @@ function restoreInventoryFromDeletedStockOut(record) {
   try {
     postActivity(
       `Stock Out deleted: ${
-        record.ItemName || record.Item_name || record.sku || ''
+        record.ItemName ||
+        record.product_name ||
+        record.Item_name ||
+        record.sku ||
+        ''
       }`,
       {
         issueId: record.issueId || record.transactionId || record.id || null,
@@ -19863,7 +19886,7 @@ function openStockInModal(mode = 'create', stockId = null) {
           const date = formatDate(
             r.date || r.date_received || r.created_at || ''
           )
-          const prod = r.ItemName || r.Item_name || ''
+          const prod = r.ItemName || r.product_name || r.Item_name || ''
           const qty = r.quantity ?? r.qty ?? 0
           return `<tr><td style="font-weight:500;">${tx}</td><td>${date}</td><td style="font-weight:500;">${prod}</td><td>${qty}</td></tr>`
         })
@@ -19965,7 +19988,7 @@ function generateStockInModal(mode = 'create', stockData = null) {
     id: _sd.id || _sd.id || '',
     transactionId: _sd.transactionId || _sd.transaction_id || _sd.id || '',
     sku: _sd.sku || _sd.sku || '',
-    ItemName: _sd.ItemName || _sd.Item_name || '',
+    ItemName: _sd.ItemName || _sd.product_name || _sd.Item_name || '',
     quantity: Number(_sd.quantity ?? _sd.qty ?? 0),
     unitCost: Number(_sd.unitCost ?? _sd.unit_cost ?? 0),
     totalCost: Number(
