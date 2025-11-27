@@ -39,12 +39,25 @@ class PurchaseOrderFactory extends Factory
         }
 
         return [
-            'po_number' => 'PO-'.date('Y').'-'.fake()->unique()->numberBetween(1000, 9999),
+            'po_number' => 'PO-' . date('Y') . '-' . fake()->unique()->numberBetween(1000, 9999),
             'supplier' => fake()->company(),
             'supplier_address' => fake()->address(),
             'date_of_purchase' => fake()->date(),
             'tin_number' => fake()->numerify('###-###-###-###'),
-            'mode_of_procurement' => fake()->randomElement(['Public Bidding', 'Negotiated', 'Shopping', 'Direct Contracting']),
+            'mode_of_procurement' => fake()->randomElement([
+                'Public Bidding',
+                'Limited Source Bidding (Selective Bidding)',
+                'Direct Contracting (Single Source Procurement)',
+                'Repeat Order',
+                'Shopping',
+                'Negotiated Procurement',
+                'Small Value Procurement',
+                'Competitive Dialogue',
+                'Unsolicited Offer with Bid Matching',
+                'Direct Acquisition',
+                'Direct Sales',
+                'Direct Procurement for Science, Technology, and Innovation',
+            ]),
             'place_of_delivery' => fake()->randomElement(['Main Office', 'Branch Office', 'Warehouse']),
             'delivery_term' => fake()->randomElement(['15 days', '30 days', '45 days', '60 days']),
             'date_of_delivery' => fake()->dateTimeBetween('now', '+60 days')->format('Y-m-d'),
@@ -67,7 +80,7 @@ class PurchaseOrderFactory extends Factory
      */
     public function pending(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn(array $attributes) => [
             'status' => 'pending',
         ]);
     }
@@ -77,7 +90,7 @@ class PurchaseOrderFactory extends Factory
      */
     public function approved(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn(array $attributes) => [
             'status' => 'approved',
         ]);
     }
@@ -87,7 +100,7 @@ class PurchaseOrderFactory extends Factory
      */
     public function completed(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn(array $attributes) => [
             'status' => 'completed',
         ]);
     }

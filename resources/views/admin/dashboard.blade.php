@@ -155,19 +155,24 @@
                         <i data-lucide="chevron-right" class="chevron"></i>
                     </button>
                     <div class="nav-submenu">
-                        <div class="nav-item" data-page="inventory-reports">
+                        <div class="nav-item" data-page="rcpi-reports">
                             <button class="nav-button">
-                                <span>Inventory Reports</span>
+                                <span>RCPI</span>
                             </button>
                         </div>
-                        <div class="nav-item" data-page="requisition-reports">
+                        <div class="nav-item" data-page="rsmi-reports">
                             <button class="nav-button">
-                                <span>Requisition Reports</span>
+                                <span>RSMI</span>
                             </button>
                         </div>
-                        <div class="nav-item" data-page="status-report">
+                        <div class="nav-item" data-page="stock-cards">
                             <button class="nav-button">
-                                <span>Status Report</span>
+                                <span>Stock Cards</span>
+                            </button>
+                        </div>
+                        <div class="nav-item" data-page="consolidate-monitoring">
+                            <button class="nav-button">
+                                <span>Consolidate Monitoring</span>
                             </button>
                         </div>
                     </div>

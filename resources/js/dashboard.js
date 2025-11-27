@@ -277,6 +277,23 @@ const AppState = {
   aboutUsContent: null,
 }
 
+// Procurement modes following RA 9184 and RA 12009: use a canonical list across UI
+// Primary/competitive mode followed by Alternative modes.
+const PROCUREMENT_MODES = [
+  'Public Bidding', // Competitive Bidding (Public Bidding)
+  'Limited Source Bidding (Selective Bidding)',
+  'Direct Contracting (Single Source Procurement)',
+  'Repeat Order',
+  'Shopping',
+  'Negotiated Procurement',
+  'Small Value Procurement',
+  'Competitive Dialogue',
+  'Unsolicited Offer with Bid Matching',
+  'Direct Acquisition',
+  'Direct Sales',
+  'Direct Procurement for Science, Technology, and Innovation',
+]
+
 function getCsrfToken() {
   const tokenMeta = document.querySelector('meta[name="csrf-token"]')
   return tokenMeta ? tokenMeta.getAttribute('content') : ''
@@ -2832,14 +2849,21 @@ function loadPageContent(pageId) {
         lucide.createIcons()
       })
       break
-    case 'inventory-reports':
-      mainContent.innerHTML = generateInventoryReportsPage()
+    // Reports landing and specific new report pages
+    case 'reports':
+      mainContent.innerHTML = generateReportsLandingPage()
       break
-    case 'requisition-reports':
-      mainContent.innerHTML = generateRequisitionReportsPage()
+    case 'rcpi-reports':
+      mainContent.innerHTML = generateRcpiReportsPage()
       break
-    case 'status-report':
-      mainContent.innerHTML = generateStatusReportsPage()
+    case 'rsmi-reports':
+      mainContent.innerHTML = generateRsmiReportsPage()
+      break
+    case 'stock-cards':
+      mainContent.innerHTML = generateStockCardsPage()
+      break
+    case 'consolidate-monitoring':
+      mainContent.innerHTML = generateConsolidateMonitoringPage()
       break
     case 'roles': // Roles & Management
       mainContent.innerHTML = generateRolesManagementPage()
@@ -2862,6 +2886,61 @@ function loadPageContent(pageId) {
       break
     case 'about':
       mainContent.innerHTML = generateAboutPage()
+      break
+    case 'reports':
+      // Optional: nothing to initialize for the landing page beyond ctas handled in HTML
+      break
+    case 'rcpi-reports':
+      // RCPI page: render and set up filters & export
+      renderRcpiReport()
+      document
+        .getElementById('export-rcpi-btn')
+        ?.addEventListener('click', exportRcpiCSV)
+      document
+        .getElementById('rcpi-supplier-filter')
+        ?.addEventListener('change', renderRcpiReport)
+      document
+        .getElementById('rcpi-date-from')
+        ?.addEventListener('change', renderRcpiReport)
+      document
+        .getElementById('rcpi-date-to')
+        ?.addEventListener('change', renderRcpiReport)
+      break
+    case 'rsmi-reports':
+      renderRsmiReport()
+      document
+        .getElementById('export-rsmi-btn')
+        ?.addEventListener('click', exportRsmiCSV)
+      document
+        .getElementById('rsmi-department-filter')
+        ?.addEventListener('change', renderRsmiReport)
+      document
+        .getElementById('rsmi-date-from')
+        ?.addEventListener('change', renderRsmiReport)
+      document
+        .getElementById('rsmi-date-to')
+        ?.addEventListener('change', renderRsmiReport)
+      break
+    case 'stock-cards':
+      renderStockCardsReport()
+      document
+        .getElementById('export-stock-cards-btn')
+        ?.addEventListener('click', exportStockCardsCSV)
+      document
+        .getElementById('stock-card-item-filter')
+        ?.addEventListener('change', renderStockCardsReport)
+      document
+        .getElementById('stock-card-date-from')
+        ?.addEventListener('change', renderStockCardsReport)
+      document
+        .getElementById('stock-card-date-to')
+        ?.addEventListener('change', renderStockCardsReport)
+      break
+    case 'consolidate-monitoring':
+      renderConsolidateMonitoring()
+      document
+        .getElementById('export-consolidate-btn')
+        ?.addEventListener('click', exportConsolidationCSV)
       break
     case 'support':
       mainContent.innerHTML = generateSupportPage()
@@ -3350,13 +3429,13 @@ function generateDashboardPage() {
                                 <p>Record incoming inventory</p>
                             </div>
                         </div>
-                        <div class="action-item" onclick="navigateToPage('inventory-reports')">
+                        <div class="action-item" onclick="navigateToPage('reports')">
                             <div class="action-icon purple">
                                 <i data-lucide="bar-chart-3" class="icon"></i>
                             </div>
                             <div class="action-content">
                                 <h4>View Reports</h4>
-                                <p>Generate inventory reports</p>
+                                <p>RCPI, RSMI, Stock Cards, Consolidate Monitoring</p>
                             </div>
                         </div>
                     </div>
@@ -6536,6 +6615,238 @@ function generateStatusReportsPage() {
     `
 }
 
+// New Reports Pages: RCPI, RSMI, Stock Cards, Consolidate Monitoring
+function generateReportsLandingPage() {
+  return `
+        <div class="page-header">
+            <div class="page-header-content">
+                <div>
+                    <h1 class="page-title">
+                        <i data-lucide="bar-chart-2" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>
+                        Reports
+                    </h1>
+                    <p class="page-subtitle">Access RCPI, RSMI, Stock Cards and Consolidated Monitoring reports.</p>
+                </div>
+            </div>
+        </div>
+        <div class="page-content">
+          <div class="card report-list-card">
+            <div class="report-grid">
+              <div class="report-card" onclick="navigateToPage('rcpi-reports')">
+                <div class="report-card-icon blue"><i data-lucide="file-text"></i></div>
+                <h4>RCPI</h4>
+                <p>Inspection Acceptance & RCPI records</p>
+              </div>
+              <div class="report-card" onclick="navigateToPage('rsmi-reports')">
+                <div class="report-card-icon purple"><i data-lucide="clipboard"></i></div>
+                <h4>RSMI</h4>
+                <p>Requisition and Supply Monitoring</p>
+              </div>
+              <div class="report-card" onclick="navigateToPage('stock-cards')">
+                <div class="report-card-icon green"><i data-lucide="book-open"></i></div>
+                <h4>Stock Cards</h4>
+                <p>Item-level transaction ledger</p>
+              </div>
+              <div class="report-card" onclick="navigateToPage('consolidate-monitoring')">
+                <div class="report-card-icon orange"><i data-lucide="layers"></i></div>
+                <h4>Consolidate Monitoring</h4>
+                <p>Consolidated monitoring for inventory and requisitions</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `
+}
+
+function generateRcpiReportsPage() {
+  // Using completedRequests + inspection acceptance data as source
+  const suppliers = [
+    'All',
+    ...new Set([
+      ...(AppState.completedRequests || [])
+        .map((r) => r.supplier)
+        .filter(Boolean),
+    ]),
+  ]
+  return `
+        <div class="page-header">
+          <div class="page-header-content">
+            <div>
+              <h1 class="page-title"><i data-lucide="file-check" style="width:28px;height:28px;margin-right:8px;"></i>RCPI Report</h1>
+              <p class="page-subtitle">RCPI / Inspection Acceptance summaries and details</p>
+            </div>
+            <div>
+              <button class="btn btn-primary" id="export-rcpi-btn"><i data-lucide="download" style="width:16px;height:16px;margin-right:6px"></i>Export Excel</button>
+            </div>
+          </div>
+        </div>
+        <div class="page-content">
+          <div class="card report-filters-card">
+            <div class="filter-grid">
+              <div class="filter-item">
+                <label class="form-label">Supplier</label>
+                <select id="rcpi-supplier-filter" class="form-select">${suppliers
+                  .map((s) => `<option value="${s}">${s}</option>`)
+                  .join('')}</select>
+              </div>
+              <div class="filter-item">
+                <label class="form-label">From Date</label>
+                <input type="date" id="rcpi-date-from" class="form-input">
+              </div>
+              <div class="filter-item">
+                <label class="form-label">To Date</label>
+                <input type="date" id="rcpi-date-to" class="form-input">
+              </div>
+            </div>
+          </div>
+          <div class="card table-card">
+            <div class="table-container"><table class="table" id="rcpi-report-table"><thead><tr><th>RCPI / IAR No</th><th>Date</th><th>Supplier</th><th>Total Amount</th><th>Items</th></tr></thead><tbody></tbody></table></div>
+          </div>
+        </div>
+      `
+}
+
+function generateRsmiReportsPage() {
+  const departments = [
+    'All',
+    ...new Set(
+      (AppState.newRequests || []).map((r) => r.department).filter(Boolean)
+    ),
+  ]
+  return `
+        <div class="page-header">
+          <div class="page-header-content">
+            <div>
+              <h1 class="page-title"><i data-lucide="clipboard-list" style="width:28px;height:28px;margin-right:8px;"></i>RSMI</h1>
+              <p class="page-subtitle">Requisition & Supply Monitoring Inventory</p>
+            </div>
+            <div>
+              <button class="btn btn-primary" id="export-rsmi-btn"><i data-lucide="download" style="width:16px;height:16px;margin-right:6px"></i>Export Excel</button>
+            </div>
+          </div>
+        </div>
+        <div class="page-content">
+          <div class="card report-filters-card">
+            <div class="filter-grid">
+              <div class="filter-item">
+                <label class="form-label">Department</label>
+                <select id="rsmi-department-filter" class="form-select">${departments
+                  .map((d) => `<option value="${d}">${d}</option>`)
+                  .join('')}</select>
+              </div>
+              <div class="filter-item">
+                <label class="form-label">From Date</label>
+                <input type="date" id="rsmi-date-from" class="form-input">
+              </div>
+              <div class="filter-item">
+                <label class="form-label">To Date</label>
+                <input type="date" id="rsmi-date-to" class="form-input">
+              </div>
+            </div>
+          </div>
+          <div class="card table-card">
+            <div class="table-container"><table class="table" id="rsmi-report-table"><thead><tr><th>Request ID</th><th>Date</th><th>Department</th><th>Supplier</th><th>Total</th></tr></thead><tbody></tbody></table></div>
+          </div>
+        </div>
+      `
+}
+
+function generateStockCardsPage() {
+  const items = [
+    'All',
+    ...new Set((MockData.Items || []).map((i) => i.name).filter(Boolean)),
+  ]
+  return `
+        <div class="page-header">
+          <div class="page-header-content">
+            <div>
+              <h1 class="page-title"><i data-lucide="book" style="width:28px;height:28px;margin-right:8px;"></i>Stock Cards</h1>
+              <p class="page-subtitle">Item-level stock transactions (in/out)</p>
+            </div>
+            <div>
+              <button class="btn btn-primary" id="export-stock-cards-btn"><i data-lucide="download" style="width:16px;height:16px;margin-right:6px"></i>Export Excel</button>
+            </div>
+          </div>
+        </div>
+        <div class="page-content">
+          <div class="card report-filters-card">
+            <div class="filter-grid">
+              <div class="filter-item">
+                <label class="form-label">Item</label>
+                <select id="stock-card-item-filter" class="form-select">${items
+                  .map((d) => `<option value="${d}">${d}</option>`)
+                  .join('')}</select>
+              </div>
+              <div class="filter-item">
+                <label class="form-label">From Date</label>
+                <input type="date" id="stock-card-date-from" class="form-input">
+              </div>
+              <div class="filter-item">
+                <label class="form-label">To Date</label>
+                <input type="date" id="stock-card-date-to" class="form-input">
+              </div>
+            </div>
+          </div>
+          <div class="card table-card">
+            <div class="table-container"><table class="table" id="stock-cards-table"><thead><tr><th>Txn ID</th><th>Date</th><th>SKU</th><th>Item</th><th>Type</th><th>Qty</th><th>Unit Cost</th></tr></thead><tbody></tbody></table></div>
+          </div>
+        </div>
+      `
+}
+
+function generateConsolidateMonitoringPage() {
+  return `
+        <div class="page-header">
+          <div class="page-header-content">
+            <div>
+              <h1 class="page-title"><i data-lucide="layers" style="width:28px;height:28px;margin-right:8px;"></i>Consolidate Monitoring</h1>
+              <p class="page-subtitle">Consolidated metrics across requests, inventories, and stock transactions</p>
+            </div>
+            <div>
+              <button class="btn btn-primary" id="export-consolidate-btn"><i data-lucide="download" style="width:16px;height:16px;margin-right:6px"></i>Export Excel</button>
+            </div>
+          </div>
+        </div>
+        <div class="page-content">
+          <div class="card">
+            <div class="card-header-inline"><h3 class="card-title-small">Summary</h3></div>
+            <div class="card-body">
+              <div class="summary-grid">
+                <div class="summary-item"><div class="label">Total Items</div><div class="value">${
+                  (MockData.Items || []).length
+                }</div></div>
+                <div class="summary-item"><div class="label">Stock In Records</div><div class="value">${
+                  (stockInData || []).length
+                }</div></div>
+                <div class="summary-item"><div class="label">Stock Out Records</div><div class="value">${
+                  (stockOutData || []).length
+                }</div></div>
+                <div class="summary-item"><div class="label">Purchase Orders</div><div class="value">${
+                  (AppState.newRequests || []).length +
+                  (AppState.completedRequests || []).length
+                }</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="card report-filters-card">
+            <div class="filter-grid">
+              <div class="filter-item">
+                <label class="form-checkbox"><input type="checkbox" id="consolidate-filter-expiration" /> Show only items with expiration</label>
+              </div>
+            </div>
+          </div>
+          <div class="card table-card">
+            <div class="table-container"><table class="table" id="consolidate-summary-table"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody></tbody></table></div>
+          </div>
+          <!-- New Specialization Items with Expiration table -->
+          <div class="card table-card">
+            <div class="card-header-inline"><h3 class="card-title-small">Specialization Item with Expiration</h3></div>
+            <div class="table-container"><table class="table" id="consolidate-specializations-table"><thead><tr><th>Specialization Item</th><th>Expiration</th></tr></thead><tbody></tbody></table></div>
+          </div>
+        </div>
+      `
+}
+
 // Excel export helper with professional styling
 async function downloadExcel(
   filename,
@@ -7088,6 +7399,282 @@ function renderStatusReport() {
     rowsHtml || '<tr><td colspan="8">No requests found</td></tr>'
 }
 
+function renderRcpiReport() {
+  const tbody = document.querySelector('#rcpi-report-table tbody')
+  if (!tbody) return
+
+  const supplier =
+    document.getElementById('rcpi-supplier-filter')?.value || 'All'
+  const from = document.getElementById('rcpi-date-from')?.value
+  const to = document.getElementById('rcpi-date-to')?.value
+
+  let all = [...(AppState.completedRequests || [])]
+  if (from)
+    all = all.filter((r) =>
+      r.date ? new Date(r.date) >= new Date(from) : true
+    )
+  if (to)
+    all = all.filter((r) => (r.date ? new Date(r.date) <= new Date(to) : true))
+  if (supplier && supplier !== 'All')
+    all = all.filter((r) => r.supplier === supplier)
+
+  tbody.innerHTML = all
+    .map(
+      (r) => `
+      <tr>
+        <td style="font-weight:500;">${r.iarNumber || r.id || '-'}</td>
+        <td>${r.date || '-'}</td>
+        <td>${r.supplier || '-'}</td>
+        <td>${r.totalAmount ? formatCurrency(r.totalAmount) : '-'}</td>
+        <td>${(r.items || []).length || '-'}</td>
+      </tr>
+    `
+    )
+    .join('')
+  window.__rcpiFilteredRows = all
+}
+
+function exportRcpiCSV() {
+  const rows = [['RCPI / IAR No', 'Date', 'Supplier', 'Total Amount', 'Items']]
+  const rowsToExport = (window.__rcpiFilteredRows || []).map((r) => [
+    r.iarNumber || r.id || '',
+    r.date || '',
+    r.supplier || '',
+    r.totalAmount || 0,
+    (r.items || []).length || 0,
+  ])
+  rowsToExport.forEach((r) => rows.push(r))
+  downloadExcel('rcpi-report.xlsx', rows, 'RCPI Report')
+}
+
+function renderRsmiReport() {
+  const tbody = document.querySelector('#rsmi-report-table tbody')
+  if (!tbody) return
+
+  const dept = document.getElementById('rsmi-department-filter')?.value || 'All'
+  const from = document.getElementById('rsmi-date-from')?.value
+  const to = document.getElementById('rsmi-date-to')?.value
+
+  let all = [
+    ...(AppState.newRequests || []),
+    ...(AppState.pendingRequests || []),
+    ...(AppState.completedRequests || []),
+  ]
+  if (from)
+    all = all.filter((r) =>
+      r.requestDate ? new Date(r.requestDate) >= new Date(from) : true
+    )
+  if (to)
+    all = all.filter((r) =>
+      r.requestDate ? new Date(r.requestDate) <= new Date(to) : true
+    )
+  if (dept && dept !== 'All')
+    all = all.filter(
+      (r) => (r.department || '').toLowerCase() === dept.toLowerCase()
+    )
+
+  tbody.innerHTML = all
+    .map(
+      (r) =>
+        `<tr><td style="font-weight:500;">${r.id || '-'}</td><td>${
+          r.requestDate || r.date || '-'
+        }</td><td>${r.department || '-'}</td><td>${
+          r.supplier || '-'
+        }</td><td>${formatCurrency(r.totalAmount || 0)}</td></tr>`
+    )
+    .join('')
+  window.__rsmiFilteredRows = all
+}
+
+function exportRsmiCSV() {
+  const rows = [
+    ['Request ID', 'Date', 'Department', 'Supplier', 'Total Amount'],
+  ]
+  const data = window.__rsmiFilteredRows || []
+  data.forEach((r) =>
+    rows.push([
+      r.id || '',
+      r.requestDate || r.date || '',
+      r.department || '',
+      r.supplier || '',
+      r.totalAmount || 0,
+    ])
+  )
+  downloadExcel('rsmi-report.xlsx', rows, 'RSMI Report')
+}
+
+function renderStockCardsReport() {
+  const tbody = document.querySelector('#stock-cards-table tbody')
+  if (!tbody) return
+  const itemFilter =
+    document.getElementById('stock-card-item-filter')?.value || 'All'
+  const from = document.getElementById('stock-card-date-from')?.value
+  const to = document.getElementById('stock-card-date-to')?.value
+
+  // Merge stockInData and stockOutData with a type
+  const ins = (window.stockInData || []).map((s) => ({ ...s, type: 'IN' }))
+  const outs = (window.stockOutData || []).map((s) => ({ ...s, type: 'OUT' }))
+  let all = [...ins, ...outs].sort(
+    (a, b) =>
+      new Date(b.date || b.transactionDate || 0) -
+      new Date(a.date || a.transactionDate || 0)
+  )
+  if (itemFilter && itemFilter !== 'All')
+    all = all.filter(
+      (r) =>
+        (r.ItemName || r.product_name || '').toLowerCase() ===
+        itemFilter.toLowerCase()
+    )
+  if (from)
+    all = all.filter(
+      (r) => new Date(r.date || r.transactionDate || 0) >= new Date(from)
+    )
+  if (to)
+    all = all.filter(
+      (r) => new Date(r.date || r.transactionDate || 0) <= new Date(to)
+    )
+
+  tbody.innerHTML = all
+    .map(
+      (r) =>
+        `<tr><td style="font-weight:500;">${
+          r.transaction_id || r.id || ''
+        }</td><td>${r.date || r.transactionDate || ''}</td><td>${
+          r.sku || r.sku || ''
+        }</td><td>${r.ItemName || r.product_name || ''}</td><td>${
+          r.type
+        }</td><td>${r.quantity || r.qty || 0}</td><td>${
+          r.unitCost || r.unit_cost || ''
+        }</td></tr>`
+    )
+    .join('')
+  window.__stockCardsRows = all
+}
+
+function exportStockCardsCSV() {
+  const rows = [['Txn ID', 'Date', 'SKU', 'Item', 'Type', 'Qty', 'Unit Cost']]
+  const data = window.__stockCardsRows || []
+  data.forEach((r) =>
+    rows.push([
+      r.transaction_id || r.id || '',
+      r.date || r.transactionDate || '',
+      r.sku || '',
+      r.ItemName || r.product_name || '',
+      r.type || '',
+      r.quantity || r.qty || 0,
+      r.unitCost || r.unit_cost || 0,
+    ])
+  )
+  downloadExcel('stock-cards-report.xlsx', rows, 'Stock Cards')
+}
+
+function renderConsolidateMonitoring() {
+  const tbody = document.querySelector('#consolidate-summary-table tbody')
+  if (!tbody) return
+  const itemsTotal = (MockData.Items || []).length
+  const ins = (window.stockInData || []).length
+  const outs = (window.stockOutData || []).length
+  const pos =
+    (AppState.newRequests || []).length +
+    (AppState.completedRequests || []).length
+  tbody.innerHTML = `
+    <tr><td>Total Items</td><td>${itemsTotal}</td></tr>
+    <tr><td>Stock In Records</td><td>${ins}</td></tr>
+    <tr><td>Stock Out Records</td><td>${outs}</td></tr>
+    <tr><td>Purchase Orders</td><td>${pos}</td></tr>
+  `
+  window.__consolidationSummary = { itemsTotal, ins, outs, pos }
+
+  // Render specialization items table (uses any available expiration/expiry fields on Items)
+  try {
+    const specTbody = document.querySelector(
+      '#consolidate-specializations-table tbody'
+    )
+    if (specTbody) {
+      const showOnlyWithExpiration =
+        document.getElementById('consolidate-filter-expiration')?.checked ||
+        false
+      const filtered = (MockData.Items || []).filter((it) => {
+        if (!showOnlyWithExpiration) return true
+        const expiration =
+          it.expiration_date ||
+          it.expirationDate ||
+          it.expiry_date ||
+          it.expiryDate ||
+          it.expires_at ||
+          it.expiresAt ||
+          it.expiration ||
+          ''
+        return Boolean(expiration)
+      })
+      const rows = filtered.map((it) => {
+        const specialization =
+          it.specialization ||
+          it.specialized ||
+          (it.category && it.category.name) ||
+          it.type ||
+          it.name ||
+          ''
+        const expiration =
+          it.expiration_date ||
+          it.expirationDate ||
+          it.expiry_date ||
+          it.expiryDate ||
+          it.expires_at ||
+          it.expiresAt ||
+          it.expiration ||
+          ''
+        const expDisplay = expiration ? formatDate(expiration) : '-'
+        return `<tr><td style="font-weight:500;">${escapeHtml(
+          specialization
+        )}</td><td>${escapeHtml(expDisplay)}</td></tr>`
+      })
+      specTbody.innerHTML = rows.length
+        ? rows.join('')
+        : '<tr><td colspan="2">No specialization items found</td></tr>'
+      window.__consolidationSpecializations = filtered.map((it) => ({
+        specialization:
+          it.specialization ||
+          it.specialized ||
+          (it.category && it.category.name) ||
+          it.type ||
+          it.name ||
+          '',
+        expiration:
+          it.expiration_date ||
+          it.expirationDate ||
+          it.expiry_date ||
+          it.expiryDate ||
+          it.expires_at ||
+          it.expiresAt ||
+          it.expiration ||
+          '',
+      }))
+    }
+  } catch (e) {
+    console.error('Error rendering consolidation specializations table', e)
+  }
+}
+
+function exportConsolidationCSV() {
+  const rows = [['Metric', 'Value']]
+  const s = window.__consolidationSummary || {}
+  rows.push(['Total Items', s.itemsTotal || 0])
+  rows.push(['Stock In Records', s.ins || 0])
+  rows.push(['Stock Out Records', s.outs || 0])
+  rows.push(['Purchase Orders', s.pos || 0])
+  // Append Specializations table if any
+  const specials = window.__consolidationSpecializations || []
+  if (specials.length) {
+    rows.push([]) // blank row separator
+    rows.push(['Specialization Item', 'Expiration'])
+    specials.forEach((st) =>
+      rows.push([st.specialization || '', st.expiration || ''])
+    )
+  }
+  downloadExcel('consolidate-monitoring.xlsx', rows, 'Consolidate Monitoring')
+}
+
 function showStatusDetails(status) {
   // Find matching requests from Status Management
   const all = [...(AppState.statusRequests || [])]
@@ -7522,66 +8109,60 @@ function showStatusDetailPopup(status, count, index, allData) {
 
 // Hook filters and export buttons after page load
 function initializeReportPageEvents(pageId) {
-  if (pageId === 'inventory-reports') {
+  if (pageId === 'rcpi-reports') {
     document
-      .getElementById('inventory-category-filter')
-      ?.addEventListener('change', renderInventoryReport)
+      .getElementById('export-rcpi-btn')
+      ?.addEventListener('click', exportRcpiCSV)
     document
-      .getElementById('inventory-date-from')
-      ?.addEventListener('change', renderInventoryReport)
+      .getElementById('rcpi-supplier-filter')
+      ?.addEventListener('change', renderRcpiReport)
     document
-      .getElementById('inventory-date-to')
-      ?.addEventListener('change', renderInventoryReport)
+      .getElementById('rcpi-date-from')
+      ?.addEventListener('change', renderRcpiReport)
     document
-      .getElementById('export-inventory-btn')
-      ?.addEventListener('click', exportInventoryCSV)
-    document
-      .getElementById('low-stock-threshold')
-      ?.addEventListener('change', renderInventoryReport)
-    document
-      .getElementById('low-stock-threshold')
-      ?.addEventListener('change', function (e) {
-        const v = parseInt(e.target.value, 10)
-        if (!isNaN(v)) AppState.lowStockThreshold = v
-      })
-    document
-      .getElementById('export-lowstock-btn')
-      ?.addEventListener('click', exportLowStockCSV)
-    // initial render
-    renderInventoryReport()
+      .getElementById('rcpi-date-to')
+      ?.addEventListener('change', renderRcpiReport)
+    renderRcpiReport()
   }
-  if (pageId === 'requisition-reports') {
+  if (pageId === 'rsmi-reports') {
     document
-      .getElementById('requisition-supplier-filter')
-      ?.addEventListener('change', renderRequisitionReport)
+      .getElementById('export-rsmi-btn')
+      ?.addEventListener('click', exportRsmiCSV)
     document
-      .getElementById('requisition-date-from')
-      ?.addEventListener('change', renderRequisitionReport)
+      .getElementById('rsmi-department-filter')
+      ?.addEventListener('change', renderRsmiReport)
     document
-      .getElementById('requisition-date-to')
-      ?.addEventListener('change', renderRequisitionReport)
+      .getElementById('rsmi-date-from')
+      ?.addEventListener('change', renderRsmiReport)
     document
-      .getElementById('export-requisition-btn')
-      ?.addEventListener('click', exportRequisitionCSV)
-    renderRequisitionReport()
+      .getElementById('rsmi-date-to')
+      ?.addEventListener('change', renderRsmiReport)
+    renderRsmiReport()
   }
-  if (pageId === 'status-report') {
+  if (pageId === 'stock-cards') {
     document
-      .getElementById('status-department-filter')
-      ?.addEventListener('change', renderStatusReport)
+      .getElementById('export-stock-cards-btn')
+      ?.addEventListener('click', exportStockCardsCSV)
     document
-      .getElementById('status-status-filter')
-      ?.addEventListener('change', renderStatusReport)
+      .getElementById('stock-card-item-filter')
+      ?.addEventListener('change', renderStockCardsReport)
     document
-      .getElementById('status-date-from')
-      ?.addEventListener('change', renderStatusReport)
+      .getElementById('stock-card-date-from')
+      ?.addEventListener('change', renderStockCardsReport)
     document
-      .getElementById('status-date-to')
-      ?.addEventListener('change', renderStatusReport)
+      .getElementById('stock-card-date-to')
+      ?.addEventListener('change', renderStockCardsReport)
+    renderStockCardsReport()
+  }
+  if (pageId === 'consolidate-monitoring') {
     document
-      .getElementById('export-status-btn')
-      ?.addEventListener('click', exportStatusCSV)
-    renderStatusReport()
+      .getElementById('export-consolidate-btn')
+      ?.addEventListener('click', exportConsolidationCSV)
+    // Hook filter checkbox to re-render
+    document
+      .getElementById('consolidate-filter-expiration')
+      ?.addEventListener('change', renderConsolidateMonitoring)
+    renderConsolidateMonitoring()
   }
 }
 
@@ -8932,27 +9513,16 @@ function renderPurchaseOrderWizardStep(requestData) {
                                 </label>
                                 <select class="form-select" id="po-mode" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                                     <option value="">Select procurement mode</option>
-                                    <option ${
-                                      AppState.purchaseOrderDraft
-                                        .procurementMode ===
-                                      'Small Value Procurement'
-                                        ? 'selected'
-                                        : ''
-                                    }>Small Value Procurement</option>
-                                    <option ${
-                                      AppState.purchaseOrderDraft
-                                        .procurementMode ===
-                                      'Medium Value Procurement'
-                                        ? 'selected'
-                                        : ''
-                                    }>Medium Value Procurement</option>
-                                    <option ${
-                                      AppState.purchaseOrderDraft
-                                        .procurementMode ===
-                                      'High Value Procurement'
-                                        ? 'selected'
-                                        : ''
-                                    }>High Value Procurement</option>
+                                    ${PROCUREMENT_MODES.map(
+                                      (m) => `
+                                      <option value="${m}" ${
+                                        AppState.purchaseOrderDraft
+                                          .procurementMode === m
+                                          ? 'selected'
+                                          : ''
+                                      }>${m}</option>
+                                    `
+                                    ).join('')}
                                 </select>
                             </div>
                             <div class="form-group" style="margin-bottom: 16px;">
@@ -9206,27 +9776,7 @@ function renderPurchaseOrderWizardStep(requestData) {
                                         ? 'selected'
                                         : ''
                                     }>01 - Regular Agency Fund</option>
-                                    <option value="02 - Foreign Assisted Projects Fund" ${
-                                      AppState.purchaseOrderDraft
-                                        .fundCluster ===
-                                      '02 - Foreign Assisted Projects Fund'
-                                        ? 'selected'
-                                        : ''
-                                    }>02 - Foreign Assisted Projects Fund</option>
-                                    <option value="03 - Special Account - Locally Funded/Domestic Grants Fund" ${
-                                      AppState.purchaseOrderDraft
-                                        .fundCluster ===
-                                      '03 - Special Account - Locally Funded/Domestic Grants Fund'
-                                        ? 'selected'
-                                        : ''
-                                    }>03 - Special Account - Locally Funded/Domestic Grants Fund</option>
-                                    <option value="04 - Special Account - Foreign Assisted/Foreign Grants Fund" ${
-                                      AppState.purchaseOrderDraft
-                                        .fundCluster ===
-                                      '04 - Special Account - Foreign Assisted/Foreign Grants Fund'
-                                        ? 'selected'
-                                        : ''
-                                    }>04 - Special Account - Foreign Assisted/Foreign Grants Fund</option>
+                                    <!-- Removed fund cluster codes 02, 03, 04 per request -->
                                     <option value="05 - Internally Generated Funds" ${
                                       AppState.purchaseOrderDraft
                                         .fundCluster ===
@@ -9748,6 +10298,8 @@ function generatePurchaseOrderModal(mode, requestData = null) {
   ]
   const selectedDepartment = requestData?.department || '' // Default to empty value
 
+  // Use global PROCUREMENT_MODES
+
   return `
         <div class="modal-header" style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; border-bottom: none; padding: 32px 24px;">
             <div style="display: flex; align-items: center; gap: 16px;">
@@ -9877,29 +10429,16 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                             } style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; ${
     isReadOnly ? 'background: #f9fafb;' : ''
   }">
-                                <option ${
-                                  !requestData?.procurementMode
-                                    ? 'selected'
-                                    : ''
-                                }>Select procurement mode</option>
-                                <option ${
-                                  requestData?.procurementMode ===
-                                  'Small Value Procurement'
-                                    ? 'selected'
-                                    : ''
-                                }>Small Value Procurement</option>
-                                <option ${
-                                  requestData?.procurementMode ===
-                                  'Medium Value Procurement'
-                                    ? 'selected'
-                                    : ''
-                                }>Medium Value Procurement</option>
-                                <option ${
-                                  requestData?.procurementMode ===
-                                  'High Value Procurement'
-                                    ? 'selected'
-                                    : ''
-                                }>High Value Procurement</option>
+                                <option value="">Select procurement mode</option>
+                                ${PROCUREMENT_MODES.map(
+                                  (m) => `
+                                  <option value="${m}" ${
+                                    requestData?.procurementMode === m
+                                      ? 'selected'
+                                      : ''
+                                  }>${m}</option>
+                                `
+                                ).join('')}
                             </select>
                         </div>
                     </div>
@@ -11199,27 +11738,7 @@ function renderDynamicPOForms() {
                     ? 'selected'
                     : ''
                 }>01 - Regular Agency Fund</option>
-                <option value="02 - Foreign Assisted Projects Fund" ${
-                  (AppState.purchaseOrderDraft.icsFormData &&
-                    AppState.purchaseOrderDraft.icsFormData.fund_cluster) ===
-                  '02 - Foreign Assisted Projects Fund'
-                    ? 'selected'
-                    : ''
-                }>02 - Foreign Assisted Projects Fund</option>
-                <option value="03 - Special Account - Locally Funded/Domestic Grants Fund" ${
-                  (AppState.purchaseOrderDraft.icsFormData &&
-                    AppState.purchaseOrderDraft.icsFormData.fund_cluster) ===
-                  '03 - Special Account - Locally Funded/Domestic Grants Fund'
-                    ? 'selected'
-                    : ''
-                }>03 - Special Account - Locally Funded/Domestic Grants Fund</option>
-                <option value="04 - Special Account - Foreign Assisted/Foreign Grants Fund" ${
-                  (AppState.purchaseOrderDraft.icsFormData &&
-                    AppState.purchaseOrderDraft.icsFormData.fund_cluster) ===
-                  '04 - Special Account - Foreign Assisted/Foreign Grants Fund'
-                    ? 'selected'
-                    : ''
-                }>04 - Special Account - Foreign Assisted/Foreign Grants Fund</option>
+                <!-- Removed fund cluster codes 02, 03, 04 per request -->
                 <option value="05 - Internally Generated Funds" ${
                   (AppState.purchaseOrderDraft.icsFormData &&
                     AppState.purchaseOrderDraft.icsFormData.fund_cluster) ===
@@ -11417,27 +11936,7 @@ function renderDynamicPOForms() {
                     ? 'selected'
                     : ''
                 }>01 - Regular Agency Fund</option>
-                <option value="02 - Foreign Assisted Projects Fund" ${
-                  (AppState.purchaseOrderDraft.risFormData &&
-                    AppState.purchaseOrderDraft.risFormData.fund_cluster) ===
-                  '02 - Foreign Assisted Projects Fund'
-                    ? 'selected'
-                    : ''
-                }>02 - Foreign Assisted Projects Fund</option>
-                <option value="03 - Special Account - Locally Funded/Domestic Grants Fund" ${
-                  (AppState.purchaseOrderDraft.risFormData &&
-                    AppState.purchaseOrderDraft.risFormData.fund_cluster) ===
-                  '03 - Special Account - Locally Funded/Domestic Grants Fund'
-                    ? 'selected'
-                    : ''
-                }>03 - Special Account - Locally Funded/Domestic Grants Fund</option>
-                <option value="04 - Special Account - Foreign Assisted/Foreign Grants Fund" ${
-                  (AppState.purchaseOrderDraft.risFormData &&
-                    AppState.purchaseOrderDraft.risFormData.fund_cluster) ===
-                  '04 - Special Account - Foreign Assisted/Foreign Grants Fund'
-                    ? 'selected'
-                    : ''
-                }>04 - Special Account - Foreign Assisted/Foreign Grants Fund</option>
+                <!-- Removed fund cluster codes 02, 03, 04 per request -->
                 <option value="05 - Internally Generated Funds" ${
                   (AppState.purchaseOrderDraft.risFormData &&
                     AppState.purchaseOrderDraft.risFormData.fund_cluster) ===
@@ -11754,27 +12253,7 @@ function renderDynamicPOForms() {
                     ? 'selected'
                     : ''
                 }>01 - Regular Agency Fund</option>
-                <option value="02 - Foreign Assisted Projects Fund" ${
-                  (AppState.purchaseOrderDraft.parFormData &&
-                    AppState.purchaseOrderDraft.parFormData.fund_cluster) ===
-                  '02 - Foreign Assisted Projects Fund'
-                    ? 'selected'
-                    : ''
-                }>02 - Foreign Assisted Projects Fund</option>
-                <option value="03 - Special Account - Locally Funded/Domestic Grants Fund" ${
-                  (AppState.purchaseOrderDraft.parFormData &&
-                    AppState.purchaseOrderDraft.parFormData.fund_cluster) ===
-                  '03 - Special Account - Locally Funded/Domestic Grants Fund'
-                    ? 'selected'
-                    : ''
-                }>03 - Special Account - Locally Funded/Domestic Grants Fund</option>
-                <option value="04 - Special Account - Foreign Assisted/Foreign Grants Fund" ${
-                  (AppState.purchaseOrderDraft.parFormData &&
-                    AppState.purchaseOrderDraft.parFormData.fund_cluster) ===
-                  '04 - Special Account - Foreign Assisted/Foreign Grants Fund'
-                    ? 'selected'
-                    : ''
-                }>04 - Special Account - Foreign Assisted/Foreign Grants Fund</option>
+                <!-- Removed fund cluster codes 02, 03, 04 per request -->
                 <option value="05 - Internally Generated Funds" ${
                   (AppState.purchaseOrderDraft.parFormData &&
                     AppState.purchaseOrderDraft.parFormData.fund_cluster) ===
@@ -11994,27 +12473,7 @@ function renderDynamicPOForms() {
                       ? 'selected'
                       : ''
                   }>01 - Regular Agency Fund</option>
-                  <option value="02 - Foreign Assisted Projects Fund" ${
-                    (AppState.purchaseOrderDraft.iarFormData &&
-                      AppState.purchaseOrderDraft.iarFormData.fund_cluster) ===
-                    '02 - Foreign Assisted Projects Fund'
-                      ? 'selected'
-                      : ''
-                  }>02 - Foreign Assisted Projects Fund</option>
-                  <option value="03 - Special Account - Locally Funded/Domestic Grants Fund" ${
-                    (AppState.purchaseOrderDraft.iarFormData &&
-                      AppState.purchaseOrderDraft.iarFormData.fund_cluster) ===
-                    '03 - Special Account - Locally Funded/Domestic Grants Fund'
-                      ? 'selected'
-                      : ''
-                  }>03 - Special Account - Locally Funded/Domestic Grants Fund</option>
-                  <option value="04 - Special Account - Foreign Assisted/Foreign Grants Fund" ${
-                    (AppState.purchaseOrderDraft.iarFormData &&
-                      AppState.purchaseOrderDraft.iarFormData.fund_cluster) ===
-                    '04 - Special Account - Foreign Assisted/Foreign Grants Fund'
-                      ? 'selected'
-                      : ''
-                  }>04 - Special Account - Foreign Assisted/Foreign Grants Fund</option>
+                  <!-- Removed fund cluster codes 02, 03, 04 per request -->
                   <option value="05 - Internally Generated Funds" ${
                     (AppState.purchaseOrderDraft.iarFormData &&
                       AppState.purchaseOrderDraft.iarFormData.fund_cluster) ===
