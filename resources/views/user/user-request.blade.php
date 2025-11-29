@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="csrf-token" content="{{ csrf_token() }}" />
     <title>Purchase Request • SPMO</title>
-    @vite('resources/css/AccessSystem.css')
     @vite('resources/css/user-request.css')
     <link rel="shortcut icon" href="{{ asset('images/UCN1.png') }}" type="image/png">
     <link rel="icon" href="{{ asset('images/UCN1.png') }}" type="image/png">

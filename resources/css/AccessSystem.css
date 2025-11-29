@@ -9,21 +9,9 @@
 body {
   min-height: 100vh;
   color: #fff;
-  /* Use absolute path to public images for reliability */
   background: url('/images/cnscbg.jpg') no-repeat center center/cover;
   position: relative;
   overflow-x: hidden;
-}
-
-/* Ensure native dialogs are hidden unless explicitly opened */
-dialog:not([open]) {
-  display: none !important;
-}
-
-dialog::backdrop {
-  background: rgba(17, 24, 39, 0.55);
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
 }
 
 body::before {
@@ -125,7 +113,7 @@ header {
   padding: 2rem;
   position: relative;
   z-index: 1;
-  padding-top: 6rem; /* Account for fixed header */
+  padding-top: 6rem;
 }
 
 .access-container {
@@ -251,69 +239,6 @@ header {
   box-shadow: 0 0 20px rgba(255, 213, 0, 0.2);
 }
 
-/* OTP / PIN Container */
-.otp-container {
-  display: flex;
-  gap: 15px;
-  margin-top: 0.5rem;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.otp-container input {
-  flex: 1 1 0;
-  max-width: 70px;
-  min-width: 45px;
-  height: 70px;
-  text-align: center;
-  font-size: 1.5rem;
-  font-weight: 600;
-  border-radius: 15px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-  outline: none;
-  caret-color: #ffd500;
-  -webkit-text-security: disc;
-  transition: all 0.3s ease;
-}
-
-@supports (backdrop-filter: blur(10px)) {
-  .otp-container input {
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
-  }
-}
-
-.otp-container input:focus {
-  border-color: #ffd500;
-  background: rgba(255, 255, 255, 0.25);
-  box-shadow: 0 0 20px rgba(255, 213, 0, 0.3);
-  transform: scale(1.05);
-}
-
-/* Responsive OTP inputs */
-@media (max-width: 640px) {
-  .otp-container input {
-    max-width: 60px;
-    height: 60px;
-    font-size: 1.3rem;
-  }
-}
-
-@media (max-width: 460px) {
-  .otp-container {
-    gap: 10px;
-  }
-
-  .otp-container input {
-    max-width: 50px;
-    height: 50px;
-    min-width: 40px;
-    font-size: 1.2rem;
-  }
-}
-
 .form-extras {
   display: flex;
   justify-content: flex-end;
@@ -400,22 +325,20 @@ header {
   transform: translateX(3px);
 }
 
-/* Animations */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Dialogs */
+dialog:not([open]) {
+  display: none !important;
 }
 
-/* Enhanced dialog styling for login confirmation */
+dialog::backdrop {
+  background: rgba(17, 24, 39, 0.55);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
 :root {
   --dialog-bg: #ffffff;
-  --dialog-accent: #b30000; /* Match the red from HomePage */
+  --dialog-accent: #b30000;
   --dialog-accent-dark: #800000;
   --dialog-text: #0b2435;
   --dialog-muted: #50616a;
@@ -435,7 +358,6 @@ dialog.login-dialog {
   transform-origin: center center;
 }
 
-/* Modern Dialog Enhancements */
 dialog.modern-dialog {
   background: #ffffff;
   border-radius: 20px;
@@ -548,30 +470,18 @@ dialog.modern-dialog .dialog-btn:active {
   transform: translateY(0);
 }
 
-@keyframes iconPulse {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
-
 dialog.login-dialog::backdrop {
   background: rgba(3, 9, 14, 0.55);
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
 
-/* Ensure alert dialog backdrop works the same */
 dialog#alertDialog::backdrop {
   background: rgba(3, 9, 14, 0.55);
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
 
-/* entrance animation */
 @keyframes dialog-pop-in {
   from {
     opacity: 0;
@@ -583,7 +493,6 @@ dialog#alertDialog::backdrop {
   }
 }
 
-/* Center and animate when open */
 dialog[open].login-dialog {
   position: fixed;
   left: 50%;
@@ -593,14 +502,12 @@ dialog[open].login-dialog {
   animation: dialog-pop-in 180ms cubic-bezier(0.2, 0.9, 0.2, 1);
 }
 
-/* accessible reduced motion */
 @media (prefers-reduced-motion: reduce) {
   dialog[open].login-dialog {
     animation: none;
   }
 }
 
-/* heading with a small accent dot */
 dialog.login-dialog h3 {
   margin: 0 0 0.25rem 0;
   font-size: 1.05rem;
@@ -611,7 +518,6 @@ dialog.login-dialog h3 {
   gap: 0.6rem;
 }
 
-/* small accent circle before heading */
 dialog.login-dialog h3::before {
   content: '';
   width: 12px;
@@ -633,7 +539,6 @@ dialog.login-dialog p#dialogText {
   font-size: 0.95rem;
 }
 
-/* Alert dialog text styling */
 dialog.login-dialog p#alertText {
   margin: 0.25rem 0 0.85rem 0;
   color: var(--dialog-muted);
@@ -662,7 +567,7 @@ dialog.login-dialog button {
 }
 
 dialog.login-dialog button[type='submit'][value='cancel'] {
-  background: #ffffff; /* white */
+  background: #ffffff;
   color: #0b2435;
   opacity: 1;
   border: 1px solid rgba(11, 22, 39, 0.06);
@@ -688,7 +593,6 @@ dialog.login-dialog button[type='submit'][value='confirm']:hover {
   box-shadow: 0 10px 26px rgba(198, 40, 40, 0.22);
 }
 
-/* Alert dialog OK button styling */
 dialog.login-dialog button[type='submit'][value='ok'] {
   background: linear-gradient(
     180deg,
@@ -707,30 +611,38 @@ dialog.login-dialog button[type='submit'][value='ok']:hover {
 dialog.login-dialog button:active {
   transform: translateY(1px);
 }
+
 dialog.login-dialog button:focus {
   outline: 3px solid rgba(198, 40, 40, 0.14);
 }
 
-/* Alert dialog specific styling */
 dialog#alertDialog menu {
-  justify-content: center; /* center the single OK button */
+  justify-content: center;
 }
 
 dialog#alertDialog h3::before {
-  background: linear-gradient(
-    180deg,
-    #ff9800,
-    #e65100
-  ); /* warning orange instead of red */
+  background: linear-gradient(180deg, #ff9800, #e65100);
 }
 
-/* smaller screens tweak */
-@media (max-width: 420px) {
-  dialog.login-dialog {
-    padding: 0.9rem 1rem;
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
   }
-  dialog.login-dialog h3 {
-    font-size: 1rem;
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes iconPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
   }
 }
 
@@ -789,7 +701,7 @@ dialog#alertDialog h3::before {
 
   .access-main {
     padding: 1rem;
-    padding-top: 8rem; /* More space for stacked header */
+    padding-top: 8rem;
   }
 
   .login-badge {
@@ -811,6 +723,16 @@ dialog#alertDialog h3::before {
 
   .login-btn {
     padding: 1rem 1.5rem;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 420px) {
+  dialog.login-dialog {
+    padding: 0.9rem 1rem;
+  }
+
+  dialog.login-dialog h3 {
     font-size: 1rem;
   }
 }
