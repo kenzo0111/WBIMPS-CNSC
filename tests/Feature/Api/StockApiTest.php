@@ -156,7 +156,6 @@ test('can create a stock out transaction', function () {
         'issued_to' => 'Jane Doe',
         'issued_by' => $this->user->name,
         'purpose' => 'Office use',
-        'status' => 'approved',
         'date_issued' => now()->format('Y-m-d'),
     ];
 

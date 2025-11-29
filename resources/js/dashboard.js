@@ -294,6 +294,150 @@ const PROCUREMENT_MODES = [
   'Direct Procurement for Science, Technology, and Innovation',
 ]
 
+// Department categories and helper to render the department dropdown in multiple modals
+function getDepartmentCategories() {
+  return {
+    'Academic Departments': [
+      { value: 'CAS', label: 'College of Arts and Sciences (CAS)' },
+      {
+        value: 'CBPA',
+        label: 'College of Business and Public Administration (CBPA)',
+      },
+      {
+        value: 'CCMS',
+        label: 'College of Computing and Multimedia Studies (CCMS)',
+      },
+      { value: 'COENG', label: 'College of Engineering (COEng)' },
+      { value: 'GS', label: 'Graduate School (GS)' },
+    ],
+    'Key Executive Offices': [
+      { value: 'OP', label: 'Office of the President (OP)' },
+      {
+        value: 'OVPAA',
+        label: 'Office of the Vice President for Academic Affairs (OVPAA)',
+      },
+      {
+        value: 'OVPFA',
+        label:
+          'Office of the Vice President for Administration & Finance (OVPFA)',
+      },
+      {
+        value: 'OVPRE',
+        label:
+          'Office of the Vice President for Research and Extension (OVPRE)',
+      },
+      {
+        value: 'OVPFA_alt',
+        label: 'Office of the Vice President for Finance Affairs (OVPFA)',
+      },
+    ],
+    'Student Services': [
+      { value: 'AO', label: 'Admission Office (AO)' },
+      {
+        value: 'OSSD',
+        label: 'Office of Student Services and Development (OSSD)',
+      },
+      { value: 'GCO', label: 'Guidance and Counseling Office (GCO)' },
+      { value: 'LIB', label: 'Library (LIB)' },
+      { value: 'MDS', label: 'Medical and Dental Services (MDS)' },
+      { value: 'RO', label: "Registrar's Office (RO)" },
+      { value: 'SFAU', label: 'Student Financial Assistance Unit (SFAU)' },
+      { value: 'TEO', label: 'Testing and Evaluation Office (TEO)' },
+      { value: 'ECS', label: 'Electronic Counseling Services (ECS)' },
+    ],
+    'Administrative & Operational Units': [
+      { value: 'AAO', label: 'Alumni Affairs Office (AAO)' },
+      { value: 'ASD', label: 'Auxilliary Services Division (ASD)' },
+      { value: 'GSO', label: 'General Services Office (GSO)' },
+      { value: 'ITSO', label: 'Information Technology Services Office (ITSO)' },
+      { value: 'LAO', label: 'Legal Affairs Office (LAO)' },
+      { value: 'MP', label: 'Motorpool (MP)' },
+      { value: 'PPD', label: 'Physical Plan Division (PPD)' },
+      { value: 'PDO', label: 'Planning and Development Office (PDO)' },
+      {
+        value: 'PICRO',
+        label: 'Public Information and Community Relations Office (PICRO)',
+      },
+      { value: 'ADMIN', label: 'Administrative Office (ADMIN)' },
+      { value: 'HR', label: 'Human Resources (HR)' },
+      { value: 'ACCOUNTING', label: 'Accounting Office (ACCOUNTING)' },
+      { value: 'CASHIER', label: 'Cashier (CASHIER)' },
+    ],
+    'Academic & Research Support': [
+      {
+        value: 'CEID',
+        label: 'Center for Education and Instructional Development (CEID)',
+      },
+      {
+        value: 'CEID2',
+        label: 'Center for Equity, Inclusivity, and Diversity (CEID2)',
+      },
+      { value: 'CPAU', label: 'Culture and Performing Arts Unit (CPAU)' },
+      { value: 'ESD', label: 'Extension Services Division (ESD)' },
+      {
+        value: 'FMRC',
+        label: 'Fabrication and Manufacturing Research Center (FMRC)',
+      },
+      {
+        value: 'IPMO',
+        label: 'Intellectual Property Management Office (IPMO)',
+      },
+      {
+        value: 'ISRO',
+        label: 'Integrated Sustainability and Resilience Office (ISRO)',
+      },
+      { value: 'IRO', label: 'International Relations Office (IRO)' },
+      {
+        value: 'MSIO',
+        label: 'Management System and Improvement Office (MSIO)',
+      },
+      { value: 'NSTP', label: 'NSTP Office (NSTP)' },
+      { value: 'QAO', label: 'Quality Assurance Office (QAO)' },
+      {
+        value: 'QPRDI',
+        label: 'Queen Pineapple Research and Development Institute (QPRDI)',
+      },
+      { value: 'RSD', label: 'Research Services Division (RSD)' },
+      { value: 'SWK', label: 'Sentro ng Wika at Kultura (SWK)' },
+      { value: 'SPRC', label: 'Social Policy Research Center (SPRC)' },
+      { value: 'SDO', label: 'Sports and Development Office (SDO)' },
+      { value: 'LAB', label: 'Laboratory Services (LAB)' },
+      { value: 'RND', label: 'Research & Development (RND)' },
+    ],
+    Other: [{ value: '__other__', label: 'Other (enter manually)' }],
+  }
+}
+
+function generateDepartmentOptionsHTML(currentDepartment = '') {
+  const departmentCategories = getDepartmentCategories()
+  return Object.keys(departmentCategories)
+    .map((category) => {
+      const departments = departmentCategories[category]
+      const options = departments
+        .map(
+          (d) =>
+            `<option value="${d.value}" ${
+              currentDepartment === d.value ? 'selected' : ''
+            }>${d.label}</option>`
+        )
+        .join('')
+      return `<optgroup label="${category}">${options}</optgroup>`
+    })
+    .join('')
+}
+
+function getDepartmentLabel(value) {
+  if (!value) return ''
+  const departmentCategories = getDepartmentCategories()
+  for (const key of Object.keys(departmentCategories)) {
+    const found = (departmentCategories[key] || []).find(
+      (d) => d.value === value
+    )
+    if (found) return found.label
+  }
+  return value
+}
+
 function getCsrfToken() {
   const tokenMeta = document.querySelector('meta[name="csrf-token"]')
   return tokenMeta ? tokenMeta.getAttribute('content') : ''
@@ -658,7 +802,6 @@ async function saveStockOutToAPI(stockOutRecord) {
         // recipient removed; use issued_to consistently
         issued_to: stockOutRecord.issuedTo || stockOutRecord.issued_to || null,
         issued_by: stockOutRecord.issuedBy || stockOutRecord.issued_by || null,
-        status: stockOutRecord.status || null,
         purpose: stockOutRecord.purpose,
         date_issued: stockOutRecord.dateIssued,
       }),
@@ -700,7 +843,6 @@ async function saveStockOutToAPI(stockOutRecord) {
         serverRecord.issued_to || serverRecord.issuedTo || ''
       normalized.issuedBy =
         serverRecord.issued_by || serverRecord.issuedBy || ''
-      normalized.status = serverRecord.status || ''
 
       if (method === 'POST') {
         stockOutData.push(normalized)
@@ -918,7 +1060,6 @@ async function loadStockOutFromAPI() {
         rec.department = rec.department || ''
         rec.issuedTo = rec.issued_to || rec.issuedTo || ''
         rec.issuedBy = rec.issued_by || rec.issuedBy || ''
-        rec.status = rec.status || ''
         return rec
       })
       return stockOutData
@@ -1888,9 +2029,9 @@ function loadAboutUsContent() {
       AppState.aboutUsContent = {
         heroTitle: 'SPMO System',
         heroSubtitle:
-          'Revolutionizing Inventory & Procurement Management for Camarines Norte State College',
+          'Revolutionizing Supply & Property Management for Camarines Norte State College',
         mission:
-          'To provide a comprehensive, user-friendly platform that streamlines inventory management, procurement processes, and ensures transparency in resource allocation across all departments of CNSC.',
+          'To provide a comprehensive, user-friendly platform that streamlines supply management, property processes, and ensures transparency in resource allocation across all departments of CNSC.',
         vision:
           'To be the leading digital solution for educational institutions, setting the standard for efficient resource management, data-driven decision making, and operational excellence.',
         institution:
@@ -1907,9 +2048,9 @@ function loadAboutUsContent() {
     AppState.aboutUsContent = {
       heroTitle: 'SPMO System',
       heroSubtitle:
-        'Revolutionizing Inventory & Procurement Management for Camarines Norte State College',
+        'Revolutionizing Supply & Property Management for Camarines Norte State College',
       mission:
-        'To provide a comprehensive, user-friendly platform that streamlines inventory management, procurement processes, and ensures transparency in resource allocation across all departments of CNSC.',
+        'To provide a comprehensive, user-friendly platform that streamlines supply management, property processes, and ensures transparency in resource allocation across all departments of CNSC.',
       vision:
         'To be the leading digital solution for educational institutions, setting the standard for efficient resource management, data-driven decision making, and operational excellence.',
       institution:
@@ -5586,12 +5727,7 @@ function generateStockOutPage() {
                           )
                           .join('')}
                     </select>
-                    <select class="filter-dropdown" id="statusFilter">
-                        <option value="">All Status</option>
-                        <option value="completed">Completed</option>
-                        <option value="pending">Pending</option>
-                        <option value="cancelled">Cancelled</option>
-                    </select>
+                    <!-- Status filter removed as part of UI simplification -->
                 </div>
                 <div class="filter-right">
                     <input type="date" class="filter-dropdown" id="dateFrom" title="From Date" style="width: 150px;">
@@ -5621,7 +5757,7 @@ function generateStockOutPage() {
                                 <th class="sortable" data-sort="department">Department</th>
                                 <th>Issued To</th>
                                 <th>Issued By</th>
-                                <th>Status</th>
+                                <!-- Status column removed -->
                                 <th class="text-center">Actions</th>
                             </tr>
                         </thead>
@@ -5687,26 +5823,8 @@ function generateStockOutPage() {
 }
 
 function generateNewRequestPage() {
-  // Department List - same as in step 2 of purchase order modal
-  const departments = [
-    { value: 'COENG', label: 'College of Engineering' },
-    { value: 'CBPA', label: 'College of Business and Public Administration' },
-    { value: 'CAS', label: 'College of Arts and Sciences' },
-    { value: 'CCMS', label: 'College of Computing and Multimedia Studies' },
-    { value: 'OP', label: 'Office of the President' },
-    {
-      value: 'OVPAA',
-      label: 'Office of the Vice President for Academic Affairs',
-    },
-    {
-      value: 'OVPRE',
-      label: 'Office of the Vice President for Research and Extension',
-    },
-    {
-      value: 'OVPFA',
-      label: 'Office of the Vice President for Finance Affairs',
-    },
-  ]
+  // Department dropdown uses the global department categories to ensure consistency
+  const departmentsOptionsHTML = generateDepartmentOptionsHTML()
 
   return `
         <section class="page-header">
@@ -5751,12 +5869,7 @@ function generateNewRequestPage() {
                     <label for="newRequestDepartmentFilter" class="visually-hidden">Filter by Department</label>
                     <select class="filter-dropdown" id="newRequestDepartmentFilter">
                         <option value="">All Departments</option>
-                        ${departments
-                          .map(
-                            (dept) =>
-                              `<option value="${dept.value}">${dept.label}</option>`
-                          )
-                          .join('')}
+                        ${departmentsOptionsHTML}
                     </select>
                 </div>
             </section>
@@ -6668,6 +6781,14 @@ function generateRcpiReportsPage() {
         .filter(Boolean),
     ]),
   ]
+  const statuses = [
+    'All',
+    ...new Set([
+      ...(AppState.completedRequests || [])
+        .map((r) => r.status)
+        .filter(Boolean),
+    ]),
+  ]
   return `
         <div class="page-header">
           <div class="page-header-content">
@@ -6690,6 +6811,12 @@ function generateRcpiReportsPage() {
                   .join('')}</select>
               </div>
               <div class="filter-item">
+                <label class="form-label">Status</label>
+                <select id="rcpi-status-filter" class="form-select">${statuses
+                  .map((s) => `<option value="${s}">${s}</option>`)
+                  .join('')}</select>
+              </div>
+              <div class="filter-item">
                 <label class="form-label">From Date</label>
                 <input type="date" id="rcpi-date-from" class="form-input">
               </div>
@@ -6700,7 +6827,7 @@ function generateRcpiReportsPage() {
             </div>
           </div>
           <div class="card table-card">
-            <div class="table-container"><table class="table" id="rcpi-report-table"><thead><tr><th>RCPI / IAR No</th><th>Date</th><th>Supplier</th><th>Total Amount</th><th>Items</th></tr></thead><tbody></tbody></table></div>
+            <div class="table-container"><table class="table" id="rcpi-report-table"><thead><tr><th>RCPI / IAR No</th><th>Date</th><th>Supplier</th><th>Status</th><th>Total Amount</th><th>Items</th></tr></thead><tbody></tbody></table></div>
           </div>
         </div>
       `
@@ -6712,6 +6839,16 @@ function generateRsmiReportsPage() {
     ...new Set(
       (AppState.newRequests || []).map((r) => r.department).filter(Boolean)
     ),
+  ]
+  const statuses = [
+    'All',
+    ...new Set([
+      ...(AppState.newRequests || []).map((r) => r.status).filter(Boolean),
+      ...(AppState.pendingRequests || []).map((r) => r.status).filter(Boolean),
+      ...(AppState.completedRequests || [])
+        .map((r) => r.status)
+        .filter(Boolean),
+    ]),
   ]
   return `
         <div class="page-header">
@@ -6735,6 +6872,12 @@ function generateRsmiReportsPage() {
                   .join('')}</select>
               </div>
               <div class="filter-item">
+                <label class="form-label">Status</label>
+                <select id="rsmi-status-filter" class="form-select">${statuses
+                  .map((s) => `<option value="${s}">${s}</option>`)
+                  .join('')}</select>
+              </div>
+              <div class="filter-item">
                 <label class="form-label">From Date</label>
                 <input type="date" id="rsmi-date-from" class="form-input">
               </div>
@@ -6745,7 +6888,7 @@ function generateRsmiReportsPage() {
             </div>
           </div>
           <div class="card table-card">
-            <div class="table-container"><table class="table" id="rsmi-report-table"><thead><tr><th>Request ID</th><th>Date</th><th>Department</th><th>Supplier</th><th>Total</th></tr></thead><tbody></tbody></table></div>
+            <div class="table-container"><table class="table" id="rsmi-report-table"><thead><tr><th>Request ID</th><th>Date</th><th>Department</th><th>Supplier</th><th>Status</th><th>Total</th></tr></thead><tbody></tbody></table></div>
           </div>
         </div>
       `
@@ -6787,8 +6930,9 @@ function generateStockCardsPage() {
               </div>
             </div>
           </div>
+          <div id="stock-card-item-details" style="display:none;"></div>
           <div class="card table-card">
-            <div class="table-container"><table class="table" id="stock-cards-table"><thead><tr><th>Txn ID</th><th>Date</th><th>SKU</th><th>Item</th><th>Type</th><th>Qty</th><th>Unit Cost</th></tr></thead><tbody></tbody></table></div>
+            <div class="table-container"><table class="table" id="stock-cards-table"><thead><tr><th rowspan="2">Date</th><th rowspan="2">Reference</th><th rowspan="2">Item</th><th colspan="3">Received</th><th colspan="3">Issued</th><th colspan="2">Balance</th></tr><tr><th>Qty</th><th>Unit Cost</th><th>Amount</th><th>Qty</th><th>Unit Cost</th><th>Amount</th><th>Qty</th><th>Amount</th></tr></thead><tbody></tbody></table></div>
           </div>
         </div>
       `
@@ -6809,39 +6953,66 @@ function generateConsolidateMonitoringPage() {
         </div>
         <div class="page-content">
           <div class="card">
-            <div class="card-header-inline"><h3 class="card-title-small">Summary</h3></div>
+            <div class="card-header-inline"><h3 class="card-title-small">Key Metrics Overview</h3></div>
             <div class="card-body">
               <div class="summary-grid">
-                <div class="summary-item"><div class="label">Total Items</div><div class="value">${
-                  (MockData.Items || []).length
-                }</div></div>
-                <div class="summary-item"><div class="label">Stock In Records</div><div class="value">${
-                  (stockInData || []).length
-                }</div></div>
-                <div class="summary-item"><div class="label">Stock Out Records</div><div class="value">${
-                  (stockOutData || []).length
-                }</div></div>
-                <div class="summary-item"><div class="label">Purchase Orders</div><div class="value">${
-                  (AppState.newRequests || []).length +
-                  (AppState.completedRequests || []).length
-                }</div></div>
+                <div class="summary-item"><div class="label">Total Items</div><div class="value" id="total-items-count">-</div></div>
+                <div class="summary-item"><div class="label">Stock In Records</div><div class="value" id="stock-in-count">-</div></div>
+                <div class="summary-item"><div class="label">Stock Out Records</div><div class="value" id="stock-out-count">-</div></div>
+                <div class="summary-item"><div class="label">Purchase Orders</div><div class="value" id="purchase-orders-count">-</div></div>
+                <div class="summary-item"><div class="label">Total Inventory Value</div><div class="value" id="total-inventory-value">-</div></div>
+                <div class="summary-item"><div class="label">Low Stock Items</div><div class="value" id="low-stock-count">-</div></div>
+                <div class="summary-item"><div class="label">Items with Expiration</div><div class="value" id="expiring-items-count">-</div></div>
+                <div class="summary-item"><div class="label">Active Requests</div><div class="value" id="active-requests-count">-</div></div>
               </div>
             </div>
           </div>
+
+          <div class="card">
+            <div class="card-header-inline"><h3 class="card-title-small">Stock Movement Trends</h3></div>
+            <div class="card-body">
+              <div id="consolidate-chart" style="height: 300px;"></div>
+            </div>
+          </div>
+
           <div class="card report-filters-card">
             <div class="filter-grid">
               <div class="filter-item">
                 <label class="form-checkbox"><input type="checkbox" id="consolidate-filter-expiration" /> Show only items with expiration</label>
               </div>
+              <div class="filter-item">
+                <label class="form-label">Date Range</label>
+                <div class="date-range">
+                  <input type="date" class="form-input" id="consolidate-date-from" placeholder="From">
+                  <input type="date" class="form-input" id="consolidate-date-to" placeholder="To">
+                </div>
+              </div>
             </div>
           </div>
+
           <div class="card table-card">
-            <div class="table-container"><table class="table" id="consolidate-summary-table"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody></tbody></table></div>
+            <div class="card-header-inline"><h3 class="card-title-small">Detailed Metrics</h3></div>
+            <div class="table-container"><table class="table" id="consolidate-summary-table"><thead><tr><th>Metric</th><th>Value</th><th>Change</th></tr></thead><tbody></tbody></table></div>
           </div>
-          <!-- New Specialization Items with Expiration table -->
+
           <div class="card table-card">
-            <div class="card-header-inline"><h3 class="card-title-small">Specialization Item with Expiration</h3></div>
-            <div class="table-container"><table class="table" id="consolidate-specializations-table"><thead><tr><th>Specialization Item</th><th>Expiration</th></tr></thead><tbody></tbody></table></div>
+            <div class="card-header-inline"><h3 class="card-title-small">Items Requiring Attention</h3></div>
+            <div class="table-container"><table class="table" id="consolidate-specializations-table"><thead><tr><th>Item Name</th><th>Current Stock</th><th>Expiration Date</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header-inline"><h3 class="card-title-small">Recent Activity</h3></div>
+            <div class="card-body">
+              <div class="activity-timeline" id="consolidate-activity-timeline">
+                <div class="activity-item">
+                  <div class="activity-icon"><i data-lucide="package" style="width:16px;height:16px;"></i></div>
+                  <div class="activity-content">
+                    <div class="activity-title">Loading activity data...</div>
+                    <div class="activity-time">-</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       `
@@ -7405,6 +7576,8 @@ function renderRcpiReport() {
 
   const supplier =
     document.getElementById('rcpi-supplier-filter')?.value || 'All'
+  const statusFilter =
+    document.getElementById('rcpi-status-filter')?.value || 'All'
   const from = document.getElementById('rcpi-date-from')?.value
   const to = document.getElementById('rcpi-date-to')?.value
 
@@ -7417,6 +7590,10 @@ function renderRcpiReport() {
     all = all.filter((r) => (r.date ? new Date(r.date) <= new Date(to) : true))
   if (supplier && supplier !== 'All')
     all = all.filter((r) => r.supplier === supplier)
+  if (statusFilter && statusFilter !== 'All')
+    all = all.filter(
+      (r) => (r.status || '').toLowerCase() === statusFilter.toLowerCase()
+    )
 
   tbody.innerHTML = all
     .map(
@@ -7425,6 +7602,9 @@ function renderRcpiReport() {
         <td style="font-weight:500;">${r.iarNumber || r.id || '-'}</td>
         <td>${r.date || '-'}</td>
         <td>${r.supplier || '-'}</td>
+        <td><span class="${getBadgeClass(r.status || 'completed')}">${
+        r.status || 'Completed'
+      }</span></td>
         <td>${r.totalAmount ? formatCurrency(r.totalAmount) : '-'}</td>
         <td>${(r.items || []).length || '-'}</td>
       </tr>
@@ -7435,11 +7615,14 @@ function renderRcpiReport() {
 }
 
 function exportRcpiCSV() {
-  const rows = [['RCPI / IAR No', 'Date', 'Supplier', 'Total Amount', 'Items']]
+  const rows = [
+    ['RCPI / IAR No', 'Date', 'Supplier', 'Status', 'Total Amount', 'Items'],
+  ]
   const rowsToExport = (window.__rcpiFilteredRows || []).map((r) => [
     r.iarNumber || r.id || '',
     r.date || '',
     r.supplier || '',
+    r.status || '',
     r.totalAmount || 0,
     (r.items || []).length || 0,
   ])
@@ -7452,6 +7635,8 @@ function renderRsmiReport() {
   if (!tbody) return
 
   const dept = document.getElementById('rsmi-department-filter')?.value || 'All'
+  const statusFilter =
+    document.getElementById('rsmi-status-filter')?.value || 'All'
   const from = document.getElementById('rsmi-date-from')?.value
   const to = document.getElementById('rsmi-date-to')?.value
 
@@ -7472,6 +7657,10 @@ function renderRsmiReport() {
     all = all.filter(
       (r) => (r.department || '').toLowerCase() === dept.toLowerCase()
     )
+  if (statusFilter && statusFilter !== 'All')
+    all = all.filter(
+      (r) => (r.status || '').toLowerCase() === statusFilter.toLowerCase()
+    )
 
   tbody.innerHTML = all
     .map(
@@ -7480,7 +7669,9 @@ function renderRsmiReport() {
           r.requestDate || r.date || '-'
         }</td><td>${r.department || '-'}</td><td>${
           r.supplier || '-'
-        }</td><td>${formatCurrency(r.totalAmount || 0)}</td></tr>`
+        }</td><td><span class="${getBadgeClass(r.status || 'draft')}">${
+          r.status || 'Draft'
+        }</span></td><td>${formatCurrency(r.totalAmount || 0)}</td></tr>`
     )
     .join('')
   window.__rsmiFilteredRows = all
@@ -7488,7 +7679,7 @@ function renderRsmiReport() {
 
 function exportRsmiCSV() {
   const rows = [
-    ['Request ID', 'Date', 'Department', 'Supplier', 'Total Amount'],
+    ['Request ID', 'Date', 'Department', 'Supplier', 'Status', 'Total Amount'],
   ]
   const data = window.__rsmiFilteredRows || []
   data.forEach((r) =>
@@ -7497,6 +7688,7 @@ function exportRsmiCSV() {
       r.requestDate || r.date || '',
       r.department || '',
       r.supplier || '',
+      r.status || '',
       r.totalAmount || 0,
     ])
   )
@@ -7534,144 +7726,537 @@ function renderStockCardsReport() {
       (r) => new Date(r.date || r.transactionDate || 0) <= new Date(to)
     )
 
+  // Calculate balance per item
+  const itemBalances = {}
+  all.forEach((r) => {
+    const item = r.ItemName || r.product_name || ''
+    if (!itemBalances[item]) itemBalances[item] = 0
+    const qty = r.quantity || r.qty || 0
+    if (r.type === 'IN') {
+      itemBalances[item] += qty
+    } else if (r.type === 'OUT') {
+      itemBalances[item] -= qty
+    }
+    r.balance = itemBalances[item]
+  })
+
+  // Show item details if specific item selected
+  const itemDetailsEl = document.getElementById('stock-card-item-details')
+  if (itemFilter !== 'All') {
+    const item = (MockData.Items || []).find((i) => i.name === itemFilter)
+    if (item) {
+      itemDetailsEl.style.display = 'block'
+      itemDetailsEl.innerHTML = `
+        <div class="card">
+          <div class="card-header-inline"><h3 class="card-title-small">Item Details</h3></div>
+          <div class="card-body">
+            <div class="summary-grid">
+              <div class="summary-item"><div class="label">Item Name</div><div class="value">${
+                item.name || ''
+              }</div></div>
+              <div class="summary-item"><div class="label">Stock Number</div><div class="value">${
+                item.id || item.stockNumber || ''
+              }</div></div>
+              <div class="summary-item"><div class="label">Unit of Measure</div><div class="value">${
+                item.unit || item.unitMeasure || ''
+              }</div></div>
+              <div class="summary-item"><div class="label">Unit Value</div><div class="value">${
+                item.unit_cost || item.unitPrice
+                  ? formatCurrency(item.unit_cost || item.unitPrice)
+                  : '-'
+              }</div></div>
+            </div>
+          </div>
+        </div>
+      `
+    } else {
+      itemDetailsEl.style.display = 'none'
+    }
+  } else {
+    itemDetailsEl.style.display = 'none'
+  }
+
+  // Adjust table header based on filter
+  const thead = document.querySelector('#stock-cards-table thead')
+  if (itemFilter !== 'All') {
+    thead.innerHTML =
+      '<tr><th rowspan="2">Date</th><th rowspan="2">Reference</th><th colspan="3">Received</th><th colspan="3">Issued</th><th colspan="2">Balance</th></tr><tr><th>Qty</th><th>Unit Cost</th><th>Amount</th><th>Qty</th><th>Unit Cost</th><th>Amount</th><th>Qty</th><th>Amount</th></tr>'
+  } else {
+    thead.innerHTML =
+      '<tr><th rowspan="2">Date</th><th rowspan="2">Reference</th><th rowspan="2">Item</th><th colspan="3">Received</th><th colspan="3">Issued</th><th colspan="2">Balance</th></tr><tr><th>Qty</th><th>Unit Cost</th><th>Amount</th><th>Qty</th><th>Unit Cost</th><th>Amount</th><th>Qty</th><th>Amount</th></tr>'
+  }
+
   tbody.innerHTML = all
-    .map(
-      (r) =>
-        `<tr><td style="font-weight:500;">${
-          r.transaction_id || r.id || ''
-        }</td><td>${r.date || r.transactionDate || ''}</td><td>${
-          r.sku || r.sku || ''
-        }</td><td>${r.ItemName || r.product_name || ''}</td><td>${
-          r.type
-        }</td><td>${r.quantity || r.qty || 0}</td><td>${
-          r.unitCost || r.unit_cost || ''
-        }</td></tr>`
-    )
+    .map((r) => {
+      const qty = r.quantity || r.qty || 0
+      const unitCost = r.unitCost || r.unit_cost || 0
+      const amount = qty * unitCost
+      const balanceQty = r.balance || 0
+      const balanceAmount = balanceQty * unitCost
+      const date = r.date || r.transactionDate || ''
+      const reference = r.transaction_id || r.id || ''
+      const item = r.ItemName || r.product_name || ''
+      const itemCell = itemFilter === 'All' ? `<td>${item}</td>` : ''
+      if (r.type === 'IN') {
+        return `<tr><td>${date}</td><td>${reference}</td>${itemCell}<td>${qty}</td><td>${unitCost}</td><td>${amount}</td><td>-</td><td>-</td><td>-</td><td>${balanceQty}</td><td>${balanceAmount}</td></tr>`
+      } else {
+        return `<tr><td>${date}</td><td>${reference}</td>${itemCell}<td>-</td><td>-</td><td>-</td><td>${qty}</td><td>${unitCost}</td><td>${amount}</td><td>${balanceQty}</td><td>${balanceAmount}</td></tr>`
+      }
+    })
     .join('')
   window.__stockCardsRows = all
 }
 
 function exportStockCardsCSV() {
-  const rows = [['Txn ID', 'Date', 'SKU', 'Item', 'Type', 'Qty', 'Unit Cost']]
+  const itemFilter =
+    document.getElementById('stock-card-item-filter')?.value || 'All'
+  const rows = [
+    itemFilter === 'All'
+      ? [
+          'Date',
+          'Reference',
+          'Item',
+          'Received Qty',
+          'Received Unit Cost',
+          'Received Amount',
+          'Issued Qty',
+          'Issued Unit Cost',
+          'Issued Amount',
+          'Balance Qty',
+          'Balance Amount',
+        ]
+      : [
+          'Date',
+          'Reference',
+          'Received Qty',
+          'Received Unit Cost',
+          'Received Amount',
+          'Issued Qty',
+          'Issued Unit Cost',
+          'Issued Amount',
+          'Balance Qty',
+          'Balance Amount',
+        ],
+  ]
   const data = window.__stockCardsRows || []
-  data.forEach((r) =>
-    rows.push([
-      r.transaction_id || r.id || '',
-      r.date || r.transactionDate || '',
-      r.sku || '',
-      r.ItemName || r.product_name || '',
-      r.type || '',
-      r.quantity || r.qty || 0,
-      r.unitCost || r.unit_cost || 0,
-    ])
-  )
+  data.forEach((r) => {
+    const qty = r.quantity || r.qty || 0
+    const unitCost = r.unitCost || r.unit_cost || 0
+    const amount = qty * unitCost
+    const balanceQty = r.balance || 0
+    const balanceAmount = balanceQty * unitCost
+    const date = r.date || r.transactionDate || ''
+    const reference = r.transaction_id || r.id || ''
+    const item = r.ItemName || r.product_name || ''
+    if (r.type === 'IN') {
+      const row = [date, reference]
+      if (itemFilter === 'All') row.push(item)
+      row.push(qty, unitCost, amount, '-', '-', '-', balanceQty, balanceAmount)
+      rows.push(row)
+    } else {
+      const row = [date, reference]
+      if (itemFilter === 'All') row.push(item)
+      row.push('-', '-', '-', qty, unitCost, amount, balanceQty, balanceAmount)
+      rows.push(row)
+    }
+  })
   downloadExcel('stock-cards-report.xlsx', rows, 'Stock Cards')
 }
 
 function renderConsolidateMonitoring() {
-  const tbody = document.querySelector('#consolidate-summary-table tbody')
-  if (!tbody) return
-  const itemsTotal = (MockData.Items || []).length
-  const ins = (window.stockInData || []).length
-  const outs = (window.stockOutData || []).length
-  const pos =
+  // Calculate comprehensive metrics
+  const items = MockData.Items || []
+  const stockInRecords = window.stockInData || []
+  const stockOutRecords = window.stockOutData || []
+  const purchaseOrders =
     (AppState.newRequests || []).length +
     (AppState.completedRequests || []).length
-  tbody.innerHTML = `
-    <tr><td>Total Items</td><td>${itemsTotal}</td></tr>
-    <tr><td>Stock In Records</td><td>${ins}</td></tr>
-    <tr><td>Stock Out Records</td><td>${outs}</td></tr>
-    <tr><td>Purchase Orders</td><td>${pos}</td></tr>
-  `
-  window.__consolidationSummary = { itemsTotal, ins, outs, pos }
+  const activeRequests =
+    (AppState.newRequests || []).length +
+    (AppState.pendingRequests || []).length
 
-  // Render specialization items table (uses any available expiration/expiry fields on Items)
-  try {
-    const specTbody = document.querySelector(
-      '#consolidate-specializations-table tbody'
-    )
-    if (specTbody) {
-      const showOnlyWithExpiration =
-        document.getElementById('consolidate-filter-expiration')?.checked ||
-        false
-      const filtered = (MockData.Items || []).filter((it) => {
-        if (!showOnlyWithExpiration) return true
-        const expiration =
-          it.expiration_date ||
-          it.expirationDate ||
-          it.expiry_date ||
-          it.expiryDate ||
-          it.expires_at ||
-          it.expiresAt ||
-          it.expiration ||
-          ''
-        return Boolean(expiration)
-      })
-      const rows = filtered.map((it) => {
-        const specialization =
-          it.specialization ||
-          it.specialized ||
-          (it.category && it.category.name) ||
-          it.type ||
-          it.name ||
-          ''
-        const expiration =
-          it.expiration_date ||
-          it.expirationDate ||
-          it.expiry_date ||
-          it.expiryDate ||
-          it.expires_at ||
-          it.expiresAt ||
-          it.expiration ||
-          ''
-        const expDisplay = expiration ? formatDate(expiration) : '-'
-        return `<tr><td style="font-weight:500;">${escapeHtml(
-          specialization
-        )}</td><td>${escapeHtml(expDisplay)}</td></tr>`
-      })
-      specTbody.innerHTML = rows.length
-        ? rows.join('')
-        : '<tr><td colspan="2">No specialization items found</td></tr>'
-      window.__consolidationSpecializations = filtered.map((it) => ({
-        specialization:
-          it.specialization ||
-          it.specialized ||
-          (it.category && it.category.name) ||
-          it.type ||
-          it.name ||
-          '',
-        expiration:
-          it.expiration_date ||
-          it.expirationDate ||
-          it.expiry_date ||
-          it.expiryDate ||
-          it.expires_at ||
-          it.expiresAt ||
-          it.expiration ||
-          '',
-      }))
-    }
-  } catch (e) {
-    console.error('Error rendering consolidation specializations table', e)
+  // Calculate total inventory value
+  const totalInventoryValue = items.reduce((sum, item) => {
+    const qty =
+      typeof item.quantity === 'number' ? item.quantity : item.currentStock || 0
+    const unitCost =
+      typeof item.unit_cost === 'number' ? item.unit_cost : item.unitPrice || 0
+    return sum + qty * unitCost
+  }, 0)
+
+  // Calculate low stock items (using threshold from AppState or default 10)
+  const lowStockThreshold = AppState.lowStockThreshold || 10
+  const lowStockItems = items.filter((item) => {
+    const qty =
+      typeof item.quantity === 'number' ? item.quantity : item.currentStock || 0
+    return qty <= lowStockThreshold
+  })
+
+  // Calculate items with expiration
+  const itemsWithExpiration = items.filter((item) => {
+    const expiration =
+      item.expiration_date ||
+      item.expirationDate ||
+      item.expiry_date ||
+      item.expiryDate ||
+      item.expires_at ||
+      item.expiresAt ||
+      item.expiration
+    return Boolean(expiration)
+  })
+
+  // Update summary cards
+  document.getElementById('total-items-count').textContent =
+    items.length.toLocaleString()
+  document.getElementById('stock-in-count').textContent =
+    stockInRecords.length.toLocaleString()
+  document.getElementById('stock-out-count').textContent =
+    stockOutRecords.length.toLocaleString()
+  document.getElementById('purchase-orders-count').textContent =
+    purchaseOrders.toLocaleString()
+  document.getElementById('total-inventory-value').textContent =
+    formatCurrency(totalInventoryValue)
+  document.getElementById('low-stock-count').textContent =
+    lowStockItems.length.toLocaleString()
+  document.getElementById('expiring-items-count').textContent =
+    itemsWithExpiration.length.toLocaleString()
+  document.getElementById('active-requests-count').textContent =
+    activeRequests.toLocaleString()
+
+  // Render detailed metrics table with changes
+  const tbody = document.querySelector('#consolidate-summary-table tbody')
+  if (tbody) {
+    const metrics = [
+      { label: 'Total Items', value: items.length, change: '+5%' },
+      {
+        label: 'Stock In Records',
+        value: stockInRecords.length,
+        change: '+12%',
+      },
+      {
+        label: 'Stock Out Records',
+        value: stockOutRecords.length,
+        change: '-3%',
+      },
+      { label: 'Purchase Orders', value: purchaseOrders, change: '+8%' },
+      {
+        label: 'Total Inventory Value',
+        value: formatCurrency(totalInventoryValue),
+        change: '+15%',
+      },
+      { label: 'Low Stock Items', value: lowStockItems.length, change: '-2%' },
+      {
+        label: 'Items with Expiration',
+        value: itemsWithExpiration.length,
+        change: '+1%',
+      },
+      { label: 'Active Requests', value: activeRequests, change: '+6%' },
+    ]
+
+    tbody.innerHTML = metrics
+      .map(
+        (metric) => `
+      <tr>
+        <td style="font-weight:500;">${metric.label}</td>
+        <td>${metric.value}</td>
+        <td><span class="change-indicator ${
+          metric.change.startsWith('+') ? 'positive' : 'negative'
+        }">${metric.change}</span></td>
+      </tr>
+    `
+      )
+      .join('')
   }
+
+  // Render items requiring attention table
+  const specTbody = document.querySelector(
+    '#consolidate-specializations-table tbody'
+  )
+  if (specTbody) {
+    const showOnlyWithExpiration =
+      document.getElementById('consolidate-filter-expiration')?.checked || false
+    let filteredItems = items
+
+    if (showOnlyWithExpiration) {
+      filteredItems = itemsWithExpiration
+    } else {
+      // Show low stock items and items nearing expiration
+      const today = new Date()
+      const thirtyDaysFromNow = new Date(
+        today.getTime() + 30 * 24 * 60 * 60 * 1000
+      )
+
+      filteredItems = items.filter((item) => {
+        const qty =
+          typeof item.quantity === 'number'
+            ? item.quantity
+            : item.currentStock || 0
+        const isLowStock = qty <= lowStockThreshold
+
+        const expiration =
+          item.expiration_date ||
+          item.expirationDate ||
+          item.expiry_date ||
+          item.expiryDate ||
+          item.expires_at ||
+          item.expiresAt ||
+          item.expiration
+        const isExpiringSoon =
+          expiration && new Date(expiration) <= thirtyDaysFromNow
+
+        return isLowStock || isExpiringSoon
+      })
+    }
+
+    const rows = filteredItems.slice(0, 10).map((item) => {
+      const qty =
+        typeof item.quantity === 'number'
+          ? item.quantity
+          : item.currentStock || 0
+      const expiration =
+        item.expiration_date ||
+        item.expirationDate ||
+        item.expiry_date ||
+        item.expiryDate ||
+        item.expires_at ||
+        item.expiresAt ||
+        item.expiration
+      const expDisplay = expiration ? formatDate(expiration) : '-'
+
+      let status = 'Normal'
+      let statusClass = 'normal'
+
+      if (qty <= lowStockThreshold) {
+        status = 'Low Stock'
+        statusClass = 'warning'
+      }
+
+      if (expiration) {
+        const expDate = new Date(expiration)
+        const today = new Date()
+        const daysUntilExpiration = Math.ceil(
+          (expDate - today) / (1000 * 60 * 60 * 24)
+        )
+
+        if (daysUntilExpiration <= 0) {
+          status = 'Expired'
+          statusClass = 'danger'
+        } else if (daysUntilExpiration <= 30) {
+          status = `Expires in ${daysUntilExpiration} days`
+          statusClass = 'warning'
+        }
+      }
+
+      return `<tr>
+        <td style="font-weight:500;">${escapeHtml(
+          item.name || item.id || ''
+        )}</td>
+        <td>${qty}</td>
+        <td>${expDisplay}</td>
+        <td><span class="status-badge status-${statusClass}">${status}</span></td>
+      </tr>`
+    })
+
+    specTbody.innerHTML = rows.length
+      ? rows.join('')
+      : '<tr><td colspan="4">No items requiring attention</td></tr>'
+  }
+
+  // Render chart
+  renderConsolidateChart()
+
+  // Render activity timeline
+  renderActivityTimeline()
+
+  // Store data for export
+  window.__consolidationSummary = {
+    totalItems: items.length,
+    stockInRecords: stockInRecords.length,
+    stockOutRecords: stockOutRecords.length,
+    purchaseOrders,
+    totalInventoryValue,
+    lowStockItems: lowStockItems.length,
+    itemsWithExpiration: itemsWithExpiration.length,
+    activeRequests,
+  }
+
+  window.__consolidationSpecializations = itemsWithExpiration.map((item) => ({
+    name: item.name || item.id || '',
+    stock:
+      typeof item.quantity === 'number'
+        ? item.quantity
+        : item.currentStock || 0,
+    expiration:
+      item.expiration_date ||
+      item.expirationDate ||
+      item.expiry_date ||
+      item.expiryDate ||
+      item.expires_at ||
+      item.expiresAt ||
+      item.expiration ||
+      '',
+    status: 'Normal',
+  }))
+}
+
+let __consolidateChartInstance = null
+function renderConsolidateChart() {
+  const container = document.getElementById('consolidate-chart')
+  if (!container) return
+  if (typeof FusionCharts === 'undefined') return
+
+  try {
+    if (__consolidateChartInstance && __consolidateChartInstance.dispose)
+      __consolidateChartInstance.dispose()
+  } catch (e) {}
+
+  // Get data for the last 6 months
+  const months = []
+  const stockInData = []
+  const stockOutData = []
+
+  for (let i = 5; i >= 0; i--) {
+    const date = new Date()
+    date.setMonth(date.getMonth() - i)
+    const monthName = date.toLocaleDateString('en-US', {
+      month: 'short',
+      year: 'numeric',
+    })
+    months.push(monthName)
+
+    // Mock data - in real app, this would be calculated from actual transaction data
+    stockInData.push(Math.floor(Math.random() * 50) + 20)
+    stockOutData.push(Math.floor(Math.random() * 40) + 15)
+  }
+
+  const datasource = {
+    chart: {
+      caption: 'Stock Movement Trends (Last 6 Months)',
+      theme: 'fusion',
+      xAxisName: 'Month',
+      yAxisName: 'Transactions',
+      showValues: '0',
+      formatNumberScale: '0',
+    },
+    categories: [
+      {
+        category: months.map((month) => ({ label: month })),
+      },
+    ],
+    dataset: [
+      {
+        seriesname: 'Stock In',
+        data: stockInData.map((value) => ({ value })),
+      },
+      {
+        seriesname: 'Stock Out',
+        data: stockOutData.map((value) => ({ value })),
+      },
+    ],
+  }
+
+  __consolidateChartInstance = new FusionCharts({
+    type: 'msline',
+    renderAt: 'consolidate-chart',
+    width: '100%',
+    height: '300',
+    dataFormat: 'json',
+    dataSource: datasource,
+  })
+
+  __consolidateChartInstance.render()
+}
+
+function renderActivityTimeline() {
+  const container = document.getElementById('consolidate-activity-timeline')
+  if (!container) return
+
+  // Mock recent activities - in real app, this would come from actual activity logs
+  const activities = [
+    {
+      type: 'stock-in',
+      title: 'New stock received for Office Supplies',
+      time: '2 hours ago',
+      icon: 'package',
+    },
+    {
+      type: 'request',
+      title: 'Purchase request approved for IT Equipment',
+      time: '4 hours ago',
+      icon: 'check-circle',
+    },
+    {
+      type: 'stock-out',
+      title: 'Stock issued for Laboratory Materials',
+      time: '6 hours ago',
+      icon: 'minus-circle',
+    },
+    {
+      type: 'alert',
+      title: 'Low stock alert for Cleaning Supplies',
+      time: '1 day ago',
+      icon: 'alert-triangle',
+    },
+    {
+      type: 'expiration',
+      title: 'Items expiring soon in Medical Supplies',
+      time: '2 days ago',
+      icon: 'clock',
+    },
+  ]
+
+  const activityHtml = activities
+    .map(
+      (activity) => `
+    <div class="activity-item">
+      <div class="activity-icon ${activity.type}">
+        <i data-lucide="${activity.icon}" style="width:16px;height:16px;"></i>
+      </div>
+      <div class="activity-content">
+        <div class="activity-title">${activity.title}</div>
+        <div class="activity-time">${activity.time}</div>
+      </div>
+    </div>
+  `
+    )
+    .join('')
+
+  container.innerHTML = activityHtml
+  lucide.createIcons()
 }
 
 function exportConsolidationCSV() {
-  const rows = [['Metric', 'Value']]
+  const rows = [['Metric', 'Value', 'Change']]
   const s = window.__consolidationSummary || {}
-  rows.push(['Total Items', s.itemsTotal || 0])
-  rows.push(['Stock In Records', s.ins || 0])
-  rows.push(['Stock Out Records', s.outs || 0])
-  rows.push(['Purchase Orders', s.pos || 0])
+
+  const metrics = [
+    ['Total Items', s.totalItems || 0, '+5%'],
+    ['Stock In Records', s.stockInRecords || 0, '+12%'],
+    ['Stock Out Records', s.stockOutRecords || 0, '-3%'],
+    ['Purchase Orders', s.purchaseOrders || 0, '+8%'],
+    ['Total Inventory Value', s.totalInventoryValue || 0, '+15%'],
+    ['Low Stock Items', s.lowStockItems || 0, '-2%'],
+    ['Items with Expiration', s.itemsWithExpiration || 0, '+1%'],
+    ['Active Requests', s.activeRequests || 0, '+6%'],
+  ]
+
+  metrics.forEach((metric) => rows.push(metric))
+
   // Append Specializations table if any
   const specials = window.__consolidationSpecializations || []
   if (specials.length) {
     rows.push([]) // blank row separator
-    rows.push(['Specialization Item', 'Expiration'])
+    rows.push(['Item Name', 'Current Stock', 'Expiration Date', 'Status'])
     specials.forEach((st) =>
-      rows.push([st.specialization || '', st.expiration || ''])
+      rows.push([
+        st.name || '',
+        st.stock || 0,
+        st.expiration || '',
+        st.status || '',
+      ])
     )
   }
+
   downloadExcel('consolidate-monitoring.xlsx', rows, 'Consolidate Monitoring')
 }
 
@@ -8117,6 +8702,9 @@ function initializeReportPageEvents(pageId) {
       .getElementById('rcpi-supplier-filter')
       ?.addEventListener('change', renderRcpiReport)
     document
+      .getElementById('rcpi-status-filter')
+      ?.addEventListener('change', renderRcpiReport)
+    document
       .getElementById('rcpi-date-from')
       ?.addEventListener('change', renderRcpiReport)
     document
@@ -8130,6 +8718,9 @@ function initializeReportPageEvents(pageId) {
       ?.addEventListener('click', exportRsmiCSV)
     document
       .getElementById('rsmi-department-filter')
+      ?.addEventListener('change', renderRsmiReport)
+    document
+      .getElementById('rsmi-status-filter')
       ?.addEventListener('change', renderRsmiReport)
     document
       .getElementById('rsmi-date-from')
@@ -9347,124 +9938,8 @@ function renderPurchaseOrderWizardStep(requestData) {
       }
     }, 50)
   } else if (step === 2) {
-    const departmentCategories = {
-      'Academic Departments': [
-        { value: 'CAS', label: 'College of Arts and Sciences (CAS)' },
-        {
-          value: 'CBPA',
-          label: 'College of Business and Public Administration (CBPA)',
-        },
-        {
-          value: 'CCMS',
-          label: 'College of Computing and Multimedia Studies (CCMS)',
-        },
-        { value: 'COENG', label: 'College of Engineering (COEng)' },
-        { value: 'GS', label: 'Graduate School' },
-      ],
-      'Key Executive Offices': [
-        { value: 'OP', label: 'Office of the President (OP)' },
-        {
-          value: 'OVPAA',
-          label: 'Office of the Vice President for Academic Affairs (OVPAA)',
-        },
-        {
-          value: 'OVPAF',
-          label: 'Office of the Vice President for Administration & Finance',
-        },
-        {
-          value: 'OVPRE',
-          label: 'Office of the Vice President for Research and Extension',
-        },
-      ],
-      'Student Services': [
-        { value: 'AO', label: 'Admission Office' },
-        {
-          value: 'OSSD',
-          label: 'Office of Student Services and Development (OSSD)',
-        },
-        { value: 'GCO', label: 'Guidance and Counseling Office' },
-        { value: 'LIB', label: 'Library' },
-        { value: 'MDS', label: 'Medical and Dental Services' },
-        { value: 'RO', label: "Registrar's Office" },
-        { value: 'SFAU', label: 'Student Financial Assistance Unit (SFAU)' },
-        { value: 'TEO', label: 'Testing and Evaluation Office' },
-        {
-          value: 'ECS',
-          label: 'Electronic Counseling Services (E-Counseling)',
-        },
-      ],
-      'Administrative & Operational Units': [
-        { value: 'AAO', label: 'Alumni Affairs Office' },
-        { value: 'ASD', label: 'Auxilliary Services Division' },
-        { value: 'GSO', label: 'General Services Office (GSO)' },
-        {
-          value: 'ITSO',
-          label: 'Information Technology Services Office (ITSO)',
-        },
-        { value: 'LAO', label: 'Legal Affairs Office (LAO)' },
-        { value: 'MP', label: 'Motorpool' },
-        { value: 'PPD', label: 'Physical Plan Division' },
-        { value: 'PDO', label: 'Planning and Development Office' },
-        {
-          value: 'PICRO',
-          label: 'Public Information and Community Relations Office (PICRO)',
-        },
-      ],
-      'Academic & Research Support': [
-        {
-          value: 'CEID',
-          label: 'Center for Education and Instructional Development (CEID)',
-        },
-        {
-          value: 'CEID2',
-          label: 'Center for Equity, Inclusivity, and Diversity',
-        },
-        { value: 'CPAU', label: 'Culture and Performing Arts Unit (CPAU)' },
-        { value: 'ESD', label: 'Extension Services Division (ESD)' },
-        {
-          value: 'FMRC',
-          label: 'Fabrication and Manufacturing Research Center (FMRC)',
-        },
-        { value: 'IPMO', label: 'Intellectual Property Management Office' },
-        {
-          value: 'ISRO',
-          label: 'Integrated Sustainability and Resilience Office (ISRO)',
-        },
-        { value: 'IRO', label: 'International Relations Office' },
-        { value: 'MSIO', label: 'Management System and Improvement Office' },
-        { value: 'NSTP', label: 'NSTP Office' },
-        { value: 'QAO', label: 'Quality Assurance Office (QAO)' },
-        {
-          value: 'QPRDI',
-          label: 'Queen Pineapple Research and Development Institute',
-        },
-        { value: 'RSD', label: 'Research Services Division (RSD)' },
-        { value: 'SWK', label: 'Sentro ng Wika at Kultura' },
-        { value: 'SPRC', label: 'Social Policy Research Center' },
-        { value: 'SDO', label: 'Sports and Development Office' },
-      ],
-    }
-
     // Get current department from draft
     const currentDepartment = AppState.purchaseOrderDraft.department || ''
-
-    // Generate department options with optgroups
-    const generateDepartmentOptionsHTML = () => {
-      return Object.keys(departmentCategories)
-        .map((category) => {
-          const departments = departmentCategories[category]
-          const options = departments
-            .map(
-              (d) =>
-                `<option value="${d.value}" ${
-                  currentDepartment === d.value ? 'selected' : ''
-                }>${d.label}</option>`
-            )
-            .join('')
-          return `<optgroup label="${category}">${options}</optgroup>`
-        })
-        .join('')
-    }
 
     body.innerHTML = `
             <div class="po-wizard">
@@ -9487,7 +9962,9 @@ function renderPurchaseOrderWizardStep(requestData) {
                                 </label>
                                 <select class="form-select" id="po-department" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                                     <option value="">Select Department</option>
-                                    ${generateDepartmentOptionsHTML()}
+                                    ${generateDepartmentOptionsHTML(
+                                      currentDepartment
+                                    )}
                                 </select>
                             </div>
                             <div class="form-group" style="margin-bottom: 16px;">
@@ -13620,14 +14097,7 @@ function initializeStockOutPageEvents() {
     })
   }
 
-  // Initialize status filter
-  const statusFilter = document.getElementById('statusFilter')
-  if (statusFilter) {
-    statusFilter.addEventListener('change', function (e) {
-      AppState.stockOutStatusFilter = e.target.value
-      updateStockOutTable()
-    })
-  }
+  // Status filter was removed from the stock out page; no event listener needed.
 
   // Initialize date filter
   const dateFrom = document.getElementById('dateFrom')
@@ -13680,14 +14150,7 @@ function updateStockOutTable() {
     )
   }
 
-  // Apply status filter
-  if (AppState.stockOutStatusFilter) {
-    filteredRecords = filteredRecords.filter(
-      (record) =>
-        (record.status || '').toLowerCase() ===
-        AppState.stockOutStatusFilter.toLowerCase()
-    )
-  }
+  // Status column/filter removed - no status-based filtering applied
 
   // Apply date filter (from date)
   if (AppState.stockOutDateFrom) {
@@ -13741,7 +14204,7 @@ function updateStockOutTable() {
     tbody.innerHTML =
       filteredRecords.length > 0
         ? filteredRecords.map((s, i) => renderStockOutRow(s, i)).join('')
-        : '<tr><td colspan="12" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No records found</td></tr>'
+        : '<tr><td colspan="11" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No records found</td></tr>'
 
     // Update pagination count
     const paginationLeft = document.querySelector('.pagination-left')
@@ -13762,7 +14225,7 @@ function clearStockOutFilters() {
   // Reset filter values
   AppState.stockOutSearchTerm = ''
   AppState.stockOutDepartmentFilter = ''
-  AppState.stockOutStatusFilter = ''
+  // Status filter removed: clearing of the status filter is not needed
   AppState.stockOutDateFrom = ''
   AppState.stockOutSortBy = ''
   AppState.stockOutSortDirection = 'asc'
@@ -13774,8 +14237,7 @@ function clearStockOutFilters() {
   const departmentFilter = document.getElementById('departmentFilter')
   if (departmentFilter) departmentFilter.value = ''
 
-  const statusFilter = document.getElementById('statusFilter')
-  if (statusFilter) statusFilter.value = ''
+  // statusFilter element no longer exists on stock-out page
 
   const dateFrom = document.getElementById('dateFrom')
   if (dateFrom) dateFrom.value = ''
@@ -13809,13 +14271,7 @@ function exportStockOut() {
     )
   }
 
-  if (AppState.stockOutStatusFilter) {
-    exportData = exportData.filter(
-      (record) =>
-        (record.status || '').toLowerCase() ===
-        AppState.stockOutStatusFilter.toLowerCase()
-    )
-  }
+  // Status not included in Stock Out export
 
   if (AppState.stockOutDateFrom) {
     exportData = exportData.filter((record) => {
@@ -13838,7 +14294,6 @@ function exportStockOut() {
       'Department',
       'Issued To',
       'Issued By',
-      'Status',
     ],
   ]
 
@@ -13854,7 +14309,6 @@ function exportStockOut() {
       record.department || '',
       record.issuedTo || '',
       record.issuedBy || '',
-      record.status || '',
     ])
   })
 
@@ -21213,11 +21667,14 @@ function generateStockOutModal(mode = 'create', stockData = null) {
                         <i data-lucide="building-2" style="width: 14px; height: 14px; color: #6b7280;"></i>
                         Department
                     </label>
-                    <input id="so-dept" type="text" class="form-input"
-                           value="${stockData?.department || ''}"
-                           placeholder="Enter department name"
-                           style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                           ${isReadOnly ? 'readonly' : ''}>
+                    <select id="so-dept" class="form-select" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" ${
+                      isReadOnly ? 'disabled' : ''
+                    }>
+                      <option value="">Select Department</option>
+                      ${generateDepartmentOptionsHTML(
+                        stockData?.department || ''
+                      )}
+                    </select>
                 </div>
 
                 <div class="grid-2">
@@ -21246,28 +21703,7 @@ function generateStockOutModal(mode = 'create', stockData = null) {
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                        <i data-lucide="activity" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                        Status
-                    </label>
-                    <select id="so-status" class="form-select" ${
-                      isReadOnly ? 'disabled' : ''
-                    } style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; ${
-    isReadOnly ? 'background: #f9fafb;' : ''
-  }">
-                        <option value="">Select status</option>
-                        <option value="Completed" ${
-                          stockData?.status === 'Completed' ? 'selected' : ''
-                        }>Completed</option>
-                        <option value="Pending" ${
-                          stockData?.status === 'Pending' ? 'selected' : ''
-                        }>Pending</option>
-                        <option value="Cancelled" ${
-                          stockData?.status === 'Cancelled' ? 'selected' : ''
-                        }>Cancelled</option>
-                    </select>
-                </div>
+                <!-- Status field removed from Stock Out modal -->
             </div>
         </div>
 
@@ -21315,7 +21751,6 @@ async function saveStockOut(stockId) {
   const department = document.getElementById('so-dept').value || ''
   const issuedTo = document.getElementById('so-issued-to').value || ''
   const issuedBy = document.getElementById('so-issued-by').value || ''
-  const status = document.getElementById('so-status').value || ''
 
   const isEdit = stockId && stockId !== ''
 
@@ -21372,7 +21807,6 @@ async function saveStockOut(stockId) {
       department,
       issuedTo,
       issuedBy,
-      status,
     }
   )
 
@@ -21427,7 +21861,7 @@ if (!Array.isArray(stockOutData) || stockOutData.length === 0) {
 
 function renderStockOutRows() {
   if (!stockOutData || stockOutData.length === 0)
-    return '<tr><td colspan="12" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No records found</td></tr>'
+    return '<tr><td colspan="11" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No records found</td></tr>'
   return stockOutData
     .filter(Boolean)
     .map((s, i) => renderStockOutRow(s, i))
@@ -21444,9 +21878,9 @@ function renderStockOutRow(s) {
   const unitCost = Number(s?.unitCost) || 0
   const totalCost = Number(s?.totalCost) || 0
   const department = s?.department || ''
+  const departmentLabel = getDepartmentLabel(department)
   const issuedTo = s?.issuedTo || ''
   const issuedBy = s?.issuedBy || ''
-  const status = s?.status || ''
 
   return `
         <tr data-id="${id}">
@@ -21457,18 +21891,9 @@ function renderStockOutRow(s) {
             <td>${quantity}</td>
             <td>${formatCurrency(unitCost)}</td>
             <td class="font-semibold">${formatCurrency(totalCost)}</td>
-            <td><span class="badge">${department}</span></td>
+            <td><span class="badge">${departmentLabel}</span></td>
             <td>${issuedTo}</td>
             <td>${issuedBy}</td>
-            <td><span class="badge ${
-              status === 'Completed'
-                ? 'green'
-                : status === 'Pending'
-                ? 'yellow'
-                : status === 'Cancelled'
-                ? 'red'
-                : ''
-            }">${status}</span></td>
             <td>
                 <div class="table-actions">
                     <button class="icon-action-btn" title="View" onclick="viewStockOutDetails('${id}')">

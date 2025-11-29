@@ -7,409 +7,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}" />
     <title>Purchase Request • SPMO</title>
     @vite('resources/css/AccessSystem.css')
+    @vite('resources/css/user-request.css')
     <link rel="shortcut icon" href="{{ asset('images/UCN1.png') }}" type="image/png">
     <link rel="icon" href="{{ asset('images/UCN1.png') }}" type="image/png">
-    <style>
-        /* Extend existing AccessSystem styles for textarea & request form */
-        .request-card {
-            /* mirrors .login-card base */
-            background: rgba(255, 255, 255, 0.1);
-            -webkit-backdrop-filter: blur(25px);
-            backdrop-filter: blur(25px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            border-radius: 24px;
-            padding: 2.2rem 2.2rem 2rem;
-            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            animation: fadeInUp .8s ease-out .15s both;
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .request-header h2 {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #fff;
-            margin: 0 0 .35rem;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, .35);
-        }
-
-        .request-subtitle {
-            font-size: .95rem;
-            color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 1.25rem;
-        }
-
-        .form-textarea,
-        .priority-badge-group {
-            width: 100%;
-        }
-
-        .form-textarea {
-            resize: vertical;
-            min-height: 110px;
-            padding: 1rem 1.25rem;
-            border-radius: 15px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.15);
-            color: #fff;
-            font-size: 1rem;
-            outline: none;
-            transition: .3s;
-            line-height: 1.4;
-        }
-
-        .form-textarea::placeholder {
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        .form-textarea:focus {
-            border-color: #ffd500;
-            background: rgba(255, 255, 255, 0.22);
-            box-shadow: 0 0 20px rgba(255, 213, 0, 0.25);
-        }
-
-        .priority-badge-group {
-            display: flex;
-            gap: .75rem;
-            flex-wrap: wrap;
-            margin-top: .35rem;
-        }
-
-        .priority-option {
-            position: relative;
-        }
-
-        .priority-option input {
-            position: absolute;
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .priority-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: .45rem;
-            padding: .55rem .95rem;
-            border-radius: 30px;
-            font-size: .8rem;
-            font-weight: 600;
-            letter-spacing: .5px;
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            background: rgba(255, 255, 255, 0.12);
-            color: #fff;
-            cursor: pointer;
-            -webkit-backdrop-filter: blur(8px);
-            backdrop-filter: blur(8px);
-            transition: .25s;
-        }
-
-        .priority-chip:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .priority-option input:checked+.priority-chip {
-            background: linear-gradient(135deg, #ff4444, #b30000);
-            border-color: rgba(255, 213, 0, 0.6);
-            box-shadow: 0 6px 16px rgba(255, 68, 68, 0.45);
-        }
-
-        .priority-chip span.dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #ffd500;
-            box-shadow: 0 0 0 3px rgba(255, 213, 0, 0.25);
-        }
-
-        .request-actions {
-            margin-top: 1.2rem;
-            display: flex;
-            gap: .9rem;
-            flex-wrap: wrap;
-        }
-
-        .btn-glass {
-            flex: 1 1 160px;
-            border: none;
-            border-radius: 50px;
-            padding: 1rem 1.5rem;
-            font-weight: 600;
-            font-size: 1rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: .6rem;
-            transition: .3s;
-            position: relative;
-            overflow: hidden;
-            background: linear-gradient(135deg, #ff4444 0%, #b30000 100%);
-            color: #fff;
-            box-shadow: 0 8px 25px rgba(255, 68, 68, 0.4);
-        }
-
-        .btn-glass:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 34px rgba(255, 68, 68, 0.55);
-        }
-
-        .btn-secondary-glass,
-        .btn-neutral-glass {
-            flex: 1 1 130px;
-            border: none;
-            border-radius: 50px;
-            padding: 1rem 1.25rem;
-            font-weight: 600;
-            font-size: .95rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: .55rem;
-            transition: .3s;
-            background: rgba(255, 255, 255, 0.18);
-            color: #fff;
-            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-            -webkit-backdrop-filter: blur(14px);
-            backdrop-filter: blur(14px);
-            border: 1px solid rgba(255, 255, 255, 0.32);
-        }
-
-        .btn-secondary-glass:hover,
-        .btn-neutral-glass:hover {
-            background: rgba(255, 255, 255, 0.28);
-            transform: translateY(-3px);
-        }
-
-        .btn-neutral-glass {
-            background: rgba(255, 255, 255, 0.12);
-        }
-
-        .btn-neutral-glass:hover {
-            background: rgba(255, 255, 255, 0.22);
-        }
-
-        .btn-icon-left {
-            font-size: 1.1rem;
-            line-height: 0;
-            display: inline-block;
-        }
-
-        .badge-small {
-            display: inline-block;
-            padding: .35rem .75rem;
-            background: rgba(255, 255, 255, 0.18);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            border-radius: 25px;
-            font-size: .65rem;
-            letter-spacing: .5px;
-            margin: 0 0 1.2rem;
-            animation: fadeInUp .8s ease-out;
-        }
-
-        .two-col {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.1rem;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-
-        /* Make all fields in step 1 expand to full width (one column) */
-        .wizard-step#step1 .form-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .full {
-            grid-column: span 2;
-        }
-
-        @media(max-width:620px) {
-            .two-col {
-                grid-template-columns: 1fr
-            }
-        }
-
-        @media(max-width:768px) {
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-            .full {
-                grid-column: span 1;
-            }
-        }
-
-        /* Wizard Styles */
-        .wizard-progress {
-            margin-bottom: 2rem;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 8px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
-            overflow: hidden;
-            margin-bottom: 1.5rem;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #ffd500, #ff4444);
-            width: 33.33%;
-            transition: width 0.3s ease;
-        }
-
-        .progress-steps {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.5rem;
-            opacity: 0.5;
-            transition: opacity 0.3s ease;
-        }
-
-        .step.active {
-            opacity: 1;
-        }
-
-        .step-number {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: #fff;
-            transition: all 0.3s ease;
-        }
-
-        .step.active .step-number {
-            background: linear-gradient(135deg, #ffd500, #ff4444);
-            border-color: rgba(255, 213, 0, 0.6);
-            box-shadow: 0 0 15px rgba(255, 213, 0, 0.4);
-        }
-
-        .step-label {
-            font-size: 0.8rem;
-            color: rgba(255, 255, 255, 0.8);
-            font-weight: 500;
-            text-align: center;
-        }
-
-        .wizard-step {
-            display: none;
-            animation: fadeInUp 0.5s ease-out;
-        }
-
-        .wizard-step.active {
-            display: block;
-        }
-
-        .step-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 1rem;
-            margin-top: 2rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        @media(max-width: 768px) {
-            .progress-steps {
-                flex-wrap: wrap;
-                gap: 1rem;
-            }
-            .step {
-                flex: 1;
-                min-width: 80px;
-            }
-            .step-actions {
-                flex-direction: column;
-            }
-            .step-actions button {
-                width: 100%;
-            }
-        }
-
-        /* Request Summary Styles */
-        .request-summary {
-            margin: 2rem 0;
-            padding: 1.5rem;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 12px;
-            backdrop-filter: blur(10px);
-        }
-
-        .summary-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: #fff;
-            margin: 0 0 1rem 0;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-        }
-
-        .summary-content {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 0.75rem;
-        }
-
-        .summary-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.5rem 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .summary-row:last-child {
-            border-bottom: none;
-        }
-
-        .summary-label {
-            font-weight: 500;
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 0.9rem;
-        }
-
-        .summary-value {
-            font-weight: 600;
-            color: #fff;
-            font-size: 0.9rem;
-            text-align: right;
-            max-width: 60%;
-            word-wrap: break-word;
-        }
-
-        @media(max-width: 768px) {
-            .summary-row {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 0.25rem;
-            }
-            .summary-value {
-                text-align: left;
-                max-width: 100%;
-            }
-        }
-    </style>
 </head>
 
 <body>
@@ -495,33 +95,38 @@
                     <div class="wizard-step" id="step2">
                         <div class="form-grid">
                             <div class="form-group full">
-                                <label class="form-label" for="items">Requested Items</label>
-                                <textarea class="form-textarea" id="items" name="items"
-                                    placeholder="List items with optional quantities..." required></textarea>
+                                <label class="form-label">Requested Items</label>
+                                <div class="items-table-container">
+                                    <table class="items-table" id="itemsTable">
+                                        <colgroup>
+                                            <col class="col-desc">
+                                            <col class="col-unit">
+                                            <col class="col-qty">
+                                            <col class="col-unit-cost">
+                                            <col class="col-total">
+                                            <col class="col-actions">
+                                        </colgroup>
+                                        <thead>
+                                            <tr>
+                                                <th class="col-desc">Item Description</th>
+                                                <th class="col-unit">Unit</th>
+                                                <th class="col-qty">Quantity</th>
+                                                <th class="col-unit-cost">Unit Cost (₱)</th>
+                                                <th class="col-total">Total Cost (₱)</th>
+                                                <th class="col-actions">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="itemsTableBody">
+                                            <!-- Rows will be added dynamically -->
+                                        </tbody>
+                                    </table>
+                                    <button type="button" id="addItemBtn" class="btn-secondary-glass add-item-btn">+ Add Item</button>
+                                </div>
                             </div>
 
-
                             <div class="form-group">
-                                <label class="form-label" for="unit">Unit of Measurement</label>
-                                <input class="form-input" id="unit" name="unit" type="text" placeholder="e.g., box / pcs"
-                                    required />
-                            </div>
-
-                            <div class="form-group">
-                                <label class="form-label" for="quantity">Quantity</label>
-                                <input class="form-input" id="quantity" name="quantity" type="number" min="1" step="1"
-                                    placeholder="e.g., 10" />
-                            </div>
-
-                            <div class="form-group">
-                                <label class="form-label" for="unitCost">Unit Cost (₱)</label>
-                                <input class="form-input" id="unitCost" name="unitCost" type="number" min="0" step="0.01"
-                                    placeholder="e.g., 1500.00" />
-                            </div>
-
-                            <div class="form-group">
-                                <label class="form-label" for="totalCost">Total Cost (₱)</label>
-                                <input class="form-input" id="totalCost" name="totalCost" type="text"
+                                <label class="form-label" for="overallTotalCost">Overall Total Cost (₱)</label>
+                                <input class="form-input" id="overallTotalCost" name="overallTotalCost" type="text"
                                     placeholder="Auto-calculated" readonly />
                             </div>
 
@@ -593,29 +198,15 @@
                                     <span class="summary-label">Designation:</span>
                                     <span class="summary-value" id="summary-designation">-</span>
                                 </div>
-                                <div class="summary-row">
-                                    <span class="summary-label">Items:</span>
-                                    <span class="summary-value" id="summary-items">-</span>
+                                <div class="summary-row full">
+                                    <span class="summary-label">Requested Items:</span>
+                                    <div class="summary-items-table" id="summary-items">
+                                        <!-- Items table will be populated here -->
+                                    </div>
                                 </div>
                                 <div class="summary-row">
-                                    <span class="summary-label">Purpose:</span>
-                                    <span class="summary-value" id="summary-purpose">-</span>
-                                </div>
-                                <div class="summary-row">
-                                    <span class="summary-label">Unit:</span>
-                                    <span class="summary-value" id="summary-unit">-</span>
-                                </div>
-                                <div class="summary-row">
-                                    <span class="summary-label">Quantity:</span>
-                                    <span class="summary-value" id="summary-quantity">-</span>
-                                </div>
-                                <div class="summary-row">
-                                    <span class="summary-label">Unit Cost:</span>
-                                    <span class="summary-value" id="summary-unitCost">-</span>
-                                </div>
-                                <div class="summary-row">
-                                    <span class="summary-label">Total Cost:</span>
-                                    <span class="summary-value" id="summary-totalCost">-</span>
+                                    <span class="summary-label">Overall Total Cost:</span>
+                                    <span class="summary-value" id="summary-overallTotalCost">-</span>
                                 </div>
                                 <div class="summary-row">
                                     <span class="summary-label">Date Needed:</span>
@@ -624,6 +215,10 @@
                                 <div class="summary-row">
                                     <span class="summary-label">Priority:</span>
                                     <span class="summary-value" id="summary-priority">-</span>
+                                </div>
+                                <div class="summary-row full">
+                                    <span class="summary-label">Purpose:</span>
+                                    <span class="summary-value" id="summary-purpose">-</span>
                                 </div>
                             </div>
                         </div>
@@ -685,6 +280,22 @@
                 const data = new FormData(form);
                 const obj = {};
                 data.forEach((v, k) => obj[k] = v);
+
+                // Collect items from table
+                const items = [];
+                const rows = document.querySelectorAll('#itemsTableBody tr');
+                rows.forEach(row => {
+                    const item = {
+                        item_description: row.querySelector('.item-description').value,
+                        unit: row.querySelector('.item-unit').value,
+                        quantity: row.querySelector('.item-quantity').value,
+                        unit_cost: row.querySelector('.item-unit-cost').value,
+                        total_cost: row.querySelector('.item-total-cost').value
+                    };
+                    items.push(item);
+                });
+                obj.items = items;
+
                 return obj;
             }
 
@@ -776,13 +387,51 @@
             }
 
             // --- Calculation / validation ---
-            function calculateTotalCost() {
-                const qty = parseFloat(byId('quantity').value) || 0;
-                const unit = parseFloat(byId('unitCost').value) || 0;
-                const total = qty * unit;
-                const totalCostField = byId('totalCost');
-                totalCostField.value = total > 0 ? total.toFixed(2) : '';
+            function calculateRowTotal(row) {
+                const qty = parseFloat(row.querySelector('.item-quantity').value) || 0;
+                const unitCost = parseFloat(row.querySelector('.item-unit-cost').value) || 0;
+                const total = qty * unitCost;
+                row.querySelector('.item-total-cost').value = total > 0 ? total.toFixed(2) : '';
+                calculateOverallTotal();
+            }
+
+            function calculateOverallTotal() {
+                const rows = document.querySelectorAll('#itemsTableBody tr');
+                let overallTotal = 0;
+                rows.forEach(row => {
+                    const total = parseFloat(row.querySelector('.item-total-cost').value) || 0;
+                    overallTotal += total;
+                });
+                const overallField = byId('overallTotalCost');
+                overallField.value = overallTotal > 0 ? formatCurrency(overallTotal) : '';
                 if (currentStep === 3) updateSummary();
+            }
+
+            function addItemRow() {
+                const tbody = byId('itemsTableBody');
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="col-desc"><input type="text" class="item-description" placeholder="e.g., Laptop" required></td>
+                    <td class="col-unit"><input type="text" class="item-unit" placeholder="e.g., pcs" required></td>
+                    <td class="col-qty"><input type="number" class="item-quantity" min="1" step="1" placeholder="1" required></td>
+                    <td class="col-unit-cost"><input type="number" class="item-unit-cost" min="0" step="0.01" placeholder="0.00" required></td>
+                    <td class="col-total"><input type="text" class="item-total-cost" placeholder="Auto-calculated" readonly></td>
+                    <td class="col-actions"><button type="button" class="remove-item-btn" title="Remove Item">×</button></td>
+                `;
+                tbody.appendChild(row);
+
+                // Add event listeners
+                row.querySelector('.item-quantity').addEventListener('input', () => calculateRowTotal(row));
+                row.querySelector('.item-unit-cost').addEventListener('input', () => calculateRowTotal(row));
+                row.querySelector('.remove-item-btn').addEventListener('click', () => removeItemRow(row));
+
+                // Calculate immediately if values are set
+                calculateRowTotal(row);
+            }
+
+            function removeItemRow(row) {
+                row.remove();
+                calculateOverallTotal();
             }
 
             function onResetForm() {
@@ -790,6 +439,10 @@
                 setTimeout(() => {
                     toast('Form cleared');
                     currentStep = 1; updateProgress();
+                    // Clear table and add one empty row
+                    byId('itemsTableBody').innerHTML = '';
+                    addItemRow();
+                    byId('overallTotalCost').value = '';
                 }, 50);
             }
 
@@ -803,7 +456,7 @@
             }
 
             function updateSummary() {
-                const fields = ['email', 'requester', 'department', 'designation', 'items', 'purpose', 'unit', 'quantity', 'unitCost', 'totalCost', 'neededDate', 'priority'];
+                const fields = ['email', 'requester', 'department', 'designation', 'purpose', 'neededDate', 'priority'];
                 fields.forEach(field => {
                     const target = byId(`summary-${field}`);
                     if (!target) return;
@@ -817,24 +470,71 @@
                     }
 
                     if (value !== '-') {
-                        if (field === 'unitCost' || field === 'totalCost') value = formatCurrency(value);
                         if (field === 'neededDate') {
                             const d = new Date(value); value = isNaN(d.getTime()) ? value : d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
                         }
-                        if (field === 'quantity') value = parseInt(value) ? parseInt(value).toLocaleString() : value;
                     }
 
                     target.textContent = value;
                 });
+
+                // Update items table
+                const summaryItems = byId('summary-items');
+                const rows = document.querySelectorAll('#itemsTableBody tr');
+                if (rows.length > 0) {
+                    let html = '<table><thead><tr><th>Description</th><th>Unit</th><th>Qty</th><th>Unit Cost</th><th>Total</th></tr></thead><tbody>';
+                    rows.forEach(row => {
+                        const desc = row.querySelector('.item-description').value || '-';
+                        const unit = row.querySelector('.item-unit').value || '-';
+                        const qty = row.querySelector('.item-quantity').value || '-';
+                        const unitCost = row.querySelector('.item-unit-cost').value ? formatCurrency(row.querySelector('.item-unit-cost').value) : '-';
+                        const total = row.querySelector('.item-total-cost').value ? formatCurrency(row.querySelector('.item-total-cost').value) : '-';
+                        html += `<tr><td>${desc}</td><td>${unit}</td><td>${qty}</td><td>${unitCost}</td><td>${total}</td></tr>`;
+                    });
+                    html += '</tbody></table>';
+                    summaryItems.innerHTML = html;
+                } else {
+                    summaryItems.innerHTML = '-';
+                }
+
+                // Update overall total
+                const overallTotal = byId('overallTotalCost').value;
+                byId('summary-overallTotalCost').textContent = overallTotal || '-';
             }
 
             function validateCurrentStep() {
                 const stepEl = byId(`step${currentStep}`);
                 if (!stepEl) return true;
 
-                const required = stepEl.querySelectorAll('input[required], textarea[required]');
                 let ok = true;
+
+                if (currentStep === 2) {
+                    // Validate items table
+                    const rows = document.querySelectorAll('#itemsTableBody tr');
+                    if (rows.length === 0) {
+                        showToast({ message: 'Please add at least one item', type: 'error', duration: 3000 });
+                        ok = false;
+                    } else {
+                        rows.forEach(row => {
+                            const inputs = row.querySelectorAll('input[required]');
+                            inputs.forEach(input => {
+                                if (!String(input.value || '').trim().length) {
+                                    input.style.borderColor = '#ff4444';
+                                    input.style.boxShadow = '0 0 10px rgba(255, 68, 68, 0.3)';
+                                    ok = false;
+                                } else {
+                                    input.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                                    input.style.boxShadow = 'none';
+                                }
+                            });
+                        });
+                        if (!ok) showToast({ message: 'Please fill in all item details', type: 'error', duration: 3000 });
+                    }
+                }
+
+                const required = stepEl.querySelectorAll('input[required], textarea[required]');
                 required.forEach(field => {
+                    if (field.closest('#itemsTableBody')) return; // Skip table inputs, handled above
                     let valid = true;
                     if (field.type === 'radio') {
                         valid = !!document.querySelector(`input[name="${field.name}"]:checked`);
@@ -852,7 +552,7 @@
                     }
                 });
 
-                if (!ok) showToast({ message: 'Please fill in all required fields', type: 'error', duration: 3000 });
+                if (!ok && currentStep !== 2) showToast({ message: 'Please fill in all required fields', type: 'error', duration: 3000 });
                 return ok;
             }
 
@@ -871,7 +571,9 @@
                 const payload = harvestForm();
 
                 const shortPurpose = payload.purpose ? `Purpose: ${String(payload.purpose).slice(0, 80)}${String(payload.purpose).length > 80 ? '…' : ''}` : '';
-                dialogText.textContent = `Submit request for ${payload.items?.slice(0, 60) || ''} (${payload.priority || 'No priority'}) — Qty: ${payload.quantity || '—'} Total cost: ${formatCurrency(payload.totalCost)}${shortPurpose ? ' — ' + shortPurpose : ''}?`;
+                const itemCount = payload.items ? payload.items.length : 0;
+                const overallTotal = payload.overallTotalCost || '0';
+                dialogText.textContent = `Submit request for ${itemCount} item(s) (${payload.priority || 'No priority'}) — Overall cost: ${formatCurrency(overallTotal)}${shortPurpose ? ' — ' + shortPurpose : ''}?`;
 
                 const proceed = await new Promise((res) => {
                     if (typeof dialogConfirm.showModal === 'function') {
@@ -934,8 +636,8 @@
                 const ts = new Date().toISOString();
                 const request = Object.assign({}, {
                     requestId, email: d.email, requester: d.requester, department: d.department, designation: d.designation,
-                    items: d.items, purpose: d.purpose || null, unit: d.unit, quantity: d.quantity || null, unitCost: d.unitCost || null, totalCost: d.totalCost || null,
-                    neededDate: d.neededDate || 'Not specified', priority: d.priority, status: 'Incoming', submittedDate: ts, timestamp: ts
+                    items: d.items, purpose: d.purpose || null, neededDate: d.neededDate || 'Not specified', priority: d.priority, status: 'Incoming', submittedDate: ts, timestamp: ts,
+                    overallTotalCost: d.overallTotalCost || null
                 });
 
                 existing.push(request);
@@ -954,9 +656,9 @@
                 }
 
                 try {
-                    const qty = request.quantity ? `Qty ${request.quantity}` : '';
-                    const cost = request.totalCost ? `Total ${formatCurrency(request.totalCost)}` : '';
-                    const summary = [qty, cost].filter(Boolean).join(' • ');
+                    const itemCount = request.items ? request.items.length : 0;
+                    const cost = request.overallTotalCost ? `Total ${formatCurrency(request.overallTotalCost)}` : '';
+                    const summary = [itemCount + ' item(s)', cost].filter(Boolean).join(' • ');
                     if (summary) showToast({ message: `${requestId} — ${summary}`, type: 'success', duration: 4200 });
                 } catch (e) { /* ignore */ }
             }
@@ -1025,8 +727,13 @@
                 }
 
                 // Local HTML preview fallback (same as existing behavior)
-                const totalCost = payload.totalCost ? formatCurrency(payload.totalCost) : '—';
-                const itemsHtml = (payload.items || '').replace(/\n/g, '<br/>');
+                const overallTotal = payload.overallTotalCost ? formatCurrency(payload.overallTotalCost.replace(/[^\d.-]/g, '')) : '—';
+                let itemsHtml = '';
+                if (payload.items && Array.isArray(payload.items)) {
+                    itemsHtml = payload.items.map(item => `${item.item_description || ''} (${item.quantity || ''} ${item.unit || ''}) - ${item.unit_cost ? formatCurrency(item.unit_cost) : ''} each, Total: ${item.total_cost ? formatCurrency(item.total_cost) : ''}`).join('<br/>');
+                } else {
+                    itemsHtml = (payload.items || '').replace(/\n/g, '<br/>');
+                }
 
                 const preview = window.open('', '_blank', 'width=900,height=700,scrollbars=yes,toolbar=no,menubar=no');
                 if (!preview) { showToast({ message: 'Unable to open preview window — popup blocked?', type: 'error', duration: 3000 }); return; }
@@ -1039,10 +746,7 @@
                     + tableRow('Department', payload.department)
                     + tableRow('Designation', payload.designation)
                     + tableRow('Items', itemsHtml)
-                    + tableRow('Unit', payload.unit)
-                    + tableRow('Quantity', payload.quantity)
-                    + tableRow('Unit Cost', payload.unitCost ? formatCurrency(payload.unitCost) : '')
-                    + tableRow('Total Cost', totalCost)
+                    + tableRow('Overall Total Cost', overallTotal)
                     + tableRow('Date Needed', payload.neededDate)
                     + tableRow('Priority', payload.priority)
                     + tableRow('Purpose', payload.purpose)
@@ -1073,8 +777,14 @@
             function init() {
                 updateProgress();
 
+                // Add initial item row
+                addItemRow();
+
                 // central click handler for buttons using data-action attributes
                 document.addEventListener('click', handleActionClick);
+
+                // Add item button
+                byId('addItemBtn').addEventListener('click', addItemRow);
 
                 // form submit, reset
                 form.addEventListener('submit', handleRequestSubmit);
@@ -1082,9 +792,6 @@
 
                 // priority change updates summary
                 document.querySelectorAll('input[name="priority"]').forEach(i => i.addEventListener('change', updateSummary));
-
-                // calculation listeners
-                ['quantity', 'unitCost'].forEach(id => { const el = byId(id); if (el) el.addEventListener('input', calculateTotalCost); });
 
                 // Prevent selecting a past date for 'neededDate' - set min to today
                 const neededEl = byId('neededDate');

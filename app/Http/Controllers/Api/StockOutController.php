@@ -58,7 +58,6 @@ class StockOutController extends Controller
             'issued_to' => 'nullable|string',
             'issued_by' => 'nullable|string',
             'purpose' => 'nullable|string',
-            'status' => 'nullable|string',
             'date_issued' => 'required|date',
         ]);
 
@@ -131,7 +130,6 @@ class StockOutController extends Controller
             'issued_to' => 'nullable|string',
             'issued_by' => 'nullable|string',
             'purpose' => 'nullable|string',
-            'status' => 'nullable|string',
             'date_issued' => 'required|date',
         ]);
 

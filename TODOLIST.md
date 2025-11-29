@@ -1,6 +1,6 @@
 // filepath: c:\xampp\htdocs\SupplySystem\TODOLIST.md
 
-# Web-based inventory and procurement management system TO-DO-LIST
+# Web-based supply and property management system TO-DO-LIST
 
 **Project Completion Status: 100% (5/5 tasks completed)**
 

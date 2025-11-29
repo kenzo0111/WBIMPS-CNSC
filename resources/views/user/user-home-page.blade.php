@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="shortcut icon" href="{{ asset('images/UCN1.png') }}" type="image/png">
   <link rel="icon" href="{{ asset('images/UCN1.png') }}" type="image/png">
-  <title>Inventory & Procurement Management System</title>
+  <title>Supply and Property Management System</title>
   @vite('resources/css/index.css')
 </head>
 
@@ -19,7 +19,7 @@
         <div class="logo-text">
           <h1>Supply and Property Management</h1>
           <hr>
-          <p>WEB - BASED INVENTORY AND PROCUREMENT MANAGEMENT SYSTEM</p>
+          <p>WEB - BASED SUPPLY AND PROPERTY MANAGEMENT SYSTEM</p>
         </div>
       </div>
       <nav class="nav-menu">
@@ -41,12 +41,12 @@
         </div>
         <h2 class="hero-title">
           <span class="title-line">
-            <span class="red">Inventory</span> & <span class="yellow">Procurement</span>
+            <span class="red">Supply</span> & <span class="yellow">Property</span>
           </span>
           <span class="title-line">Management System</span>
         </h2>
         <p class="hero-description">
-          Streamline your institutional operations with our comprehensive inventory and procurement
+          Streamline your institutional operations with our comprehensive supply and property
           management system designed specifically for Camarines Norte State College.
         </p>
         <div class="hero-stats">
@@ -82,7 +82,7 @@
     <div class="features-container">
       <div class="features-header">
         <h2>Powerful Features for Institutional Management</h2>
-        <p>Our system provides comprehensive tools to manage inventory, track procurement,
+        <p>Our system provides comprehensive tools to manage supply, track property,
           and ensure efficient operations across all departments</p>
       </div>
       <div class="feature-grid">
@@ -104,8 +104,8 @@
           <div class="feature-icon">
             <img src="{{ $imagesPath }}/procurement.png" alt="Procurement Icon">
           </div>
-          <h3>Procurement System</h3>
-          <p>Automate purchase orders and vendor management processes</p>
+          <h3>Property System</h3>
+          <p>Manage property records and custodian management processes</p>
         </article>
         <article class="feature-card">
           <div class="feature-icon">
