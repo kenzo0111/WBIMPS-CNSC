@@ -179,7 +179,8 @@ function initializeKeyboardShortcuts() {
 // Application State
 const AppState = {
   currentPage: 'dashboard',
-  expandedMenus: ['inventory'],
+  // Keep expanded menus empty by default so sidebar groups are collapsed on reload
+  expandedMenus: [],
   currentModal: null,
   // current logged in user (basic profile)
   currentUser: {
