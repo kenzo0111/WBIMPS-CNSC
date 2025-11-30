@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\SupportController as ApiSupportController;
 use App\Http\Controllers\Api\UserLogController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\SiteContentController;
 
 // Apply rate limiting to all API routes: 60 requests per minute
 Route::middleware('throttle:60,1')->group(function () {
@@ -38,4 +39,8 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::get('/support-tickets', [ApiSupportController::class, 'index']);
     Route::get('/support-tickets/{id}', [ApiSupportController::class, 'show']);
     Route::post('/support-tickets/{id}/status', [ApiSupportController::class, 'updateStatus']);
+
+    // Site content (About Us, etc.)
+    Route::get('/site-contents/{key}', [SiteContentController::class, 'show']);
+    Route::put('/site-contents/{key}', [SiteContentController::class, 'update']);
 });

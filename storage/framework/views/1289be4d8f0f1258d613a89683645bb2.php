@@ -24,6 +24,8 @@
         window.APP_ROUTES.inventoryCustodianSlipView = "<?php echo e(url('/inventory-custodian-slip/view/{id}')); ?>";
         window.APP_ROUTES.requisitionIssueSlipView = "<?php echo e(url('/requisition-issue-slip/view/{id}')); ?>";
         window.APP_ROUTES.propertyAcknowledgementReceiptView = "<?php echo e(url('/property-acknowledgement-receipt/view/{id}')); ?>";
+        window.APP_ROUTES.siteContentAboutGet = "<?php echo e(url('/api/site-contents/about-us')); ?>";
+        window.APP_ROUTES.siteContentAboutUpdate = "<?php echo e(url('/api/site-contents/about-us')); ?>";
         window.APP_ROUTES.inspectionAcceptanceReportView = "<?php echo e(url('/inspection-acceptance-report/view/{id}')); ?>";
     </script>
     <script>

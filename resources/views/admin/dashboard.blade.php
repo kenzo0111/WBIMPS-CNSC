@@ -24,6 +24,8 @@
         window.APP_ROUTES.inventoryCustodianSlipView = "{{ url('/inventory-custodian-slip/view/{id}') }}";
         window.APP_ROUTES.requisitionIssueSlipView = "{{ url('/requisition-issue-slip/view/{id}') }}";
         window.APP_ROUTES.propertyAcknowledgementReceiptView = "{{ url('/property-acknowledgement-receipt/view/{id}') }}";
+        window.APP_ROUTES.siteContentAboutGet = "{{ url('/api/site-contents/about-us') }}";
+        window.APP_ROUTES.siteContentAboutUpdate = "{{ url('/api/site-contents/about-us') }}";
         window.APP_ROUTES.inspectionAcceptanceReportView = "{{ url('/inspection-acceptance-report/view/{id}') }}";
     </script>
     <script>

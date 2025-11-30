@@ -59,6 +59,7 @@ class DatabaseSeeder extends Seeder
             \Database\Seeders\PermissionSeeder::class,
             ItemSeeder::class,
             // ActivitySeeder::class,
+            \Database\Seeders\SiteContentSeeder::class,
         ]);
     }
 }

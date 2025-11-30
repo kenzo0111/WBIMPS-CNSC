@@ -2017,8 +2017,29 @@ function updateUserDisplay() {
 }
 
 // Load About Us content from localStorage
-function loadAboutUsContent() {
+async function loadAboutUsContent() {
   try {
+    // First attempt to load About Us content from server
+    const aboutGetUrl =
+      (window.APP_ROUTES && window.APP_ROUTES.siteContentAboutGet) ||
+      '/api/site-contents/about-us'
+    try {
+      const res = await fetch(aboutGetUrl)
+      if (res.ok) {
+        const json = await res.json()
+        if (json && json.data) {
+          AppState.aboutUsContent = json.data
+          console.log('About Us content loaded from server')
+          return
+        }
+      }
+    } catch (err) {
+      console.warn(
+        'Failed to load About Us from server, falling back to localStorage',
+        err
+      )
+    }
+
     const stored = localStorage.getItem('spmo_about_us_content')
     if (stored) {
       const parsed = JSON.parse(stored)
@@ -17034,6 +17055,13 @@ function setLoginActivityPage(page) {
     showConfirm,
     showAlert,
     logout,
+    // Coordinators helper functions for legacy inline handlers
+    addCoordinator,
+    removeCoordinator,
+    moveCoordinatorUp,
+    moveCoordinatorDown,
+    changeCoordinatorImage,
+    removeCoordinatorImage,
   }
 
   Object.keys(handlers).forEach((k) => {
@@ -17046,25 +17074,49 @@ function generateAboutPage() {
   const currentYear = new Date().getFullYear()
 
   // Get stored About Us content or use defaults
-  const aboutContent = AppState.aboutUsContent || {
-    heroTitle: 'SPMO System',
-    heroSubtitle:
-      'Revolutionizing Inventory & Procurement Management for Camarines Norte State College',
-    mission:
-      'To provide a comprehensive, user-friendly platform that streamlines inventory management, procurement processes, and ensures transparency in resource allocation across all departments of CNSC.',
-    vision:
-      'To be the leading digital solution for educational institutions, setting the standard for efficient resource management, data-driven decision making, and operational excellence.',
-    institution:
-      'Camarines Norte State College - Supply and Property Management Office',
-    email: 'cnsc.spmo@.edu.ph',
-    phone: '(054) 440-1134',
-    gallery: [],
-    committeeMembers: [
-      'Dr. Juan Dela Cruz — Chair',
-      'Ms. Maria Santos — Member',
-      'Mr. Pedro Reyes — Member',
-    ],
-  }
+  const aboutContent = Object.assign(
+    {},
+    {
+      heroTitle: 'SPMO System',
+      heroSubtitle:
+        'Revolutionizing Inventory & Procurement Management for Camarines Norte State College',
+      mission:
+        'To provide a comprehensive, user-friendly platform that streamlines inventory management, procurement processes, and ensures transparency in resource allocation across all departments of CNSC.',
+      vision:
+        'To be the leading digital solution for educational institutions, setting the standard for efficient resource management, data-driven decision making, and operational excellence.',
+      institution:
+        'Camarines Norte State College - Supply and Property Management Office',
+      email: 'cnsc.spmo@.edu.ph',
+      phone: '(054) 440-1134',
+      gallery: [],
+      committeeMembers: [
+        'Dr. Juan Dela Cruz — Chair',
+        'Ms. Maria Santos — Member',
+        'Mr. Pedro Reyes — Member',
+      ],
+      coordinators: [
+        {
+          name: 'Cherry Ann Quila',
+          title: 'QA & Papers',
+          description:
+            'Leading QA initiatives to maintain excellence and alignment in all project and paper outputs.',
+        },
+        {
+          name: 'Vince Balce',
+          title: 'Project Lead/Lead Developer',
+          description:
+            'Leading strategic direction and architecting robust system features for project success.',
+        },
+        {
+          name: 'Marinel Ledesma',
+          title: 'Co Developer & Documentation',
+          description:
+            'Ensuring quality standards with comprehensive support and clear project documentation.',
+        },
+      ],
+    },
+    AppState.aboutUsContent || {}
+  )
 
   return `
     <header class="page-header">
@@ -17301,27 +17353,56 @@ function generateAboutPage() {
           </header>
 
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;">
+            ${
+              (aboutContent.coordinators || []).length > 0
+                ? (aboutContent.coordinators || [])
+                    .map((c) => {
+                      const name = escapeHtml(String(c.name || '').trim())
+                      const title = escapeHtml(String(c.title || '').trim())
+                      const desc = escapeHtml(
+                        String(c.description || '').trim()
+                      )
+                      const initials = (name || '')
+                        .split(' ')
+                        .map((p) => p[0] || '')
+                        .slice(0, 2)
+                        .join('')
+                        .toUpperCase()
+                      const image = escapeHtml(String(c.image || '').trim())
+                      const avatarHtml = image
+                        ? `<img src="${image}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">`
+                        : initials
+                      return `
+              <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:28px;border-radius:12px;text-align:center;">
+                <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(102,126,234,0.3);" aria-label="${name}">${avatarHtml}</figure>
+              <h3 style="margin:0 0 6px 0;color:#111827;font-size:18px;font-weight:600;">${name}</h3>
+              <p style="margin:0 0 12px 0;color:#667eea;font-weight:600;font-size:14px;">${title}</p>
+              <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">${desc}</p>
+            </article>
+          `
+                    })
+                    .join('')
+                : `
             <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:28px;border-radius:12px;text-align:center;">
-              <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(102,126,234,0.3);" aria-label="Cherry Ann Quila">CQ</figure>
+              <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(102,126,234,0.3);" aria-label="CQ">CQ</figure>
               <h3 style="margin:0 0 6px 0;color:#111827;font-size:18px;font-weight:600;">Cherry Ann Quila</h3>
               <p style="margin:0 0 12px 0;color:#667eea;font-weight:600;font-size:14px;">QA & Papers</p>
               <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">Leading QA initiatives to maintain excellence and alignment in all project and paper outputs.</p>
             </article>
-
             <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:28px;border-radius:12px;text-align:center;">
-              <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#764ba2 0%,#667eea 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(118,75,162,0.3);" aria-label="Vince Balce">VB</figure>
+              <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#764ba2 0%,#667eea 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(118,75,162,0.3);" aria-label="VB">VB</figure>
               <h3 style="margin:0 0 6px 0;color:#111827;font-size:18px;font-weight:600;">Vince Balce</h3>
               <p style="margin:0 0 12px 0;color:#764ba2;font-weight:600;font-size:14px;">Project Lead/Lead Developer</p>
               <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">Leading strategic direction and architecting robust system features for project success.</p>
             </article>
-
             <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:28px;border-radius:12px;text-align:center;">
-              <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(102,126,234,0.3);" aria-label="Marinel Ledesma">ML</figure>
+              <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(102,126,234,0.3);" aria-label="ML">ML</figure>
               <h3 style="margin:0 0 6px 0;color:#111827;font-size:18px;font-weight:600;">Marinel Ledesma</h3>
               <p style="margin:0 0 12px 0;color:#667eea;font-weight:600;font-size:14px;">Co Developer & Documentation</p>
               <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">Ensuring quality standards with comprehensive support and clear project documentation.</p>
             </article>
-          </div>
+          `
+            }
         </section>
 
         <!-- Inspection Committee -->
@@ -17341,6 +17422,7 @@ function generateAboutPage() {
                     role: '',
                     position: '',
                     inspectionArea: '',
+                    image: '',
                   }
                   if (!m) return null
                   if (typeof m === 'string') {
@@ -17361,6 +17443,8 @@ function generateAboutPage() {
                     member.role = m.role || ''
                     member.position = m.position || ''
                     member.inspectionArea = m.inspectionArea || m.area || ''
+                    // Support avatar/image using `image` property like coordinators
+                    member.image = m.image || m.avatar || ''
                   }
 
                   const name = escapeHtml(String(member.name || '').trim())
@@ -17372,16 +17456,20 @@ function generateAboutPage() {
                     String(member.inspectionArea || '').trim()
                   )
 
+                  const image = escapeHtml(String(member.image || '').trim())
                   const initials = (name || '')
                     .split(' ')
                     .map((p) => p[0] || '')
                     .slice(0, 2)
                     .join('')
                     .toUpperCase()
+                  const avatarHtml = image
+                    ? `<img src="${image}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">`
+                    : initials
 
                   return `
                     <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:28px;border-radius:12px;text-align:center;">
-                      <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(102,126,234,0.3);" aria-label="${name}">${initials}</figure>
+                      <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(102,126,234,0.3);" aria-label="${name}">${avatarHtml}</figure>
                       <h3 style="margin:0 0 6px 0;color:#111827;font-size:18px;font-weight:600;">${name}</h3>
                       ${
                         role
@@ -18122,21 +18210,26 @@ function editAboutUs() {
   }
 
   // Prepare current content safely from AppState (fallback to defaults)
-  const currentContent = AppState.aboutUsContent || {
-    heroTitle: 'SPMO System',
-    heroSubtitle:
-      'Revolutionizing Inventory & Procurement Management for Camarines Norte State College',
-    mission:
-      'To provide a comprehensive, user-friendly platform that streamlines inventory management, procurement processes, and ensures transparency in resource allocation across all departments of CNSC.',
-    vision:
-      'To be the leading digital solution for educational institutions, setting the standard for efficient resource management, data-driven decision making, and operational excellence.',
-    institution:
-      'Camarines Norte State College - Supply and Property Management Office',
-    email: 'cnsc.spmo@.edu.ph',
-    phone: '(054) 440-1134',
-    gallery: [],
-    committeeMembers: [],
-  }
+  const currentContent = Object.assign(
+    {},
+    {
+      heroTitle: 'SPMO System',
+      heroSubtitle:
+        'Revolutionizing Inventory & Procurement Management for Camarines Norte State College',
+      mission:
+        'To provide a comprehensive, user-friendly platform that streamlines inventory management, procurement processes, and ensures transparency in resource allocation across all departments of CNSC.',
+      vision:
+        'To be the leading digital solution for educational institutions, setting the standard for efficient resource management, data-driven decision making, and operational excellence.',
+      institution:
+        'Camarines Norte State College - Supply and Property Management Office',
+      email: 'cnsc.spmo@.edu.ph',
+      phone: '(054) 440-1134',
+      gallery: [],
+      committeeMembers: [],
+      coordinators: [],
+    },
+    AppState.aboutUsContent || {}
+  )
 
   // Build committee members HTML separately to keep template literal simple
   let committeeHtml = ''
@@ -18144,7 +18237,7 @@ function editAboutUs() {
   if (members.length > 0) {
     committeeHtml = members
       .map((m) => {
-        let mem = { name: '', role: '', position: '', area: '' }
+        let mem = { name: '', role: '', position: '', area: '', image: '' }
         if (typeof m === 'string') {
           const parts = m.split('—')
           mem.name = (parts[0] || '').trim()
@@ -18160,10 +18253,35 @@ function editAboutUs() {
           mem.role = m.role || ''
           mem.position = m.position || ''
           mem.area = m.inspectionArea || m.area || ''
+          mem.image = m.image || m.avatar || ''
         }
 
         return `
-          <div class="committee-member-row" style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;">
+          <div class="committee-member-row" data-image-url="${String(
+            mem.image || ''
+          ).replace(
+            /"/g,
+            '&quot;'
+          )}" style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;">
+            <div class="committee-avatar" style="flex-shrink:0;width:96px;height:96px;display:flex;align-items:center;justify-content:center;border-radius:50%;overflow:hidden;background:#f3f4f6;border:1px solid #e5e7eb;">
+              ${
+                mem.image
+                  ? `<img src="${mem.image}" alt="${String(
+                      mem.name || ''
+                    ).replace(
+                      /"/g,
+                      '&quot;'
+                    )}" style="width:100%;height:100%;object-fit:cover;">`
+                  : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-weight:700;">${(
+                      mem.name || ''
+                    )
+                      .split(' ')
+                      .map((s) => s[0] || '')
+                      .slice(0, 2)
+                      .join('')
+                      .toUpperCase()}</div>`
+              }
+            </div>
             <input class="committee-name-input" type="text" value="${String(
               mem.name
             )
@@ -18203,6 +18321,8 @@ function editAboutUs() {
             <div class="committee-controls" style="display:flex;flex-direction:column;gap:6px;">
               <button type="button" class="btn btn-secondary" onclick="moveCommitteeMemberUp(this)" title="Move up">⯅</button>
               <button type="button" class="btn btn-secondary" onclick="moveCommitteeMemberDown(this)" title="Move down">⯆</button>
+              <button type="button" class="btn btn-primary" onclick="changeCommitteeImage(this)" title="Change image" style="padding:6px 8px;font-size:12px;">Upload</button>
+              <button type="button" class="btn btn-secondary" onclick="removeCommitteeImage(this)" title="Remove image" style="padding:6px 8px;font-size:12px;">Clear</button>
               <button type="button" class="btn btn-danger" onclick="removeCommitteeMember(this)" title="Remove">Remove</button>
             </div>
           </div>
@@ -18213,19 +18333,65 @@ function editAboutUs() {
     committeeHtml =
       '<div class="about-card" style="color:#6b7280;padding:8px;border-radius:6px;background:#fff;border:1px dashed #e5e7eb;">No members yet. Use &quot;Add Member&quot; to create one.</div>'
   }
+  // Build coordinators HTML to populate editor
+  let coordinatorsHtml = ''
+  const coords = currentContent.coordinators || []
+  if (coords.length > 0) {
+    coordinatorsHtml = coords
+      .map((c) => {
+        const name = String(c.name || '').replace(/"/g, '&quot;')
+        const title = String(c.title || '').replace(/"/g, '&quot;')
+        const desc = String(c.description || '').replace(/"/g, '&quot;')
+        const image = String(c.image || '').replace(/"/g, '&quot;')
+        return `
+          <div class="coordinator-row" data-image-url="${image}" style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;">
+            <div class="coordinator-avatar" style="flex-shrink:0;width:96px;height:96px;display:flex;align-items:center;justify-content:center;border-radius:50%;overflow:hidden;background:#f3f4f6;border:1px solid #e5e7eb;">
+              ${
+                image
+                  ? `<img src="${image}" alt="${name}" style="width:100%;height:100%;object-fit:cover;">`
+                  : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-weight:700;">${(
+                      name || ''
+                    )
+                      .split(' ')
+                      .map((s) => s[0] || '')
+                      .slice(0, 2)
+                      .join('')
+                      .toUpperCase()}</div>`
+              }
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
+              <input class="coordinator-name-input" type="text" value="${name}" placeholder="Name" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+              <input class="coordinator-title-input" type="text" value="${title}" placeholder="Title" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+              <input class="coordinator-desc-input" type="text" value="${desc}" placeholder="Description" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+            </div>
+            <div class="coordinator-controls" style="display:flex;flex-direction:column;gap:6px;">
+              <button type="button" class="btn btn-secondary" onclick="moveCoordinatorUp(this)" title="Move up">⯅</button>
+              <button type="button" class="btn btn-secondary" onclick="moveCoordinatorDown(this)" title="Move down">⯆</button>
+              <button type="button" class="btn btn-primary" onclick="changeCoordinatorImage(this)" title="Change image" style="padding:6px 8px;font-size:12px;">Upload</button>
+              <button type="button" class="btn btn-secondary" onclick="removeCoordinatorImage(this)" title="Remove image" style="padding:6px 8px;font-size:12px;">Clear</button>
+              <button type="button" class="btn btn-danger" onclick="removeCoordinator(this)" title="Remove">Remove</button>
+            </div>
+          </div>
+        `
+      })
+      .join('')
+  } else {
+    coordinatorsHtml =
+      '<div class="about-card" style="color:#6b7280;padding:8px;border-radius:6px;background:#fff;border:1px dashed #e5e7eb;">No coordinators yet. Use "Add Coordinator" to create one.</div>'
+  }
 
   modal.className = 'modal-overlay active'
   modal.innerHTML = `
-        <div class="modal-content" style="max-width: 700px; max-height: 90vh; overflow: hidden; padding: 0; display: flex; flex-direction: column;">
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow: hidden; padding: 0; display: flex; flex-direction: column;" role="dialog" aria-modal="true" aria-labelledby="edit-about-title">
             <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; flex-shrink: 0;">
-                <h2 style="margin: 0; font-size: 24px; font-weight: 600; display: flex; align-items: center; gap: 10px;">
+                <h2 id="edit-about-title" style="margin: 0; font-size: 24px; font-weight: 600; display: flex; align-items: center; gap: 10px;">
                     <i data-lucide="edit-3" style="width: 24px; height: 24px;"></i>
                     Edit About Us Content
                 </h2>
                 <p style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.9;">Update the information displayed on the About Us page</p>
             </div>
             
-            <div style="flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px;">
+            <div style="flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px;" id="edit-about-body">
                 <!-- Hero Section -->
                 <div style="padding: 16px; background: #f9fafb; border-radius: 8px; border: 2px solid #e5e7eb;">
                     <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #111827; font-weight: 600;">Hero Section</h3>
@@ -18304,7 +18470,7 @@ function editAboutUs() {
                 <div style="padding: 16px; background: #f9fafb; border-radius: 8px; border: 2px solid #e5e7eb;">
                     <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #111827; font-weight: 600;">Gallery Images</h3>
                     <p style="margin:0 0 12px 0;color:#6b7280;font-size:13px;">Upload images with optional captions. Supported formats: JPG, PNG, GIF, WebP (Max 5MB per image).</p>
-                    <div id="gallery-list" style="display:flex;flex-direction:column;gap:12px;">
+                    <div id="gallery-list" style="display:flex;flex-direction:column;gap:12px;" aria-label="Gallery images" tabindex="0">
                       ${
                         (currentContent.gallery || []).length > 0
                           ? (currentContent.gallery || [])
@@ -18356,7 +18522,7 @@ function editAboutUs() {
                       }
                     </div>
                     <div style="margin-top:12px;display:flex;gap:8px;">
-                      <label class="btn btn-primary" style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;cursor:pointer;margin:0;">
+                        <label class="btn btn-primary" style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;cursor:pointer;margin:0;">
                         <i data-lucide="plus" style="width:14px;height:14px;"></i>
                         Add Image
                         <input type="file" id="gallery-file-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none;" onchange="handleGalleryFileUpload(event)">
@@ -18365,6 +18531,19 @@ function editAboutUs() {
                     </div>
                 </div>
                 
+        <!-- Coordinators -->
+                <div style="padding: 16px; background: #f9fafb; border-radius: 8px; border: 2px solid #e5e7eb;" id="coordinator-edit-section">
+          <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #111827; font-weight: 600;">Coordinators</h3>
+          <p style="margin:0 0 8px 0;color:#6b7280;font-size:13px;">Add, remove or reorder coordinators. Provide a title and a short description.</p>
+                    <div id="coordinator-list">
+                      ${coordinatorsHtml}
+                    </div>
+            <div style="margin-top:10px;display:flex;gap:8px;">
+              <button type="button" class="btn btn-primary" onclick="addCoordinator()" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;">Add Coordinator</button>
+              <button type="button" class="btn btn-secondary" onclick="clearCoordinatorItems()" style="padding:8px 12px;">Clear All</button>
+            </div>
+        </div>
+
         <!-- Inspection Committee Members -->
         <div style="padding: 16px; background: #f9fafb; border-radius: 8px; border: 2px solid #e5e7eb;">
           <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #111827; font-weight: 600;">Inspection Committee Members</h3>
@@ -18374,17 +18553,21 @@ function editAboutUs() {
                     </div>
             <div style="margin-top:10px;display:flex;gap:8px;">
               <button type="button" class="btn btn-primary" onclick="addCommitteeMember()" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;">Add Member</button>
-              <button type="button" class="btn btn-secondary" onclick="(function(){ const c=document.getElementById('committee-list'); if(!c) return; c.querySelectorAll('.committee-member-row').forEach(r=>{ r.querySelectorAll('input').forEach(i=>i.value='') }); })()" style="padding:8px 12px;">Clear All</button>
+              <button type="button" class="btn btn-secondary" onclick="clearCommitteeMembers()" style="padding:8px 12px;">Clear All</button>
             </div>
         </div>
             </div>
             
-            <div class="modal-footer" style="padding: 20px 24px; border-top: 1px solid #e5e7eb; background: #f9fafb; flex-shrink: 0; display: flex; gap: 12px; justify-content: flex-end;">
+            <div class="modal-footer" style="padding: 20px 24px; border-top: 1px solid #e5e7eb; background: #f9fafb; flex-shrink: 0; display: flex; gap: 12px; justify-content: flex-end; align-items:center;">
+              <div style="display:flex;align-items:center;margin-right:auto;">
+                <span id="about-dirty-indicator" style="display:none;padding:6px 10px;border-radius:6px;background:#fff3cd;color:#92400e;font-weight:600;font-size:13px;margin-right:8px;">Unsaved changes</span>
+                <span id="about-save-feedback" style="font-size:13px;color:#6b7280;display:none;">Saving…</span>
+              </div>
                 <button onclick="closeEditAboutModal()" class="btn btn-secondary">
                     <i data-lucide="x" style="width: 16px; height: 16px;"></i>
                     Cancel
                 </button>
-                <button onclick="saveAboutUs()" class="btn btn-primary" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <button onclick="saveAboutUs()" class="btn btn-primary" id="save-about-btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" aria-label="Save changes to About Us page">
                     <i data-lucide="save" style="width: 16px; height: 16px;"></i>
                     Save Changes
                 </button>
@@ -18395,17 +18578,156 @@ function editAboutUs() {
   try {
     lucide.createIcons()
   } catch (e) {}
+
+  // Setup focus and accessibility behaviors, dirty-state tracking and keyboard handlers
+  try {
+    // Remember the original content for dirty-checking
+    modal._aboutOriginalContent = JSON.stringify(AppState.aboutUsContent || {})
+    modal._aboutDirty = false
+
+    // track changes to inputs within modal and update dirty indicator
+    const inputsSelector =
+      '#edit-about-body input, #edit-about-body textarea, #edit-about-body select'
+    const inputEls = modal.querySelectorAll(inputsSelector)
+    inputEls.forEach((el) => {
+      el.addEventListener('input', () => {
+        modal._aboutDirty = checkAboutDirty(modal)
+        updateAboutDirtyIndicator(modal)
+      })
+      el.addEventListener('change', () => {
+        modal._aboutDirty = checkAboutDirty(modal)
+        updateAboutDirtyIndicator(modal)
+      })
+    })
+
+    // Focus trap variables
+    const focusableSelector =
+      'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+    function trapFocus(e) {
+      if (e.key !== 'Tab') return
+      const focusables = Array.from(
+        modal.querySelectorAll(focusableSelector)
+      ).filter((el) => el.offsetParent !== null)
+      if (focusables.length === 0) return
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+
+    // Keyboard handler for Save (Ctrl/Cmd+S) and Esc
+    modal._aboutKeydown = function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        saveAboutUs()
+        return
+      }
+      if (e.key === 'Escape') {
+        // If dirty, confirm
+        if (modal._aboutDirty) {
+          showConfirm(
+            'You have unsaved changes. Close without saving?',
+            'Unsaved changes'
+          ).then((ok) => {
+            if (ok) closeEditAboutModal(true)
+          })
+        } else {
+          closeEditAboutModal()
+        }
+      }
+      trapFocus(e)
+    }
+    document.addEventListener('keydown', modal._aboutKeydown)
+
+    // Overlay click should check for unsaved changes
+    modal._overlayClick = function (e) {
+      if (e.target === modal) {
+        if (modal._aboutDirty) {
+          showConfirm(
+            'You have unsaved changes. Close without saving?',
+            'Unsaved changes'
+          ).then((ok) => {
+            if (ok) closeEditAboutModal(true)
+          })
+        } else {
+          closeEditAboutModal()
+        }
+      }
+    }
+    modal.addEventListener('click', modal._overlayClick)
+
+    // Setup drag-drop on gallery list
+    const galleryList = modal.querySelector('#gallery-list')
+    if (galleryList) {
+      galleryList.addEventListener('dragover', (ev) => {
+        ev.preventDefault()
+        galleryList.style.outline = '2px dashed rgba(102,126,234,0.6)'
+      })
+      galleryList.addEventListener('dragleave', () => {
+        galleryList.style.outline = ''
+      })
+      galleryList.addEventListener('drop', async (ev) => {
+        ev.preventDefault()
+        galleryList.style.outline = ''
+        const files = Array.from(ev.dataTransfer.files || [])
+        for (const f of files) {
+          await handleDroppedImageFile(f, modal)
+        }
+      })
+    }
+
+    // Auto focus the hero title for convenience
+    const heroTitle = modal.querySelector('#edit-hero-title')
+    if (heroTitle) {
+      setTimeout(() => heroTitle.focus(), 40)
+    }
+    // initial status
+    updateAboutDirtyIndicator(modal)
+  } catch (e) {}
 }
 
-function closeEditAboutModal() {
-  const modal = document.getElementById('edit-about-modal')
-  if (modal) {
-    modal.className = 'modal-overlay'
-    setTimeout(() => modal.remove(), 300)
+function updateAboutDirtyIndicator(modalEl) {
+  if (!modalEl) modalEl = document.getElementById('edit-about-modal')
+  const indicator = modalEl && modalEl.querySelector('#about-dirty-indicator')
+  if (!indicator) return
+  if (modalEl._aboutDirty) {
+    indicator.style.display = 'inline-flex'
+  } else {
+    indicator.style.display = 'none'
   }
 }
 
-function saveAboutUs() {
+function closeEditAboutModal(force = false) {
+  const modal = document.getElementById('edit-about-modal')
+  if (!modal) return
+  try {
+    const dirty = modal._aboutDirty
+    if (dirty && !force) {
+      showConfirm(
+        'You have unsaved changes. Close without saving?',
+        'Unsaved changes'
+      ).then((ok) => {
+        if (!ok) return
+        closeEditAboutModal(true)
+      })
+      return
+    }
+    // Remove listeners
+    if (modal._aboutKeydown)
+      document.removeEventListener('keydown', modal._aboutKeydown)
+    if (modal._overlayClick)
+      modal.removeEventListener('click', modal._overlayClick)
+  } catch (e) {}
+  modal.className = 'modal-overlay'
+  setTimeout(() => modal.remove(), 300)
+}
+
+async function saveAboutUs() {
   // Get values from form
   const heroTitle = document.getElementById('edit-hero-title').value.trim()
   const heroSubtitle = document
@@ -18456,17 +18778,52 @@ function saveAboutUs() {
         const area = (r.querySelector('.committee-area-input') || {}).value
           ? r.querySelector('.committee-area-input').value.trim()
           : ''
+        const image = r.getAttribute('data-image-url') || ''
         if (!name && !role && !position && !area) return null
         return {
           name: name || '',
           role: role || '',
           position: position || '',
           inspectionArea: area || '',
+          image: image || '',
         }
       })
       .filter((x) => x !== null)
   } else {
     committeeMembers = []
+  }
+
+  // Collect coordinators from dynamic list inputs (if present)
+  const coordinatorListEl = document.getElementById('coordinator-list')
+  let coordinators = []
+  if (coordinatorListEl) {
+    const rows = Array.from(
+      coordinatorListEl.querySelectorAll('.coordinator-row')
+    )
+    coordinators = rows
+      .map((r) => {
+        const name = (r.querySelector('.coordinator-name-input') || {}).value
+          ? r.querySelector('.coordinator-name-input').value.trim()
+          : ''
+        const title = (r.querySelector('.coordinator-title-input') || {}).value
+          ? r.querySelector('.coordinator-title-input').value.trim()
+          : ''
+        const description = (r.querySelector('.coordinator-desc-input') || {})
+          .value
+          ? r.querySelector('.coordinator-desc-input').value.trim()
+          : ''
+        const image = r.getAttribute('data-image-url') || ''
+        if (!name && !title && !description) return null
+        return {
+          name: name || '',
+          title: title || '',
+          description: description || '',
+          image: image || '',
+        }
+      })
+      .filter((x) => x !== null)
+  } else {
+    coordinators = []
   }
 
   // Validation
@@ -18483,7 +18840,7 @@ function saveAboutUs() {
     return
   }
 
-  // Image uploads are disabled in this editor. Preserve existing images (if any).
+  // Preserve image URLs uploaded via the editor and persist them in the saved content.
   AppState.aboutUsContent = {
     heroTitle,
     heroSubtitle,
@@ -18494,17 +18851,100 @@ function saveAboutUs() {
     phone,
     gallery,
     committeeMembers,
-    // image fields removed — not stored anymore
+    coordinators,
+    // image fields are preserved so avatars will render for committee members and coordinators
   }
 
   // Save to localStorage for persistence
+  // Persist to server first if available
+  const aboutUpdateUrl =
+    (window.APP_ROUTES && window.APP_ROUTES.siteContentAboutUpdate) ||
+    '/api/site-contents/about-us'
+
+  const editModal = document.getElementById('edit-about-modal')
+  // show spinner or disable save
+  const saveBtn = document.getElementById('save-about-btn')
+  const saveFeedback =
+    editModal && editModal.querySelector('#about-save-feedback')
   try {
-    localStorage.setItem(
-      'spmo_about_us_content',
-      JSON.stringify(AppState.aboutUsContent)
-    )
-  } catch (e) {
-    console.warn('Failed to save About Us content to localStorage:', e)
+    if (saveBtn) {
+      saveBtn.disabled = true
+    }
+    if (saveFeedback) {
+      saveFeedback.style.display = 'inline'
+      saveFeedback.textContent = 'Saving…'
+    }
+    // Try to persist to server
+    try {
+      const res = await fetch(aboutUpdateUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: AppState.aboutUsContent }),
+        credentials: 'same-origin',
+      })
+      if (res.ok) {
+        const json = await res.json()
+        // Update local copy with server response (sanity)
+        AppState.aboutUsContent = json.data || AppState.aboutUsContent
+        try {
+          localStorage.setItem(
+            'spmo_about_us_content',
+            JSON.stringify(AppState.aboutUsContent)
+          )
+        } catch (e) {}
+        if (editModal) {
+          editModal._aboutOriginalContent = JSON.stringify(
+            AppState.aboutUsContent
+          )
+          editModal._aboutDirty = false
+          updateAboutDirtyIndicator(editModal)
+        }
+        closeEditAboutModal()
+        loadPageContent('about')
+        showAlert('About Us content updated successfully!', 'success')
+        return
+      }
+      if (res.status === 403) {
+        showAlert(
+          'You do not have permission to update the About Us content. Only administrators can make changes.',
+          'error'
+        )
+        return
+      }
+      const errText = await res.text()
+      console.warn('Failed to save About Us content on server:', errText)
+    } catch (err) {
+      console.warn(
+        'Failed to persist About Us content to server, falling back to localStorage',
+        err
+      )
+    }
+    // Fallback: Save to localStorage
+    try {
+      localStorage.setItem(
+        'spmo_about_us_content',
+        JSON.stringify(AppState.aboutUsContent)
+      )
+      if (editModal) {
+        editModal._aboutOriginalContent = JSON.stringify(
+          AppState.aboutUsContent
+        )
+        editModal._aboutDirty = false
+      }
+      closeEditAboutModal()
+      loadPageContent('about')
+      showAlert('About Us content updated successfully!', 'success')
+      return
+    } catch (e) {
+      console.warn('Failed to save About Us content to localStorage:', e)
+    }
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false
+    }
+    if (saveFeedback) {
+      saveFeedback.style.display = 'none'
+    }
   }
 
   // Close modal and refresh
@@ -18535,7 +18975,24 @@ function addCommitteeMember(value = {}) {
     value && (value.inspectionArea || value.area)
       ? String(value.inspectionArea || value.area).replace(/"/g, '&quot;')
       : ''
+  const image =
+    value && value.image ? String(value.image).replace(/"/g, '&quot;') : ''
+  wrapper.setAttribute('data-image-url', image)
   wrapper.innerHTML = `
+    <div class="committee-avatar" style="flex-shrink:0;width:96px;height:96px;display:flex;align-items:center;justify-content:center;border-radius:50%;overflow:hidden;background:#f3f4f6;border:1px solid #e5e7eb;">
+      ${
+        image
+          ? `<img src="${image}" alt="${name}" style="width:100%;height:100%;object-fit:cover;">`
+          : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-weight:700;">${(
+              name || ''
+            )
+              .split(' ')
+              .map((s) => s[0] || '')
+              .slice(0, 2)
+              .join('')
+              .toUpperCase()}</div>`
+      }
+    </div>
     <input class="committee-name-input" type="text" value="${name}" placeholder="Name" style="flex:1;min-width:160px;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
     <input class="committee-role-input" type="text" value="${role}" placeholder="Role" style="flex:1;min-width:140px;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
     <input class="committee-position-input" type="text" value="${position}" placeholder="Position" style="flex:1;min-width:140px;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
@@ -18543,10 +19000,17 @@ function addCommitteeMember(value = {}) {
     <div class="committee-controls" style="display:flex;flex-direction:column;gap:6px;">
       <button type="button" class="btn btn-secondary" onclick="moveCommitteeMemberUp(this)" title="Move up">⯅</button>
       <button type="button" class="btn btn-secondary" onclick="moveCommitteeMemberDown(this)" title="Move down">⯆</button>
+      <button type="button" class="btn btn-primary" onclick="changeCommitteeImage(this)" title="Change image" style="padding:6px 8px;font-size:12px;">Upload</button>
+      <button type="button" class="btn btn-secondary" onclick="removeCommitteeImage(this)" title="Remove image" style="padding:6px 8px;font-size:12px;">Clear</button>
       <button type="button" class="btn btn-danger" onclick="removeCommitteeMember(this)" title="Remove">Remove</button>
     </div>
   `
   list.appendChild(wrapper)
+  const editModal = document.getElementById('edit-about-modal')
+  if (editModal) {
+    editModal._aboutDirty = true
+    updateAboutDirtyIndicator(editModal)
+  }
   return wrapper
 }
 
@@ -18554,6 +19018,11 @@ function removeCommitteeMember(buttonEl) {
   const row = buttonEl.closest('.committee-member-row')
   if (!row) return
   row.remove()
+  const editModal = document.getElementById('edit-about-modal')
+  if (editModal) {
+    editModal._aboutDirty = true
+    updateAboutDirtyIndicator(editModal)
+  }
 }
 
 function moveCommitteeMemberUp(buttonEl) {
@@ -18561,6 +19030,11 @@ function moveCommitteeMemberUp(buttonEl) {
   if (!row) return
   const prev = row.previousElementSibling
   if (prev) row.parentNode.insertBefore(row, prev)
+  const editModal = document.getElementById('edit-about-modal')
+  if (editModal) {
+    editModal._aboutDirty = true
+    updateAboutDirtyIndicator(editModal)
+  }
 }
 
 function moveCommitteeMemberDown(buttonEl) {
@@ -18568,7 +19042,118 @@ function moveCommitteeMemberDown(buttonEl) {
   if (!row) return
   const next = row.nextElementSibling
   if (next) row.parentNode.insertBefore(next, row)
+  const editModal = document.getElementById('edit-about-modal')
+  if (editModal) {
+    editModal._aboutDirty = true
+    updateAboutDirtyIndicator(editModal)
+  }
 }
+
+// --- Coordinators list helpers (used in Edit About modal) ---
+function addCoordinator(value = {}) {
+  const list = document.getElementById('coordinator-list')
+  if (!list) return
+  const wrapper = document.createElement('div')
+  wrapper.className = 'coordinator-row'
+  wrapper.style.cssText =
+    'display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;'
+  const name =
+    value && value.name ? String(value.name).replace(/"/g, '&quot;') : ''
+  const title =
+    value && value.title ? String(value.title).replace(/"/g, '&quot;') : ''
+  const desc =
+    value && value.description
+      ? String(value.description).replace(/"/g, '&quot;')
+      : ''
+  const image =
+    value && value.image ? String(value.image).replace(/"/g, '&quot;') : ''
+  wrapper.setAttribute('data-image-url', image)
+  wrapper.innerHTML = `
+    <div class="coordinator-avatar" style="flex-shrink:0;width:96px;height:96px;display:flex;align-items:center;justify-content:center;border-radius:50%;overflow:hidden;background:#f3f4f6;border:1px solid #e5e7eb;">
+      ${
+        image
+          ? `<img src="${image}" alt="${name}" style="width:100%;height:100%;object-fit:cover;">`
+          : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-weight:700;">${(
+              name || ''
+            )
+              .split(' ')
+              .map((s) => s[0] || '')
+              .slice(0, 2)
+              .join('')
+              .toUpperCase()}</div>`
+      }
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
+      <input class="coordinator-name-input" type="text" value="${name}" placeholder="Name" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+      <input class="coordinator-title-input" type="text" value="${title}" placeholder="Title" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+      <input class="coordinator-desc-input" type="text" value="${desc}" placeholder="Description" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+    </div>
+    <div class="coordinator-controls" style="display:flex;flex-direction:column;gap:6px;">
+      <button type="button" class="btn btn-secondary" onclick="moveCoordinatorUp(this)" title="Move up">⯅</button>
+      <button type="button" class="btn btn-secondary" onclick="moveCoordinatorDown(this)" title="Move down">⯆</button>
+      <button type="button" class="btn btn-primary" onclick="changeCoordinatorImage(this)" title="Change image" style="padding:6px 8px;font-size:12px;">Upload</button>
+      <button type="button" class="btn btn-secondary" onclick="removeCoordinatorImage(this)" title="Remove image" style="padding:6px 8px;font-size:12px;">Clear</button>
+      <button type="button" class="btn btn-danger" onclick="removeCoordinator(this)" title="Remove">Remove</button>
+    </div>
+  `
+  list.appendChild(wrapper)
+  const editModal = document.getElementById('edit-about-modal')
+  if (editModal) {
+    editModal._aboutDirty = true
+    updateAboutDirtyIndicator(editModal)
+  }
+  return wrapper
+}
+
+function removeCoordinator(buttonEl) {
+  const row = buttonEl.closest('.coordinator-row')
+  if (!row) return
+  row.remove()
+  const editModal = document.getElementById('edit-about-modal')
+  if (editModal) {
+    editModal._aboutDirty = true
+    updateAboutDirtyIndicator(editModal)
+  }
+}
+
+function moveCoordinatorUp(buttonEl) {
+  const row = buttonEl.closest('.coordinator-row')
+  if (!row) return
+  const prev = row.previousElementSibling
+  if (prev) row.parentNode.insertBefore(row, prev)
+  const editModal = document.getElementById('edit-about-modal')
+  if (editModal) {
+    editModal._aboutDirty = true
+    updateAboutDirtyIndicator(editModal)
+  }
+}
+
+function moveCoordinatorDown(buttonEl) {
+  const row = buttonEl.closest('.coordinator-row')
+  if (!row) return
+  const next = row.nextElementSibling
+  if (next) row.parentNode.insertBefore(next, row)
+  const editModal = document.getElementById('edit-about-modal')
+  if (editModal) {
+    editModal._aboutDirty = true
+    updateAboutDirtyIndicator(editModal)
+  }
+}
+
+// Expose coordinators helpers globally for inline click handlers
+try {
+  if (typeof window !== 'undefined') {
+    if (!window.addCoordinator) window.addCoordinator = addCoordinator
+    if (!window.removeCoordinator) window.removeCoordinator = removeCoordinator
+    if (!window.moveCoordinatorUp) window.moveCoordinatorUp = moveCoordinatorUp
+    if (!window.moveCoordinatorDown)
+      window.moveCoordinatorDown = moveCoordinatorDown
+    if (!window.changeCoordinatorImage)
+      window.changeCoordinatorImage = changeCoordinatorImage
+    if (!window.removeCoordinatorImage)
+      window.removeCoordinatorImage = removeCoordinatorImage
+  }
+} catch (e) {}
 
 // --- Gallery item list helpers (used in Edit About modal) ---
 function addGalleryItem(imageDataUrl = '', caption = '') {
@@ -18623,6 +19208,12 @@ function addGalleryItem(imageDataUrl = '', caption = '') {
     lucide.createIcons()
   } catch (e) {}
 
+  // mark modal dirty if edit modal is open
+  const editModal = document.getElementById('edit-about-modal')
+  if (editModal) {
+    editModal._aboutDirty = true
+    updateAboutDirtyIndicator(editModal)
+  }
   return wrapper
 }
 
@@ -18650,16 +19241,15 @@ function handleGalleryFileUpload(event) {
     return
   }
 
-  // Read file and convert to base64
-  const reader = new FileReader()
-  reader.onload = function (e) {
-    const imageDataUrl = e.target.result
-    addGalleryItem(imageDataUrl, '')
-  }
-  reader.onerror = function () {
-    showAlert('Failed to read image file', 'error')
-  }
-  reader.readAsDataURL(file)
+  // Read file and convert to base64 (compress first)
+  ;(async () => {
+    try {
+      const dataUrl = await compressImageAsDataUrl(file, 1400, 1400, 0.8)
+      addGalleryItem(dataUrl, '')
+    } catch (e) {
+      showAlert('Failed to read image file', 'error')
+    }
+  })()
 
   // Reset input
   event.target.value = ''
@@ -18697,22 +19287,23 @@ function changeGalleryImage(button) {
       return
     }
 
-    // Read file and update preview
-    const reader = new FileReader()
-    reader.onload = function (event) {
-      const imageDataUrl = event.target.result
-      row.setAttribute('data-image-url', imageDataUrl)
-
-      // Update preview
-      const previewContainer = row.querySelector('div[style*="width:120px"]')
-      if (previewContainer) {
-        previewContainer.innerHTML = `<img src="${imageDataUrl}" alt="Preview" style="width:100%;height:100%;object-fit:cover;">`
+    ;(async () => {
+      try {
+        const dataUrl = await compressImageAsDataUrl(file, 1400, 1400, 0.8)
+        row.setAttribute('data-image-url', dataUrl)
+        const previewContainer = row.querySelector('div[style*="width:120px"]')
+        if (previewContainer) {
+          previewContainer.innerHTML = `<img src="${dataUrl}" alt="Preview" style="width:100%;height:100%;object-fit:cover;">`
+        }
+        const editModal = document.getElementById('edit-about-modal')
+        if (editModal) {
+          editModal._aboutDirty = true
+          updateAboutDirtyIndicator(editModal)
+        }
+      } catch (err) {
+        showAlert('Failed to read image file', 'error')
       }
-    }
-    reader.onerror = function () {
-      showAlert('Failed to read image file', 'error')
-    }
-    reader.readAsDataURL(file)
+    })()
 
     // Clean up
     fileInput.remove()
@@ -18721,6 +19312,315 @@ function changeGalleryImage(button) {
   document.body.appendChild(fileInput)
   fileInput.click()
 }
+
+// Check if the About modal fields differ from the original content JSON
+function checkAboutDirty(modalEl) {
+  try {
+    const snapshot = Object.assign({}, AppState.aboutUsContent || {})
+    // Read current input values
+    const heroTitle =
+      (modalEl.querySelector('#edit-hero-title') || {}).value || ''
+    const heroSubtitle =
+      (modalEl.querySelector('#edit-hero-subtitle') || {}).value || ''
+    const mission = (modalEl.querySelector('#edit-mission') || {}).value || ''
+    const vision = (modalEl.querySelector('#edit-vision') || {}).value || ''
+    const institution =
+      (modalEl.querySelector('#edit-institution') || {}).value || ''
+    const email = (modalEl.querySelector('#edit-email') || {}).value || ''
+    const phone = (modalEl.querySelector('#edit-phone') || {}).value || ''
+    const galleryRows = Array.from(
+      modalEl.querySelectorAll('.gallery-item-row')
+    )
+    const gallery = galleryRows
+      .map((r) => ({
+        url: r.getAttribute('data-image-url') || '',
+        caption: (r.querySelector('.gallery-caption-input') || {}).value || '',
+      }))
+      .filter((x) => x.url)
+    const committeeRows = Array.from(
+      modalEl.querySelectorAll('.committee-member-row')
+    )
+    const committeeMembers = committeeRows.map((r) => ({
+      name: (r.querySelector('.committee-name-input') || {}).value || '',
+      role: (r.querySelector('.committee-role-input') || {}).value || '',
+      position:
+        (r.querySelector('.committee-position-input') || {}).value || '',
+      inspectionArea:
+        (r.querySelector('.committee-area-input') || {}).value || '',
+      image: r.getAttribute('data-image-url') || '',
+    }))
+    const coordinatorRows = Array.from(
+      modalEl.querySelectorAll('.coordinator-row')
+    )
+    const coordinators = coordinatorRows.map((r) => ({
+      name: (r.querySelector('.coordinator-name-input') || {}).value || '',
+      title: (r.querySelector('.coordinator-title-input') || {}).value || '',
+      description:
+        (r.querySelector('.coordinator-desc-input') || {}).value || '',
+      image: r.getAttribute('data-image-url') || '',
+    }))
+    const current = {
+      heroTitle,
+      heroSubtitle,
+      mission,
+      vision,
+      institution,
+      email,
+      phone,
+      gallery,
+      committeeMembers,
+      coordinators,
+    }
+    return JSON.stringify(current) !== modalEl._aboutOriginalContent
+  } catch (e) {
+    return false
+  }
+}
+
+// Handle dropped image file into gallery list (async)
+async function handleDroppedImageFile(file, modal) {
+  if (!file) return
+  const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+  if (!validTypes.includes(file.type)) {
+    showAlert(
+      'Please select a valid image file (JPG, PNG, GIF, or WebP)',
+      'error'
+    )
+    return
+  }
+  // Validate file size (5MB max)
+  const maxSize = 5 * 1024 * 1024 // 5MB
+  if (file.size > maxSize) {
+    showAlert('Image size must be less than 5MB', 'error')
+    return
+  }
+  try {
+    const dataUrl = await compressImageAsDataUrl(file, 1400, 1400, 0.8)
+    addGalleryItem(dataUrl, '')
+    modal._aboutDirty = true
+  } catch (e) {
+    console.error('Error handling dropped image', e)
+    showAlert('Failed to add dropped image', 'error')
+  }
+}
+
+// Compress an image file and return base64 data URL (using canvas)
+function compressImageAsDataUrl(
+  file,
+  maxWidth = 1200,
+  maxHeight = 1200,
+  quality = 0.8
+) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = function (ev) {
+      const img = new Image()
+      img.onload = function () {
+        try {
+          let { width, height } = img
+          if (width > maxWidth) {
+            const ratio = maxWidth / width
+            width = Math.round(width * ratio)
+            height = Math.round(height * ratio)
+          }
+          if (height > maxHeight) {
+            const ratio = maxHeight / height
+            width = Math.round(width * ratio)
+            height = Math.round(height * ratio)
+          }
+          const canvas = document.createElement('canvas')
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, width, height)
+          const out = canvas.toDataURL('image/jpeg', quality)
+          resolve(out)
+        } catch (e) {
+          reject(e)
+        }
+      }
+      img.onerror = function (e) {
+        reject(e)
+      }
+      img.src = String(ev.target.result)
+    }
+    reader.onerror = function (err) {
+      reject(err)
+    }
+    reader.readAsDataURL(file)
+  })
+}
+// Change image for coordinator row
+function changeCoordinatorImage(button) {
+  const row = button.closest('.coordinator-row')
+  if (!row) return
+
+  // Create temporary file input
+  const fileInput = document.createElement('input')
+  fileInput.type = 'file'
+  fileInput.accept = 'image/jpeg,image/png,image/gif,image/webp'
+  fileInput.style.display = 'none'
+
+  fileInput.onchange = function (e) {
+    const file = e.target.files[0]
+    if (!file) return
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+    if (!validTypes.includes(file.type)) {
+      showAlert(
+        'Please select a valid image file (JPG, PNG, GIF, or WebP)',
+        'error'
+      )
+      return
+    }
+
+    // Validate file size (5MB max)
+    const maxSize = 5 * 1024 * 1024
+    if (file.size > maxSize) {
+      showAlert('Image size must be less than 5MB', 'error')
+      return
+    }
+
+    ;(async () => {
+      try {
+        const dataUrl = await compressImageAsDataUrl(file, 800, 800, 0.85)
+        // update row attribute and preview
+        row.setAttribute('data-image-url', dataUrl)
+        const avatar = row.querySelector('.coordinator-avatar')
+        if (avatar) {
+          avatar.innerHTML = `<img src="${dataUrl}" alt="${escapeHtml(
+            (row.querySelector('.coordinator-name-input') || {}).value || ''
+          )}" style="width:100%;height:100%;object-fit:cover;">`
+        }
+        const editModal = document.getElementById('edit-about-modal')
+        if (editModal) {
+          editModal._aboutDirty = true
+          updateAboutDirtyIndicator(editModal)
+        }
+      } catch (err) {
+        showAlert('Failed to read image file', 'error')
+      }
+    })()
+  }
+
+  // Trigger file input
+  document.body.appendChild(fileInput)
+  fileInput.click()
+  // Clean up after file selection
+  setTimeout(() => fileInput.remove(), 5000)
+}
+
+function removeCoordinatorImage(button) {
+  const row = button.closest('.coordinator-row')
+  if (!row) return
+  row.removeAttribute('data-image-url')
+  const name = (row.querySelector('.coordinator-name-input') || {}).value || ''
+  const avatar = row.querySelector('.coordinator-avatar')
+  if (avatar) {
+    const initials = (name || '')
+      .split(' ')
+      .map((p) => p[0] || '')
+      .slice(0, 2)
+      .join('')
+      .toUpperCase()
+    avatar.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-weight:700;">${escapeHtml(
+      initials
+    )}</div>`
+  }
+  const editModal = document.getElementById('edit-about-modal')
+  if (editModal) {
+    editModal._aboutDirty = true
+    updateAboutDirtyIndicator(editModal)
+  }
+}
+// (moved edit modal dirty flag inside function)
+
+// Change image for committee member row
+function changeCommitteeImage(button) {
+  const row = button.closest('.committee-member-row')
+  if (!row) return
+
+  // Create temporary file input
+  const fileInput = document.createElement('input')
+  fileInput.type = 'file'
+  fileInput.accept = 'image/jpeg,image/png,image/gif,image/webp'
+  fileInput.style.display = 'none'
+
+  fileInput.onchange = function (e) {
+    const file = e.target.files[0]
+    if (!file) return
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+    if (!validTypes.includes(file.type)) {
+      showAlert(
+        'Please select a valid image file (JPG, PNG, GIF, or WebP)',
+        'error'
+      )
+      return
+    }
+
+    // Validate file size (5MB max)
+    const maxSize = 5 * 1024 * 1024
+    if (file.size > maxSize) {
+      showAlert('Image size must be less than 5MB', 'error')
+      return
+    }
+
+    ;(async () => {
+      try {
+        const dataUrl = await compressImageAsDataUrl(file, 800, 800, 0.85)
+        // update row attribute and preview
+        row.setAttribute('data-image-url', dataUrl)
+        const avatar = row.querySelector('.committee-avatar')
+        if (avatar) {
+          avatar.innerHTML = `<img src="${dataUrl}" alt="${escapeHtml(
+            (row.querySelector('.committee-name-input') || {}).value || ''
+          )}" style="width:100%;height:100%;object-fit:cover;">`
+        }
+        const editModal = document.getElementById('edit-about-modal')
+        if (editModal) {
+          editModal._aboutDirty = true
+          updateAboutDirtyIndicator(editModal)
+        }
+      } catch (err) {
+        showAlert('Failed to read image file', 'error')
+      }
+    })()
+  }
+
+  // Trigger file input
+  document.body.appendChild(fileInput)
+  fileInput.click()
+  // Clean up after file selection
+  setTimeout(() => fileInput.remove(), 5000)
+}
+
+function removeCommitteeImage(button) {
+  const row = button.closest('.committee-member-row')
+  if (!row) return
+  row.removeAttribute('data-image-url')
+  const name = (row.querySelector('.committee-name-input') || {}).value || ''
+  const avatar = row.querySelector('.committee-avatar')
+  if (avatar) {
+    const initials = (name || '')
+      .split(' ')
+      .map((p) => p[0] || '')
+      .slice(0, 2)
+      .join('')
+      .toUpperCase()
+    avatar.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-weight:700;">${escapeHtml(
+      initials
+    )}</div>`
+  }
+  const editModalCm = document.getElementById('edit-about-modal')
+  if (editModalCm) {
+    editModalCm._aboutDirty = true
+    updateAboutDirtyIndicator(editModalCm)
+  }
+}
+// (moved edit modal dirty flag inside function)
 
 function removeGalleryItem(buttonEl) {
   const row = buttonEl.closest('.gallery-item-row')
@@ -18733,6 +19633,11 @@ function removeGalleryItem(buttonEl) {
     list.innerHTML =
       '<div style="color:#6b7280;padding:12px;text-align:center;background:white;border:1px dashed #e5e7eb;border-radius:8px;">No images yet. Click "Add Image" to get started.</div>'
   }
+  const editModal = document.getElementById('edit-about-modal')
+  if (editModal) {
+    editModal._aboutDirty = true
+    updateAboutDirtyIndicator(editModal)
+  }
 }
 
 function moveGalleryItemUp(buttonEl) {
@@ -18741,6 +19646,11 @@ function moveGalleryItemUp(buttonEl) {
   const prev = row.previousElementSibling
   if (prev && prev.classList.contains('gallery-item-row'))
     row.parentNode.insertBefore(row, prev)
+  const editModal = document.getElementById('edit-about-modal')
+  if (editModal) {
+    editModal._aboutDirty = true
+    updateAboutDirtyIndicator(editModal)
+  }
 }
 
 function moveGalleryItemDown(buttonEl) {
@@ -18749,6 +19659,11 @@ function moveGalleryItemDown(buttonEl) {
   const next = row.nextElementSibling
   if (next && next.classList.contains('gallery-item-row'))
     row.parentNode.insertBefore(next, row)
+  const editModal = document.getElementById('edit-about-modal')
+  if (editModal) {
+    editModal._aboutDirty = true
+    updateAboutDirtyIndicator(editModal)
+  }
 }
 
 function clearGalleryItems() {
@@ -18756,6 +19671,21 @@ function clearGalleryItems() {
   if (!list) return
   list.innerHTML =
     '<div style="color:#6b7280;padding:12px;text-align:center;background:white;border:1px dashed #e5e7eb;border-radius:8px;">No images yet. Click "Add Image" to get started.</div>'
+}
+
+// --- Clear lists helpers for About modal ---
+function clearCoordinatorItems() {
+  const list = document.getElementById('coordinator-list')
+  if (!list) return
+  list.innerHTML =
+    '<div style="color:#6b7280;padding:12px;text-align:center;background:white;border:1px dashed #e5e7eb;border-radius:8px;">No coordinators yet. Click "Add Coordinator" to get started.</div>'
+}
+
+function clearCommitteeMembers() {
+  const list = document.getElementById('committee-list')
+  if (!list) return
+  list.innerHTML =
+    '<div style="color:#6b7280;padding:12px;text-align:center;background:white;border:1px dashed #e5e7eb;border-radius:8px;">No members yet. Click "Add Member" to get started.</div>'
 }
 
 function viewGalleryImage(url, caption) {
@@ -18835,6 +19765,10 @@ window.viewGalleryImage = viewGalleryImage
 window.closeGalleryView = closeGalleryView
 window.handleGalleryFileUpload = handleGalleryFileUpload
 window.changeGalleryImage = changeGalleryImage
+window.clearCoordinatorItems = clearCoordinatorItems
+window.clearCommitteeMembers = clearCommitteeMembers
+window.changeCommitteeImage = changeCommitteeImage
+window.removeCommitteeImage = removeCommitteeImage
 
 // --- Gallery Carousel Functions ---
 let currentGallerySlide = 0
