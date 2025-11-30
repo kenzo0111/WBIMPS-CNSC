@@ -3031,24 +3031,77 @@ body {
 .enhanced-search {
   position: relative;
   width: 320px;
+  display: block; /* keep block-level wrapper */
 }
 
 .enhanced-search input {
   width: 100%;
-  padding: 8px 12px 8px 36px;
+  padding: 8px 12px 8px 48px; /* increased left padding for larger icon */
   border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border-radius: 8px; /* slightly rounder */
   font-size: 14px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease,
+    background 0.18s ease;
 }
 
+/* Search icon: use the svg rendered by lucide (data-lucide) */
 .enhanced-search .search-icon {
   position: absolute;
-  left: 12px;
+  left: 10px;
   top: 50%;
   transform: translateY(-50%);
-  color: #9ca3af;
-  width: 16px;
-  height: 16px;
+  color: var(--text-tertiary);
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border-radius: 999px;
+  padding: 6px; /* give a round background for touch targets */
+  box-shadow: 0 4px 10px rgba(2, 6, 23, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1), color 0.18s ease,
+    background 0.18s ease;
+  cursor: pointer; /* imply interactivity */
+}
+
+/* When the input is focused, highlight the input and icon */
+.enhanced-search input:focus {
+  outline: none;
+  border-color: #3b82f6; /* blue accent */
+  box-shadow: 0 4px 18px rgba(59, 130, 246, 0.15);
+}
+.enhanced-search input:focus + .search-icon,
+.enhanced-search input:focus ~ .search-icon {
+  color: #1e40af; /* darker blue when focused */
+  transform: translateY(-50%) scale(1.02);
+}
+
+/* hovering/active states */
+.enhanced-search .search-icon:hover {
+  transform: translateY(-50%) scale(1.05);
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.06),
+    rgba(59, 130, 246, 0.02)
+  );
+  color: #2563eb;
+}
+
+/* Support a more compact mobile width and smaller icon */
+@media (max-width: 640px) {
+  .enhanced-search {
+    width: 220px;
+  }
+  .enhanced-search input {
+    padding-left: 44px;
+  }
+  .enhanced-search .search-icon {
+    width: 16px;
+    height: 16px;
+    padding: 4px;
+  }
 }
 
 .filter-dropdown {
@@ -6497,32 +6550,45 @@ tbody tr:hover td {
 
 .enhanced-search {
   position: relative;
-  display: flex;
-  align-items: center;
+  display: block;
 }
 
 .enhanced-search input {
-  padding: 8px 40px 8px 16px;
+  padding: 8px 12px 8px 48px; /* left padding for icon */
   border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
   width: 250px;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .enhanced-search input:focus {
   outline: none;
-  border-color: #dc2626;
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+  border-color: #3b82f6;
+  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.12);
+}
+.enhanced-search input:focus + .search-icon,
+.enhanced-search input:focus ~ .search-icon {
+  color: #1e40af;
+  transform: translateY(-50%) scale(1.02);
 }
 
 .enhanced-search .search-icon {
   position: absolute;
-  right: 12px;
-  width: 16px;
-  height: 16px;
-  color: #6b7280;
-  pointer-events: none;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: var(--text-tertiary);
+  pointer-events: auto;
+  background: var(--bg-secondary);
+  padding: 6px;
+  border-radius: 999px;
+  box-shadow: 0 4px 10px rgba(2, 6, 23, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease;
 }
 
 .filter-dropdown {

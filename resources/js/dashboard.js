@@ -4487,7 +4487,7 @@ function generateItemsPage() {
                 <div class="filter-left">
                     <div class="enhanced-search">
                         <input type="text" class="form-input" placeholder="Search a Item" id="Item-search">
-                        <i data-lucide="search" class="search-icon"></i>
+                        <i data-lucide="search" class="search-icon" aria-label="Search Items"></i>
                     </div>
                 </div>
                 <div class="filter-right">
@@ -6083,7 +6083,7 @@ function generateStockInPage() {
                 <div class="filter-left">
                     <div class="enhanced-search">
                         <input type="text" class="form-input" placeholder="Search stock transactions..." id="stock-search">
-                        <i data-lucide="search" class="search-icon"></i>
+                        <i data-lucide="search" class="search-icon" aria-label="Search Items"></i>
                     </div>
                 </div>
                 <div class="filter-right">
@@ -14330,6 +14330,27 @@ function initializeItemsPageEvents() {
       updateItemsTable()
     })
   }
+
+  // Make search icon interactive: clicking the icon focuses the input (accessibility)
+  document.querySelectorAll('.enhanced-search .search-icon').forEach((icon) => {
+    // ensure it's keyboard focusable and announced as button to screen readers
+    icon.setAttribute('role', 'button')
+    icon.setAttribute('tabindex', '0')
+
+    icon.addEventListener('click', (e) => {
+      const input = icon.previousElementSibling
+      if (input && input.tagName === 'INPUT') {
+        input.focus()
+      }
+    })
+
+    icon.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        icon.click()
+      }
+    })
+  })
 
   // Initialize sort and filter dropdowns
   const sortBy = document.getElementById('sort-by')
