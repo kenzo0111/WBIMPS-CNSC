@@ -502,23 +502,12 @@ function generateSkuOptionsForCategoryHTML(categoryId, selectedSku = '') {
   const Items = (MockData.Items || []).filter(
     (it) => String(it.category_id || '') === String(categoryId || '')
   )
+  // When no category is selected, don't show all items (prevents clutter)
+  // instead show a friendly placeholder so user picks a category first.
   if (!categoryId) {
-    // show all Items if no category selected
-    const all = (MockData.Items || []).slice()
-    if (!all.length) return '<option value="">No items available</option>'
-    const html = all
-      .map(
-        (it) =>
-          `<option value="${escapeHtml(
-            it.id || ''
-          )}" data-unitcost="${escapeHtml(
-            String(it.unitCost || it.unit_cost || 0)
-          )}" data-qty="${escapeHtml(String(it.quantity || 0))}" ${
-            String(selectedSku || '') === String(it.id || '') ? 'selected' : ''
-          }>${escapeHtml(it.id || '')} - ${escapeHtml(it.name || '')}</option>`
-      )
-      .join('')
-    return html + '<option value="__other__">Other (enter manually)</option>'
+    const any = (MockData.Items || []).length
+    if (!any) return '<option value="">No items available</option>'
+    return '<option value="">Select a category first</option>'
   }
   if (!Items.length)
     return '<option value="">No items for this category</option>'
@@ -22208,9 +22197,7 @@ function openStockInModal(mode = 'create', stockId = null) {
         stockBadge.textContent = ''
         return
       }
-      const prod = (MockData.Items || []).find(
-        (p) => p.id.toLowerCase() === raw.toLowerCase()
-      )
+      const prod = (MockData.Items || []).find((p) => p.id === raw)
       if (prod) {
         ItemInput.value = prod.name
         // If existing Item and unit cost empty or zero, default to Item's unitCost (if present)
@@ -22227,28 +22214,28 @@ function openStockInModal(mode = 'create', stockId = null) {
         stockBadge.textContent = 'SKU not found in Items list'
       }
     }
-    skuInput.addEventListener('blur', autoFillFromSku)
-    skuInput.addEventListener('input', function () {
-      // Only trigger when user typed a plausible code pattern (letters+digits length>=2)
-      if (skuInput.value.trim().length >= 2) autoFillFromSku()
-    })
     skuInput.addEventListener('change', autoFillFromSku)
-    // When category changes, re-populate SKUs and reset Item input
+    // When category changes, re-populate SKU options and reset Item input
     if (categorySelect) {
       categorySelect.addEventListener('change', (e) => {
         const cid = String(e.target.value || '')
-        // SKU is a text input now: clear it and reset Item and other dependent fields
-        if (
-          skuInput &&
-          skuInput.tagName &&
-          skuInput.tagName.toLowerCase() === 'input'
-        ) {
-          skuInput.value = ''
+        // Repopulate SKU select with items from selected category
+        const skuSelect = document.getElementById('sku-input')
+        if (skuSelect) {
+          skuSelect.innerHTML = generateSkuOptionsForCategoryHTML(cid)
+          // Enable/disable SKU select based on whether a category is selected
+          skuSelect.disabled = !cid
+          if (!cid) skuSelect.value = ''
+          // If the new list has a pre-selected value (e.g., editing), trigger change
+          if (cid && skuSelect.value)
+            skuSelect.dispatchEvent(new Event('change'))
         }
         if (ItemInput) ItemInput.value = ''
         if (ucInput && (!ucInput.value || parseFloat(ucInput.value) === 0)) {
           ucInput.value = ''
         }
+        // Clear stock badge
+        if (stockBadge) stockBadge.textContent = ''
       })
       // ensure initial populate when modal opens if category present
       if (categorySelect.value)
@@ -22374,10 +22361,11 @@ function generateStockInModal(mode = 'create', stockData = null) {
                             <i data-lucide="barcode" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             SKU
                         </label>
-         <input id="sku-input" type="text" class="form-input" placeholder="Enter SKU (e.g., E002)"
-           value="${skuValue || ''}"
-           style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-           ${isReadOnly ? 'readonly' : ''}>
+         <select id="sku-input" class="form-select" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" ${
+           isReadOnly ? 'disabled' : initialCategoryId ? '' : 'disabled'
+         }>
+           ${generateSkuOptionsForCategoryHTML(initialCategoryId, skuValue)}
+         </select>
                     </div>
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
@@ -22810,7 +22798,8 @@ function openStockOutModal(mode = 'create', stockId = null) {
         return
       }
       const prod = (MockData.Items || []).find(
-        (p) => p.id.toLowerCase() === raw.toLowerCase()
+        (p) =>
+          String(p.id || '').toLowerCase() === String(raw || '').toLowerCase()
       )
       if (prod) {
         if (ItemInput) {
@@ -22869,29 +22858,46 @@ function openStockOutModal(mode = 'create', stockId = null) {
       }
     }
     if (skuInput) {
-      skuInput.addEventListener('blur', autoFillFromSku)
-      skuInput.addEventListener('input', () => {
-        if (skuInput.value.trim().length >= 2) autoFillFromSku()
-      })
-      skuInput.addEventListener('change', autoFillFromSku)
+      if (skuInput.tagName && skuInput.tagName.toLowerCase() === 'select') {
+        skuInput.addEventListener('change', autoFillFromSku)
+      } else {
+        skuInput.addEventListener('blur', autoFillFromSku)
+        skuInput.addEventListener('input', () => {
+          if (skuInput.value.trim().length >= 2) autoFillFromSku()
+        })
+        skuInput.addEventListener('change', autoFillFromSku)
+      }
       autoFillFromSku()
     }
-    // When category changes, re-populate SKU options
+    // When category changes, re-populate SKU options (supports both select & input fallback)
     if (categorySelect) {
       categorySelect.addEventListener('change', (e) => {
         const cid = String(e.target.value || '')
-        // SKU is a text input now: simply clear the value and reset other fields
+        // If SKU field is a SELECT, re-populate options using category filter
         if (
+          skuInput &&
+          skuInput.tagName &&
+          skuInput.tagName.toLowerCase() === 'select'
+        ) {
+          skuInput.innerHTML = generateSkuOptionsForCategoryHTML(cid)
+          skuInput.disabled = !cid
+          if (!cid) skuInput.value = ''
+          // If new select has selected value (e.g., edit), trigger change
+          if (cid && skuInput.value) skuInput.dispatchEvent(new Event('change'))
+        } else if (
           skuInput &&
           skuInput.tagName &&
           skuInput.tagName.toLowerCase() === 'input'
         ) {
+          // Fallback for plain input: clear it
           skuInput.value = ''
         }
         if (ItemInput) ItemInput.value = ''
         if (uc) uc.value = ''
+        // Clear stock badge
+        if (stockBadge) stockBadge.textContent = ''
       })
-      // ensure initial populate when modal opens
+      // ensure initial populate when modal opens if category present
       if (categorySelect.value)
         categorySelect.dispatchEvent(new Event('change'))
     }
@@ -23031,10 +23037,18 @@ function generateStockOutModal(mode = 'create', stockData = null) {
                             <i data-lucide="barcode" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             SKU
                           </label>
-                          <input id="so-sku" type="text" class="form-input" placeholder="E002"
-                            value="${stockData?.sku || ''}"
-                            style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                            ${isReadOnly ? 'readonly' : ''}>
+                          <select id="so-sku" class="form-select" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" ${
+                            isReadOnly
+                              ? 'disabled'
+                              : initialSoCategoryId
+                              ? ''
+                              : 'disabled'
+                          }>
+                            ${generateSkuOptionsForCategoryHTML(
+                              initialSoCategoryId,
+                              sku
+                            )}
+                          </select>
                         </div>
                         <div class="form-group" style="margin-bottom: 20px;">
                           <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
