@@ -14,6 +14,9 @@
     window.APP_ROUTES.login = "{{ route('login') }}";
     window.APP_ROUTES.loginSubmit = "{{ route('login.perform') }}";
     window.APP_ROUTES.dashboard = "{{ route('admin.dashboard') }}";
+    // Add activity endpoints so Access page can create server-side activity logs
+    window.APP_ROUTES.activities = "{{ url('/api/activities') }}";
+    window.APP_ROUTES.userLogs = "{{ url('/api/user-logs') }}";
   // Patterns for client-side route generation
   window.APP_ROUTES.purchaseOrderView = "{{ url('/purchase-order/view/{id}') }}";
   window.APP_ROUTES.purchaseRequestView = "{{ url('/purchase-request/view/{id}') }}";
@@ -516,14 +519,53 @@
       // Removed localStorage usage
     }
 
-  function logUserLogin(email, status = 'Success', profile = null) {
+  async function logUserLogin(email, status = 'Success', profile = null) {
       try {
         // Update user status to Active on successful login
         if (status === 'Success') {
           updateUserStatus(email, 'Active');
         }
 
-        // Removed localStorage logging
+        // Try persisting to server: legacy user-logs and spatie activity log
+        try {
+          // Send a legacy user log for compatibility
+          await fetch((window.APP_ROUTES && window.APP_ROUTES.userLogs) || '/api/user-logs', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRF-TOKEN': getCsrfToken(),
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+              email: email,
+              name: profile?.name || email,
+              action: 'Login',
+              timestamp: new Date().toISOString(),
+              ip_address: null,
+              device: navigator.userAgent,
+              status: status,
+            }),
+          }).catch((e) => console.warn('userLogs POST failed', e))
+
+          // Also create a Spatie activity record (used by dashboard recent activity)
+          await fetch((window.APP_ROUTES && window.APP_ROUTES.activities) || '/api/activities', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRF-TOKEN': getCsrfToken(),
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+              action: 'Login',
+              meta: { email: email, device: navigator.userAgent, status: status },
+            }),
+          }).catch((e) => console.warn('activities POST failed', e))
+        } catch (e) {
+          console.warn('Failed to persist login activity', e)
+        }
+
         console.log('User login logged:', { email, status });
       } catch (error) {
         console.error('Error logging user login:', error);

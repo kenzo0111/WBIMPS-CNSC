@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Item;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ItemController extends Controller
 {
@@ -84,6 +85,18 @@ class ItemController extends Controller
 
         $item = Item::create($validated);
 
+        // Log activity: Item created
+        try {
+            activity()->causedBy(Auth::user())
+                ->withProperties([
+                    'sku' => $item->sku ?? null,
+                    'name' => $item->name ?? null,
+                    'category_id' => $item->category_id ?? null,
+                ])
+                ->log(sprintf('Item Created: %s', $item->name ?? $item->sku ?? ''));
+        } catch (\Throwable $e) {
+        }
+
         return response()->json(['data' => $item->load('category')], 201);
     }
 
@@ -144,6 +157,18 @@ class ItemController extends Controller
 
         $item->update($validated);
 
+        // Log activity: Item updated
+        try {
+            activity()->causedBy(Auth::user())
+                ->withProperties([
+                    'sku' => $item->sku ?? null,
+                    'name' => $item->name ?? null,
+                    'category_id' => $item->category_id ?? null,
+                ])
+                ->log(sprintf('Item Updated: %s', $item->name ?? $item->sku ?? ''));
+        } catch (\Throwable $e) {
+        }
+
         return response()->json(['data' => $item->load('category')]);
     }
 
@@ -152,6 +177,18 @@ class ItemController extends Controller
      */
     public function destroy(Item $item)
     {
+        // Log activity: Item deleted
+        try {
+            activity()->causedBy(Auth::user())
+                ->withProperties([
+                    'sku' => $item->sku ?? null,
+                    'name' => $item->name ?? null,
+                    'category_id' => $item->category_id ?? null,
+                ])
+                ->log(sprintf('Item Deleted: %s', $item->name ?? $item->sku ?? ''));
+        } catch (\Throwable $e) {
+        }
+
         $item->delete();
 
         return response()->json(['message' => 'Item deleted']);

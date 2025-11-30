@@ -61,6 +61,7 @@ class ActivityController extends Controller
             $arr['actor_type'] = $arr['causer_type'] ?? null;
             $arr['actor_id'] = $arr['causer_id'] ?? null;
             $arr['action'] = $arr['description'] ?? null;
+            $arr['sentence'] = $activity->sentence ?? ($arr['description'] ?? null);
             $arr['meta'] = $arr['properties'] ?? null;
 
             if (!empty($arr['actor_type']) && stripos($arr['actor_type'], 'user') !== false && !empty($arr['actor_id'])) {
@@ -96,6 +97,7 @@ class ActivityController extends Controller
         $arr['actor_type'] = $arr['causer_type'] ?? null;
         $arr['actor_id'] = $arr['causer_id'] ?? null;
         $arr['action'] = $arr['description'] ?? null;
+        $arr['sentence'] = $activity->sentence ?? ($arr['description'] ?? null);
         $arr['meta'] = $arr['properties'] ?? null;
         if (!empty($arr['actor_type']) && stripos($arr['actor_type'], 'user') !== false && !empty($arr['actor_id'])) {
             $user = \App\Models\User::find($arr['actor_id']);
@@ -127,6 +129,20 @@ class ActivityController extends Controller
         }
         $activity = $act->log($payload['action']);
 
-        return response()->json(['data' => $activity], 201);
+        $arr = $activity->toArray();
+        $arr['actor'] = null;
+        $arr['actor_type'] = $arr['causer_type'] ?? null;
+        $arr['actor_id'] = $arr['causer_id'] ?? null;
+        $arr['action'] = $arr['description'] ?? null;
+        $arr['sentence'] = $activity->sentence ?? ($arr['description'] ?? null);
+        $arr['meta'] = $arr['properties'] ?? null;
+        if (!empty($arr['actor_type']) && stripos($arr['actor_type'], 'user') !== false && !empty($arr['actor_id'])) {
+            $u = \App\Models\User::find($arr['actor_id']);
+            if ($u) {
+                $arr['actor'] = ['id' => $u->id, 'name' => $u->name ?? null, 'email' => $u->email ?? null];
+            }
+        }
+
+        return response()->json(['data' => $arr], 201);
     }
 }

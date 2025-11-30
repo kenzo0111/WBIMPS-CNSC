@@ -26,6 +26,9 @@
         window.APP_ROUTES.propertyAcknowledgementReceiptView = "{{ url('/property-acknowledgement-receipt/view/{id}') }}";
         window.APP_ROUTES.siteContentAboutGet = "{{ url('/api/site-contents/about-us') }}";
         window.APP_ROUTES.siteContentAboutUpdate = "{{ url('/api/site-contents/about-us') }}";
+        // Activity APIs
+        window.APP_ROUTES.activities = "{{ url('/api/activities') }}";
+        window.APP_ROUTES.userLogs = "{{ url('/api/user-logs') }}";
         window.APP_ROUTES.inspectionAcceptanceReportView = "{{ url('/inspection-acceptance-report/view/{id}') }}";
     </script>
     <script>

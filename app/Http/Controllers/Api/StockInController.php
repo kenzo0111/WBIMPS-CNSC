@@ -7,6 +7,7 @@ use App\Models\Item;
 use App\Models\StockIn;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class StockInController extends Controller
 {
@@ -67,6 +68,20 @@ class StockInController extends Controller
                 $item->increment('quantity', $validated['quantity']);
                 $item->unit_cost = $validated['unit_cost'];
                 $item->save();
+            }
+
+            // Log server-side activity for Stock In creation (so UI and API consumers see it)
+            try {
+                activity()->causedBy(Auth::user())
+                    ->withProperties([
+                        'transactionId' => $created->transaction_id ?? $created->id ?? null,
+                        'sku' => $created->sku ?? null,
+                        'quantity' => $created->quantity ?? null,
+                        'product_name' => $created->product_name ?? null,
+                    ])
+                    ->log(sprintf('Stock In: %s', $created->product_name ?? $created->sku ?? ''));
+            } catch (\Throwable $e) {
+                // Avoid breaking transaction if activity logging fails
             }
 
             return $created;
@@ -136,6 +151,18 @@ class StockInController extends Controller
                     $item->save();
                 }
             }
+            // Log server-side activity for Stock In update
+            try {
+                activity()->causedBy(Auth::user())
+                    ->withProperties([
+                        'transactionId' => $stockIn->transaction_id ?? $stockIn->id ?? null,
+                        'sku' => $stockIn->sku ?? null,
+                        'quantity' => $stockIn->quantity ?? null,
+                        'product_name' => $stockIn->product_name ?? null,
+                    ])
+                    ->log(sprintf('Stock In Updated: %s', $stockIn->product_name ?? $stockIn->sku ?? ''));
+            } catch (\Throwable $e) {
+            }
         });
 
         return response()->json(['data' => $stockIn->fresh()]);
@@ -153,6 +180,18 @@ class StockInController extends Controller
                 $item->decrement('quantity', $stockIn->quantity);
             }
 
+            // Log server-side activity for Stock In deletion
+            try {
+                activity()->causedBy(Auth::user())
+                    ->withProperties([
+                        'transactionId' => $stockIn->transaction_id ?? $stockIn->id ?? null,
+                        'sku' => $stockIn->sku ?? null,
+                        'quantity' => $stockIn->quantity ?? null,
+                        'product_name' => $stockIn->product_name ?? null,
+                    ])
+                    ->log(sprintf('Stock In deleted: %s', $stockIn->product_name ?? $stockIn->sku ?? ''));
+            } catch (\Throwable $e) {
+            }
             $stockIn->delete();
         });
 

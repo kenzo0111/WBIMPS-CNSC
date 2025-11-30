@@ -1208,7 +1208,7 @@ async function loadPersistedInventoryData() {
 // Initialize with no persisted data
 loadPersistedInventoryData()
 
-// Items pagination preference persistence
+// Items pagination preference persistence helper: localStorage key used for item page size
 function getItemsPageSizeKey() {
   return 'spmo_items_page_size'
 }
@@ -1480,7 +1480,7 @@ async function postActivity(action, meta = {}) {
   try {
     const url =
       (window.APP_ROUTES && window.APP_ROUTES.activities) || '/api/activities'
-    await fetch(url, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1493,6 +1493,21 @@ async function postActivity(action, meta = {}) {
       credentials: 'same-origin',
       body: JSON.stringify({ action, meta }),
     })
+    if (res && res.ok) {
+      // Try to add to client-side notifications using server-provided sentence
+      try {
+        const json = await res.json()
+        const result = json && (json.data || json)
+        const sentence = result && (result.sentence || result.action || action)
+        // Push to local notifications for immediate UX
+        createNotification({
+          title: sentence,
+          message: '',
+          type: 'info',
+          meta: result,
+        })
+      } catch (e) {}
+    }
   } catch (e) {
     console.warn('postActivity failed', e)
   }
@@ -1780,7 +1795,7 @@ function updateUserStatus(email, status) {
 }
 
 // Log user logout
-function logUserLogout(email, name) {
+async function logUserLogout(email, name) {
   try {
     if (!window.MockData) window.MockData = {}
     if (!window.MockData.userLogs) window.MockData.userLogs = []
@@ -1829,7 +1844,7 @@ function logUserLogout(email, name) {
       window.MockData.userLogs = window.MockData.userLogs.slice(0, 100)
     }
 
-    // Try to persist to server (best-effort)
+    // Try to persist to server (best-effort) and to Spatie activity log
     try {
       postUserLog({
         email: logEntry.email,
@@ -1842,6 +1857,33 @@ function logUserLogout(email, name) {
       }).catch((err) => console.warn('postUserLog failed', err))
     } catch (e) {
       console.warn('Failed to enqueue postUserLog', e)
+    }
+
+    try {
+      // Activities endpoint expects { action, meta }
+      await fetch(
+        (window.APP_ROUTES && window.APP_ROUTES.activities) ||
+          '/api/activities',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': getCsrfToken(),
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            action: logEntry.action,
+            meta: {
+              email: logEntry.email,
+              device: logEntry.device,
+              status: logEntry.status,
+            },
+          }),
+        }
+      ).catch((err) => console.warn('activities POST failed', err))
+    } catch (e) {
+      console.warn('Failed to persist logout activity', e)
     }
 
     console.log('User logout logged:', logEntry)
@@ -3641,7 +3683,9 @@ async function fetchActivities(limit = 8) {
       // Normalise each entry to { action, created_at }
       data = data.map((item) => {
         return {
+          // Prefer the server-provided human sentence if available
           action:
+            item.sentence ||
             item.action ||
             item.message ||
             item.description ||
@@ -3655,6 +3699,9 @@ async function fetchActivities(limit = 8) {
             item.time ||
             item.date ||
             new Date().toISOString(),
+          // include actor details if available from the server
+          actor: item.actor || item.causer || null,
+          meta: item.meta || item.properties || item.payload || null,
         }
       })
 
@@ -3750,7 +3797,7 @@ function renderActivityList(activities) {
       let color = '#6b7280'
       let bgColor = '#f3f4f6'
       let borderColor = '#e5e7eb'
-      const text = (a.action || '').toLowerCase()
+      const text = (a.sentence || a.action || '').toLowerCase()
 
       if (
         text.includes('approve') ||
@@ -3898,7 +3945,27 @@ function renderActivityList(activities) {
               -webkit-line-clamp: 2;
               -webkit-box-orient: vertical;
               overflow: hidden;
-            ">${escapeHtml(a.action || '')}</p>
+            ">${escapeHtml(a.sentence || a.action || '')}</p>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:28px;height:28px;background:linear-gradient(135deg,#e5e7eb,#e9efff);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#374151;font-weight:700;flex-shrink:0;font-size:13px;">${
+                  a.actor && (a.actor.name || a.actor.email)
+                    ? (a.actor.name || a.actor.email)
+                        .split(' ')
+                        .map((n) => n[0])
+                        .slice(0, 2)
+                        .join('')
+                    : 'S'
+                }</div>
+              </div>
+              <div style="font-size:13px;color:#6b7280;">${escapeHtml(
+                a.actor && (a.actor.name || a.actor.email)
+                  ? a.actor.name || a.actor.email
+                  : a.meta && a.meta.email
+                  ? a.meta.email
+                  : 'System'
+              )}</div>
+            </div>
             <div style="
               display: flex;
               align-items: center;
@@ -16936,7 +17003,7 @@ function generateLoginActivityPage() {
                                     <td>
                                         <span style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); color: #1e40af; border-radius: 8px; font-size: 13px; font-weight: 600; box-shadow: 0 1px 2px rgba(59, 130, 246, 0.1);">
                                             <i data-lucide="log-in" style="width:14px;height:14px;"></i>
-                                            ${log.action}
+                                            ${log.sentence || log.action}
                                         </span>
                                     </td>
                                     <td>
@@ -17062,7 +17129,8 @@ async function loadActivitiesFromAPI(opts = {}) {
     // Normalize common fields
     items = items.map((i) => ({
       id: i.id || i._id || null,
-      action: i.action || i.title || i.activity || '',
+      // Prefer server-sent sentence for readability
+      action: i.sentence || i.action || i.title || i.activity || '',
       meta: i.meta || i.details || i.payload || null,
       actor_type: i.actor_type || null,
       actor_id: i.actor_id || null,
@@ -20071,10 +20139,10 @@ function generateActivityPage() {
                 <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px;">
                   <div style="flex: 1; min-width: 0;">
                     <h4 class="activity-title" style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: #111827; line-height: 1.4;">${
-                      activity.title
+                      activity.sentence || activity.title
                     }</h4>
                     <p class="activity-message" style="margin: 0; font-size: 14px; color: #6b7280; line-height: 1.5;">${
-                      activity.message
+                      activity.message || activity.sentence || ''
                     }</p>
                   </div>
                   <div class="activity-meta" style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0;">

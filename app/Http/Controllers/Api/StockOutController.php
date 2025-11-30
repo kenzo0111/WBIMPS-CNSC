@@ -7,6 +7,7 @@ use App\Models\Item;
 use App\Models\StockOut;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class StockOutController extends Controller
 {
@@ -91,6 +92,21 @@ class StockOutController extends Controller
             // Update item inventory
             $item = Item::where('sku', $validated['sku'])->first();
             $item->decrement('quantity', $validated['quantity']);
+
+            // Log server-side activity for Stock Out creation
+            try {
+                activity()->causedBy(Auth::user())
+                    ->withProperties([
+                        'issueId' => $created->issue_id ?? $created->id ?? null,
+                        'transactionId' => $created->transaction_id ?? null,
+                        'sku' => $created->sku ?? null,
+                        'quantity' => $created->quantity ?? null,
+                        'product_name' => $created->product_name ?? null,
+                    ])
+                    ->log(sprintf('Stock Out: %s', $created->product_name ?? $created->sku ?? ''));
+            } catch (\Throwable $e) {
+                // Ignore logging failure
+            }
 
             return $created;
         });
@@ -194,6 +210,20 @@ class StockOutController extends Controller
                     $item->decrement('quantity', $quantityDiff);
                 }
             }
+
+            // Log activity for update
+            try {
+                activity()->causedBy(Auth::user())
+                    ->withProperties([
+                        'issueId' => $stockOut->issue_id ?? $stockOut->id ?? null,
+                        'transactionId' => $stockOut->transaction_id ?? null,
+                        'sku' => $stockOut->sku ?? null,
+                        'quantity' => $stockOut->quantity ?? null,
+                        'product_name' => $stockOut->product_name ?? null,
+                    ])
+                    ->log(sprintf('Stock Out Updated: %s', $stockOut->product_name ?? $stockOut->sku ?? ''));
+            } catch (\Throwable $e) {
+            }
         });
 
         return response()->json(['data' => $stockOut->fresh()]);
@@ -205,10 +235,24 @@ class StockOutController extends Controller
     public function destroy(StockOut $stockOut)
     {
         DB::transaction(function () use ($stockOut) {
-            // Restore to item inventory
+            // Restore to item inventory (if item exists)
             $item = Item::where('sku', $stockOut->sku)->first();
             if ($item) {
                 $item->increment('quantity', $stockOut->quantity);
+            }
+
+            // Log activity for deletion (always attempt logging)
+            try {
+                activity()->causedBy(Auth::user())
+                    ->withProperties([
+                        'issueId' => $stockOut->issue_id ?? $stockOut->id ?? null,
+                        'transactionId' => $stockOut->transaction_id ?? null,
+                        'sku' => $stockOut->sku ?? null,
+                        'quantity' => $stockOut->quantity ?? null,
+                        'product_name' => $stockOut->product_name ?? null,
+                    ])
+                    ->log(sprintf('Stock Out deleted: %s', $stockOut->product_name ?? $stockOut->sku ?? ''));
+            } catch (\Throwable $e) {
             }
 
             $stockOut->delete();
