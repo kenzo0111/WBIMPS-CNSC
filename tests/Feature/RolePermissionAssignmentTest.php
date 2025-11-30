@@ -3,6 +3,7 @@
 use App\Models\User;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 
 /**
  * This test verifies roles exist and permission assignment works for each role.
@@ -11,7 +12,8 @@ beforeEach(function () {
     // read canonical mapping from the centralized config
     $cfg = config('roles_permissions', []);
     $roles = array_map(function ($r) {
-        return $r['name']; }, $cfg['roles'] ?? [
+        return $r['name'];
+    }, $cfg['roles'] ?? [
             ['name' => 'System Admin', 'slug' => 'system-admin'],
             ['name' => 'Administrator', 'slug' => 'administrator'],
             ['name' => 'Supply Officer', 'slug' => 'supply-officer'],
@@ -54,7 +56,7 @@ beforeEach(function () {
     }
 
     // Clear spatie permission cache so checks reflect updated assignments in tests
-    app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
 
     // expose them to tests via container-like properties when needed
     $this->roles = $roles;
@@ -91,7 +93,7 @@ test('each role receives correct permissions and users assigned those roles have
         $u = User::factory()->create();
         $u->assignRole($roleName);
         // After assignment, refresh permission registrar cache so the model's permission names refresh
-        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
         // reload the model so relationships /caches are consistent
         $u->refresh();
         // ensure role->permissions relation is loaded so permission helpers populate

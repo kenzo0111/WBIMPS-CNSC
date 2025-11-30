@@ -5,6 +5,7 @@ namespace Database\Factories;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\User>
@@ -44,7 +45,7 @@ class UserFactory extends Factory
         ])->afterCreating(function (\App\Models\User $user) {
             if (method_exists($user, 'assignRole')) {
                 // make sure admin role exists in tests / fresh DB then assign
-                \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'admin'], ['slug' => 'admin', 'guard_name' => 'web']);
+                Role::firstOrCreate(['name' => 'admin'], ['slug' => 'admin', 'guard_name' => 'web']);
                 $user->assignRole('admin');
             }
         });

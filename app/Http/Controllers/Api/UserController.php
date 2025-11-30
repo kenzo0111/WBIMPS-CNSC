@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class UserController extends Controller
 {
@@ -68,17 +70,17 @@ class UserController extends Controller
                 $user->assignRole($roleName);
             } catch (\Throwable $e) {
                 $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $roleName), '-'));
-                \Spatie\Permission\Models\Role::firstOrCreate(['slug' => $slug], ['name' => $roleName, 'guard_name' => 'web']);
+                Role::firstOrCreate(['slug' => $slug], ['name' => $roleName, 'guard_name' => 'web']);
                 $user->assignRole($roleName);
                 // ensure spatie cache is fresh after assignment
-                app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+                app(PermissionRegistrar::class)->forgetCachedPermissions();
             }
         }
 
         // If `is_admin` was provided but no explicit role, map that flag to the 'Administrator' role.
         if (!$request->filled('role') && $request->boolean('is_admin', false) && method_exists($user, 'assignRole')) {
             // map the legacy is_admin flag to the canonical 'System Admin' role by default
-            \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'System Admin', 'guard_name' => 'web']);
+            Role::firstOrCreate(['name' => 'System Admin', 'guard_name' => 'web']);
             $user->assignRole('System Admin');
         }
 
@@ -158,10 +160,10 @@ class UserController extends Controller
                 $user->syncRoles([$request->role]);
             } catch (\Throwable $e) {
                 $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $request->role), '-'));
-                \Spatie\Permission\Models\Role::firstOrCreate(['slug' => $slug], ['name' => $request->role, 'guard_name' => 'web']);
+                Role::firstOrCreate(['slug' => $slug], ['name' => $request->role, 'guard_name' => 'web']);
                 $user->syncRoles([$request->role]);
                 // clear spatie permission cache so subsequent queries reflect latest mappings
-                app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+                app(PermissionRegistrar::class)->forgetCachedPermissions();
             }
         }
 
@@ -169,10 +171,10 @@ class UserController extends Controller
         if (!$request->filled('role') && $request->has('is_admin') && method_exists($user, 'syncRoles')) {
             if ($request->boolean('is_admin')) {
                 // Ensure System Admin exists and add it
-                \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'System Admin', 'guard_name' => 'web']);
+                Role::firstOrCreate(['name' => 'System Admin', 'guard_name' => 'web']);
                 if (!$user->hasRole('System Admin')) {
                     $user->assignRole('System Admin');
-                    app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+                    app(PermissionRegistrar::class)->forgetCachedPermissions();
                 }
             } else {
                 // remove the known admin roles if it's being turned off

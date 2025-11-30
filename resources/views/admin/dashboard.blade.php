@@ -62,6 +62,24 @@
                     </button>
                 </div>
 
+                <!-- Transactions -->
+                <div class="nav-group">
+                    <button class="nav-button nav-header" data-group="transactions">
+                        <div class="nav-content">
+                            <i data-lucide="activity" class="icon"></i>
+                            <span>Transactions</span>
+                        </div>
+                        <i data-lucide="chevron-right" class="chevron"></i>
+                    </button>
+                    <div class="nav-submenu">
+                        <div class="nav-item" data-page="login-activity">
+                            <button class="nav-button">
+                                <span>Login Activity</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Inventory Management -->
                 <div class="nav-group">
                     <button class="nav-button nav-header" data-group="inventory">
@@ -193,11 +211,6 @@
                         <div class="nav-item" data-page="users">
                             <button class="nav-button">
                                 <span>Users</span>
-                            </button>
-                        </div>
-                        <div class="nav-item" data-page="login-activity">
-                            <button class="nav-button">
-                                <span>Login Activity</span>
                             </button>
                         </div>
                         <div class="nav-item" data-page="roles">

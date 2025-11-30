@@ -47,10 +47,10 @@ test('student assistant dashboard includes stock permissions but not manage item
 test('office assistant dashboard includes create requests and view reports permissions', function () {
     $user = User::factory()->create();
     // ensure role and permissions exist and are associated
-    \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'create requests', 'guard_name' => 'web']);
-    \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'view reports', 'guard_name' => 'web']);
-    \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Office Assistant', 'guard_name' => 'web']);
-    $role = \Spatie\Permission\Models\Role::firstWhere('name', 'Office Assistant');
+    Permission::firstOrCreate(['name' => 'create requests', 'guard_name' => 'web']);
+    Permission::firstOrCreate(['name' => 'view reports', 'guard_name' => 'web']);
+    Role::firstOrCreate(['name' => 'Office Assistant', 'guard_name' => 'web']);
+    $role = Role::firstWhere('name', 'Office Assistant');
     $role->syncPermissions(['create requests', 'view reports']);
 
     $user->assignRole('Office Assistant');
