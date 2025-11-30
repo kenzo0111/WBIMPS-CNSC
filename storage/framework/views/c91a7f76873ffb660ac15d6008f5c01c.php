@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <style>
-    body { font-family: "Times New Roman", Times, serif; font-size: 11px; margin: 10px; }
+    body { font-family: "Times New Roman", Times, serif; font-size: 12px; margin: 10px; }
         .title { text-align: center; font-weight: bold; margin-bottom: 6px; }
         .sub-title { text-align: center; font-size: 12px; }
         table { width: 100%; border-collapse: collapse; }
@@ -12,39 +12,48 @@
         .no-border td { border: none; padding: 2px; }
         .right { text-align: right; }
         .center { text-align: center; }
-    .small { font-family: "Times New Roman", Times, serif; font-size: 10px; }
+    .small { font-family: "Times New Roman", Times, serif; font-size: 12px; }
         .purpose { border: 1px solid #000; padding: 6px; min-height: 40px; }
         .signature { padding-top: 30px; }
+        .header-title {
+            text-align: right;
+            font-style: italic;
+            font-size: 12pt;
+            margin-bottom: 5px;
+        }
+        .main-title {
+            text-align: center;
+            font-weight: bold;
+            font-size: 12pt;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
-    <style>
-        /* appendix positioning */
-        .appendix {
-            position: absolute;
-            right: 18px;
-            top: <?php echo e($appendix_top ?? '1px'); ?>;
-            font-size: 12px;
-            font-weight: bold;
-        }
-    </style>
-    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-        <div style="flex:1"></div>
-        <div style="text-align:center; flex:2"><span class="title">PURCHASE REQUEST</span></div>
-        <div style="flex:1"></div>
-    </div>
-    <div class="appendix"><?php echo e($appendix ?? 'Appendix 60'); ?></div>
+    <div class="header-title">Appendix 60</div>
+    <div class="main-title">PURCHASE REQUEST</div>
 
     <table class="no-border" style="margin-bottom:6px; width:100%;">
         <tr>
-            <td style="width:12%;"><strong>Entity Name:</strong> <?php echo e($entity_name); ?></td>
-            <td style="width:8%;"></td>
-            <td style="width:40%;"></td>
-            <td style="width:8%;"></td>
-            <td style="width:16%; text-align:left;"><strong>Fund Cluster:</strong> <?php echo e($fund_cluster ?? ''); ?></td>
-            <td style="width:16%;"></td>
+            <td style="width:12%; padding:4px;"><strong>Entity Name:</strong></td>
+            <td colspan="3" style="width:56%; padding:4px;">
+                <div style="border-bottom:1px solid #000; display:inline-block; width:100%;"><?php echo e($entity_name); ?></div>
+            </td>
+            <td style="width:16%; padding:4px; text-align:right;"><strong>Fund Cluster:</strong></td>
+            <td style="width:16%; padding:4px;">
+                <div style="border-bottom:1px solid #000; display:inline-block; width:100%;"><?php echo e($fund_cluster ?? ''); ?></div>
+            </td>
         </tr>
     </table>
+
+    <?php
+        // Ensure variables exist and compute derived values to simplify template logic
+        $items = $items ?? [];
+        $rowsPerPage = $rows_per_page ?? 15;
+        $filled = count($items);
+        $rowsToAdd = max(0, $rowsPerPage - $filled);
+        $totalCost = collect($items)->sum(fn($it) => floatval($it['total_cost'] ?? 0));
+    ?>
 
     <table>
         <thead>
@@ -79,24 +88,21 @@
             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
 
             
-            <?php
-                $filled = count($items);
-                $rowsToAdd = max(0, 25 - $filled);
-            ?>
+            
             <?php for($i = 0; $i < $rowsToAdd; $i++): ?>
             <tr>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
+                <td style="padding:4px">&nbsp;</td>
+                <td style="padding:4px">&nbsp;</td>
+                <td style="padding:4px">&nbsp;</td>
+                <td style="padding:4px">&nbsp;</td>
+                <td style="padding:4px">&nbsp;</td>
+                <td style="padding:4px">&nbsp;</td>
             </tr>
             <?php endfor; ?>
 
             <tr>
                 <td colspan="5" class="right"><strong>TOTAL</strong></td>
-                <td class="right"><strong><?php echo e(number_format(collect($items)->sum(function($it){ return $it['total_cost'] ?? 0; }), 2)); ?></strong></td>
+                <td class="right"><strong><?php echo e(number_format($totalCost, 2)); ?></strong></td>
             </tr>
 
             
@@ -107,43 +113,28 @@
                 <td colspan="6" class="purpose"><?php echo e($purpose); ?></td>
             </tr>
             <tr>
-                <td colspan="3" style="text-align:center; padding-top:18px;">
-                    Requested by:<br>
-                    <table style="width:100%; border:none; border-collapse:collapse;">
-                        <tr>
-                            <td style="text-align:center; border:none; padding:6px 2px 2px 2px;">
-                                <div style="display:inline-block; width:80%; border-bottom:1px solid #000; height:12px;"></div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style="text-align:center; border:none; padding:6px 2px 2px 2px;">&nbsp;</td>
-                        </tr>
-                        <tr>
-                            <td style="text-align:center; border:none; padding:2px;"><strong><?php echo e($requested_by); ?></strong></td>
-                        </tr>
-                        <tr>
-                            <td style="text-align:center; border:none; padding:2px;" class="small"><?php echo e($designation); ?></td>
-                        </tr>
-                    </table>
+                <!-- Signature, Printed Name, Designation (columns 1-2) -->
+                <td colspan="2" style="padding:8px; vertical-align:top;">
+                    <div style="text-align:center;">&nbsp;</div>
+                    <div style="height:18px;"><strong>Signature:</strong></div>
+                    <div style="height:18px;"><strong>Printed Name:</strong></div>
+                    <div style="height:18px;"><strong>Designation:</strong></div>
                 </td>
-                <td colspan="3" style="text-align:center; padding-top:18px;">
-                    Approved by:<br>
-                    <table style="width:100%; border:none; border-collapse:collapse;">
-                        <tr>
-                            <td style="text-align:center; border:none; padding:6px 2px 2px 2px;">
-                                <div style="display:inline-block; width:80%; border-bottom:1px solid #000; height:12px;"></div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style="text-align:center; border:none; padding:6px 2px 2px 2px;">&nbsp;</td>
-                        </tr>
-                        <tr>
-                            <td style="text-align:center; border:none; padding:2px;"><strong><?php echo e($approved_by); ?></strong></td>
-                        </tr>
-                        <tr>
-                            <td style="text-align:center; border:none; padding:2px;" class="small"><?php echo e($approved_position); ?></td>
-                        </tr>
-                    </table>
+
+                <!-- Requested by (columns 3-4) -->
+                <td colspan="2" style="padding:8px; vertical-align:top;">
+                    <div style="text-align:center;"><strong>Requested by:</strong></div>
+                    <div style="border-bottom:1px solid #000; height:18px;"></div>
+                    <div style="border-bottom:1px solid #000; height:18px;"></div>
+                    <div style="border-bottom:1px solid #000; height:18px;"></div>
+                </td>
+
+                <!-- Approved by (columns 5-6) -->
+                <td colspan="2" style="padding:8px; vertical-align:top;">
+                    <div style="text-align:center;"><strong>Approved by:</strong></div>
+                    <div style="border-bottom:1px solid #000; height:18px;"></div>
+                    <div style="border-bottom:1px solid #000; height:18px;"></div>
+                    <div style="border-bottom:1px solid #000; height:18px;"></div>
                 </td>
             </tr>
         </tbody>

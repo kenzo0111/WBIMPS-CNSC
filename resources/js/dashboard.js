@@ -350,6 +350,7 @@ function getDepartmentCategories() {
     ],
     'Administrative & Operational Units': [
       { value: 'AAO', label: 'Alumni Affairs Office (AAO)' },
+      { value: 'ICO', label: 'Internal Control Office (ICO)' },
       { value: 'ASD', label: 'Auxilliary Services Division (ASD)' },
       { value: 'GSO', label: 'General Services Office (GSO)' },
       { value: 'ITSO', label: 'Information Technology Services Office (ITSO)' },
@@ -427,6 +428,109 @@ function generateDepartmentOptionsHTML(currentDepartment = '') {
       return `<optgroup label="${category}">${options}</optgroup>`
     })
     .join('')
+}
+
+// Variation of generateDepartmentOptionsHTML that uses the human-friendly label as the option `value`.
+// This is useful for form fields that historically stored free-text office/department labels instead
+// of department codes (e.g., 'Supply Office' vs 'SUPPLY OFFICE'). It preserves visual grouping as well.
+function generateDepartmentOptionsHTMLWithLabels(currentLabel = '') {
+  const departmentCategories = getDepartmentCategories()
+  return Object.keys(departmentCategories)
+    .map((category) => {
+      const departments = departmentCategories[category]
+      const options = departments
+        .map(
+          (d) =>
+            `<option value="${d.label}" ${
+              currentLabel === d.label ? 'selected' : ''
+            }>${d.label}</option>`
+        )
+        .join('')
+      return `<optgroup label="${category}">${options}</optgroup>`
+    })
+    .join('')
+}
+
+// Offices listed in the picture (only these should appear in the RIS office dropdown)
+const RIS_OFFICE_LIST = [
+  { value: 'ITSO', label: 'Information Technology Services Office (ITSO)' },
+  { value: 'ICO', label: 'Internal Control Office (ICO)' },
+  { value: 'LAO', label: 'Legal Affairs Office (LAO)' },
+  { value: 'IRO', label: 'International Relations Office (IRO)' },
+  { value: 'AAO', label: 'Alumni Affairs Office (AAO)' },
+  {
+    value: 'CEID2',
+    label: 'Center for Equity, Inclusivity, and Diversity (CEID)',
+  },
+  { value: 'OSSD', label: 'Office of Student Services and Development (OSSD)' },
+  {
+    value: 'PICRO',
+    label: 'Public Information and Community Relations Office (PICRO)',
+  },
+]
+
+function generateRISOfficeOptionsHTML(currentLabel = '') {
+  const opts = RIS_OFFICE_LIST.map(
+    (o) =>
+      `<option value="${o.label}" ${
+        currentLabel === o.label ? 'selected' : ''
+      }>${o.label}</option>`
+  ).join('')
+  return opts
+}
+
+// ===== Category / SKU helpers =====
+function generateCategoryOptionsHTML(currentCategoryId = '') {
+  const cats = MockData.categories || []
+  const opts = ['<option value="">Select category</option>']
+  return opts
+    .concat(
+      cats.map(
+        (c) =>
+          `<option value="${escapeHtml(String(c.id || ''))}" ${
+            {
+              true: 'selected',
+              false: '',
+            }[String(currentCategoryId || '') === String(c.id || '')]
+          }>${escapeHtml(c.name || '')}</option>`
+      )
+    )
+    .join('')
+}
+
+function generateSkuOptionsForCategoryHTML(categoryId, selectedSku = '') {
+  const Items = (MockData.Items || []).filter(
+    (it) => String(it.category_id || '') === String(categoryId || '')
+  )
+  if (!categoryId) {
+    // show all Items if no category selected
+    const all = (MockData.Items || []).slice()
+    if (!all.length) return '<option value="">No items available</option>'
+    const html = all
+      .map(
+        (it) =>
+          `<option value="${escapeHtml(
+            it.id || ''
+          )}" data-unitcost="${escapeHtml(
+            String(it.unitCost || it.unit_cost || 0)
+          )}" data-qty="${escapeHtml(String(it.quantity || 0))}" ${
+            String(selectedSku || '') === String(it.id || '') ? 'selected' : ''
+          }>${escapeHtml(it.id || '')} - ${escapeHtml(it.name || '')}</option>`
+      )
+      .join('')
+    return html + '<option value="__other__">Other (enter manually)</option>'
+  }
+  if (!Items.length)
+    return '<option value="">No items for this category</option>'
+  const opts = Items.map(
+    (it) =>
+      `<option value="${escapeHtml(it.id || '')}" data-unitcost="${escapeHtml(
+        String(it.unitCost || it.unit_cost || 0)
+      )}" data-qty="${escapeHtml(String(it.quantity || 0))}" ${
+        String(selectedSku || '') === String(it.id || '') ? 'selected' : ''
+      }>${escapeHtml(it.id || '')} - ${escapeHtml(it.name || '')}</option>`
+  ).join('')
+  return opts + '<option value="__other__">Other (enter manually)</option>'
 }
 
 function getDepartmentLabel(value) {
@@ -3641,10 +3745,9 @@ function generateDashboardPage() {
                 
                 <!-- Recent Activity second -->
                 <div class="card">
-                    <div class="card-header card-header-inline" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                        <h3 class="card-title">Recent Activity</h3>
-                        <a href="#" class="link" onclick="navigateToPage('activity')">View all activity →</a>
-                    </div>
+                  <div class="card-header card-header-inline" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <h3 class="card-title">Recent Activity</h3>
+                  </div>
                     <div class="activity-list" id="recent-activity-list">
                       <!-- Recent activities will be injected here by dashboard script -->
                       <div class="activity-loading" style="padding:16px;font-size:14px;">Loading recent activity…</div>
@@ -5008,7 +5111,7 @@ function generateSupplierModal(mode = 'create', supplier = {}, index = null) {
                 </h3>
 
                 <div class="grid-2">
-                    <div class="form-group" style="margin-bottom: 20px;">
+                  <div class="form-group" style="margin-bottom: 20px;">
                         <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
                             <i data-lucide="user" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             Supplier Name
@@ -5578,6 +5681,48 @@ function makeSupplierManual(id, placeholder = 'Enter supplier name') {
   return input
 }
 
+// Similar helper for department/office selects — convert select to a text input
+function makeDepartmentManual(id, placeholder = 'Enter office name') {
+  // Reuse makeSupplierManual's logic (it generically swaps select -> input)
+  return makeSupplierManual(id, placeholder)
+}
+
+// Convert manual input for department back to a select populated from department categories
+function convertInputBackToDepartmentSelect(id, selectedLabel = '') {
+  const el = document.getElementById(id)
+  if (!el) return null
+  // If already a select, just set value
+  if (el.tagName.toLowerCase() === 'select') {
+    el.value = selectedLabel
+    el.dispatchEvent(new Event('change'))
+    return el
+  }
+
+  const select = document.createElement('select')
+  select.id = id
+  select.className = 'form-select'
+  select.style.cssText = el.style.cssText || ''
+
+  const opts = []
+  opts.push(`<option value="">Select office</option>`)
+  // For ris office only, use the limited RIS_OFFICE_LIST; otherwise use full departments
+  if (
+    String(id).toLowerCase() === 'ris_office' ||
+    String(id).toLowerCase().includes('ris')
+  ) {
+    opts.push(generateRISOfficeOptionsHTML(selectedLabel))
+  } else {
+    opts.push(generateDepartmentOptionsHTMLWithLabels(selectedLabel))
+  }
+  opts.push(`<option value="__other__">Other (enter manually)</option>`)
+  select.innerHTML = opts.join('')
+
+  el.replaceWith(select)
+  if (selectedLabel) select.value = selectedLabel
+  select.dispatchEvent(new Event('change'))
+  return select
+}
+
 function convertInputBackToSelect(id, selectedValue = '') {
   const el = document.getElementById(id)
   if (!el) return null
@@ -5615,6 +5760,80 @@ function convertInputBackToSelect(id, selectedValue = '') {
   return select
 }
 
+// Convert manual input for SKU back to select populated by Items grouped by category
+function convertInputBackToSkuSelect(id, selectedSku = '') {
+  const el = document.getElementById(id)
+  if (!el) return null
+  if (el.tagName.toLowerCase() === 'select') {
+    el.value = selectedSku
+    el.dispatchEvent(new Event('change'))
+    return el
+  }
+  const select = document.createElement('select')
+  select.id = id
+  select.className = 'form-select'
+  select.style.cssText = el.style.cssText || ''
+  const cats = (MockData.categories || []).slice()
+  const opts = []
+  opts.push(`<option value="">Select an item</option>`)
+  // Group items by category for better UX
+  if (cats.length) {
+    cats.forEach((cat) => {
+      const items = (MockData.Items || []).filter(
+        (it) => String(it.category_id || '') === String(cat.id || '')
+      )
+      if (!items.length) return
+      const group = items
+        .map(
+          (it) =>
+            `<option value="${escapeHtml(
+              it.id || ''
+            )}" data-unitcost="${escapeHtml(
+              String(it.unitCost || it.unit_cost || 0)
+            )}" data-qty="${escapeHtml(String(it.quantity || 0))}" ${
+              String(selectedSku || '') === String(it.id || '')
+                ? 'selected'
+                : ''
+            }>${escapeHtml(it.id || '')} - ${escapeHtml(
+              it.name || ''
+            )}</option>`
+        )
+        .join('')
+      opts.push(
+        `<optgroup label="${escapeHtml(cat.name || '')}">${group}</optgroup>`
+      )
+    })
+  }
+  // items without category
+  const uncategorized = (MockData.Items || []).filter((it) => !it.category_id)
+  if (uncategorized.length) {
+    const group = uncategorized
+      .map(
+        (it) =>
+          `<option value="${escapeHtml(
+            it.id || ''
+          )}" data-unitcost="${escapeHtml(
+            String(it.unitCost || it.unit_cost || 0)
+          )}" data-qty="${escapeHtml(String(it.quantity || 0))}" ${
+            String(selectedSku || '') === String(it.id || '') ? 'selected' : ''
+          }>${escapeHtml(it.id || '')} - ${escapeHtml(it.name || '')}</option>`
+      )
+      .join('')
+    opts.push(`<optgroup label="Uncategorized">${group}</optgroup>`)
+  }
+  // allow manual SKU entry
+  opts.push(`<option value="__other__">Other (enter manually)</option>`)
+  select.innerHTML = opts.join('')
+  el.replaceWith(select)
+  if (selectedSku) select.value = selectedSku
+  select.dispatchEvent(new Event('change'))
+  return select
+}
+
+function makeSkuManual(id, placeholder = 'Enter SKU') {
+  return makeSupplierManual(id, placeholder)
+}
+
 // Delegated handler: coordinate selects/inputs used for suppliers across modals
 document.addEventListener('change', (e) => {
   const id = e.target && e.target.id
@@ -5623,6 +5842,12 @@ document.addEventListener('change', (e) => {
 
   // If user chose Other on a select - convert to manual input
   if (e.target.tagName.toLowerCase() === 'select' && val === '__other__') {
+    // For office selects (RIS/IAR), convert using department helper
+    if (id && id.toLowerCase().includes('office')) {
+      makeDepartmentManual(id, 'Enter office name')
+      return
+    }
+    // default behavior for supplier selects
     makeSupplierManual(id)
     return
   }
@@ -5645,6 +5870,12 @@ document.addEventListener('change', (e) => {
       }
     }
   }
+
+  // If a SKU select chose 'Other', use the sku manual popup
+  if (id && id.toLowerCase().includes('sku') && val === '__other__') {
+    makeSkuManual(id, 'Enter SKU')
+    return
+  }
 })
 
 document.addEventListener('input', (e) => {
@@ -5661,6 +5892,46 @@ document.addEventListener('input', (e) => {
     const found = (AppState.suppliers || []).find((s) => s.name === val)
     if (found) {
       convertInputBackToSelect(id, found.name)
+    }
+  }
+
+  // For office inputs converted manually, try converting back to select if value matches a known office label
+  if (
+    e.target.tagName.toLowerCase() === 'input' &&
+    id &&
+    id.toLowerCase().includes('office')
+  ) {
+    const val = String(e.target.value || '').trim()
+    if (!val) return
+    // check across department categories
+    const departmentCategories = getDepartmentCategories()
+    let match = ''
+    for (const key of Object.keys(departmentCategories)) {
+      const found = (departmentCategories[key] || []).find(
+        (d) => d.label === val
+      )
+      if (found) {
+        match = found.label
+        break
+      }
+    }
+    if (match) {
+      convertInputBackToDepartmentSelect(id, match)
+    }
+  }
+
+  // If typing into a SKU manual input and it now exactly matches an existing Item SKU, convert back to select
+  if (
+    e.target.tagName.toLowerCase() === 'input' &&
+    id &&
+    id.toLowerCase().includes('sku')
+  ) {
+    const val = String(e.target.value || '').trim()
+    if (val) {
+      const found = (MockData.Items || []).find((it) => String(it.id) === val)
+      if (found) {
+        convertInputBackToSkuSelect(id, found.id)
+      }
     }
   }
 })
@@ -11961,7 +12232,12 @@ function autoFillRISForm() {
       updatePOFormDraft('ris', 'division', department)
     }
     if (!AppState.purchaseOrderDraft.risFormData.office) {
-      updatePOFormDraft('ris', 'office', department)
+      // Only auto-fill the RIS office if it matches one of the allowed RIS offices
+      const officeLabel = getDepartmentLabel(department) || department
+      const allowedLabels = RIS_OFFICE_LIST.map((o) => o.label)
+      if (allowedLabels.includes(officeLabel)) {
+        updatePOFormDraft('ris', 'office', officeLabel)
+      }
     }
   }
 
@@ -12540,11 +12816,15 @@ function renderDynamicPOForms() {
                 <i data-lucide="briefcase" style="width: 14px; height: 14px; color: #64748b;"></i>
                 Office
               </label>
-              <input type="text" class="form-input" id="ris_office" value="${
-                (AppState.purchaseOrderDraft.risFormData &&
-                  AppState.purchaseOrderDraft.risFormData.office) ||
-                ''
-              }" onchange="updatePOFormDraft('ris','office', this.value)" placeholder="Office name" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              <select class="form-select" id="ris_office" onchange="updatePOFormDraft('ris','office', this.value)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                <option value="">Select office</option>
+                ${generateRISOfficeOptionsHTML(
+                  (AppState.purchaseOrderDraft.risFormData &&
+                    AppState.purchaseOrderDraft.risFormData.office) ||
+                    ''
+                )}
+                <option value="__other__">Other (enter manually)</option>
+              </select>
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
@@ -21896,6 +22176,7 @@ function openStockInModal(mode = 'create', stockId = null) {
     const ucInput = document.getElementById('uc-input')
     const totalInput = document.getElementById('total-input')
     const skuInput = document.getElementById('sku-input')
+    const categorySelect = document.getElementById('si-category')
     const ItemInput = document.getElementById('Item-input')
     const currentStockBadgeId = 'current-stock-badge'
 
@@ -21922,7 +22203,8 @@ function openStockInModal(mode = 'create', stockId = null) {
     function autoFillFromSku() {
       const raw = skuInput.value.trim()
       if (!raw) {
-        ItemInput.removeAttribute('readonly')
+        // Keep Item input readonly at all times; clear value & badge when no SKU
+        ItemInput.setAttribute('readonly', 'readonly')
         stockBadge.textContent = ''
         return
       }
@@ -21940,7 +22222,8 @@ function openStockInModal(mode = 'create', stockId = null) {
         stockBadge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;background:#f3f4f6;padding:4px 8px;border-radius:12px;">Current Stock: <strong>${prod.quantity}</strong></span>`
         updateTotal()
       } else {
-        ItemInput.removeAttribute('readonly')
+        // Keep Item input readonly; allow user to see SKU not found state
+        ItemInput.setAttribute('readonly', 'readonly')
         stockBadge.textContent = 'SKU not found in Items list'
       }
     }
@@ -21949,6 +22232,28 @@ function openStockInModal(mode = 'create', stockId = null) {
       // Only trigger when user typed a plausible code pattern (letters+digits length>=2)
       if (skuInput.value.trim().length >= 2) autoFillFromSku()
     })
+    skuInput.addEventListener('change', autoFillFromSku)
+    // When category changes, re-populate SKUs and reset Item input
+    if (categorySelect) {
+      categorySelect.addEventListener('change', (e) => {
+        const cid = String(e.target.value || '')
+        // SKU is a text input now: clear it and reset Item and other dependent fields
+        if (
+          skuInput &&
+          skuInput.tagName &&
+          skuInput.tagName.toLowerCase() === 'input'
+        ) {
+          skuInput.value = ''
+        }
+        if (ItemInput) ItemInput.value = ''
+        if (ucInput && (!ucInput.value || parseFloat(ucInput.value) === 0)) {
+          ucInput.value = ''
+        }
+      })
+      // ensure initial populate when modal opens if category present
+      if (categorySelect.value)
+        categorySelect.dispatchEvent(new Event('change'))
+    }
     autoFillFromSku()
   }
 }
@@ -22004,6 +22309,14 @@ function generateStockInModal(mode = 'create', stockData = null) {
   const supplierValue = normalizedStock.supplier
   const receivedByValue = normalizedStock.receivedBy
   const stockIdValue = normalizedStock.id || ''
+  // try to infer category from existing SKU if present
+  let initialCategoryId = ''
+  if (skuValue) {
+    const found = (MockData.Items || []).find(
+      (it) => String(it.id) === String(skuValue)
+    )
+    if (found) initialCategoryId = found.category_id || ''
+  }
 
   return `
         <div class="modal-header" style="background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); color: white; border-bottom: none; padding: 32px 24px;">
@@ -22044,28 +22357,42 @@ function generateStockInModal(mode = 'create', stockData = null) {
                     
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                            <i data-lucide="barcode" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                            SKU
+                            <i data-lucide="grid" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                            Category
                         </label>
-         <input type="text" class="form-input" id="sku-input"
-           value="${skuValue || ''}"
-                               placeholder="e.g., E001, SE01, N001"
-                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                               ${isReadOnly ? 'readonly' : ''}>
+         <select id="si-category" class="form-select" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" ${
+           isReadOnly ? 'disabled' : ''
+         }>
+           ${generateCategoryOptionsHTML(initialCategoryId)}
+         </select>
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                        <i data-lucide="package" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                        Item Name
-                    </label>
+                <div class="grid-2" style="margin-top:8px;">
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                            <i data-lucide="barcode" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                            SKU
+                        </label>
+         <input id="sku-input" type="text" class="form-input" placeholder="Enter SKU (e.g., E002)"
+           value="${skuValue || ''}"
+           style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
+           ${isReadOnly ? 'readonly' : ''}>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                            <i data-lucide="package" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                            Item Name
+                        </label>
           <input type="text" class="form-input" id="Item-input"
             value="${ItemNameValue || ''}"
                            placeholder="Enter Item name"
                            style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                           ${isReadOnly ? 'readonly' : ''}>
+                           readonly>
+                    </div>
                 </div>
+
+                
             </div>
 
             <!-- Quantity & Pricing -->
@@ -22426,6 +22753,7 @@ function openStockOutModal(mode = 'create', stockId = null) {
     const uc = modal.querySelector('#so-uc')
     const total = modal.querySelector('#so-total')
     const skuInput = modal.querySelector('#so-sku')
+    const categorySelect = modal.querySelector('#so-category')
     const ItemInput = modal.querySelector('#so-Item')
 
     // Auto-detect low-stock items when opening the modal (if SKU not pre-filled)
@@ -22476,7 +22804,8 @@ function openStockOutModal(mode = 'create', stockId = null) {
       if (!skuInput) return
       const raw = skuInput.value.trim()
       if (!raw) {
-        ItemInput && ItemInput.removeAttribute('readonly')
+        // Keep Item input readonly at all times; clear value & badge when no SKU
+        if (ItemInput) ItemInput.setAttribute('readonly', 'readonly')
         if (stockBadge) stockBadge.textContent = ''
         return
       }
@@ -22533,7 +22862,8 @@ function openStockOutModal(mode = 'create', stockId = null) {
         }
         updateTotal()
       } else {
-        if (ItemInput) ItemInput.removeAttribute('readonly')
+        // Keep Item input readonly; show SKU-not-found state
+        if (ItemInput) ItemInput.setAttribute('readonly', 'readonly')
         if (stockBadge) stockBadge.textContent = 'SKU not found in Items list'
         if (qty) qty.removeAttribute('max')
       }
@@ -22543,7 +22873,27 @@ function openStockOutModal(mode = 'create', stockId = null) {
       skuInput.addEventListener('input', () => {
         if (skuInput.value.trim().length >= 2) autoFillFromSku()
       })
+      skuInput.addEventListener('change', autoFillFromSku)
       autoFillFromSku()
+    }
+    // When category changes, re-populate SKU options
+    if (categorySelect) {
+      categorySelect.addEventListener('change', (e) => {
+        const cid = String(e.target.value || '')
+        // SKU is a text input now: simply clear the value and reset other fields
+        if (
+          skuInput &&
+          skuInput.tagName &&
+          skuInput.tagName.toLowerCase() === 'input'
+        ) {
+          skuInput.value = ''
+        }
+        if (ItemInput) ItemInput.value = ''
+        if (uc) uc.value = ''
+      })
+      // ensure initial populate when modal opens
+      if (categorySelect.value)
+        categorySelect.dispatchEvent(new Event('change'))
     }
     // quantity clamp handler: defined here to access modal scope
     function qtyInputClampHandler(e) {
@@ -22614,6 +22964,13 @@ function generateStockOutModal(mode = 'create', stockData = null) {
       ? 'Update stock out transaction'
       : 'View stock out details'
   const isReadOnly = mode === 'view'
+  // infer initial category for selected SKU (for edit mode)
+  let initialSoCategoryId = ''
+  const sku = stockData?.sku || ''
+  if (sku) {
+    const f = (MockData.Items || []).find((it) => String(it.id) === String(sku))
+    if (f) initialSoCategoryId = f.category_id || ''
+  }
 
   return `
         <div class="modal-header" style="background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); color: white; border-bottom: none; padding: 32px 24px;">
@@ -22639,7 +22996,7 @@ function generateStockOutModal(mode = 'create', stockData = null) {
                     Transaction Details
                 </h3>
                 
-                <div class="grid-2">
+                    <div class="grid-2">
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
                             <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
@@ -22657,30 +23014,44 @@ function generateStockOutModal(mode = 'create', stockData = null) {
                     
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                            <i data-lucide="barcode" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                            SKU
-                        </label>
-                        <input id="so-sku" type="text" class="form-input"
-                               value="${stockData?.sku || ''}"
-                               placeholder="e.g., E001, SE01, N001"
-                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                               ${isReadOnly ? 'readonly' : ''}>
+                            <i data-lucide="grid" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                            Category
+                          </label>
+                          <select id="so-category" class="form-select" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" ${
+                            isReadOnly ? 'disabled' : ''
+                          }>
+                            ${generateCategoryOptionsHTML(initialSoCategoryId)}
+                          </select>
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                        <i data-lucide="package" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                        Item Name
-                    </label>
-                    <input id="so-Item" type="text" class="form-input"
-                           value="${stockData?.ItemName || ''}"
-                           placeholder="Enter Item name"
-                           style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                           ${isReadOnly ? 'readonly' : ''}>
-          <!-- Inline low-stock banner (hidden by default). Visible until modal close or SKU change -->
-          <div id="so-lowstock-banner" style="display:none;margin-top:8px;padding:8px 12px;border-radius:8px;background:#fff7ed;color:#92400e;font-weight:600;font-size:13px;">Low stock</div>
-                </div>
+                      <div class="grid-2" style="margin-top:8px;">
+                        <div class="form-group" style="margin-bottom: 20px;">
+                          <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                            <i data-lucide="barcode" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                            SKU
+                          </label>
+                          <input id="so-sku" type="text" class="form-input" placeholder="E002"
+                            value="${stockData?.sku || ''}"
+                            style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
+                            ${isReadOnly ? 'readonly' : ''}>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 20px;">
+                          <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                            <i data-lucide="package" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                            Item Name
+                          </label>
+                            <input id="so-Item" type="text" class="form-input"
+                              value="${stockData?.ItemName || ''}"
+                              placeholder="Enter Item name"
+                              style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
+                              readonly>
+                    <!-- Inline low-stock banner (hidden by default). Visible until modal close or SKU change -->
+                    <div id="so-lowstock-banner" style="display:none;margin-top:8px;padding:8px 12px;border-radius:8px;background:#fff7ed;color:#92400e;font-weight:600;font-size:13px;">Low stock</div>
+                        </div>
+                      </div>
+
+                
             </div>
 
             <!-- Quantity & Pricing -->

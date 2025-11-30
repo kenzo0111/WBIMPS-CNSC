@@ -16,7 +16,7 @@
         .header-title {
             text-align: right;
             font-style: italic;
-            font-size: 9pt;
+            font-size: 12pt;
             margin-bottom: 5px;
         }
         .main-title {
