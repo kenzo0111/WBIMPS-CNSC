@@ -15973,13 +15973,22 @@ function renderRolesManagementPage(
                                     <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: ${
                                       member.role === 'Leader'
                                         ? '#fef3c7'
+                                        : member.role === 'Supply Coordinator'
+                                        ? '#fff7ed'
                                         : '#e0f2fe'
                                     }; color: ${
-                              member.role === 'Leader' ? '#92400e' : '#0c4a6e'
+                              member.role === 'Leader'
+                                ? '#92400e'
+                                : member.role === 'Supply Coordinator'
+                                ? '#92400e'
+                                : '#0c4a6e'
                             }; border-radius: 20px; font-size: 13px; font-weight: 600;">
                                         <i data-lucide="${
                                           member.role === 'Leader'
                                             ? 'crown'
+                                            : member.role ===
+                                              'Supply Coordinator'
+                                            ? 'briefcase'
                                             : 'user'
                                         }" style="width:12px;height:12px;"></i>
                                         ${member.role}
@@ -16621,10 +16630,16 @@ function generateUserModal(mode = 'view', userData = null) {
                             ${
                               isReadOnly
                                 ? `
-                                <div class="readonly-field" style="width: 100%; border: 2px solid #e5e7eb; padding: 14px 16px; font-size: 15px; border-radius: 10px; background: #fafbfc; color: #374151; font-weight: 500; display: flex; align-items: center; gap: 10px;">
-                                    <i data-lucide="shield-check" style="width: 18px; height: 18px; color: #7c3aed;"></i>
-                                    ${userData?.role || ''}
-                                </div>
+                              <div class="readonly-field" style="width: 100%; border: 2px solid #e5e7eb; padding: 14px 16px; font-size: 15px; border-radius: 10px; background: #fafbfc; color: #374151; font-weight: 500; display: flex; align-items: center; gap: 10px;">
+                                <i data-lucide="${
+                                  userData?.role === 'Leader'
+                                    ? 'crown'
+                                    : userData?.role === 'Supply Coordinator'
+                                    ? 'briefcase'
+                                    : 'shield-check'
+                                }" style="width: 18px; height: 18px; color: #7c3aed;"></i>
+                                ${userData?.role || ''}
+                              </div>
                             `
                                 : `
                                 <select class="form-select" id="userRole" style="width: 100%; border: 2px solid #e5e7eb; padding: 14px 16px; font-size: 15px; border-radius: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #fafbfc; font-weight: 400; cursor: pointer;">
@@ -16644,6 +16659,11 @@ function generateUserModal(mode = 'view', userData = null) {
                                         ? 'selected'
                                         : ''
                                     }>Supply Officer</option>
+                                    <option ${
+                                      userData?.role === 'Supply Coordinator'
+                                        ? 'selected'
+                                        : ''
+                                    }>Supply Coordinator</option>
                                     <option ${
                                       userData?.role === 'Administrator'
                                         ? 'selected'

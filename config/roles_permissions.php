@@ -6,6 +6,7 @@ return [
         ['name' => 'System Admin', 'slug' => 'system-admin'],
         ['name' => 'Administrator', 'slug' => 'administrator'],
         ['name' => 'Supply Officer', 'slug' => 'supply-officer'],
+        ['name' => 'Supply Coordinator', 'slug' => 'supply-coordinator'],
         ['name' => 'Office Assistant', 'slug' => 'office-assistant'],
         ['name' => 'Student Assistant', 'slug' => 'student-assistant'],
     ],
@@ -50,6 +51,16 @@ return [
             'manage supplies',
             'create requests',
             'manage requests',
+            'view reports',
+        ],
+
+        // Supply Coordinator: manage supplies and stock operations, plus viewing reports
+        'Supply Coordinator' => [
+            'manage supplies',
+            'create requests',
+            'manage stock in',
+            'manage stock out',
+            'view reports',
         ],
 
         'Office Assistant' => ['create requests', 'view reports'],

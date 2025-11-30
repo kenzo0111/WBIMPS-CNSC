@@ -17,6 +17,7 @@ beforeEach(function () {
             ['name' => 'System Admin', 'slug' => 'system-admin'],
             ['name' => 'Administrator', 'slug' => 'administrator'],
             ['name' => 'Supply Officer', 'slug' => 'supply-officer'],
+            ['name' => 'Supply Coordinator', 'slug' => 'supply-coordinator'],
             ['name' => 'Office Assistant', 'slug' => 'office-assistant'],
             ['name' => 'Student Assistant', 'slug' => 'student-assistant'],
         ]);
@@ -46,7 +47,8 @@ beforeEach(function () {
     $rolePermissions = $cfg['role_permissions'] ?? [
         'System Admin' => $permissions,
         'Administrator' => ['manage supplies', 'view reports'],
-        'Supply Officer' => ['manage supplies', 'create requests'],
+        'Supply Officer' => ['manage supplies', 'create requests', 'view reports'],
+        'Supply Coordinator' => ['manage supplies', 'create requests', 'manage stock in', 'manage stock out', 'view reports'],
         'Office Assistant' => ['create requests', 'view reports'],
         'Student Assistant' => ['create requests', 'manage stock in', 'manage stock out'],
     ];
@@ -63,12 +65,13 @@ beforeEach(function () {
     $this->permissions = $permissions;
 });
 
-test('app has the five required roles', function () {
+test('app has the required roles', function () {
     $roles = Role::pluck('name')->toArray();
     $expected = [
         'System Admin',
         'Administrator',
         'Supply Officer',
+        'Supply Coordinator',
         'Office Assistant',
         'Student Assistant',
     ];
@@ -84,7 +87,8 @@ test('each role receives correct permissions and users assigned those roles have
     $map = $cfg['role_permissions'] ?? [
         'System Admin' => ['manage everything', 'manage supplies', 'view reports'],
         'Administrator' => ['manage supplies', 'view reports'],
-        'Supply Officer' => ['manage supplies', 'create requests'],
+        'Supply Officer' => ['manage supplies', 'create requests', 'view reports'],
+        'Supply Coordinator' => ['manage supplies', 'create requests', 'manage stock in', 'manage stock out', 'view reports'],
         'Office Assistant' => ['create requests', 'view reports'],
         'Student Assistant' => ['create requests', 'manage stock in', 'manage stock out'],
     ];
