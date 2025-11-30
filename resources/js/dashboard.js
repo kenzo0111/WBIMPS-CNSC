@@ -599,6 +599,15 @@ function normalizeDateForServer(value) {
 // Pagination defaults (extendable) for Login Activity Logs
 AppState.loginActivityPage = 1
 AppState.loginActivityPageSize = 10 // show 10 records per page by default
+// Stock In pagination defaults
+AppState.currentStockInPage = 1
+AppState.stockInPageSize = 10 // default to 10 rows per page
+// Stock Out pagination defaults
+AppState.currentStockOutPage = 1
+AppState.stockOutPageSize = 10 // default to 10 rows per page
+// New Requests pagination defaults
+AppState.currentNewRequestsPage = 1
+AppState.newRequestsPageSize = 10
 
 // Minimal Mock Data container (clean slate)
 const MockData = {
@@ -1330,6 +1339,96 @@ function saveItemsPageSizeToLocalStorage() {
 
 // Load persisted preference (best-effort)
 loadItemsPageSizeFromLocalStorage()
+
+// Stock In pagination preference persistence
+function getStockInPageSizeKey() {
+  return 'spmo_stockin_page_size'
+}
+
+function loadStockInPageSizeFromLocalStorage() {
+  try {
+    const key = getStockInPageSizeKey()
+    const raw = localStorage.getItem(key)
+    if (raw !== null) {
+      const v = Number(raw)
+      if (!isNaN(v)) AppState.stockInPageSize = v
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+function saveStockInPageSizeToLocalStorage() {
+  try {
+    const key = getStockInPageSizeKey()
+    localStorage.setItem(key, String(AppState.stockInPageSize || 10))
+  } catch (e) {
+    // ignore
+  }
+}
+
+// Load persisted preference (best-effort)
+loadStockInPageSizeFromLocalStorage()
+
+// Stock Out pagination preference persistence
+function getStockOutPageSizeKey() {
+  return 'spmo_stockout_page_size'
+}
+
+function loadStockOutPageSizeFromLocalStorage() {
+  try {
+    const key = getStockOutPageSizeKey()
+    const raw = localStorage.getItem(key)
+    if (raw !== null) {
+      const v = Number(raw)
+      if (!isNaN(v)) AppState.stockOutPageSize = v
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+function saveStockOutPageSizeToLocalStorage() {
+  try {
+    const key = getStockOutPageSizeKey()
+    localStorage.setItem(key, String(AppState.stockOutPageSize || 10))
+  } catch (e) {
+    // ignore
+  }
+}
+
+// Load persisted preference (best-effort)
+loadStockOutPageSizeFromLocalStorage()
+
+// New Requests pagination preference persistence
+function getNewRequestsPageSizeKey() {
+  return 'spmo_newrequests_page_size'
+}
+
+function loadNewRequestsPageSizeFromLocalStorage() {
+  try {
+    const key = getNewRequestsPageSizeKey()
+    const raw = localStorage.getItem(key)
+    if (raw !== null) {
+      const v = Number(raw)
+      if (!isNaN(v)) AppState.newRequestsPageSize = v
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+function saveNewRequestsPageSizeToLocalStorage() {
+  try {
+    const key = getNewRequestsPageSizeKey()
+    localStorage.setItem(key, String(AppState.newRequestsPageSize || 10))
+  } catch (e) {
+    // ignore
+  }
+}
+
+// Load persisted preference (best-effort)
+loadNewRequestsPageSizeFromLocalStorage()
 
 // Load purchase orders from API
 async function loadPurchaseOrdersFromAPI() {
@@ -4266,7 +4365,11 @@ function generateCategoriesPage() {
 }
 
 // Global helper to render page buttons in pagination controls
-function renderPageButtons(currentPage, totalPages) {
+function renderPageButtons(
+  currentPage,
+  totalPages,
+  handlerName = 'goToItemsPage'
+) {
   const pages = []
   if (totalPages <= 7) {
     for (let i = 1; i <= totalPages; i++) pages.push(i)
@@ -4300,7 +4403,7 @@ function renderPageButtons(currentPage, totalPages) {
     .map((p) => {
       if (p === '...') return `<span class="pagination-ellipsis">...</span>`
       const active = Number(p) === Number(currentPage) ? 'active' : ''
-      return `<button class="pagination-btn ${active}" data-page="${p}" onclick="goToItemsPage(${p})">${p}</button>`
+      return `<button class="pagination-btn ${active}" data-page="${p}" onclick="${handlerName}(${p})">${p}</button>`
     })
     .join('')
 }
@@ -5071,6 +5174,7 @@ function generateSupplierModal(mode = 'create', supplier = {}, index = null) {
       ? 'Update supplier information'
       : 'View supplier details'
   const isReadOnly = mode === 'view'
+  // For edit mode some fields can be configured as read-only (supplier modal)
   // Use the same structure as Item modal for visual parity
   return `
     <style>
@@ -5936,6 +6040,19 @@ function generateStockInPage() {
     ...[...new Set((stockInData || []).map((r) => r.supplier).filter(Boolean))],
   ]
 
+  // Pagination calculations for initial render (may be updated by updateStockInTable later)
+  const rawPageSize = Number(AppState.stockInPageSize || 10)
+  const pageSize = rawPageSize === 0 ? stockInData.length || 1 : rawPageSize
+  const totalItems = (stockInData || []).length
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+  const currentPage = Math.min(
+    Math.max(Number(AppState.currentStockInPage || 1), 1),
+    totalPages
+  )
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = Math.min(startIndex + pageSize, totalItems)
+  const pageItems = (stockInData || []).slice(startIndex, endIndex)
+
   return `
         <div class="page-header">
             <div class="page-header-content">
@@ -5983,6 +6100,23 @@ function generateStockInPage() {
                         <option>Amount (Low to High)</option>
                         <option>Item Name (A-Z)</option>
                     </select>
+                    <select class="filter-dropdown" id="stockin-rows-per-page" style="width:130px;margin-left:8px;">
+                      <option value="10" ${
+                        AppState.stockInPageSize == 10 ? 'selected' : ''
+                      }>Rows: 10</option>
+                      <option value="25" ${
+                        AppState.stockInPageSize == 25 ? 'selected' : ''
+                      }>Rows: 25</option>
+                      <option value="50" ${
+                        AppState.stockInPageSize == 50 ? 'selected' : ''
+                      }>Rows: 50</option>
+                      <option value="100" ${
+                        AppState.stockInPageSize == 100 ? 'selected' : ''
+                      }>Rows: 100</option>
+                      <option value="0" ${
+                        AppState.stockInPageSize == 0 ? 'selected' : ''
+                      }>Rows: All</option>
+                    </select>
                 </div>
             </div>
             
@@ -6003,25 +6137,33 @@ function generateStockInPage() {
                         </tr>
                     </thead>
                     <tbody id="stock-in-table-body">
-                        ${renderStockInRows()}
+                      ${renderStockInRows(pageItems)}
                     </tbody>
                 </table>
                 
                 <!-- 🔹 Pagination -->
                 <nav class="enhanced-pagination" aria-label="Pagination">
                     <div class="pagination-left" style="margin-left: 16px">
-                        ${
-                          stockInData.length === 0
-                            ? 'No entries to display'
-                            : `Showing 1 to ${stockInData.length} of ${stockInData.length} entries`
-                        }
+                      ${
+                        totalItems === 0
+                          ? 'No entries to display'
+                          : `Showing ${
+                              totalItems === 0 ? 0 : startIndex + 1
+                            } to ${endIndex} of ${totalItems} entries`
+                      }
                     </div>
                     <div class="pagination-right" style="margin-right: 16px">
-                        <button class="pagination-btn" disabled>Previous</button>
-                        <button class="pagination-btn active">1</button>
-                        <button class="pagination-btn">2</button>
-                        <button class="pagination-btn">3</button>
-                        <button class="pagination-btn">Next</button>
+                      <button class="pagination-btn" data-action="prev" onclick="stockInPreviousPage()" ${
+                        currentPage <= 1 ? 'disabled' : ''
+                      }>Previous</button>
+                      ${renderPageButtons(
+                        currentPage,
+                        totalPages,
+                        'goToStockInPage'
+                      )}
+                      <button class="pagination-btn" data-action="next" onclick="stockInNextPage()" ${
+                        currentPage >= totalPages ? 'disabled' : ''
+                      }>Next</button>
                     </div>
                 </nav>
             </div>
@@ -6034,6 +6176,19 @@ function generateStockOutPage() {
   const uniqueDepartments = [
     ...new Set((stockOutData || []).map((r) => r.department).filter(Boolean)),
   ].sort()
+
+  // Pagination calculations for initial render
+  const rawPageSize = Number(AppState.stockOutPageSize || 10)
+  const pageSize = rawPageSize === 0 ? stockOutData.length || 1 : rawPageSize
+  const totalItems = (stockOutData || []).length
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+  const currentPage = Math.min(
+    Math.max(Number(AppState.currentStockOutPage || 1), 1),
+    totalPages
+  )
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = Math.min(startIndex + pageSize, totalItems)
+  const pageItems = (stockOutData || []).slice(startIndex, endIndex)
 
   return `
         <div class="page-header">
@@ -6086,6 +6241,23 @@ function generateStockOutPage() {
                         <i data-lucide="download" class="icon"></i>
                         Export
                     </button>
+                    <select class="filter-dropdown" id="stockout-rows-per-page" style="width:130px;margin-left:8px;">
+                      <option value="10" ${
+                        AppState.stockOutPageSize == 10 ? 'selected' : ''
+                      }>Rows: 10</option>
+                      <option value="25" ${
+                        AppState.stockOutPageSize == 25 ? 'selected' : ''
+                      }>Rows: 25</option>
+                      <option value="50" ${
+                        AppState.stockOutPageSize == 50 ? 'selected' : ''
+                      }>Rows: 50</option>
+                      <option value="100" ${
+                        AppState.stockOutPageSize == 100 ? 'selected' : ''
+                      }>Rows: 100</option>
+                      <option value="0" ${
+                        AppState.stockOutPageSize == 0 ? 'selected' : ''
+                      }>Rows: All</option>
+                    </select>
                 </div>
             </div>
 
@@ -6109,7 +6281,7 @@ function generateStockOutPage() {
                             </tr>
                         </thead>
                         <tbody id="stock-out-table-body">
-                            ${renderStockOutRows()}
+                          ${renderStockOutRows(pageItems)}
                         </tbody>
                     </table>
                     
@@ -6117,17 +6289,25 @@ function generateStockOutPage() {
                     <nav class="enhanced-pagination" aria-label="Pagination">
                         <div class="pagination-left" style="margin-left: 16px">
                             ${
-                              stockOutData.length === 0
+                              totalItems === 0
                                 ? 'No entries to display'
-                                : `Showing 1 to ${stockOutData.length} of ${stockOutData.length} entries`
+                                : `Showing ${
+                                    totalItems === 0 ? 0 : startIndex + 1
+                                  } to ${endIndex} of ${totalItems} entries`
                             }
                         </div>
                         <div class="pagination-right" style="margin-right: 16px">
-                            <button class="pagination-btn" disabled>Previous</button>
-                            <button class="pagination-btn active">1</button>
-                            <button class="pagination-btn">2</button>
-                            <button class="pagination-btn">3</button>
-                            <button class="pagination-btn">Next</button>
+                          <button class="pagination-btn" data-action="prev" onclick="stockOutPreviousPage()" ${
+                            currentPage <= 1 ? 'disabled' : ''
+                          }>Previous</button>
+                          ${renderPageButtons(
+                            currentPage,
+                            totalPages,
+                            'goToStockOutPage'
+                          )}
+                          <button class="pagination-btn" data-action="next" onclick="stockOutNextPage()" ${
+                            currentPage >= totalPages ? 'disabled' : ''
+                          }>Next</button>
                         </div>
                     </nav>
                 </div>
@@ -6173,6 +6353,20 @@ function generateNewRequestPage() {
   // Department dropdown uses the global department categories to ensure consistency
   const departmentsOptionsHTML = generateDepartmentOptionsHTML()
 
+  // Pagination calculations for initial render
+  const rawPageSize = Number(AppState.newRequestsPageSize || 10)
+  const pageSize =
+    rawPageSize === 0 ? AppState.newRequests.length || 1 : rawPageSize
+  const totalItems = (AppState.newRequests || []).length
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+  const currentPage = Math.min(
+    Math.max(Number(AppState.currentNewRequestsPage || 1), 1),
+    totalPages
+  )
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = Math.min(startIndex + pageSize, totalItems)
+  const pageItems = (AppState.newRequests || []).slice(startIndex, endIndex)
+
   return `
         <section class="page-header">
             <div class="page-header-content">
@@ -6194,6 +6388,7 @@ function generateNewRequestPage() {
                     : ''
                 }
             </div>
+            
         </section>
 
         <main class="page-content">
@@ -6219,6 +6414,25 @@ function generateNewRequestPage() {
                         ${departmentsOptionsHTML}
                     </select>
                 </div>
+                <div class="filter-right">
+                    <select class="filter-dropdown" id="newrequest-rows-per-page" style="width:130px;margin-left:8px;">
+                      <option value="10" ${
+                        AppState.newRequestsPageSize == 10 ? 'selected' : ''
+                      }>Rows: 10</option>
+                      <option value="25" ${
+                        AppState.newRequestsPageSize == 25 ? 'selected' : ''
+                      }>Rows: 25</option>
+                      <option value="50" ${
+                        AppState.newRequestsPageSize == 50 ? 'selected' : ''
+                      }>Rows: 50</option>
+                      <option value="100" ${
+                        AppState.newRequestsPageSize == 100 ? 'selected' : ''
+                      }>Rows: 100</option>
+                      <option value="0" ${
+                        AppState.newRequestsPageSize == 0 ? 'selected' : ''
+                      }>Rows: All</option>
+                    </select>
+                </div>
             </section>
 
             <!-- 🔹 Requests Table -->
@@ -6238,11 +6452,11 @@ function generateNewRequestPage() {
                             <th scope="col">Action</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="new-requests-table-body">
                         ${
                           AppState.newRequests &&
                           AppState.newRequests.length > 0
-                            ? AppState.newRequests
+                            ? pageItems
                                 .map(
                                   (request) => `
                         <tr>
@@ -6305,16 +6519,76 @@ function generateNewRequestPage() {
                         ${
                           AppState.newRequests &&
                           AppState.newRequests.length > 0
-                            ? `Showing 1 to ${AppState.newRequests.length} of ${AppState.newRequests.length} entries`
+                            ? (function () {
+                                const rawPageSize = Number(
+                                  AppState.newRequestsPageSize || 10
+                                )
+                                const pageSize =
+                                  rawPageSize === 0
+                                    ? AppState.newRequests.length || 1
+                                    : rawPageSize
+                                const totalItems = (AppState.newRequests || [])
+                                  .length
+                                const totalPages = Math.max(
+                                  1,
+                                  Math.ceil(totalItems / pageSize)
+                                )
+                                const currentPage = Math.min(
+                                  Math.max(
+                                    Number(
+                                      AppState.currentNewRequestsPage || 1
+                                    ),
+                                    1
+                                  ),
+                                  totalPages
+                                )
+                                const startIndex = (currentPage - 1) * pageSize
+                                const endIndex = Math.min(
+                                  startIndex + pageSize,
+                                  totalItems
+                                )
+                                return `Showing ${
+                                  totalItems === 0 ? 0 : startIndex + 1
+                                } to ${endIndex} of ${totalItems} entries`
+                              })()
                             : 'Showing 0 entries'
                         }
                     </div>
                     <div class="pagination-right" style="margin-right: 16px">
-                        <button class="pagination-btn" disabled>Previous</button>
-                        <button class="pagination-btn active">1</button>
-                        <button class="pagination-btn">2</button>
-                        <button class="pagination-btn">3</button>
-                        <button class="pagination-btn">Next</button>
+                        ${(function () {
+                          const rawPageSize = Number(
+                            AppState.newRequestsPageSize || 10
+                          )
+                          const pageSize =
+                            rawPageSize === 0
+                              ? AppState.newRequests.length || 1
+                              : rawPageSize
+                          const totalItems = (AppState.newRequests || []).length
+                          const totalPages = Math.max(
+                            1,
+                            Math.ceil(totalItems / pageSize)
+                          )
+                          const currentPage = Math.min(
+                            Math.max(
+                              Number(AppState.currentNewRequestsPage || 1),
+                              1
+                            ),
+                            totalPages
+                          )
+                          return `
+                            <button class="pagination-btn" data-action="prev" onclick="newRequestsPreviousPage()" ${
+                              currentPage <= 1 ? 'disabled' : ''
+                            }>Previous</button>
+                            ${renderPageButtons(
+                              currentPage,
+                              totalPages,
+                              'goToNewRequestsPage'
+                            )}
+                            <button class="pagination-btn" data-action="next" onclick="newRequestsNextPage()" ${
+                              currentPage >= totalPages ? 'disabled' : ''
+                            }>Next</button>
+                          `
+                        })()}
                     </div>
                 </nav>
             </section>
@@ -14206,7 +14480,7 @@ function updateItemsTable() {
   const pageItems = filteredItems.slice(startIndex, endIndex)
 
   // Update table body
-  const tbody = document.querySelector('.table tbody')
+  const tbody = document.getElementById('new-requests-table-body')
   if (tbody) {
     tbody.innerHTML = pageItems.length
       ? pageItems
@@ -14305,6 +14579,82 @@ window.goToItemsPage = goToItemsPage
 window.itemsNextPage = itemsNextPage
 window.itemsPreviousPage = itemsPreviousPage
 
+// Pagination control helpers for Stock In page
+function goToStockInPage(page) {
+  const p = Number(page) || 1
+  AppState.currentStockInPage = Math.max(1, p)
+  updateStockInTable()
+}
+
+function stockInNextPage() {
+  AppState.currentStockInPage = Number(AppState.currentStockInPage || 1) + 1
+  updateStockInTable()
+}
+
+function stockInPreviousPage() {
+  AppState.currentStockInPage = Math.max(
+    1,
+    Number(AppState.currentStockInPage || 1) - 1
+  )
+  updateStockInTable()
+}
+
+// expose helpers globally for inline onclick usage
+window.goToStockInPage = goToStockInPage
+window.stockInNextPage = stockInNextPage
+window.stockInPreviousPage = stockInPreviousPage
+
+// Pagination control helpers for Stock Out page
+function goToStockOutPage(page) {
+  const p = Number(page) || 1
+  AppState.currentStockOutPage = Math.max(1, p)
+  updateStockOutTable()
+}
+
+function stockOutNextPage() {
+  AppState.currentStockOutPage = Number(AppState.currentStockOutPage || 1) + 1
+  updateStockOutTable()
+}
+
+function stockOutPreviousPage() {
+  AppState.currentStockOutPage = Math.max(
+    1,
+    Number(AppState.currentStockOutPage || 1) - 1
+  )
+  updateStockOutTable()
+}
+
+// expose helpers globally for inline onclick usage
+window.goToStockOutPage = goToStockOutPage
+window.stockOutNextPage = stockOutNextPage
+window.stockOutPreviousPage = stockOutPreviousPage
+
+// Pagination control helpers for New Requests page
+function goToNewRequestsPage(page) {
+  const p = Number(page) || 1
+  AppState.currentNewRequestsPage = Math.max(1, p)
+  updateNewRequestsTable()
+}
+
+function newRequestsNextPage() {
+  AppState.currentNewRequestsPage =
+    Number(AppState.currentNewRequestsPage || 1) + 1
+  updateNewRequestsTable()
+}
+
+function newRequestsPreviousPage() {
+  AppState.currentNewRequestsPage = Math.max(
+    1,
+    Number(AppState.currentNewRequestsPage || 1) - 1
+  )
+  updateNewRequestsTable()
+}
+
+// expose helpers globally for inline onclick usage
+window.goToNewRequestsPage = goToNewRequestsPage
+window.newRequestsNextPage = newRequestsNextPage
+window.newRequestsPreviousPage = newRequestsPreviousPage
+
 // Initialize Stock In Page Events
 function initializeStockInPageEvents() {
   // Initialize search functionality
@@ -14312,6 +14662,7 @@ function initializeStockInPageEvents() {
   if (searchInput) {
     searchInput.addEventListener('input', function (e) {
       AppState.stockInSearchTerm = e.target.value
+      AppState.currentStockInPage = 1
       updateStockInTable()
     })
   }
@@ -14321,6 +14672,7 @@ function initializeStockInPageEvents() {
   if (dateFilter) {
     dateFilter.addEventListener('change', function (e) {
       AppState.stockInDateFilter = e.target.value
+      AppState.currentStockInPage = 1
       updateStockInTable()
     })
   }
@@ -14330,6 +14682,7 @@ function initializeStockInPageEvents() {
   if (supplierFilter) {
     supplierFilter.addEventListener('change', function (e) {
       AppState.stockInSupplierFilter = e.target.value
+      AppState.currentStockInPage = 1
       updateStockInTable()
     })
   }
@@ -14339,9 +14692,26 @@ function initializeStockInPageEvents() {
   if (sortStock) {
     sortStock.addEventListener('change', function (e) {
       AppState.stockInSortBy = e.target.value
+      AppState.currentStockInPage = 1
       updateStockInTable()
     })
   }
+  // Rows per page control for Stock In
+  const rowsPerPage = document.getElementById('stockin-rows-per-page')
+  if (rowsPerPage) {
+    rowsPerPage.addEventListener('change', function (e) {
+      const v = Number(e.target.value)
+      AppState.stockInPageSize = isNaN(v) ? 10 : v
+      // Reset to first page when page size changes
+      AppState.currentStockInPage = 1
+      try {
+        saveStockInPageSizeToLocalStorage()
+      } catch (e) {}
+      updateStockInTable()
+    })
+  }
+  // Initial table render to apply current AppState and filters
+  updateStockInTable()
 }
 
 function updateStockInTable() {
@@ -14411,21 +14781,50 @@ function updateStockInTable() {
     }
   }
 
+  // Pagination for stock in
+  const rawPageSize = Number(AppState.stockInPageSize || 10)
+  const pageSize = rawPageSize === 0 ? filteredRecords.length || 1 : rawPageSize
+  const totalItems = filteredRecords.length
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+  const currentPage = Math.min(
+    Math.max(Number(AppState.currentStockInPage || 1), 1),
+    totalPages
+  )
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = Math.min(startIndex + pageSize, totalItems)
+  const pageItems = filteredRecords.slice(startIndex, endIndex)
+
   // Update table body
   const tbody = document.getElementById('stock-in-table-body')
   if (tbody) {
     tbody.innerHTML =
-      filteredRecords.length > 0
-        ? filteredRecords.map((r, i) => renderStockInRow(r, i)).join('')
+      pageItems.length > 0
+        ? renderStockInRows(pageItems)
         : '<tr><td colspan="10" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No records found</td></tr>'
 
     // Update pagination count
     const paginationLeft = document.querySelector('.pagination-left')
     if (paginationLeft) {
       paginationLeft.textContent =
-        filteredRecords.length === 0
+        totalItems === 0
           ? 'No entries to display'
-          : `Showing 1 to ${filteredRecords.length} of ${filteredRecords.length} entries`
+          : `Showing ${
+              totalItems === 0 ? 0 : startIndex + 1
+            } to ${endIndex} of ${totalItems} entries`
+    }
+
+    // Update pagination buttons
+    const paginationRight = document.querySelector('.pagination-right')
+    if (paginationRight) {
+      paginationRight.innerHTML = `
+        <button class="pagination-btn" data-action="prev" onclick="stockInPreviousPage()" ${
+          currentPage <= 1 ? 'disabled' : ''
+        }>Previous</button>
+        ${renderPageButtons(currentPage, totalPages, 'goToStockInPage')}
+        <button class="pagination-btn" data-action="next" onclick="stockInNextPage()" ${
+          currentPage >= totalPages ? 'disabled' : ''
+        }>Next</button>
+      `
     }
 
     // Reinitialize icons
@@ -14440,6 +14839,7 @@ function initializeStockOutPageEvents() {
   if (searchInput) {
     searchInput.addEventListener('input', function (e) {
       AppState.stockOutSearchTerm = e.target.value
+      AppState.currentStockOutPage = 1
       updateStockOutTable()
     })
   }
@@ -14449,6 +14849,7 @@ function initializeStockOutPageEvents() {
   if (departmentFilter) {
     departmentFilter.addEventListener('change', function (e) {
       AppState.stockOutDepartmentFilter = e.target.value
+      AppState.currentStockOutPage = 1
       updateStockOutTable()
     })
   }
@@ -14460,6 +14861,7 @@ function initializeStockOutPageEvents() {
   if (dateFrom) {
     dateFrom.addEventListener('change', function (e) {
       AppState.stockOutDateFrom = e.target.value
+      AppState.currentStockOutPage = 1
       updateStockOutTable()
     })
   }
@@ -14477,9 +14879,34 @@ function initializeStockOutPageEvents() {
         AppState.stockOutSortBy = sortKey
         AppState.stockOutSortDirection = 'asc'
       }
+      AppState.currentStockOutPage = 1
+      // Keep the rows-per-page control in sync (use stockout control for stock out page)
+      const rowsPerPageControl = document.getElementById(
+        'stockout-rows-per-page'
+      )
+      if (rowsPerPageControl)
+        rowsPerPageControl.value = String(AppState.stockOutPageSize || 10)
       updateStockOutTable()
     })
   })
+
+  // Rows per page control for Stock Out
+  const rowsPerPage = document.getElementById('stockout-rows-per-page')
+  if (rowsPerPage) {
+    rowsPerPage.addEventListener('change', function (e) {
+      const v = Number(e.target.value)
+      AppState.stockOutPageSize = isNaN(v) ? 10 : v
+      // Reset to first page when page size changes
+      AppState.currentStockOutPage = 1
+      try {
+        saveStockOutPageSizeToLocalStorage()
+      } catch (e) {}
+      updateStockOutTable()
+    })
+  }
+
+  // Initial table render
+  updateStockOutTable()
 }
 
 function updateStockOutTable() {
@@ -14557,19 +14984,54 @@ function updateStockOutTable() {
   // Update table body
   const tbody = document.getElementById('stock-out-table-body')
   if (tbody) {
+    // Pagination for stock out
+    const rawPageSize = Number(AppState.stockOutPageSize || 10)
+    const pageSize =
+      rawPageSize === 0 ? filteredRecords.length || 1 : rawPageSize
+    const totalItems = filteredRecords.length
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+    const currentPage = Math.min(
+      Math.max(Number(AppState.currentStockOutPage || 1), 1),
+      totalPages
+    )
+    const startIndex = (currentPage - 1) * pageSize
+    const endIndex = Math.min(startIndex + pageSize, totalItems)
+    const pageItems = filteredRecords.slice(startIndex, endIndex)
+
     tbody.innerHTML =
-      filteredRecords.length > 0
-        ? filteredRecords.map((s, i) => renderStockOutRow(s, i)).join('')
+      pageItems.length > 0
+        ? renderStockOutRows(pageItems)
         : '<tr><td colspan="11" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No records found</td></tr>'
 
     // Update pagination count
     const paginationLeft = document.querySelector('.pagination-left')
     if (paginationLeft) {
       paginationLeft.textContent =
-        filteredRecords.length === 0
+        totalItems === 0
           ? 'No entries to display'
-          : `Showing 1 to ${filteredRecords.length} of ${filteredRecords.length} entries`
+          : `Showing ${
+              totalItems === 0 ? 0 : startIndex + 1
+            } to ${endIndex} of ${totalItems} entries`
     }
+
+    // Update pagination buttons
+    const paginationRight = document.querySelector('.pagination-right')
+    if (paginationRight) {
+      paginationRight.innerHTML = `
+        <button class="pagination-btn" data-action="prev" onclick="stockOutPreviousPage()" ${
+          currentPage <= 1 ? 'disabled' : ''
+        }>Previous</button>
+        ${renderPageButtons(currentPage, totalPages, 'goToStockOutPage')}
+        <button class="pagination-btn" data-action="next" onclick="stockOutNextPage()" ${
+          currentPage >= totalPages ? 'disabled' : ''
+        }>Next</button>
+      `
+    }
+
+    // Keep the rows-per-page control in sync
+    const rowsPerPageControl = document.getElementById('stockout-rows-per-page')
+    if (rowsPerPageControl)
+      rowsPerPageControl.value = String(AppState.stockOutPageSize || 10)
 
     // Reinitialize icons
     lucide.createIcons()
@@ -14684,6 +15146,7 @@ function initializeNewRequestPageEvents() {
   const searchInput = document.getElementById('requestSearch')
   if (searchInput) {
     searchInput.addEventListener('input', function (e) {
+      AppState.currentNewRequestsPage = 1
       updateNewRequestsTable()
     })
   }
@@ -14692,6 +15155,7 @@ function initializeNewRequestPageEvents() {
   const statusFilter = document.getElementById('newRequestStatusFilter')
   if (statusFilter) {
     statusFilter.addEventListener('change', function (e) {
+      AppState.currentNewRequestsPage = 1
       updateNewRequestsTable()
     })
   }
@@ -14700,9 +15164,27 @@ function initializeNewRequestPageEvents() {
   const departmentFilter = document.getElementById('newRequestDepartmentFilter')
   if (departmentFilter) {
     departmentFilter.addEventListener('change', function (e) {
+      AppState.currentNewRequestsPage = 1
       updateNewRequestsTable()
     })
   }
+
+  // Rows per page control
+  const rowsPerPage = document.getElementById('newrequest-rows-per-page')
+  if (rowsPerPage) {
+    rowsPerPage.addEventListener('change', function (e) {
+      const v = Number(e.target.value)
+      AppState.newRequestsPageSize = isNaN(v) ? 10 : v
+      AppState.currentNewRequestsPage = 1
+      try {
+        saveNewRequestsPageSizeToLocalStorage()
+      } catch (e) {}
+      updateNewRequestsTable()
+    })
+  }
+
+  // Initial render
+  updateNewRequestsTable()
 }
 
 // Update New Requests Table with filters
@@ -14747,11 +15229,25 @@ function updateNewRequestsTable() {
     )
   }
 
+  // Pagination for new requests
+  const rawPageSize = Number(AppState.newRequestsPageSize || 10)
+  const pageSize =
+    rawPageSize === 0 ? filteredRequests.length || 1 : rawPageSize
+  const totalItems = filteredRequests.length
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+  const currentPage = Math.min(
+    Math.max(Number(AppState.currentNewRequestsPage || 1), 1),
+    totalPages
+  )
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = Math.min(startIndex + pageSize, totalItems)
+  const pageItems = filteredRequests.slice(startIndex, endIndex)
+
   // Update table body
   const tbody = document.querySelector('.table tbody')
   if (tbody) {
-    if (filteredRequests.length > 0) {
-      tbody.innerHTML = filteredRequests
+    if (pageItems.length > 0) {
+      tbody.innerHTML = pageItems
         .map(
           (request) => `
         <tr>
@@ -14809,10 +15305,33 @@ function updateNewRequestsTable() {
     const paginationLeft = document.querySelector('.pagination-left')
     if (paginationLeft) {
       paginationLeft.textContent =
-        filteredRequests.length > 0
-          ? `Showing 1 to ${filteredRequests.length} of ${filteredRequests.length} entries`
+        totalItems > 0
+          ? `Showing ${
+              totalItems === 0 ? 0 : startIndex + 1
+            } to ${endIndex} of ${totalItems} entries`
           : 'Showing 0 entries'
     }
+
+    // Update pagination buttons
+    const paginationRight = document.querySelector('.pagination-right')
+    if (paginationRight) {
+      paginationRight.innerHTML = `
+        <button class="pagination-btn" data-action="prev" onclick="newRequestsPreviousPage()" ${
+          currentPage <= 1 ? 'disabled' : ''
+        }>Previous</button>
+        ${renderPageButtons(currentPage, totalPages, 'goToNewRequestsPage')}
+        <button class="pagination-btn" data-action="next" onclick="newRequestsNextPage()" ${
+          currentPage >= totalPages ? 'disabled' : ''
+        }>Next</button>
+      `
+    }
+
+    // Keep rows-per-page control in sync
+    const rowsPerPageControl = document.getElementById(
+      'newrequest-rows-per-page'
+    )
+    if (rowsPerPageControl)
+      rowsPerPageControl.value = String(AppState.newRequestsPageSize || 10)
 
     // Reinitialize icons
     lucide.createIcons()
@@ -15424,6 +15943,9 @@ document.addEventListener('click', function (e) {
 window.navigateToPage = navigateToPage
 window.switchItemTab = switchItemTab
 window.updateItemsTable = updateItemsTable
+window.updateStockInTable = updateStockInTable
+window.updateStockOutTable = updateStockOutTable
+window.updateNewRequestsTable = updateNewRequestsTable
 window.openPurchaseOrderModal = openPurchaseOrderModal
 window.closePurchaseOrderModal = closePurchaseOrderModal
 window.addPOItem = addPOItem
@@ -16601,7 +17123,7 @@ function generateUserModal(mode = 'view', userData = null) {
                                    value="${userData?.email || ''}"
                                    placeholder="user@cnsc.edu.ph"
                                    style="width: 100%; border: 2px solid #e5e7eb; padding: 14px 16px; font-size: 15px; border-radius: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #fafbfc; font-weight: 400;"
-                                   ${isReadOnly ? 'readonly' : ''}>
+                                   ${mode !== 'create' ? 'readonly' : ''}>
                             <div class="input-focus-ring" style="position: absolute; inset: 0; border-radius: 10px; border: 2px solid transparent; transition: border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none;"></div>
                         </div>
                     </div>
@@ -22668,11 +23190,11 @@ async function deleteStockIn(id) {
   refreshItemsViewIfOpen()
 }
 
-function renderStockInRows() {
-  if (!stockInData || stockInData.length === 0)
+function renderStockInRows(records = stockInData) {
+  if (!records || records.length === 0)
     return '<tr><td colspan="10" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No records found</td></tr>'
   // Guard against null/undefined entries
-  return stockInData
+  return records
     .filter(Boolean)
     .map((r, i) => renderStockInRow(r, i))
     .join('')
@@ -23343,10 +23865,10 @@ if (!Array.isArray(stockOutData) || stockOutData.length === 0) {
       : []
 }
 
-function renderStockOutRows() {
-  if (!stockOutData || stockOutData.length === 0)
+function renderStockOutRows(records = stockOutData) {
+  if (!records || records.length === 0)
     return '<tr><td colspan="11" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No records found</td></tr>'
-  return stockOutData
+  return records
     .filter(Boolean)
     .map((s, i) => renderStockOutRow(s, i))
     .join('')
@@ -24631,6 +25153,7 @@ const exposedFunctions = {
   navigateToPage,
   switchItemTab,
   updateItemsTable,
+  updateStockInTable,
   openPurchaseOrderModal,
   closePurchaseOrderModal,
   addPOItem,

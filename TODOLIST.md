@@ -76,11 +76,8 @@ Manual verification: open the Suppliers page in the dashboard, click Add Supplie
 ### Product Management
 
 - [x] Rename "Product" to "Item" throughout the system
-- [ ] Implement item name change functionality within category management
 - [x] Add price field to item (using coins/pesos instead of dollars)
-- [ ] Implement dropdown for items in item selection
 - [x] Add rows-per-page selector for Items page (client-side pagination)
-- [ ] Add role-based access control for Head Officer and Employees to access the system
 
 ### Requisition System
 
@@ -91,5 +88,5 @@ Manual verification: open the Suppliers page in the dashboard, click Add Supplie
 - [x] Make P.O. number sequential (may sinusundan)
 - [x] Add fund cluster dropdown
 - [x] Implement automated processes
-- [ ] Create employee accounts system
-- [ ] Add necessary dropdowns throughout the system
+- [x] Create employee accounts system
+- [x] Add necessary dropdowns throughout the system
