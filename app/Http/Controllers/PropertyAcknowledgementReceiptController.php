@@ -21,7 +21,7 @@ class PropertyAcknowledgementReceiptController extends Controller
             $par = PropertyAcknowledgementReceipt::find($id);
 
             // If not found, try to find PAR by purchase_order_id
-            if (! $par) {
+            if (!$par) {
                 $par = PropertyAcknowledgementReceipt::where('purchase_order_id', $id)->first();
             }
 
@@ -72,11 +72,11 @@ class PropertyAcknowledgementReceiptController extends Controller
         $par = PropertyAcknowledgementReceipt::find($id);
 
         // If not found, try to find PAR by purchase_order_id
-        if (! $par) {
+        if (!$par) {
             $par = PropertyAcknowledgementReceipt::where('purchase_order_id', $id)->first();
         }
 
-        if (! $par) {
+        if (!$par) {
             abort(404, 'Property Acknowledgement Receipt not found');
         }
 
@@ -98,10 +98,10 @@ class PropertyAcknowledgementReceiptController extends Controller
         ];
 
         try {
-            \App\Models\Activity::create([
-                'action' => 'Downloaded Property Acknowledgement Receipt PDF',
-                'meta' => json_encode(['par_no' => $par->par_no, 'id' => $id]),
-            ]);
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties(['par_no' => $par->par_no, 'id' => $id])
+                ->log('Downloaded Property Acknowledgement Receipt PDF');
         } catch (\Throwable $e) {
             logger()->warning('Failed to record activity for PAR PDF download', ['error' => $e->getMessage()]);
         }
@@ -109,7 +109,7 @@ class PropertyAcknowledgementReceiptController extends Controller
         $pdf = Pdf::loadView('pdf.property_acknowledge_report_pdf', $data)
             ->setPaper('a4', 'portrait');
 
-        return $pdf->download('property_acknowledgement_receipt_'.($par->par_no ?? $id).'.pdf');
+        return $pdf->download('property_acknowledgement_receipt_' . ($par->par_no ?? $id) . '.pdf');
     }
 
     /**

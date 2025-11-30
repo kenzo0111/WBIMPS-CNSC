@@ -14,7 +14,10 @@ class InventoryCustodianSlipController extends Controller
         $pdf = Pdf::loadView('pdf.inventory_custodian_slip_pdf', $data);
 
         try {
-            \App\Models\Activity::create(['action' => 'Generated Inventory Custodian Slip PDF', 'meta' => json_encode(['info' => null])]);
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties(['info' => null])
+                ->log('Generated Inventory Custodian Slip PDF');
         } catch (\Throwable $e) {
             logger()->warning('Failed to record activity for ICS PDF', ['error' => $e->getMessage()]);
         }
@@ -30,7 +33,7 @@ class InventoryCustodianSlipController extends Controller
             $ics = \App\Models\InventoryCustodianSlip::find($id);
 
             // If not found by ID, try to find by purchase order ID
-            if (! $ics) {
+            if (!$ics) {
                 // Check if this ID is a purchase order ID
                 $purchaseOrder = \App\Models\PurchaseOrder::find($id);
 
@@ -40,12 +43,12 @@ class InventoryCustodianSlipController extends Controller
                 }
 
                 // If still not found, try to find purchase request and then purchase order
-                if (! $ics) {
+                if (!$ics) {
                     $purchaseRequest = \App\Models\PurchaseRequest::find($id);
 
                     if ($purchaseRequest) {
                         // Try to find purchase order by matching request_id or department
-                        $purchaseOrder = \App\Models\PurchaseOrder::where('po_number', 'LIKE', '%'.$purchaseRequest->request_id.'%')
+                        $purchaseOrder = \App\Models\PurchaseOrder::where('po_number', 'LIKE', '%' . $purchaseRequest->request_id . '%')
                             ->orWhere('department', $purchaseRequest->department)
                             ->first();
 
@@ -57,7 +60,7 @@ class InventoryCustodianSlipController extends Controller
                 }
             }
 
-            if (! $ics) {
+            if (!$ics) {
                 // Instead of 404, show empty form with a message
                 $data = [
                     'entityName' => '',
@@ -96,7 +99,7 @@ class InventoryCustodianSlipController extends Controller
 
             $pdf = Pdf::loadView('pdf.inventory_custodian_slip_pdf', $data);
 
-            return $pdf->stream('inventory_custodian_slip_'.($ics->ics_no ?? $id).'.pdf');
+            return $pdf->stream('inventory_custodian_slip_' . ($ics->ics_no ?? $id) . '.pdf');
         }
 
         // If no ID is provided, use request data (for preview/generate)
@@ -117,7 +120,7 @@ class InventoryCustodianSlipController extends Controller
         $ics = \App\Models\InventoryCustodianSlip::find($id);
 
         // If not found by ID, try to find by purchase order ID
-        if (! $ics) {
+        if (!$ics) {
             // Check if this ID is a purchase order ID
             $purchaseOrder = \App\Models\PurchaseOrder::find($id);
 
@@ -127,12 +130,12 @@ class InventoryCustodianSlipController extends Controller
             }
 
             // If still not found, try to find purchase request and then purchase order
-            if (! $ics) {
+            if (!$ics) {
                 $purchaseRequest = \App\Models\PurchaseRequest::find($id);
 
                 if ($purchaseRequest) {
                     // Try to find purchase order by matching request_id or department
-                    $purchaseOrder = \App\Models\PurchaseOrder::where('po_number', 'LIKE', '%'.$purchaseRequest->request_id.'%')
+                    $purchaseOrder = \App\Models\PurchaseOrder::where('po_number', 'LIKE', '%' . $purchaseRequest->request_id . '%')
                         ->orWhere('department', $purchaseRequest->department)
                         ->first();
 
@@ -144,7 +147,7 @@ class InventoryCustodianSlipController extends Controller
             }
         }
 
-        if (! $ics) {
+        if (!$ics) {
             // Return empty ICS form with message
             $data = [
                 'entityName' => '',
@@ -164,10 +167,10 @@ class InventoryCustodianSlipController extends Controller
             $pdf = Pdf::loadView('pdf.inventory_custodian_slip_pdf', $data);
 
             try {
-                \App\Models\Activity::create([
-                    'action' => 'Downloaded ICS PDF (Not Found)',
-                    'meta' => json_encode(['id' => $id]),
-                ]);
+                activity()
+                    ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                    ->withProperties(['id' => $id])
+                    ->log('Downloaded ICS PDF (Not Found)');
             } catch (\Throwable $e) {
                 logger()->warning('Failed to record activity for ICS PDF download', ['error' => $e->getMessage()]);
             }
@@ -193,19 +196,19 @@ class InventoryCustodianSlipController extends Controller
         $pdf = Pdf::loadView('pdf.inventory_custodian_slip_pdf', $data);
 
         try {
-            \App\Models\Activity::create([
-                'action' => 'Downloaded Inventory Custodian Slip PDF',
-                'meta' => json_encode([
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties([
                     'ics_no' => $ics->ics_no,
                     'ics_id' => $ics->id,
                     'po_id' => $ics->purchase_order_id,
-                ]),
-            ]);
+                ])
+                ->log('Downloaded Inventory Custodian Slip PDF');
         } catch (\Throwable $e) {
             logger()->warning('Failed to record activity for ICS PDF download', ['error' => $e->getMessage()]);
         }
 
-        return $pdf->download('inventory_custodian_slip_'.($ics->ics_no ?? $id).'.pdf');
+        return $pdf->download('inventory_custodian_slip_' . ($ics->ics_no ?? $id) . '.pdf');
     }
 
     public function generateICS()
@@ -220,7 +223,7 @@ class InventoryCustodianSlipController extends Controller
         $payload = $request->all();
 
         $items = collect($request->input('items', []))
-            ->filter(fn ($item) => filled($item['description'] ?? null))
+            ->filter(fn($item) => filled($item['description'] ?? null))
             ->map(function ($item) {
                 $quantity = (float) ($item['quantity'] ?? 0);
                 $unitCost = (float) ($item['unit_cost'] ?? 0);
@@ -239,15 +242,17 @@ class InventoryCustodianSlipController extends Controller
             ->all();
 
         if (empty($items)) {
-            $items = [[
-                'quantity' => 0,
-                'unit' => '',
-                'unit_cost' => 0,
-                'total_cost' => 0,
-                'description' => '',
-                'item_no' => '',
-                'useful_life' => '',
-            ]];
+            $items = [
+                [
+                    'quantity' => 0,
+                    'unit' => '',
+                    'unit_cost' => 0,
+                    'total_cost' => 0,
+                    'description' => '',
+                    'item_no' => '',
+                    'useful_life' => '',
+                ]
+            ];
         }
 
         // Map to PDF template variable names

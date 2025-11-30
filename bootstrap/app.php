@@ -1,6 +1,10 @@
 <?php
 
 use Illuminate\Foundation\Application;
+// Include helpers (logical fallback for spatie/activitylog during migration)
+if (file_exists(__DIR__ . '/../app/Helpers/activity_helper.php')) {
+    require_once __DIR__ . '/../app/Helpers/activity_helper.php';
+}
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 

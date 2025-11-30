@@ -16,7 +16,7 @@ class PurchaseOrderController extends Controller
         logger()->debug('generatePDF payload', is_array($data) ? $data : ['payload' => $data]);
 
         $data['items'] = collect($request->input('items', []))
-            ->filter(fn ($item) => filled($item['description'] ?? $item['detailedDescription'] ?? null))
+            ->filter(fn($item) => filled($item['description'] ?? $item['detailedDescription'] ?? null))
             ->map(function ($item, $index) {
                 $quantity = (float) ($item['quantity'] ?? 0);
                 $unitCost = (float) ($item['unit_cost'] ?? 0);
@@ -52,7 +52,10 @@ class PurchaseOrderController extends Controller
 
         // Record activity
         try {
-            \App\Models\Activity::create(['action' => 'Generated Purchase Order PDF', 'meta' => json_encode(['po' => $data['po_number'] ?? null])]);
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties(['po' => $data['po_number'] ?? null])
+                ->log('Generated Purchase Order PDF');
         } catch (\Throwable $e) {
             logger()->warning('Failed to record activity for PurchaseOrder PDF', ['error' => $e->getMessage()]);
         }
@@ -149,7 +152,7 @@ class PurchaseOrderController extends Controller
         if ($id) {
             $purchaseOrder = \App\Models\PurchaseOrder::find($id);
 
-            if (! $purchaseOrder) {
+            if (!$purchaseOrder) {
                 abort(404, 'Purchase Order not found');
             }
 
@@ -197,7 +200,7 @@ class PurchaseOrderController extends Controller
 
             $pdf = Pdf::loadView('pdf.purchase_order_pdf', $data)->setPaper('a4', 'portrait');
 
-            return $pdf->stream('purchase_order_'.$purchaseOrder->po_number.'.pdf');
+            return $pdf->stream('purchase_order_' . $purchaseOrder->po_number . '.pdf');
         }
 
         // Provide empty/blank data so the preview renders a clean sheet (layout only)
@@ -238,7 +241,7 @@ class PurchaseOrderController extends Controller
     {
         $purchaseOrder = \App\Models\PurchaseOrder::find($id);
 
-        if (! $purchaseOrder) {
+        if (!$purchaseOrder) {
             abort(404, 'Purchase Order not found');
         }
 
@@ -288,17 +291,17 @@ class PurchaseOrderController extends Controller
 
         // Record activity
         try {
-            \App\Models\Activity::create([
-                'action' => 'Downloaded Purchase Order PDF',
-                'meta' => json_encode([
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties([
                     'po_number' => $purchaseOrder->po_number,
                     'id' => $id,
-                ]),
-            ]);
+                ])
+                ->log('Downloaded Purchase Order PDF');
         } catch (\Throwable $e) {
             logger()->warning('Failed to record activity for PurchaseOrder PDF download', ['error' => $e->getMessage()]);
         }
 
-        return $pdf->download('purchase_order_'.$purchaseOrder->po_number.'.pdf');
+        return $pdf->download('purchase_order_' . $purchaseOrder->po_number . '.pdf');
     }
 }

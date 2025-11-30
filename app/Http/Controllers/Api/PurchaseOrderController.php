@@ -137,14 +137,14 @@ class PurchaseOrderController extends Controller
 
         // Log activity
         try {
-            \App\Models\Activity::create([
-                'action' => 'Purchase Order Created',
-                'meta' => json_encode([
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties([
                     'po_number' => $purchaseOrder->po_number,
                     'supplier' => $purchaseOrder->supplier,
                     'total' => $purchaseOrder->grand_total,
-                ]),
-            ]);
+                ])
+                ->log('Purchase Order Created');
         } catch (\Throwable $e) {
             logger()->warning('Failed to log purchase order creation activity', ['error' => $e->getMessage()]);
         }
@@ -256,13 +256,13 @@ class PurchaseOrderController extends Controller
 
         // Log activity
         try {
-            \App\Models\Activity::create([
-                'action' => 'Purchase Order Updated',
-                'meta' => json_encode([
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties([
                     'po_number' => $purchaseOrder->po_number,
                     'supplier' => $purchaseOrder->supplier,
-                ]),
-            ]);
+                ])
+                ->log('Purchase Order Updated');
         } catch (\Throwable $e) {
             logger()->warning('Failed to log purchase order update activity', ['error' => $e->getMessage()]);
         }
@@ -293,10 +293,10 @@ class PurchaseOrderController extends Controller
 
         // Log activity
         try {
-            \App\Models\Activity::create([
-                'action' => 'Purchase Order Deleted',
-                'meta' => json_encode(['po_number' => $poNumber]),
-            ]);
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties(['po_number' => $poNumber])
+                ->log('Purchase Order Deleted');
         } catch (\Throwable $e) {
             logger()->warning('Failed to log purchase order deletion activity', ['error' => $e->getMessage()]);
         }
@@ -388,14 +388,14 @@ class PurchaseOrderController extends Controller
 
         // Log activity
         try {
-            \App\Models\Activity::create([
-                'action' => 'Purchase Order Status Updated',
-                'meta' => json_encode([
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties([
                     'po_number' => $purchaseOrder->po_number,
                     'old_status' => $oldStatus,
                     'new_status' => $request->status,
-                ]),
-            ]);
+                ])
+                ->log('Purchase Order Status Updated');
         } catch (\Throwable $e) {
             logger()->warning('Failed to log purchase order status update activity', ['error' => $e->getMessage()]);
         }
@@ -457,14 +457,14 @@ class PurchaseOrderController extends Controller
             ]);
 
             // Log activity
-            \App\Models\Activity::create([
-                'action' => 'Inventory Custodian Slip Created',
-                'meta' => json_encode([
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties([
                     'ics_no' => $ics->ics_no,
                     'po_number' => $purchaseOrder->po_number,
                     'items_count' => count($icsItems),
-                ]),
-            ]);
+                ])
+                ->log('Inventory Custodian Slip Created');
 
             return $ics;
         } catch (\Throwable $e) {
@@ -536,14 +536,14 @@ class PurchaseOrderController extends Controller
             ]);
 
             // Log activity
-            \App\Models\Activity::create([
-                'action' => 'Requisition and Issue Slip Created',
-                'meta' => json_encode([
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties([
                     'ris_no' => $ris->ris_no,
                     'po_number' => $purchaseOrder->po_number,
                     'items_count' => count($risItems),
-                ]),
-            ]);
+                ])
+                ->log('Requisition and Issue Slip Created');
 
             return $ris;
         } catch (\Throwable $e) {
@@ -606,14 +606,14 @@ class PurchaseOrderController extends Controller
             ]);
 
             // Log activity
-            \App\Models\Activity::create([
-                'action' => 'Property Acknowledgement Receipt Created',
-                'meta' => json_encode([
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties([
                     'par_no' => $par->par_no,
                     'po_number' => $purchaseOrder->po_number,
                     'items_count' => count($parItems),
-                ]),
-            ]);
+                ])
+                ->log('Property Acknowledgement Receipt Created');
 
             return $par;
         } catch (\Throwable $e) {
@@ -687,14 +687,14 @@ class PurchaseOrderController extends Controller
             ]);
 
             // Log activity
-            \App\Models\Activity::create([
-                'action' => 'Inspection and Acceptance Report Created',
-                'meta' => json_encode([
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties([
                     'iar_no' => $iar->iar_no,
                     'po_number' => $purchaseOrder->po_number,
                     'items_count' => count($iarItems),
-                ]),
-            ]);
+                ])
+                ->log('Inspection and Acceptance Report Created');
 
             return $iar;
         } catch (\Throwable $e) {

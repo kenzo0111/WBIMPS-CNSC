@@ -77,6 +77,7 @@
                                 <span>Login Activity</span>
                             </button>
                         </div>
+                        <!-- User Activities (removed) -->
                     </div>
                 </div>
 

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Activity;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -48,12 +47,12 @@ class AccessController extends Controller
         Auth::login($user, true);
         $request->session()->regenerate();
 
-        // Record login activity
+        // Record login activity via Spatie Activitylog
         try {
-            Activity::create([
-                'action' => 'User logged in: ' . ($user->email ?? $user->name ?? 'Unknown'),
-                'meta' => json_encode(['user_id' => $user->id ?? null]),
-            ]);
+            activity()
+                ->causedBy($user)
+                ->withProperties(['user_id' => $user->id ?? null])
+                ->log('User logged in: ' . ($user->email ?? $user->name ?? 'Unknown'));
         } catch (\Throwable $e) {
             logger()->warning('Failed to record login activity', ['error' => $e->getMessage()]);
         }
@@ -91,12 +90,12 @@ class AccessController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        // Record logout activity
+        // Record logout activity via Spatie Activitylog
         try {
-            Activity::create([
-                'action' => 'User logged out: ' . ($user?->email ?? $user?->name ?? 'Unknown'),
-                'meta' => json_encode(['user_id' => $user?->id ?? null]),
-            ]);
+            activity()
+                ->causedBy($user)
+                ->withProperties(['user_id' => $user?->id ?? null])
+                ->log('User logged out: ' . ($user?->email ?? $user?->name ?? 'Unknown'));
         } catch (\Throwable $e) {
             logger()->warning('Failed to record logout activity', ['error' => $e->getMessage()]);
         }

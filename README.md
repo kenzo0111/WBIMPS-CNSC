@@ -17,23 +17,26 @@ A Laravel-based web application for managing inventory and procurement workflows
 
 ### Local Development
 
-```bash
 # Install PHP dependencies
+
 composer install
 
 # Install frontend dependencies
+
 npm install
 
 # Build assets (or use `npm run dev` during development)
+
 npm run build
 
 # Configure your environment
+
 cp .env.example .env
 php artisan key:generate
 
 # Run migrations and seed the test user (PIN 123456)
+
 php artisan migrate --seed
-```
 
 ### Role-based permissions (Spatie)
 
@@ -59,9 +62,7 @@ To enable locally after pulling this change:
 
 Alternatively, to centrally enforce the roles/permissions mapping (recommended for production deployments), use the new artisan command which reads from config/roles_permissions.php and syncs the database:
 
-```bash
 php artisan roles:sync
-```
 
 Add that command to your deployment script or CI/CD pipeline to ensure roles and permissions are kept in sync with the canonical config.
 
@@ -78,9 +79,7 @@ These seed values land you on the admin dashboard after authentication.
 
 ## 🧪 Running Tests
 
-```bash
 php artisan test
-```
 
 ## �📁 Relevant Routes
 

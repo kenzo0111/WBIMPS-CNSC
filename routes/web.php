@@ -113,3 +113,4 @@ use App\Http\Controllers\Api\ActivityController;
 
 Route::get('/api/activities', [ActivityController::class, 'index']);
 Route::post('/api/activities', [ActivityController::class, 'store']);
+Route::get('/api/activities/{id}', [ActivityController::class, 'show']);

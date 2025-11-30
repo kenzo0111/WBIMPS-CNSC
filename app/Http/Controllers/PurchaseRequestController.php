@@ -109,7 +109,10 @@ class PurchaseRequestController extends Controller
 
         $pdf = Pdf::loadView('pdf.purchase_request_pdf', $data);
         try {
-            \App\Models\Activity::create(['action' => 'Generated Purchase Request PDF', 'meta' => json_encode(['pr_no' => $data['pr_no'] ?? null])]);
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties(['pr_no' => $data['pr_no'] ?? null])
+                ->log('Generated Purchase Request PDF');
         } catch (\Throwable $e) {
             logger()->warning('Failed to record activity for PurchaseRequest PDF', ['error' => $e->getMessage()]);
         }

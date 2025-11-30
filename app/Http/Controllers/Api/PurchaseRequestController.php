@@ -247,11 +247,10 @@ class PurchaseRequestController extends Controller
 
         // Optionally log activity
         try {
-            \App\Models\Activity::create([
-                'type' => 'purchase_request_status_changed',
-                'message' => sprintf('Purchase request %s status changed from %s to %s', $pr->request_id ?? $pr->id, $old, $pr->status),
-                'metadata' => ['request_id' => $pr->request_id ?? $pr->id],
-            ]);
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties(['request_id' => $pr->request_id ?? $pr->id])
+                ->log(sprintf('Purchase request %s status changed from %s to %s', $pr->request_id ?? $pr->id, $old, $pr->status));
         } catch (\Exception $e) {
             // ignore logging failures
         }

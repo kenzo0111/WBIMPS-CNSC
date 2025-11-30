@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\SiteContentController;
 // Apply rate limiting to all API routes: 60 requests per minute
 Route::middleware('throttle:60,1')->group(function () {
     Route::get('/activities', [ActivityController::class, 'index']);
+    Route::get('/activities/{id}', [ActivityController::class, 'show']);
     Route::post('/activities', [ActivityController::class, 'store']);
 
     Route::apiResource('categories', CategoryController::class);

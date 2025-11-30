@@ -62,7 +62,10 @@ class InspectionAcceptanceReportController extends Controller
 
         $pdf = Pdf::loadView('pdf.inspection_acceptance_report_pdf', $viewData);
         try {
-            \App\Models\Activity::create(['action' => 'Generated Inspection Acceptance Report PDF', 'meta' => json_encode(['info' => null])]);
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties(['info' => null])
+                ->log('Generated Inspection Acceptance Report PDF');
         } catch (\Throwable $e) {
             logger()->warning('Failed to record activity for IAR PDF', ['error' => $e->getMessage()]);
         }
@@ -122,10 +125,10 @@ class InspectionAcceptanceReportController extends Controller
         ];
 
         try {
-            \App\Models\Activity::create([
-                'action' => 'Downloaded Inspection Acceptance Report PDF',
-                'meta' => json_encode(['iar_no' => $iar->iar_no, 'id' => $id]),
-            ]);
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties(['iar_no' => $iar->iar_no, 'id' => $id])
+                ->log('Downloaded Inspection Acceptance Report PDF');
         } catch (\Throwable $e) {
             logger()->warning('Failed to record activity for IAR PDF download', ['error' => $e->getMessage()]);
         }

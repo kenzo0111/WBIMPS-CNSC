@@ -277,6 +277,9 @@ const AppState = {
   aboutUsContent: null,
 }
 
+// Activities state (client-side cache and UI state)
+// User activities page removed - retain server API but client-side page is no longer available
+
 // Procurement modes following RA 9184 and RA 12009: use a canonical list across UI
 // Primary/competitive mode followed by Alternative modes.
 const PROCUREMENT_MODES = [
@@ -2275,22 +2278,12 @@ function renderNotifications(filter = 'all') {
                     <i data-lucide="bell-off" style="width: 32px; height: 32px; opacity: 0.5;"></i>
                 </div>
 
-                <!-- Assigned Permissions (read-only preview) -->
+                <!-- No notifications placeholder -->
                 <div style="margin-top:16px;">
-                  <label class="form-label" style="display:block; font-weight:600; margin-bottom:8px; color:#374151; font-size:14px;">Assigned Permissions</label>
-                  <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                    ${
-                      userData &&
-                      Array.isArray(userData.permissionNames) &&
-                      userData.permissionNames.length
-                        ? userData.permissionNames
-                            .map(
-                              (p) =>
-                                `<span style=\"padding:6px 10px;border-radius:9999px;background:#eef2ff;color:#3730a3;font-weight:600;font-size:13px;\">${p}</span>`
-                            )
-                            .join('')
-                        : `<span style=\"color:#6b7280;font-size:13px;\">No permissions assigned</span>`
-                    }
+                  <label class="form-label" style="display:block; font-weight:600; margin-bottom:8px; color:#374151; font-size:14px;">No Activity</label>
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                    <span style="color:#6b7280;font-size:13px;">You currently have no notifications</span>
+                    <small style="color:#9ca3af;font-size:12px;">Adjust filters or check your notification settings</small>
                   </div>
                 </div>
                 <p style="margin: 0; font-size: 14px; font-weight: 500;">No notifications found</p>
@@ -3036,6 +3029,7 @@ function loadPageContent(pageId) {
     case 'login-activity': // ✅ Login Activity Logs
       mainContent.innerHTML = generateLoginActivityPage()
       break
+    // user-activities page removed: no client-side rendering
     case 'activity': // Activity & Notifications
       mainContent.innerHTML = generateActivityPage()
       break
@@ -3983,6 +3977,11 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;')
 }
+
+// expose helper functions to inline handlers
+// NOTE: the client-side User Activities page was removed; we no longer expose
+// the helper `loadActivitiesFromAPI` as a global handler. The API function
+// remains included for server-side usage where needed.
 
 // Ensure certain pages load remote data before rendering
 const _origLoadPageContent = loadPageContent
@@ -17028,6 +17027,84 @@ function generateLoginActivityPage() {
     `
 }
 
+// ----------------------------- //
+//   User Activities Page       //
+// ----------------------------- //
+
+async function loadActivitiesFromAPI(opts = {}) {
+  // opts can be a number (pageSize) or an object {page, pageSize, search, actorType, dateFrom, dateTo}
+  try {
+    let params = {}
+    if (typeof opts === 'number') params.pageSize = opts
+    else if (typeof opts === 'object') params = Object.assign({}, opts)
+    const url =
+      (window.APP_ROUTES && window.APP_ROUTES.activities) || '/api/activities'
+    const qs = new URLSearchParams()
+    if (params.page) qs.set('page', String(params.page))
+    if (params.pageSize) qs.set('pageSize', String(params.pageSize))
+    if (params.search) qs.set('search', params.search)
+    if (params.actorType) qs.set('actorType', params.actorType)
+    if (params.dateFrom) qs.set('date_from', params.dateFrom)
+    if (params.dateTo) qs.set('date_to', params.dateTo)
+    const res = await fetch(`${url}?${qs.toString()}`, {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      credentials: 'same-origin',
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const json = await res.json()
+    let items = []
+    let meta = null
+    if (Array.isArray(json)) items = json
+    else if (Array.isArray(json.data)) items = json.data
+    else if (Array.isArray(json.activities)) items = json.activities
+    else if (Array.isArray(json.results)) items = json.results
+    if (json.meta) meta = json.meta
+    // Normalize common fields
+    items = items.map((i) => ({
+      id: i.id || i._id || null,
+      action: i.action || i.title || i.activity || '',
+      meta: i.meta || i.details || i.payload || null,
+      actor_type: i.actor_type || null,
+      actor_id: i.actor_id || null,
+      actor: i.actor || null,
+      created_at: i.created_at || i.createdAt || i.timestamp || i.time || null,
+    }))
+    // Sort newest-first (server already orders, but keep stable sort)
+    items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    return { data: items, meta }
+  } catch (e) {
+    console.warn('loadActivitiesFromAPI failed', e)
+    return { data: [], meta: null }
+  }
+}
+
+// User Activities (client-side UI removed)
+
+// Helper: debounce
+function debounce(func, wait) {
+  let timeout
+  return function (...args) {
+    const later = () => {
+      timeout = null
+      func.apply(this, args)
+    }
+    clearTimeout(timeout)
+    timeout = setTimeout(later, wait)
+  }
+}
+
+// User activities client-side filters removed
+
+// User activities render removed
+
+// setUserActivitiesPage removed
+// renderUserActivitiesEvents removed
+// When wiring events, we'll also update pagination control disabled states
+// updateUserActivitiesPaginationControls removed
+// closeActivityDetailModal and showActivityDetailModal removed
+
+// Note: `escapeHtml` helper is declared earlier in this file to avoid duplication
+
 // ---- Pagination handlers for Login Activity (exposed globally) ----
 function setLoginActivityPage(page) {
   const totalLogs =
@@ -18547,7 +18624,7 @@ function editAboutUs() {
         <!-- Inspection Committee Members -->
         <div style="padding: 16px; background: #f9fafb; border-radius: 8px; border: 2px solid #e5e7eb;">
           <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #111827; font-weight: 600;">Inspection Committee Members</h3>
-          <p style="margin:0 0 8px 0;color:#6b7280;font-size:13px;">Add, remove or reorder committee members. Use <code>Name — Role</code> for clarity.</p>
+          <p style="margin:0 0 8px 0;color:#6b7280;font-size:13px;">Add, remove or reorder committee members. Use Name — Role for clarity.</p>
                     <div id="committee-list">
                       ${committeeHtml}
                     </div>

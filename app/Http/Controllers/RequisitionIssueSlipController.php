@@ -49,10 +49,10 @@ class RequisitionIssueSlipController extends Controller
         $ris = RequisitionIssueSlip::create($validated);
 
         try {
-            \App\Models\Activity::create([
-                'action' => 'Created Requisition Issue Slip',
-                'meta' => json_encode(['ris_no' => $ris->ris_no, 'ris_id' => $ris->id]),
-            ]);
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties(['ris_no' => $ris->ris_no, 'ris_id' => $ris->id])
+                ->log('Created Requisition Issue Slip');
         } catch (\Throwable $e) {
             logger()->warning('Failed to record activity for RIS creation', ['error' => $e->getMessage()]);
         }
@@ -82,7 +82,7 @@ class RequisitionIssueSlipController extends Controller
         logger()->debug('generatePDF RIS payload', is_array($data) ? $data : ['payload' => $data]);
 
         $data['items'] = collect($request->input('items', []))
-            ->filter(fn ($item) => filled($item['description'] ?? null))
+            ->filter(fn($item) => filled($item['description'] ?? null))
             ->map(function ($item) {
                 return [
                     'stock_no' => $item['stock_no'] ?? '',
@@ -104,7 +104,10 @@ class RequisitionIssueSlipController extends Controller
 
         // Record activity
         try {
-            \App\Models\Activity::create(['action' => 'Generated Requisition Issue Slip PDF', 'meta' => json_encode(['ris_no' => $data['ris_no'] ?? null])]);
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties(['ris_no' => $data['ris_no'] ?? null])
+                ->log('Generated Requisition Issue Slip PDF');
         } catch (\Throwable $e) {
             logger()->warning('Failed to record activity for RIS PDF', ['error' => $e->getMessage()]);
         }
@@ -123,17 +126,17 @@ class RequisitionIssueSlipController extends Controller
             $ris = \App\Models\RequisitionIssueSlip::find($id);
 
             // If not found, try to find RIS by purchase_order_id
-            if (! $ris) {
+            if (!$ris) {
                 $ris = \App\Models\RequisitionIssueSlip::where('purchase_order_id', $id)->first();
             }
 
-            if (! $ris) {
+            if (!$ris) {
                 abort(404, 'Requisition Issue Slip not found');
             }
 
             $pdf = Pdf::loadView('pdf.requisition_issue_slips_pdf', ['ris' => $ris])->setPaper('a4', 'portrait');
 
-            return $pdf->stream('requisition_issue_slip_'.$ris->ris_no.'.pdf');
+            return $pdf->stream('requisition_issue_slip_' . $ris->ris_no . '.pdf');
         }
 
         // Provide empty/blank data so the preview renders a clean sheet (layout only)
@@ -175,11 +178,11 @@ class RequisitionIssueSlipController extends Controller
         $ris = \App\Models\RequisitionIssueSlip::find($id);
 
         // If not found, try to find RIS by purchase_order_id
-        if (! $ris) {
+        if (!$ris) {
             $ris = \App\Models\RequisitionIssueSlip::where('purchase_order_id', $id)->first();
         }
 
-        if (! $ris) {
+        if (!$ris) {
             abort(404, 'Requisition Issue Slip not found');
         }
 
@@ -187,17 +190,17 @@ class RequisitionIssueSlipController extends Controller
 
         // Record activity
         try {
-            \App\Models\Activity::create([
-                'action' => 'Downloaded Requisition Issue Slip PDF',
-                'meta' => json_encode([
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties([
                     'ris_no' => $ris->ris_no,
                     'id' => $ris->id,
-                ]),
-            ]);
+                ])
+                ->log('Downloaded Requisition Issue Slip PDF');
         } catch (\Throwable $e) {
             logger()->warning('Failed to record activity for RIS PDF download', ['error' => $e->getMessage()]);
         }
 
-        return $pdf->download('requisition_issue_slip_'.$ris->ris_no.'.pdf');
+        return $pdf->download('requisition_issue_slip_' . $ris->ris_no . '.pdf');
     }
 }
