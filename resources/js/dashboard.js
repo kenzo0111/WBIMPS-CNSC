@@ -6683,7 +6683,11 @@ function generatePendingApprovalPage() {
                             <th scope="col">Total Amount</th>
                             <th scope="col">Priority</th>
                             <th scope="col">Status</th>
-                            <th scope="col">Requested By</th>
+                            ${
+                              can('manage requests')
+                                ? '<th scope="col">Requested By</th>'
+                                : ''
+                            }
                             <th scope="col">Department</th>
                             <th scope="col">Submitted Date</th>
                             <th scope="col">Action</th>
@@ -6728,7 +6732,13 @@ function generatePendingApprovalPage() {
                                               )}
                                         </span>
                                     </td>
-                                    <td>${request.requestedBy || '-'}</td>
+                                    ${
+                                      can('manage requests')
+                                        ? `<td>${
+                                            request.requestedBy || '-'
+                                          }</td>`
+                                        : ''
+                                    }
                                     <td>${request.department || '-'}</td>
                                     <td>${
                                       request.submittedDate ||
@@ -6853,8 +6863,16 @@ function generateCompletedRequestPage() {
                             <th scope="col">Total Amount</th>
                             <th scope="col">Status</th>
                             <!-- Payment Status column removed -->
-                            <th scope="col">Requested By</th>
-                            <th scope="col">Approved By</th>
+                            ${
+                              can('manage requests')
+                                ? '<th scope="col">Requested By</th>'
+                                : ''
+                            }
+                            ${
+                              can('manage requests')
+                                ? '<th scope="col">Approved By</th>'
+                                : ''
+                            }
                             <th scope="col">Delivered Date</th>
                             <th scope="col">Action</th>
                         </tr>
@@ -6882,8 +6900,16 @@ function generateCompletedRequestPage() {
                                         </span>
                                     </td>
                                     <!-- Payment Status cell removed -->
-                                    <td>${request.requestedBy}</td>
-                                    <td>${request.approvedBy}</td>
+                                    ${
+                                      can('manage requests')
+                                        ? `<td>${request.requestedBy}</td>`
+                                        : ''
+                                    }
+                                    ${
+                                      can('manage requests')
+                                        ? `<td>${request.approvedBy}</td>`
+                                        : ''
+                                    }
                                     <td>${request.deliveredDate || '-'}</td>
                                     <td>
                                         <div class="table-actions">
@@ -7407,29 +7433,18 @@ function generateReportsLandingPage() {
 }
 
 function generateRcpiReportsPage() {
-  // Using completedRequests + inspection acceptance data as source
-  const suppliers = [
+  // Using MockData.Items as source for Inventory Report
+  const categories = [
     'All',
-    ...new Set([
-      ...(AppState.completedRequests || [])
-        .map((r) => r.supplier)
-        .filter(Boolean),
-    ]),
+    ...new Set((MockData.Items || []).map((i) => i.category).filter(Boolean)),
   ]
-  const statuses = [
-    'All',
-    ...new Set([
-      ...(AppState.completedRequests || [])
-        .map((r) => r.status)
-        .filter(Boolean),
-    ]),
-  ]
+
   return `
         <div class="page-header">
           <div class="page-header-content">
             <div>
-              <h1 class="page-title"><i data-lucide="file-check" style="width:28px;height:28px;margin-right:8px;"></i>RCPI Report</h1>
-              <p class="page-subtitle">RCPI / Inspection Acceptance summaries and details</p>
+              <h1 class="page-title"><i data-lucide="file-check" style="width:28px;height:28px;margin-right:8px;"></i>RPCI Dashboard</h1>
+              <p class="page-subtitle">Inventory Count Monitoring & Analysis</p>
             </div>
             <div>
               <button class="btn btn-primary" id="export-rcpi-btn"><i data-lucide="download" style="width:16px;height:16px;margin-right:6px"></i>Export Excel</button>
@@ -7440,29 +7455,65 @@ function generateRcpiReportsPage() {
           <div class="card report-filters-card">
             <div class="filter-grid">
               <div class="filter-item">
-                <label class="form-label">Supplier</label>
-                <select id="rcpi-supplier-filter" class="form-select">${suppliers
+                <label class="form-label">Category</label>
+                <select id="rcpi-category-filter" class="form-select">${categories
                   .map((s) => `<option value="${s}">${s}</option>`)
                   .join('')}</select>
               </div>
               <div class="filter-item">
-                <label class="form-label">Status</label>
-                <select id="rcpi-status-filter" class="form-select">${statuses
-                  .map((s) => `<option value="${s}">${s}</option>`)
-                  .join('')}</select>
-              </div>
-              <div class="filter-item">
-                <label class="form-label">From Date</label>
-                <input type="date" id="rcpi-date-from" class="form-input">
-              </div>
-              <div class="filter-item">
-                <label class="form-label">To Date</label>
-                <input type="date" id="rcpi-date-to" class="form-input">
+                <label class="form-label">As of Date</label>
+                <input type="date" id="rcpi-date-as-of" class="form-input" value="${
+                  new Date().toISOString().split('T')[0]
+                }">
               </div>
             </div>
           </div>
+
+          <!-- Dashboard Summary Cards -->
+          <div class="card mb-4">
+            <div class="card-header-inline"><h3 class="card-title-small">Inventory Overview</h3></div>
+            <div class="card-body">
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="label">Total Items</div>
+                        <div class="value" id="rpci-total-items">-</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">Total Inventory Value</div>
+                        <div class="value" id="rpci-total-value">-</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">Categories</div>
+                        <div class="value" id="rpci-total-categories">-</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">Discrepancies</div>
+                        <div class="value" id="rpci-discrepancies">0</div>
+                    </div>
+                </div>
+            </div>
+          </div>
+
           <div class="card table-card">
-            <div class="table-container"><table class="table" id="rcpi-report-table"><thead><tr><th>RCPI / IAR No</th><th>Date</th><th>Supplier</th><th>Status</th><th>Total Amount</th><th>Items</th></tr></thead><tbody></tbody></table></div>
+            <div class="card-header-inline"><h3 class="card-title-small">Inventory Details</h3></div>
+            <div class="table-container">
+                <table class="table" id="rcpi-report-table">
+                    <thead>
+                        <tr>
+                            <th>Article</th>
+                            <th>Description</th>
+                            <th>Stock Number</th>
+                            <th>Unit</th>
+                            <th>Unit Value</th>
+                            <th>Balance (Card)</th>
+                            <th>On Hand (Count)</th>
+                            <th>Shortage/Overage</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
           </div>
         </div>
       `
@@ -7475,22 +7526,13 @@ function generateRsmiReportsPage() {
       (AppState.newRequests || []).map((r) => r.department).filter(Boolean)
     ),
   ]
-  const statuses = [
-    'All',
-    ...new Set([
-      ...(AppState.newRequests || []).map((r) => r.status).filter(Boolean),
-      ...(AppState.pendingRequests || []).map((r) => r.status).filter(Boolean),
-      ...(AppState.completedRequests || [])
-        .map((r) => r.status)
-        .filter(Boolean),
-    ]),
-  ]
+
   return `
         <div class="page-header">
           <div class="page-header-content">
             <div>
-              <h1 class="page-title"><i data-lucide="clipboard-list" style="width:28px;height:28px;margin-right:8px;"></i>RSMI</h1>
-              <p class="page-subtitle">Requisition & Supply Monitoring Inventory</p>
+              <h1 class="page-title"><i data-lucide="clipboard-list" style="width:28px;height:28px;margin-right:8px;"></i>RSMI Dashboard</h1>
+              <p class="page-subtitle">Supplies Issued Monitoring</p>
             </div>
             <div>
               <button class="btn btn-primary" id="export-rsmi-btn"><i data-lucide="download" style="width:16px;height:16px;margin-right:6px"></i>Export Excel</button>
@@ -7507,12 +7549,6 @@ function generateRsmiReportsPage() {
                   .join('')}</select>
               </div>
               <div class="filter-item">
-                <label class="form-label">Status</label>
-                <select id="rsmi-status-filter" class="form-select">${statuses
-                  .map((s) => `<option value="${s}">${s}</option>`)
-                  .join('')}</select>
-              </div>
-              <div class="filter-item">
                 <label class="form-label">From Date</label>
                 <input type="date" id="rsmi-date-from" class="form-input">
               </div>
@@ -7522,8 +7558,47 @@ function generateRsmiReportsPage() {
               </div>
             </div>
           </div>
+
+          <!-- Dashboard Summary Cards -->
+          <div class="card mb-4">
+            <div class="card-header-inline"><h3 class="card-title-small">Issuance Overview</h3></div>
+            <div class="card-body">
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="label">Total Items Issued</div>
+                        <div class="value" id="rsmi-total-items">-</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">Total Value Issued</div>
+                        <div class="value" id="rsmi-total-value">-</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">Requests Processed</div>
+                        <div class="value" id="rsmi-total-requests">-</div>
+                    </div>
+                </div>
+            </div>
+          </div>
+
           <div class="card table-card">
-            <div class="table-container"><table class="table" id="rsmi-report-table"><thead><tr><th>Request ID</th><th>Date</th><th>Department</th><th>Supplier</th><th>Status</th><th>Total</th></tr></thead><tbody></tbody></table></div>
+            <div class="card-header-inline"><h3 class="card-title-small">Issued Items Log</h3></div>
+            <div class="table-container">
+                <table class="table" id="rsmi-report-table">
+                    <thead>
+                        <tr>
+                            <th>RIS No.</th>
+                            <th>Dept/Center</th>
+                            <th>Stock Property No.</th>
+                            <th>Item Description</th>
+                            <th>Unit</th>
+                            <th>Qty Issued</th>
+                            <th>Unit Cost</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
           </div>
         </div>
       `
@@ -7539,7 +7614,7 @@ function generateStockCardsPage() {
           <div class="page-header-content">
             <div>
               <h1 class="page-title"><i data-lucide="book" style="width:28px;height:28px;margin-right:8px;"></i>Stock Cards</h1>
-              <p class="page-subtitle">Item-level stock transactions (in/out)</p>
+              <p class="page-subtitle">Stock Transaction History & Analysis</p>
             </div>
             <div>
               <button class="btn btn-primary" id="export-stock-cards-btn"><i data-lucide="download" style="width:16px;height:16px;margin-right:6px"></i>Export Excel</button>
@@ -7565,9 +7640,27 @@ function generateStockCardsPage() {
               </div>
             </div>
           </div>
+          
           <div id="stock-card-item-details" style="display:none;"></div>
+
           <div class="card table-card">
-            <div class="table-container"><table class="table" id="stock-cards-table"><thead><tr><th rowspan="2">Date</th><th rowspan="2">Reference</th><th rowspan="2">Item</th><th colspan="3">Received</th><th colspan="3">Issued</th><th colspan="2">Balance</th></tr><tr><th>Qty</th><th>Unit Cost</th><th>Amount</th><th>Qty</th><th>Unit Cost</th><th>Amount</th><th>Qty</th><th>Amount</th></tr></thead><tbody></tbody></table></div>
+            <div class="card-header-inline"><h3 class="card-title-small">Transaction History</h3></div>
+            <div class="table-container">
+                <table class="table" id="stock-cards-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Reference</th>
+                            <th>Receipt Qty</th>
+                            <th>Issue Qty</th>
+                            <th>Issue Office</th>
+                            <th>Balance</th>
+                            <th>Days to Consume</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
           </div>
         </div>
       `
@@ -7579,7 +7672,7 @@ function generateConsolidateMonitoringPage() {
           <div class="page-header-content">
             <div>
               <h1 class="page-title"><i data-lucide="layers" style="width:28px;height:28px;margin-right:8px;"></i>Consolidate Monitoring</h1>
-              <p class="page-subtitle">Consolidated metrics across requests, inventories, and stock transactions</p>
+              <p class="page-subtitle">Consolidated Monitoring Report of Each Colleges</p>
             </div>
             <div>
               <button class="btn btn-primary" id="export-consolidate-btn"><i data-lucide="download" style="width:16px;height:16px;margin-right:6px"></i>Export Excel</button>
@@ -7591,14 +7684,78 @@ function generateConsolidateMonitoringPage() {
             <div class="card-header-inline"><h3 class="card-title-small">Key Metrics Overview</h3></div>
             <div class="card-body">
               <div class="summary-grid">
-                <div class="summary-item"><div class="label">Total Items</div><div class="value" id="total-items-count">-</div></div>
-                <div class="summary-item"><div class="label">Stock In Records</div><div class="value" id="stock-in-count">-</div></div>
-                <div class="summary-item"><div class="label">Stock Out Records</div><div class="value" id="stock-out-count">-</div></div>
-                <div class="summary-item"><div class="label">Purchase Orders</div><div class="value" id="purchase-orders-count">-</div></div>
-                <div class="summary-item"><div class="label">Total Inventory Value</div><div class="value" id="total-inventory-value">-</div></div>
-                <div class="summary-item"><div class="label">Low Stock Items</div><div class="value" id="low-stock-count">-</div></div>
-                <div class="summary-item"><div class="label">Items with Expiration</div><div class="value" id="expiring-items-count">-</div></div>
-                <div class="summary-item"><div class="label">Active Requests</div><div class="value" id="active-requests-count">-</div></div>
+                <div class="summary-item">
+                    <div class="summary-icon" style="background-color: #e0f2fe; color: #0284c7;">
+                        <i data-lucide="package" style="width:24px;height:24px;"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="total-items-count">-</div>
+                        <div class="summary-label">Total Items</div>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-icon" style="background-color: #dcfce7; color: #16a34a;">
+                        <i data-lucide="arrow-down-circle" style="width:24px;height:24px;"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="stock-in-count">-</div>
+                        <div class="summary-label">Stock In Records</div>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-icon" style="background-color: #fee2e2; color: #dc2626;">
+                        <i data-lucide="arrow-up-circle" style="width:24px;height:24px;"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="stock-out-count">-</div>
+                        <div class="summary-label">Stock Out Records</div>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-icon" style="background-color: #f3e8ff; color: #9333ea;">
+                        <i data-lucide="file-text" style="width:24px;height:24px;"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="purchase-orders-count">-</div>
+                        <div class="summary-label">Purchase Orders</div>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-icon" style="background-color: #ffedd5; color: #ea580c;">
+                        <i data-lucide="credit-card" style="width:24px;height:24px;"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="total-inventory-value">-</div>
+                        <div class="summary-label">Total Inventory Value</div>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-icon" style="background-color: #fee2e2; color: #ef4444;">
+                        <i data-lucide="alert-triangle" style="width:24px;height:24px;"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="low-stock-count">-</div>
+                        <div class="summary-label">Low Stock Items</div>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-icon" style="background-color: #fef9c3; color: #ca8a04;">
+                        <i data-lucide="clock" style="width:24px;height:24px;"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="expiring-items-count">-</div>
+                        <div class="summary-label">Items with Expiration</div>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-icon" style="background-color: #e0e7ff; color: #4f46e5;">
+                        <i data-lucide="activity" style="width:24px;height:24px;"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-value" id="active-requests-count">-</div>
+                        <div class="summary-label">Active Requests</div>
+                    </div>
+                </div>
               </div>
             </div>
           </div>
@@ -7628,6 +7785,24 @@ function generateConsolidateMonitoringPage() {
           <div class="card table-card">
             <div class="card-header-inline"><h3 class="card-title-small">Detailed Metrics</h3></div>
             <div class="table-container"><table class="table" id="consolidate-summary-table"><thead><tr><th>Metric</th><th>Value</th><th>Change</th></tr></thead><tbody></tbody></table></div>
+          </div>
+          
+          <div class="card table-card">
+            <div class="card-header-inline"><h3 class="card-title-small">Monitoring by College / Department</h3></div>
+            <div class="table-container">
+                <table class="table" id="consolidate-college-table">
+                    <thead>
+                        <tr>
+                            <th>College / Department</th>
+                            <th>Total Requests</th>
+                            <th>Pending</th>
+                            <th>Completed</th>
+                            <th>Total Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
           </div>
 
           <div class="card table-card">
@@ -8209,60 +8384,107 @@ function renderRcpiReport() {
   const tbody = document.querySelector('#rcpi-report-table tbody')
   if (!tbody) return
 
-  const supplier =
-    document.getElementById('rcpi-supplier-filter')?.value || 'All'
-  const statusFilter =
-    document.getElementById('rcpi-status-filter')?.value || 'All'
-  const from = document.getElementById('rcpi-date-from')?.value
-  const to = document.getElementById('rcpi-date-to')?.value
+  const categoryFilter =
+    document.getElementById('rcpi-category-filter')?.value || 'All'
+  const asOfDate = document.getElementById('rcpi-date-as-of')?.value
 
-  let all = [...(AppState.completedRequests || [])]
-  if (from)
-    all = all.filter((r) =>
-      r.date ? new Date(r.date) >= new Date(from) : true
-    )
-  if (to)
-    all = all.filter((r) => (r.date ? new Date(r.date) <= new Date(to) : true))
-  if (supplier && supplier !== 'All')
-    all = all.filter((r) => r.supplier === supplier)
-  if (statusFilter && statusFilter !== 'All')
-    all = all.filter(
-      (r) => (r.status || '').toLowerCase() === statusFilter.toLowerCase()
-    )
+  // Use MockData.Items as the source for inventory
+  let all = [...(MockData.Items || [])]
+
+  if (categoryFilter && categoryFilter !== 'All')
+    all = all.filter((i) => i.category === categoryFilter)
+
+  // Calculate Summary Metrics
+  const totalItems = all.length
+  const totalValue = all.reduce((sum, item) => {
+    const qty =
+      typeof item.quantity === 'number' ? item.quantity : item.currentStock || 0
+    const unitCost =
+      typeof item.unit_cost === 'number' ? item.unit_cost : item.unitPrice || 0
+    return sum + qty * unitCost
+  }, 0)
+  const totalCategories = new Set(all.map((i) => i.category).filter(Boolean))
+    .size
+
+  // Update Summary Cards
+  const totalItemsEl = document.getElementById('rpci-total-items')
+  if (totalItemsEl) totalItemsEl.textContent = totalItems.toLocaleString()
+
+  const totalValueEl = document.getElementById('rpci-total-value')
+  if (totalValueEl) totalValueEl.textContent = formatCurrency(totalValue)
+
+  const totalCatsEl = document.getElementById('rpci-total-categories')
+  if (totalCatsEl) totalCatsEl.textContent = totalCategories
 
   tbody.innerHTML = all
-    .map(
-      (r) => `
+    .map((item) => {
+      const qty =
+        typeof item.quantity === 'number'
+          ? item.quantity
+          : item.currentStock || 0
+      const unitCost =
+        typeof item.unit_cost === 'number'
+          ? item.unit_cost
+          : item.unitPrice || 0
+      const unit = item.unit || item.unitMeasure || ''
+
+      // Simulating shortage/overage as 0 for now
+      const shortageQty = 0
+      const shortageValue = 0
+
+      return `
       <tr>
-        <td style="font-weight:500;">${r.iarNumber || r.id || '-'}</td>
-        <td>${r.date || '-'}</td>
-        <td>${r.supplier || '-'}</td>
-        <td><span class="${getBadgeClass(r.status || 'completed')}">${
-        r.status || 'Completed'
-      }</span></td>
-        <td>${r.totalAmount ? formatCurrency(r.totalAmount) : '-'}</td>
-        <td>${(r.items || []).length || '-'}</td>
+        <td>${item.category || 'Supplies'}</td>
+        <td>${item.name || '-'}</td>
+        <td>${item.id || item.stockNumber || '-'}</td>
+        <td>${unit}</td>
+        <td>${formatCurrency(unitCost)}</td>
+        <td>${qty}</td>
+        <td>${qty}</td> <!-- Assuming count matches record for now -->
+        <td>${shortageQty}</td>
+        <td>-</td>
       </tr>
     `
-    )
+    })
     .join('')
   window.__rcpiFilteredRows = all
 }
 
 function exportRcpiCSV() {
   const rows = [
-    ['RCPI / IAR No', 'Date', 'Supplier', 'Status', 'Total Amount', 'Items'],
+    [
+      'Article',
+      'Description',
+      'Stock Number',
+      'Unit of Measure',
+      'Unit Value',
+      'Balance Per Card',
+      'On Hand Per Count',
+      'Shortage/Overage Qty',
+      'Shortage/Overage Value',
+      'Remarks',
+    ],
   ]
-  const rowsToExport = (window.__rcpiFilteredRows || []).map((r) => [
-    r.iarNumber || r.id || '',
-    r.date || '',
-    r.supplier || '',
-    r.status || '',
-    r.totalAmount || 0,
-    (r.items || []).length || 0,
-  ])
+  const rowsToExport = (window.__rcpiFilteredRows || []).map((item) => {
+    const qty =
+      typeof item.quantity === 'number' ? item.quantity : item.currentStock || 0
+    const unitCost =
+      typeof item.unit_cost === 'number' ? item.unit_cost : item.unitPrice || 0
+    return [
+      item.category || 'Supplies',
+      item.name || '',
+      item.id || item.stockNumber || '',
+      item.unit || item.unitMeasure || '',
+      unitCost,
+      qty,
+      qty,
+      0,
+      0,
+      '',
+    ]
+  })
   rowsToExport.forEach((r) => rows.push(r))
-  downloadExcel('rcpi-report.xlsx', rows, 'RCPI Report')
+  downloadExcel('rcpi-report.xlsx', rows, 'RPCI Report')
 }
 
 function renderRsmiReport() {
@@ -8270,61 +8492,106 @@ function renderRsmiReport() {
   if (!tbody) return
 
   const dept = document.getElementById('rsmi-department-filter')?.value || 'All'
-  const statusFilter =
-    document.getElementById('rsmi-status-filter')?.value || 'All'
   const from = document.getElementById('rsmi-date-from')?.value
   const to = document.getElementById('rsmi-date-to')?.value
 
-  let all = [
+  let allRequests = [
     ...(AppState.newRequests || []),
     ...(AppState.pendingRequests || []),
     ...(AppState.completedRequests || []),
   ]
+
+  // Filter requests first
   if (from)
-    all = all.filter((r) =>
+    allRequests = allRequests.filter((r) =>
       r.requestDate ? new Date(r.requestDate) >= new Date(from) : true
     )
   if (to)
-    all = all.filter((r) =>
+    allRequests = allRequests.filter((r) =>
       r.requestDate ? new Date(r.requestDate) <= new Date(to) : true
     )
   if (dept && dept !== 'All')
-    all = all.filter(
+    allRequests = allRequests.filter(
       (r) => (r.department || '').toLowerCase() === dept.toLowerCase()
     )
-  if (statusFilter && statusFilter !== 'All')
-    all = all.filter(
-      (r) => (r.status || '').toLowerCase() === statusFilter.toLowerCase()
-    )
 
-  tbody.innerHTML = all
+  // Flatten to items
+  let itemsIssued = []
+  allRequests.forEach((r) => {
+    if (r.items && Array.isArray(r.items)) {
+      r.items.forEach((item) => {
+        itemsIssued.push({
+          risNo: r.id,
+          centerCode: r.department || '',
+          stockNo: item.id || item.stockNumber || '',
+          description: item.name || item.description || '',
+          unit: item.unit || item.unitMeasure || '',
+          qty: item.quantity || 0,
+          unitCost: item.unitCost || item.unitPrice || 0,
+          amount: (item.quantity || 0) * (item.unitCost || item.unitPrice || 0),
+          date: r.requestDate || r.date,
+        })
+      })
+    }
+  })
+
+  // Calculate Summary Metrics
+  const totalItems = itemsIssued.length
+  const totalValue = itemsIssued.reduce((sum, item) => sum + item.amount, 0)
+  const totalRequests = allRequests.length
+
+  // Update Summary Cards
+  const totalItemsEl = document.getElementById('rsmi-total-items')
+  if (totalItemsEl) totalItemsEl.textContent = totalItems.toLocaleString()
+
+  const totalValueEl = document.getElementById('rsmi-total-value')
+  if (totalValueEl) totalValueEl.textContent = formatCurrency(totalValue)
+
+  const totalReqEl = document.getElementById('rsmi-total-requests')
+  if (totalReqEl) totalReqEl.textContent = totalRequests.toLocaleString()
+
+  tbody.innerHTML = itemsIssued
     .map(
-      (r) =>
-        `<tr><td style="font-weight:500;">${r.id || '-'}</td><td>${
-          r.requestDate || r.date || '-'
-        }</td><td>${r.department || '-'}</td><td>${
-          r.supplier || '-'
-        }</td><td><span class="${getBadgeClass(r.status || 'draft')}">${
-          r.status || 'Draft'
-        }</span></td><td>${formatCurrency(r.totalAmount || 0)}</td></tr>`
+      (item) =>
+        `<tr>
+            <td>${item.risNo || '-'}</td>
+            <td>${item.centerCode || '-'}</td>
+            <td>${item.stockNo || '-'}</td>
+            <td>${item.description || '-'}</td>
+            <td>${item.unit || '-'}</td>
+            <td>${item.qty}</td>
+            <td>${formatCurrency(item.unitCost)}</td>
+            <td>${formatCurrency(item.amount)}</td>
+        </tr>`
     )
     .join('')
-  window.__rsmiFilteredRows = all
+  window.__rsmiFilteredRows = itemsIssued
 }
 
 function exportRsmiCSV() {
   const rows = [
-    ['Request ID', 'Date', 'Department', 'Supplier', 'Status', 'Total Amount'],
+    [
+      'RIS No.',
+      'Responsibility Center Code',
+      'Stock Property No.',
+      'Item Description',
+      'Unit',
+      'Quantity Issued',
+      'Unit Cost',
+      'Amount',
+    ],
   ]
   const data = window.__rsmiFilteredRows || []
   data.forEach((r) =>
     rows.push([
-      r.id || '',
-      r.requestDate || r.date || '',
-      r.department || '',
-      r.supplier || '',
-      r.status || '',
-      r.totalAmount || 0,
+      r.risNo || '',
+      r.centerCode || '',
+      r.stockNo || '',
+      r.description || '',
+      r.unit || '',
+      r.qty || 0,
+      r.unitCost || 0,
+      r.amount || 0,
     ])
   )
   downloadExcel('rsmi-report.xlsx', rows, 'RSMI Report')
@@ -8343,27 +8610,23 @@ function renderStockCardsReport() {
   const outs = (window.stockOutData || []).map((s) => ({ ...s, type: 'OUT' }))
   let all = [...ins, ...outs].sort(
     (a, b) =>
-      new Date(b.date || b.transactionDate || 0) -
-      new Date(a.date || a.transactionDate || 0)
-  )
+      new Date(a.date || a.transactionDate || 0) -
+      new Date(b.date || b.transactionDate || 0)
+  ) // Sort ascending for running balance
+
   if (itemFilter && itemFilter !== 'All')
     all = all.filter(
       (r) =>
         (r.ItemName || r.product_name || '').toLowerCase() ===
         itemFilter.toLowerCase()
     )
-  if (from)
-    all = all.filter(
-      (r) => new Date(r.date || r.transactionDate || 0) >= new Date(from)
-    )
-  if (to)
-    all = all.filter(
-      (r) => new Date(r.date || r.transactionDate || 0) <= new Date(to)
-    )
 
   // Calculate balance per item
   const itemBalances = {}
-  all.forEach((r) => {
+  // We need to calculate balance from the beginning, even if date filter is applied
+  // So we iterate all sorted records, calculate balance, then filter for display
+
+  const rowsWithBalance = all.map((r) => {
     const item = r.ItemName || r.product_name || ''
     if (!itemBalances[item]) itemBalances[item] = 0
     const qty = r.quantity || r.qty || 0
@@ -8372,127 +8635,126 @@ function renderStockCardsReport() {
     } else if (r.type === 'OUT') {
       itemBalances[item] -= qty
     }
-    r.balance = itemBalances[item]
+    return { ...r, balance: itemBalances[item] }
   })
 
-  // Show item details if specific item selected
-  const itemDetailsEl = document.getElementById('stock-card-item-details')
+  let displayRows = rowsWithBalance
+
+  if (from)
+    displayRows = displayRows.filter(
+      (r) => new Date(r.date || r.transactionDate || 0) >= new Date(from)
+    )
+  if (to)
+    displayRows = displayRows.filter(
+      (r) => new Date(r.date || r.transactionDate || 0) <= new Date(to)
+    )
+
+  // Calculate Summary Metrics for the displayed period
+  let totalReceived = 0
+  let totalIssued = 0
+  let currentBalance = 0
+
   if (itemFilter !== 'All') {
-    const item = (MockData.Items || []).find((i) => i.name === itemFilter)
-    if (item) {
-      itemDetailsEl.style.display = 'block'
-      itemDetailsEl.innerHTML = `
-        <div class="card">
-          <div class="card-header-inline"><h3 class="card-title-small">Item Details</h3></div>
-          <div class="card-body">
-            <div class="summary-grid">
-              <div class="summary-item"><div class="label">Item Name</div><div class="value">${
-                item.name || ''
-              }</div></div>
-              <div class="summary-item"><div class="label">Stock Number</div><div class="value">${
-                item.id || item.stockNumber || ''
-              }</div></div>
-              <div class="summary-item"><div class="label">Unit of Measure</div><div class="value">${
-                item.unit || item.unitMeasure || ''
-              }</div></div>
-              <div class="summary-item"><div class="label">Unit Value</div><div class="value">${
-                item.unit_cost || item.unitPrice
-                  ? formatCurrency(item.unit_cost || item.unitPrice)
-                  : '-'
-              }</div></div>
+    // For single item, balance is the last row's balance or the current calculated balance
+    currentBalance = itemBalances[itemFilter] || 0
+  } else {
+    // For all items, sum of all current balances
+    currentBalance = Object.values(itemBalances).reduce((a, b) => a + b, 0)
+  }
+
+  displayRows.forEach((r) => {
+    const qty = Number(r.quantity || r.qty || 0)
+    if (r.type === 'IN') totalReceived += qty
+    if (r.type === 'OUT') totalIssued += qty
+  })
+
+  // Show item details / summary cards
+  const itemDetailsEl = document.getElementById('stock-card-item-details')
+
+  if (itemDetailsEl) {
+    itemDetailsEl.style.display = 'block'
+    itemDetailsEl.innerHTML = `
+        <div class="summary-grid">
+            <div class="summary-item">
+                <div class="summary-icon" style="background-color: #e0f2fe; color: #0284c7;">
+                    <i data-lucide="package" style="width:24px;height:24px;"></i>
+                </div>
+                <div class="summary-content">
+                    <div class="summary-value" id="sc-current-balance">${currentBalance.toLocaleString()}</div>
+                    <div class="summary-label">Current Stock Level</div>
+                </div>
             </div>
-          </div>
+            <div class="summary-item">
+                <div class="summary-icon" style="background-color: #dcfce7; color: #16a34a;">
+                    <i data-lucide="arrow-down-circle" style="width:24px;height:24px;"></i>
+                </div>
+                <div class="summary-content">
+                    <div class="summary-value" id="sc-total-received">${totalReceived.toLocaleString()}</div>
+                    <div class="summary-label">Total Received (Period)</div>
+                </div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-icon" style="background-color: #fee2e2; color: #dc2626;">
+                    <i data-lucide="arrow-up-circle" style="width:24px;height:24px;"></i>
+                </div>
+                <div class="summary-content">
+                    <div class="summary-value" id="sc-total-issued">${totalIssued.toLocaleString()}</div>
+                    <div class="summary-label">Total Issued (Period)</div>
+                </div>
+            </div>
         </div>
       `
-    } else {
-      itemDetailsEl.style.display = 'none'
-    }
-  } else {
-    itemDetailsEl.style.display = 'none'
+    if (window.lucide) lucide.createIcons()
   }
 
-  // Adjust table header based on filter
-  const thead = document.querySelector('#stock-cards-table thead')
-  if (itemFilter !== 'All') {
-    thead.innerHTML =
-      '<tr><th rowspan="2">Date</th><th rowspan="2">Reference</th><th colspan="3">Received</th><th colspan="3">Issued</th><th colspan="2">Balance</th></tr><tr><th>Qty</th><th>Unit Cost</th><th>Amount</th><th>Qty</th><th>Unit Cost</th><th>Amount</th><th>Qty</th><th>Amount</th></tr>'
-  } else {
-    thead.innerHTML =
-      '<tr><th rowspan="2">Date</th><th rowspan="2">Reference</th><th rowspan="2">Item</th><th colspan="3">Received</th><th colspan="3">Issued</th><th colspan="2">Balance</th></tr><tr><th>Qty</th><th>Unit Cost</th><th>Amount</th><th>Qty</th><th>Unit Cost</th><th>Amount</th><th>Qty</th><th>Amount</th></tr>'
-  }
-
-  tbody.innerHTML = all
+  tbody.innerHTML = displayRows
     .map((r) => {
       const qty = r.quantity || r.qty || 0
-      const unitCost = r.unitCost || r.unit_cost || 0
-      const amount = qty * unitCost
       const balanceQty = r.balance || 0
-      const balanceAmount = balanceQty * unitCost
       const date = r.date || r.transactionDate || ''
       const reference = r.transaction_id || r.id || ''
-      const item = r.ItemName || r.product_name || ''
-      const itemCell = itemFilter === 'All' ? `<td>${item}</td>` : ''
-      if (r.type === 'IN') {
-        return `<tr><td>${date}</td><td>${reference}</td>${itemCell}<td>${qty}</td><td>${unitCost}</td><td>${amount}</td><td>-</td><td>-</td><td>-</td><td>${balanceQty}</td><td>${balanceAmount}</td></tr>`
-      } else {
-        return `<tr><td>${date}</td><td>${reference}</td>${itemCell}<td>-</td><td>-</td><td>-</td><td>${qty}</td><td>${unitCost}</td><td>${amount}</td><td>${balanceQty}</td><td>${balanceAmount}</td></tr>`
-      }
+      const office = r.department || r.office || '-'
+
+      return `<tr>
+            <td>${date}</td>
+            <td>${reference}</td>
+            <td>${r.type === 'IN' ? qty : '-'}</td>
+            <td>${r.type === 'OUT' ? qty : '-'}</td>
+            <td>${r.type === 'OUT' ? office : '-'}</td>
+            <td>${balanceQty}</td>
+            <td>-</td>
+        </tr>`
     })
     .join('')
-  window.__stockCardsRows = all
+  window.__stockCardsRows = displayRows
 }
 
 function exportStockCardsCSV() {
   const itemFilter =
     document.getElementById('stock-card-item-filter')?.value || 'All'
   const rows = [
-    itemFilter === 'All'
-      ? [
-          'Date',
-          'Reference',
-          'Item',
-          'Received Qty',
-          'Received Unit Cost',
-          'Received Amount',
-          'Issued Qty',
-          'Issued Unit Cost',
-          'Issued Amount',
-          'Balance Qty',
-          'Balance Amount',
-        ]
-      : [
-          'Date',
-          'Reference',
-          'Received Qty',
-          'Received Unit Cost',
-          'Received Amount',
-          'Issued Qty',
-          'Issued Unit Cost',
-          'Issued Amount',
-          'Balance Qty',
-          'Balance Amount',
-        ],
+    [
+      'Date',
+      'Reference',
+      'Receipt Qty',
+      'Issue Qty',
+      'Issue Office',
+      'Balance Qty',
+      'No. of Days to Consume',
+    ],
   ]
   const data = window.__stockCardsRows || []
   data.forEach((r) => {
     const qty = r.quantity || r.qty || 0
-    const unitCost = r.unitCost || r.unit_cost || 0
-    const amount = qty * unitCost
     const balanceQty = r.balance || 0
-    const balanceAmount = balanceQty * unitCost
     const date = r.date || r.transactionDate || ''
     const reference = r.transaction_id || r.id || ''
-    const item = r.ItemName || r.product_name || ''
+    const office = r.department || r.office || '-'
+
     if (r.type === 'IN') {
-      const row = [date, reference]
-      if (itemFilter === 'All') row.push(item)
-      row.push(qty, unitCost, amount, '-', '-', '-', balanceQty, balanceAmount)
-      rows.push(row)
+      rows.push([date, reference, qty, '-', '-', balanceQty, '-'])
     } else {
-      const row = [date, reference]
-      if (itemFilter === 'All') row.push(item)
-      row.push('-', '-', '-', qty, unitCost, amount, balanceQty, balanceAmount)
-      rows.push(row)
+      rows.push([date, reference, '-', qty, office, balanceQty, '-'])
     }
   })
   downloadExcel('stock-cards-report.xlsx', rows, 'Stock Cards')
@@ -8601,6 +8863,55 @@ function renderConsolidateMonitoring() {
     `
       )
       .join('')
+  }
+
+  // Render College/Department Monitoring Table
+  const collegeTbody = document.querySelector(
+    '#consolidate-college-table tbody'
+  )
+  if (collegeTbody) {
+    const allRequests = [
+      ...(AppState.newRequests || []),
+      ...(AppState.pendingRequests || []),
+      ...(AppState.completedRequests || []),
+    ]
+
+    const collegeStats = {}
+
+    allRequests.forEach((r) => {
+      const dept = r.department || 'Unknown'
+      if (!collegeStats[dept]) {
+        collegeStats[dept] = {
+          total: 0,
+          pending: 0,
+          completed: 0,
+          amount: 0,
+        }
+      }
+      collegeStats[dept].total++
+      if (r.status === 'pending' || r.status === 'new')
+        collegeStats[dept].pending++
+      if (r.status === 'completed' || r.status === 'approved')
+        collegeStats[dept].completed++
+      collegeStats[dept].amount += r.totalAmount || 0
+    })
+
+    const collegeRows = Object.keys(collegeStats).map((dept) => {
+      const stats = collegeStats[dept]
+      return `
+            <tr>
+                <td>${dept}</td>
+                <td>${stats.total}</td>
+                <td>${stats.pending}</td>
+                <td>${stats.completed}</td>
+                <td>${formatCurrency(stats.amount)}</td>
+            </tr>
+          `
+    })
+
+    collegeTbody.innerHTML = collegeRows.length
+      ? collegeRows.join('')
+      : '<tr><td colspan="5">No data available</td></tr>'
   }
 
   // Render items requiring attention table
@@ -12135,51 +12446,6 @@ function updatePOItem(id, field, value) {
           item.amount
         )} (${changeText})`
       )
-    }
-  }
-
-  // Logic for new item procurement (Stock # is blank)
-  const stockNumber = (item.stockPropertyNumber || '').trim()
-  const isNewItem = !stockNumber // Stock # is blank means new item being procured
-  const unitCost = parseFloat(item.unitCost) || 0
-
-  if (
-    isNewItem &&
-    (field === 'stockPropertyNumber' ||
-      field === 'unitCost' ||
-      field === 'quantity')
-  ) {
-    // For new items (procurement), automatically check IAR
-    item.generateIAR = true
-
-    // Disable RIS for procurement items
-    item.generateRIS = false
-
-    // Determine PAR vs ICS based on unit cost
-    if (unitCost > 50000) {
-      // High-value PPE: enable PAR, disable ICS
-      item.generatePAR = true
-      item.generateICS = false
-
-      // Helpful tooltip
-      if ((field === 'unitCost' && !oldValue) || oldValue <= 50000) {
-        showAlert(
-          '📋 High-value item detected! PAR form auto-selected (₱50k+ threshold)',
-          'info'
-        )
-      }
-    } else if (unitCost > 0) {
-      // Semi-expendable: enable ICS, disable PAR
-      item.generateICS = true
-      item.generatePAR = false
-
-      if (field === 'unitCost' && oldValue > 50000) {
-        showAlert('📋 ICS form auto-selected for semi-expendable item', 'info')
-      }
-    } else {
-      // No cost set yet, disable both until cost is entered
-      item.generatePAR = false
-      item.generateICS = false
     }
   }
 
@@ -18120,10 +18386,14 @@ function generateAboutPage() {
           <p class="page-subtitle">Learn more about the SPMO System and the team behind it</p>
         </div>
         <nav style="display:flex;align-items:center;gap:12px;">
-          <button class="btn btn-primary" onclick="editAboutUs()" style="display:flex;align-items:center;gap:8px;">
+          ${
+            AppState.currentUser && AppState.currentUser.is_admin
+              ? `<button class="btn btn-primary" onclick="editAboutUs()" style="display:flex;align-items:center;gap:8px;">
             <i data-lucide="edit-3" style="width:16px;height:16px;"></i>
             Edit About Us
-          </button>
+          </button>`
+              : ''
+          }
           <time datetime="${currentYear}" style="text-align:right;color:#6b7280;font-size:14px;">Updated: ${currentYear}</time>
         </nav>
       </div>
@@ -19192,6 +19462,11 @@ window.refreshSupportTickets = refreshSupportTickets
 let committeeHtml = ''
 
 function editAboutUs() {
+  if (!AppState.currentUser || !AppState.currentUser.is_admin) {
+    showAlert('You do not have permission to edit About Us content.', 'error')
+    return
+  }
+
   let modal = document.getElementById('edit-about-modal')
   if (!modal) {
     modal = document.createElement('div')
@@ -19719,6 +19994,11 @@ function closeEditAboutModal(force = false) {
 }
 
 async function saveAboutUs() {
+  if (!AppState.currentUser || !AppState.currentUser.is_admin) {
+    showAlert('You do not have permission to save About Us content.', 'error')
+    return
+  }
+
   // Get values from form
   const heroTitle = document.getElementById('edit-hero-title').value.trim()
   const heroSubtitle = document
