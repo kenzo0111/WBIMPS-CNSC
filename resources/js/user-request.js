@@ -772,18 +772,43 @@
   // --- Department Dropdown Helpers ---
   function getDepartmentCategories() {
     return {
-      'Academic Departments': [
+      'Main Campus (Daet)': [
         { value: 'CAS', label: 'College of Arts and Sciences (CAS)' },
         {
           value: 'CBPA',
           label: 'College of Business and Public Administration (CBPA)',
         },
+        { value: 'COENG', label: 'College of Engineering (CoEng)' },
         {
           value: 'CCMS',
           label: 'College of Computing and Multimedia Studies (CCMS)',
         },
-        { value: 'COENG', label: 'College of Engineering (COEng)' },
         { value: 'GS', label: 'Graduate School (GS)' },
+      ],
+      'Satellite Campuses': [
+        {
+          value: 'COED',
+          label: 'College of Education (CoEd) – Abaño Campus (Daet)',
+        },
+        {
+          value: 'CANR',
+          label:
+            'College of Agriculture and Natural Resources (CANR) – Labo Campus',
+        },
+        {
+          value: 'COTT',
+          label:
+            'College of Trades and Technology (CoTT) – Jose Panganiban Campus',
+        },
+        {
+          value: 'CFAST',
+          label:
+            'College of Fisheries, Aquatic Sciences and Technology (CFAST) – Mercedes Campus',
+        },
+        {
+          value: 'ENTIENZA',
+          label: 'Entienza Campus (Sta. Elena)',
+        },
       ],
       'Key Executive Offices': [
         { value: 'OP', label: 'Office of the President (OP)' },
