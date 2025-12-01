@@ -16710,13 +16710,13 @@ function renderRolesManagementPage(users, roles) {
                 <table class="table" style="margin: 0;">
                     <thead>
                         <tr>
-                            <th style="padding-left: 24px;">Member ID</th>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th style="padding-right: 24px;">Actions</th>
+                            <th style="padding-left: 24px; width: 120px; white-space: nowrap;">Member ID</th>
+                            <th style="min-width: 200px;">Name</th>
+                            <th style="min-width: 200px;">Email</th>
+                            <th style="width: 150px;">Role</th>
+                            <th style="width: 120px;">Status</th>
+                            <th style="width: 150px;">Created</th>
+                            <th style="padding-right: 24px; width: 100px; text-align: right;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -16768,8 +16768,8 @@ function renderRolesManagementPage(users, roles) {
                                 <td style="color: #6b7280; font-size: 14px;">${
                                   member.created
                                 }</td>
-                                <td style="padding-right: 24px;">
-                                    <div class="table-actions">
+                                <td style="padding-right: 24px; text-align: right;">
+                                    <div class="table-actions" style="justify-content: flex-end;">
                                         <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openUserModal('edit', '${
                                           member.id
                                         }')">
@@ -16803,9 +16803,9 @@ function renderRolesManagementPage(users, roles) {
                 <table class="table" style="margin: 0;">
                     <thead>
                         <tr>
-                            <th style="padding-left: 24px;">Role Name</th>
+                            <th style="padding-left: 24px; width: 200px;">Role Name</th>
                             <th>Permissions</th>
-                            <th style="padding-right: 24px;">Actions</th>
+                            <th style="padding-right: 24px; width: 100px; text-align: right;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -16827,8 +16827,8 @@ function renderRolesManagementPage(users, roles) {
                                           .join('')}
                                     </div>
                                 </td>
-                                <td style="padding-right: 24px;">
-                                    <div class="table-actions">
+                                <td style="padding-right: 24px; text-align: right;">
+                                    <div class="table-actions" style="justify-content: flex-end;">
                                         <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openRoleModal('edit', ${
                                           role.id
                                         })">
