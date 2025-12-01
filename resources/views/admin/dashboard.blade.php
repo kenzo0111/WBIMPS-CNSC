@@ -77,10 +77,9 @@
                     <div class="nav-submenu">
                         <div class="nav-item" data-page="login-activity">
                             <button class="nav-button">
-                                <span>Login Activity</span>
+                                <span>User Activities</span>
                             </button>
                         </div>
-                        <!-- User Activities (removed) -->
                     </div>
                 </div>
 
@@ -114,7 +113,6 @@
                                 <span>Stock Out</span>
                             </button>
                         </div>
-                        <!-- Suppliers moved to its own top-level section -->
                     </div>
                 </div>
 

@@ -3858,8 +3858,12 @@ function generateDashboardPage() {
                 
                 <!-- Recent Activity second -->
                 <div class="card">
-                  <div class="card-header card-header-inline" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                  <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
                     <h3 class="card-title">Recent Activity</h3>
+                    <a href="#" onclick="navigateToPage('login-activity'); return false;" style="font-size: 12px; color: #3b82f6; text-decoration: none; display: flex; align-items: center; gap: 4px;">
+                        View all
+                        <i data-lucide="arrow-right" style="width: 14px; height: 14px;"></i>
+                    </a>
                   </div>
                     <div class="activity-list" id="recent-activity-list">
                       <!-- Recent activities will be injected here by dashboard script -->
@@ -4008,246 +4012,95 @@ function renderActivityList(activities) {
 
   container.innerHTML = activities
     .map((a, index) => {
-      // Enhanced icon selection with more variety
+      // Map activity types to action-icon classes (red, blue, green, purple)
       let icon = 'activity'
-      let color = '#6b7280'
-      let bgColor = '#f3f4f6'
-      let borderColor = '#e5e7eb'
+      let colorClass = 'blue' // default
       const text = (a.sentence || a.action || '').toLowerCase()
 
       if (
         text.includes('approve') ||
         text.includes('approved') ||
-        text.includes('completed')
+        text.includes('completed') ||
+        text.includes('finished')
       ) {
         icon = 'check-circle'
-        color = '#10b981'
-        bgColor = '#ecfdf5'
-        borderColor = '#d1fae5'
+        colorClass = 'green'
       } else if (
         text.includes('stock') ||
         text.includes('received') ||
         text.includes('inventory')
       ) {
         icon = 'package'
-        color = '#3b82f6'
-        bgColor = '#eff6ff'
-        borderColor = '#dbeafe'
+        colorClass = 'blue'
       } else if (
         text.includes('low stock') ||
         text.includes('alert') ||
         text.includes('warning')
       ) {
         icon = 'alert-triangle'
-        color = '#f59e0b'
-        bgColor = '#fffbeb'
-        borderColor = '#fef3c7'
+        colorClass = 'red' // Use red for warnings
       } else if (
         text.includes('user') ||
         text.includes('added') ||
         text.includes('created')
       ) {
         icon = 'user-plus'
-        color = '#8b5cf6'
-        bgColor = '#f3e8ff'
-        borderColor = '#e9d5ff'
+        colorClass = 'purple'
       } else if (
         text.includes('request') ||
         text.includes('submitted') ||
         text.includes('pending')
       ) {
         icon = 'file-text'
-        color = '#ef4444'
-        bgColor = '#fef2f2'
-        borderColor = '#fee2e2'
+        colorClass = 'red'
       } else if (
         text.includes('update') ||
         text.includes('edit') ||
         text.includes('modified')
       ) {
         icon = 'edit'
-        color = '#06b6d4'
-        bgColor = '#ecfeff'
-        borderColor = '#cffafe'
+        colorClass = 'blue'
       } else if (
         text.includes('delete') ||
         text.includes('remove') ||
         text.includes('cancelled')
       ) {
         icon = 'trash-2'
-        color = '#dc2626'
-        bgColor = '#fef2f2'
-        borderColor = '#fee2e2'
+        colorClass = 'red'
       }
 
+      const actorName =
+        a.actor && (a.actor.name || a.actor.email)
+          ? a.actor.name || a.actor.email
+          : a.meta && a.meta.email
+          ? a.meta.email
+          : 'System'
+
       return `
-        <div class="activity-item-enhanced" style="
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          padding: 16px 20px;
-          margin-bottom: 12px;
-          background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
-          border: 1px solid ${borderColor};
-          border-radius: 12px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          cursor: pointer;
-          position: relative;
-          overflow: hidden;
-        "
-        onmouseover="
-          this.style.transform = 'translateY(-2px) scale(1.01)';
-          this.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1)';
-          this.style.borderColor = '${color}40';
-        "
-        onmouseout="
-          this.style.transform = 'translateY(0) scale(1)';
-          this.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06)';
-          this.style.borderColor = '${borderColor}';
-        ">
-          <!-- Subtle gradient overlay -->
-          <div style="
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, ${bgColor}20 0%, transparent 70%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
-          "></div>
-
-          <!-- Icon Container -->
-          <div class="activity-icon-enhanced" style="
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, ${bgColor} 0%, ${bgColor} 100%);
-            border: 2px solid ${color}30;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-            position: relative;
-            z-index: 1;
-          ">
-            <i data-lucide="${icon}" style="
-              width: 24px;
-              height: 24px;
-              color: ${color};
-              transition: all 0.3s ease;
-            "></i>
+        <div class="action-item" style="cursor: default;">
+          <div class="action-icon ${colorClass}">
+            <i data-lucide="${icon}" class="icon"></i>
           </div>
-
-          <!-- Content -->
-          <div class="activity-content-enhanced" style="
-            flex: 1;
-            min-width: 0;
-            position: relative;
-            z-index: 1;
-          ">
-            <p style="
-              margin: 0 0 6px 0;
-              font-size: 14px;
-              font-weight: 500;
-              color: #111827;
-              line-height: 1.5;
-              word-wrap: break-word;
-              display: -webkit-box;
-              -webkit-line-clamp: 2;
-              -webkit-box-orient: vertical;
-              overflow: hidden;
-            ">${escapeHtml(a.sentence || a.action || '')}</p>
-            <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
-              <div style="display:flex;align-items:center;gap:8px;">
-                <div style="width:28px;height:28px;background:linear-gradient(135deg,#e5e7eb,#e9efff);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#374151;font-weight:700;flex-shrink:0;font-size:13px;">${
-                  a.actor && (a.actor.name || a.actor.email)
-                    ? (a.actor.name || a.actor.email)
-                        .split(' ')
-                        .map((n) => n[0])
-                        .slice(0, 2)
-                        .join('')
-                    : 'S'
-                }</div>
-              </div>
-              <div style="font-size:13px;color:#6b7280;">${escapeHtml(
-                a.actor && (a.actor.name || a.actor.email)
-                  ? a.actor.name || a.actor.email
-                  : a.meta && a.meta.email
-                  ? a.meta.email
-                  : 'System'
-              )}</div>
-            </div>
-            <div style="
-              display: flex;
-              align-items: center;
-              gap: 8px;
-            ">
-              <span class="activity-time" style="
-                font-size: 12px;
-                color: #6b7280;
-                font-weight: 500;
-                display: flex;
-                align-items: center;
-                gap: 4px;
-              ">
+          <div class="action-content">
+            <h4 style="margin-bottom: 4px; line-height: 1.4;">${escapeHtml(
+              a.sentence || a.action || ''
+            )}</h4>
+            <p style="display: flex; align-items: center; gap: 8px; font-size: 12px;">
+              <span style="display: flex; align-items: center; gap: 4px;">
+                <i data-lucide="user" style="width: 12px; height: 12px;"></i>
+                ${escapeHtml(actorName)}
+              </span>
+              <span style="width: 3px; height: 3px; background: #d1d5db; border-radius: 50%;"></span>
+              <span style="display: flex; align-items: center; gap: 4px;">
                 <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
                 ${timeAgo(a.created_at)}
               </span>
-              <span style="
-                width: 4px;
-                height: 4px;
-                background: #d1d5db;
-                border-radius: 50%;
-                flex-shrink: 0;
-              "></span>
-              <span style="
-                font-size: 11px;
-                color: ${color};
-                font-weight: 600;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                background: ${bgColor};
-                padding: 2px 8px;
-                border-radius: 8px;
-                border: 1px solid ${color}20;
-              ">${icon.replace('-', ' ')}</span>
-            </div>
+            </p>
           </div>
-
-          <!-- Action indicator -->
-          <div style="
-            width: 8px;
-            height: 8px;
-            background: linear-gradient(135deg, ${color} 0%, ${color} 100%);
-            border-radius: 50%;
-            flex-shrink: 0;
-            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
-            position: relative;
-            z-index: 1;
-          "></div>
         </div>
       `
     })
     .join('')
-
-  // Add hover effect for the gradient overlay
-  setTimeout(() => {
-    const items = container.querySelectorAll('.activity-item-enhanced')
-    items.forEach((item) => {
-      const overlay = item.querySelector('div[style*="position: absolute"]')
-      item.addEventListener('mouseenter', () => {
-        if (overlay) overlay.style.opacity = '1'
-      })
-      item.addEventListener('mouseleave', () => {
-        if (overlay) overlay.style.opacity = '0'
-      })
-    })
-  }, 100)
 
   if (window.lucide) setTimeout(() => lucide.createIcons(), 10)
 }
@@ -4293,7 +4146,7 @@ loadPageContent = function (pageId) {
   if (pageId === 'dashboard') {
     // small delay to allow DOM insertion
     setTimeout(async () => {
-      const acts = await fetchActivities(5)
+      const acts = await fetchActivities(4)
       renderActivityList(acts)
     }, 120)
   }
@@ -14604,6 +14457,9 @@ function initializePageEvents(pageId) {
     case 'completed-request':
       initializeCompletedRequestPageEvents()
       break
+    case 'login-activity':
+      loadAndRenderUserActions()
+      break
     default:
       break
   }
@@ -16698,6 +16554,7 @@ function renderRolesManagementPage(users, roles) {
             </div>
         </div>
 
+        <div class="page-content">
         <!-- Users Table -->
         <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 32px;">
             <div style="padding: 20px 24px; border-bottom: 1px solid #e5e7eb; background: #f9fafb;">
@@ -16848,6 +16705,7 @@ function renderRolesManagementPage(users, roles) {
                     </tbody>
                 </table>
             </div>
+        </div>
         </div>
 
         <!-- Role Modal -->
@@ -17946,40 +17804,44 @@ function generateUsersManagementPage() {
             </div>
         </div>
 
+        <div class="page-content">
         <!-- Statistics Cards -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 32px;">
-            <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+        <div class="metrics-grid">
+            <div class="metric-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(102, 126, 234, 0.3); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                     <div>
-                        <p style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">Total Users</p>
-                        <h3 style="margin: 0; font-size: 32px; font-weight: 700;">${totalUsers}</h3>
+                        <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 500; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px;">Total Users</p>
+                        <h3 style="margin: 0; font-size: 36px; font-weight: 800; letter-spacing: -1px;">${totalUsers}</h3>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8;">Registered accounts</p>
                     </div>
-                    <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                        <i data-lucide="users" style="width: 28px; height: 28px;"></i>
+                    <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+                        <i data-lucide="users" style="width: 32px; height: 32px;"></i>
                     </div>
                 </div>
             </div>
 
-            <div class="card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none;">
+            <div class="metric-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                     <div>
-                        <p style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">Active Users</p>
-                        <h3 style="margin: 0; font-size: 32px; font-weight: 700;">${activeUsers}</h3>
+                        <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 500; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px;">Active Users</p>
+                        <h3 style="margin: 0; font-size: 36px; font-weight: 800; letter-spacing: -1px;">${activeUsers}</h3>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8;">Currently active</p>
                     </div>
-                    <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                        <i data-lucide="user-check" style="width: 28px; height: 28px;"></i>
+                    <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+                        <i data-lucide="user-check" style="width: 32px; height: 32px;"></i>
                     </div>
                 </div>
             </div>
 
-            <div class="card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none;">
+            <div class="metric-card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.3); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                     <div>
-                        <p style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">Inactive Users</p>
-                        <h3 style="margin: 0; font-size: 32px; font-weight: 700;">${inactiveUsers}</h3>
+                        <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 500; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px;">Inactive Users</p>
+                        <h3 style="margin: 0; font-size: 36px; font-weight: 800; letter-spacing: -1px;">${inactiveUsers}</h3>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8;">Needs attention</p>
                     </div>
-                    <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                        <i data-lucide="user-x" style="width: 28px; height: 28px;"></i>
+                    <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+                        <i data-lucide="user-x" style="width: 32px; height: 32px;"></i>
                     </div>
                 </div>
             </div>
@@ -18095,6 +17957,7 @@ function generateUsersManagementPage() {
                 </table>
             </div>
         </div>
+        </div>
     `
 }
 
@@ -18148,59 +18011,64 @@ function generateLoginActivityPage() {
                 <div>
                     <h1 class="page-title">
                         <i data-lucide="activity" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>
-                        Login Activity Logs
+                        User Activities
                     </h1>
                     <p class="page-subtitle">Monitor user authentication and access history in real-time</p>
                 </div>
             </div>
         </div>
 
+        <div class="page-content">
         <!-- Statistics Cards -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 32px;">
-            <div class="card" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none;">
+        <div class="metrics-grid">
+            <div class="metric-card" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                     <div>
-                        <p style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">Total Login Records</p>
-                        <h3 style="margin: 0; font-size: 32px; font-weight: 700;">${totalLogs}</h3>
+                        <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 500; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px;">Total Login Records</p>
+                        <h3 style="margin: 0; font-size: 36px; font-weight: 800; letter-spacing: -1px;">${totalLogs}</h3>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8;">All recorded sessions</p>
                     </div>
-                    <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                        <i data-lucide="database" style="width: 28px; height: 28px;"></i>
+                    <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+                        <i data-lucide="database" style="width: 32px; height: 32px;"></i>
                     </div>
                 </div>
             </div>
 
-            <div class="card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none;">
+            <div class="metric-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                     <div>
-                        <p style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">Successful Logins</p>
-                        <h3 style="margin: 0; font-size: 32px; font-weight: 700;">${successfulLogins}</h3>
+                        <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 500; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px;">Successful Logins</p>
+                        <h3 style="margin: 0; font-size: 36px; font-weight: 800; letter-spacing: -1px;">${successfulLogins}</h3>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8;">Authorized access</p>
                     </div>
-                    <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                        <i data-lucide="check-circle" style="width: 28px; height: 28px;"></i>
+                    <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+                        <i data-lucide="check-circle" style="width: 32px; height: 32px;"></i>
                     </div>
                 </div>
             </div>
 
-            <div class="card" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; border: none;">
+            <div class="metric-card" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.3); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                     <div>
-                        <p style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">Failed Attempts</p>
-                        <h3 style="margin: 0; font-size: 32px; font-weight: 700;">${failedLogins}</h3>
+                        <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 500; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px;">Failed Attempts</p>
+                        <h3 style="margin: 0; font-size: 36px; font-weight: 800; letter-spacing: -1px;">${failedLogins}</h3>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8;">Security alerts</p>
                     </div>
-                    <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                        <i data-lucide="x-circle" style="width: 28px; height: 28px;"></i>
+                    <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+                        <i data-lucide="x-circle" style="width: 32px; height: 32px;"></i>
                     </div>
                 </div>
             </div>
 
-            <div class="card" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; border: none;">
+            <div class="metric-card" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(139, 92, 246, 0.3); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                     <div>
-                        <p style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">Unique Users</p>
-                        <h3 style="margin: 0; font-size: 32px; font-weight: 700;">${uniqueUsers}</h3>
+                        <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 500; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px;">Unique Users</p>
+                        <h3 style="margin: 0; font-size: 36px; font-weight: 800; letter-spacing: -1px;">${uniqueUsers}</h3>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8;">Active accounts</p>
                     </div>
-                    <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                        <i data-lucide="users" style="width: 28px; height: 28px;"></i>
+                    <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+                        <i data-lucide="users" style="width: 32px; height: 32px;"></i>
                     </div>
                 </div>
             </div>
@@ -18461,12 +18329,129 @@ function generateLoginActivityPage() {
             `
             }
         </div>
+
+        <!-- User Actions Table -->
+        <div class="card" style="margin-top: 24px; padding: 0; overflow: visible;">
+            <div style="padding: 20px 24px; border-bottom: 1px solid #e5e7eb; background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h2 style="margin: 0; font-size: 18px; color: #111827; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="activity" style="width:20px;height:20px;color:#8b5cf6;"></i>
+                            User Actions
+                        </h2>
+                        <p style="margin: 4px 0 0 0; font-size: 14px; color: #6b7280;">Log of actions performed by users (e.g., Create, Update, Delete)</p>
+                    </div>
+                </div>
+            </div>
+            <div id="user-actions-table-container" style="min-height: 200px;">
+                <div style="padding: 40px; text-align: center; color: #6b7280;">
+                    <i data-lucide="loader-2" class="spin" style="width: 24px; height: 24px; margin-bottom: 12px;"></i>
+                    <p>Loading user actions...</p>
+                </div>
+            </div>
+        </div>
+        </div>
     `
 }
 
 // ----------------------------- //
 //   User Activities Page       //
 // ----------------------------- //
+
+async function loadAndRenderUserActions() {
+  const container = document.getElementById('user-actions-table-container')
+  if (!container) return
+
+  try {
+    const result = await loadActivitiesFromAPI({ pageSize: 50 }) // Fetch 50 recent actions
+    const actions = result.data || []
+    renderUserActionsTable(actions)
+  } catch (error) {
+    console.error('Error loading user actions:', error)
+    container.innerHTML = `
+            <div style="padding: 40px; text-align: center; color: #ef4444;">
+                <i data-lucide="alert-circle" style="width: 24px; height: 24px; margin-bottom: 12px;"></i>
+                <p>Failed to load user actions</p>
+            </div>
+        `
+    if (window.lucide) lucide.createIcons()
+  }
+}
+
+function renderUserActionsTable(actions) {
+  const container = document.getElementById('user-actions-table-container')
+  if (!container) return
+
+  if (actions.length === 0) {
+    container.innerHTML = `
+            <div style="padding: 40px; text-align: center; color: #6b7280;">
+                <i data-lucide="inbox" style="width: 24px; height: 24px; margin-bottom: 12px;"></i>
+                <p>No user actions recorded yet</p>
+            </div>
+        `
+    if (window.lucide) lucide.createIcons()
+    return
+  }
+
+  container.innerHTML = `
+        <div style="overflow-x: auto; max-height: 500px; overflow-y: auto;">
+            <table class="table" style="width: 100%; border-collapse: separate; border-spacing: 0;">
+                <thead style="position: sticky; top: 0; z-index: 10; background: #f9fafb;">
+                    <tr>
+                        <th style="padding-left: 24px; border-bottom: 1px solid #e5e7eb;">Timestamp</th>
+                        <th style="border-bottom: 1px solid #e5e7eb;">User</th>
+                        <th style="border-bottom: 1px solid #e5e7eb;">Action</th>
+                        <th style="border-bottom: 1px solid #e5e7eb;">Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${actions
+                      .map((action) => {
+                        const date = new Date(action.created_at)
+                        const dateStr = date.toLocaleDateString()
+                        const timeStr = date.toLocaleTimeString()
+                        const user = action.actor
+                          ? action.actor.name || action.actor.email || 'Unknown'
+                          : 'System'
+
+                        return `
+                            <tr>
+                                <td style="padding-left: 24px;">
+                                    <div style="font-weight: 500; color: #111827;">${timeStr}</div>
+                                    <div style="font-size: 12px; color: #6b7280;">${dateStr}</div>
+                                </td>
+                                <td>
+                                    <div style="font-weight: 500; color: #111827;">${user}</div>
+                                </td>
+                                <td>
+                                    <span style="display: inline-flex; align-items: center; padding: 4px 10px; background: #f3f4f6; color: #374151; border-radius: 6px; font-size: 13px; font-weight: 500;">
+                                        ${action.action}
+                                    </span>
+                                </td>
+                                <td style="color: #6b7280; font-size: 13px;">
+                                    ${
+                                      action.meta
+                                        ? JSON.stringify(action.meta).substring(
+                                            0,
+                                            50
+                                          ) +
+                                          (JSON.stringify(action.meta).length >
+                                          50
+                                            ? '...'
+                                            : '')
+                                        : '-'
+                                    }
+                                </td>
+                            </tr>
+                        `
+                      })
+                      .join('')}
+                </tbody>
+            </table>
+        </div>
+    `
+  if (window.lucide) lucide.createIcons()
+}
 
 async function loadActivitiesFromAPI(opts = {}) {
   // opts can be a number (pageSize) or an object {page, pageSize, search, actorType, dateFrom, dateTo}
