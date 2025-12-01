@@ -461,13 +461,18 @@
 
     if (!proceed) return
 
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+    }
+    const tokenMeta = document.querySelector('meta[name="csrf-token"]')
+    if (tokenMeta && tokenMeta.content)
+      headers['X-CSRF-TOKEN'] = tokenMeta.content
+
     try {
       const resp = await fetch('/api/purchase-requests', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
+        headers: headers,
         body: JSON.stringify(payload),
       })
       if (!resp.ok) throw new Error('Network response was not ok')

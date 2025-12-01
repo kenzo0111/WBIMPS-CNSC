@@ -7,13 +7,19 @@ use App\Http\Controllers\InventoryCustodianSlipController;
 use App\Http\Controllers\PropertyAcknowledgementReceiptController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PurchaseRequestController;
+use App\Http\Controllers\Api\PurchaseRequestController as ApiPurchaseRequestController;
 use App\Http\Controllers\RequisitionIssueSlipController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return auth()->check()
-        ? redirect()->route('admin.dashboard')
-        : redirect()->route('login');
+    if (auth()->check()) {
+        /** @var \App\Models\User $user */
+        $user = auth()->user();
+        return $user->isAdmin()
+            ? redirect()->route('admin.dashboard')
+            : redirect()->route('user.user-home-page');
+    }
+    return redirect()->route('login');
 });
 
 // Health check endpoint for deployment verification
@@ -86,6 +92,11 @@ Route::get('/property-acknowledgement-receipt/view/{id}', [PropertyAcknowledgeme
 Route::get('/pdf/preview/appendix71', [PropertyAcknowledgementReceiptController::class, 'preview'])->name('pdf.preview.appendix71');
 
 Route::middleware('auth')->group(function () {
+    // Protected API routes
+    Route::get('/api/purchase-requests', [ApiPurchaseRequestController::class, 'index']);
+    Route::post('/api/purchase-requests', [ApiPurchaseRequestController::class, 'store']);
+    Route::post('/api/status-requests/{id}/status', [ApiPurchaseRequestController::class, 'updateStatus']);
+
     Route::get('/contact-support', function () {
         return view('contact-support');
     })->name('contact.support');
@@ -98,10 +109,11 @@ Route::get('/admin/home', function () {
     return view('admin.home-page');
 });
 
+Route::get('/user/home', function () {
+    return view('user.user-home-page');
+})->name('user.user-home-page');
+
 Route::middleware('auth')->group(function () {
-    Route::get('/user/home', function () {
-        return view('user.user-home-page');
-    })->name('user.user-home-page');
     Route::get('/user/request', function () {
         return view('user.user-request');
     })->name('user.request');

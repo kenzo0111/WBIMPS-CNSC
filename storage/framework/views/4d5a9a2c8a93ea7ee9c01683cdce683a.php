@@ -23,6 +23,15 @@
                     <p>WEB-BASED SUPPLY AND PROPERTY MANAGEMENT SYSTEM</p>
                 </div>
             </div>
+            <nav class="nav-menu" style="display: flex; align-items: center; gap: 1rem; margin-left: auto;">
+                <span style="color: white; font-weight: 500; font-size: 0.9rem;"><?php echo e(Auth::user()->email); ?></span>
+                <form method="POST" action="<?php echo e(route('logout')); ?>" style="margin: 0;">
+                    <?php echo csrf_field(); ?>
+                    <button type="submit" style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: white; padding: 0.5rem 1rem; border-radius: 20px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">
+                        Logout
+                    </button>
+                </form>
+            </nav>
         </div>
     </header>
 

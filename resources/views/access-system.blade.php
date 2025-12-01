@@ -243,7 +243,7 @@
         <div class="logo-text">
           <h1>Supply and Property Management</h1>
           <hr />
-          <p>WEB-BASED INVENTORY AND PROCUREMENT MANAGEMENT SYSTEM</p>
+          <p>WEB-BASED SUPPLY AND PROPERTY MANAGEMENT SYSTEM</p>
         </div>
       </div>
     </div>
@@ -595,6 +595,9 @@
       }
     }
 
+    // Global variable to store the intended redirect URL
+    let intendedRedirectUrl = null;
+
     // Authentication workflow with loading & success dialogs
     async function startAuthentication(email, password, fallback = false) {
       const loading = document.getElementById('loadingDialog');
@@ -623,6 +626,7 @@
         }
 
         const redirectTarget = data?.redirect || window.APP_ROUTES?.dashboard || '/admin/dashboard';
+        intendedRedirectUrl = redirectTarget;
 
         try {
           saveUserSession(email, data?.user);
@@ -639,7 +643,7 @@
           success.showModal();
           setTimeout(() => {
             if (success.open) success.close();
-            redirectToDashboard(redirectTarget);
+            // The close event listener will handle the redirect using intendedRedirectUrl
           }, 1800);
         } else {
           alert((isReturningUser(email) ? 'Welcome back' : 'Welcome') + '! Redirecting to dashboard...');
@@ -655,7 +659,7 @@
 
     function redirectToDashboard(target) {
       const fallback = window.APP_ROUTES?.dashboard || '/admin/dashboard';
-      window.location.href = target || fallback;
+      window.location.href = target || intendedRedirectUrl || fallback;
     }
 
     // Success dialog close -> redirect safeguard
@@ -663,7 +667,7 @@
       const success = document.getElementById('successDialog');
       if (!success) return;
       success.addEventListener('close', () => {
-        redirectToDashboard();
+        redirectToDashboard(intendedRedirectUrl);
       });
     })();
 

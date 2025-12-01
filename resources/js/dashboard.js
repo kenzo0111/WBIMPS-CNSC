@@ -2699,13 +2699,13 @@ function renderNotifications(filter = 'all') {
 
                 <!-- Icon Container -->
                 <div class="notification-icon-enhanced" style="
-                  width: 48px;
-                  height: 48px;
+                  width: 40px;
+                  height: 40px;
                   background: linear-gradient(135deg, ${config.bg} 0%, ${
         config.bg
       } 100%);
                   border: 2px solid ${config.borderColor}30;
-                  border-radius: 12px;
+                  border-radius: 10px;
                   display: flex;
                   align-items: center;
                   justify-content: center;
@@ -2716,8 +2716,8 @@ function renderNotifications(filter = 'all') {
                   z-index: 1;
                 ">
                   <i data-lucide="${n.icon || 'bell'}" style="
-                    width: 24px;
-                    height: 24px;
+                    width: 20px;
+                    height: 20px;
                     color: ${config.iconColor};
                     transition: all 0.3s ease;
                   "></i>
@@ -2729,31 +2729,22 @@ function renderNotifications(filter = 'all') {
                   min-width: 0;
                   position: relative;
                   z-index: 1;
+                  padding-right: 8px;
                 ">
                   <div style="
                     display: flex;
                     align-items: flex-start;
                     justify-content: space-between;
                     gap: 8px;
-                    margin-bottom: 6px;
+                    margin-bottom: 4px;
                   ">
                     <div style="
                       font-size: 14px;
                       font-weight: 600;
                       color: #111827;
                       line-height: 1.4;
-                      flex: 1;
                       word-wrap: break-word;
-                      display: -webkit-box;
-                      -webkit-line-clamp: 2;
-                      -webkit-box-orient: vertical;
-                      overflow: hidden;
                     ">${escapeHtml(n.title)}</div>
-                    ${
-                      isUnread
-                        ? '<div style="width: 10px; height: 10px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 50%; flex-shrink: 0; margin-top: 2px; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);"></div>'
-                        : ''
-                    }
                   </div>
                   ${
                     n.message
@@ -2761,72 +2752,67 @@ function renderNotifications(filter = 'all') {
                           font-size: 13px;
                           color: #6b7280;
                           line-height: 1.5;
-                          margin-bottom: 8px;
+                          margin-bottom: 6px;
                           word-wrap: break-word;
-                          display: -webkit-box;
-                          -webkit-line-clamp: 2;
-                          -webkit-box-orient: vertical;
-                          overflow: hidden;
                         ">${escapeHtml(n.message)}</div>`
                       : ''
                   }
                   <div style="
+                    font-size: 11px;
+                    color: #9ca3af;
+                    font-weight: 500;
                     display: flex;
                     align-items: center;
-                    justify-content: space-between;
-                    gap: 8px;
+                    gap: 4px;
                   ">
-                    <div style="
-                      font-size: 12px;
-                      color: #6b7280;
-                      font-weight: 500;
-                      display: flex;
-                      align-items: center;
-                      gap: 6px;
-                    ">
-                      <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
-                      ${escapeHtml(n.time)}
-                    </div>
-                    <button class="notification-action-btn" onclick="event.stopPropagation(); toggleNotificationRead('${
-                      n.id
-                    }');" style="
-                      font-size: 12px;
-                      color: ${config.iconColor};
-                      border: none;
-                      background: none;
-                      cursor: pointer;
-                      padding: 6px 12px;
-                      border-radius: 8px;
-                      font-weight: 500;
-                      transition: all 0.2s;
-                      background: ${config.bg};
-                      border: 1px solid ${config.borderColor};
-                      display: flex;
-                      align-items: center;
-                      gap: 4px;
-                    ">
-                      ${
-                        isUnread
-                          ? '<i data-lucide="check" style="width: 14px; height: 14px;"></i>Mark read'
-                          : '<i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i>Mark unread'
-                      }
-                    </button>
+                    <i data-lucide="clock" style="width: 10px; height: 10px;"></i>
+                    ${escapeHtml(n.time)}
                   </div>
                 </div>
 
-                <!-- Action indicator -->
+                <!-- Action Column -->
                 <div style="
-                  width: 8px;
-                  height: 8px;
-                  background: linear-gradient(135deg, ${config.iconColor} 0%, ${
-        config.iconColor
-      } 100%);
-                  border-radius: 50%;
-                  flex-shrink: 0;
-                  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
-                  position: relative;
-                  z-index: 1;
-                "></div>
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                    z-index: 2;
+                    margin-left: 4px;
+                ">
+                    ${
+                      isUnread
+                        ? `<div style="width: 8px; height: 8px; background: #3b82f6; border-radius: 50%; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);"></div>`
+                        : ''
+                    }
+                    
+                    <button class="notification-action-btn" onclick="event.stopPropagation(); toggleNotificationRead('${
+                      n.id
+                    }');" title="${
+        isUnread ? 'Mark as read' : 'Mark as unread'
+      }" style="
+                      width: 28px;
+                      height: 28px;
+                      border: none;
+                      background: transparent;
+                      cursor: pointer;
+                      border-radius: 6px;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      color: ${config.iconColor};
+                      transition: all 0.2s;
+                    "
+                    onmouseover="this.style.background='${
+                      config.bg
+                    }'; this.style.transform='scale(1.1)';"
+                    onmouseout="this.style.background='transparent'; this.style.transform='scale(1)';"
+                    >
+                      <i data-lucide="${
+                        isUnread ? 'check' : 'rotate-ccw'
+                      }" style="width: 16px; height: 16px;"></i>
+                    </button>
+                </div>
             `
 
       // Enhanced hover effects

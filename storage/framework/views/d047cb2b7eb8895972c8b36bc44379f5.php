@@ -23,10 +23,25 @@
         </div>
       </div>
       <nav class="nav-menu">
+        <?php if(auth()->guard()->check()): ?>
+        <div style="display: flex; align-items: center; gap: 15px; margin-right: 15px;">
+            <span style="color: white; font-weight: 500; font-size: 0.9rem;"><?php echo e(Auth::user()->email); ?></span>
+            <form method="POST" action="<?php echo e(route('logout')); ?>" style="margin: 0;">
+                <?php echo csrf_field(); ?>
+                <button type="submit" class="support-btn" style="background: rgba(255, 255, 255, 0.1); color: white; border: 1px solid rgba(255, 255, 255, 0.3);">
+                    Logout
+                </button>
+            </form>
+        </div>
         <a href="<?php echo e(route('contact.support')); ?>" class="support-btn">
           <span class="btn-icon">📞</span>
           Contact Support
         </a>
+        <?php else: ?>
+        <a href="<?php echo e(route('login')); ?>" class="support-btn" style="margin-right: 15px;">
+          Login
+        </a>
+        <?php endif; ?>
       </nav>
     </div>
   </header>

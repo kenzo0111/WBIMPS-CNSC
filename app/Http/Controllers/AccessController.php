@@ -72,9 +72,11 @@ class AccessController extends Controller
             'is_admin' => (bool) ($user->isAdmin() ?? (bool) data_get($user, 'is_admin', false)),
         ];
 
+        $redirectRoute = $user->isAdmin() ? route('admin.dashboard') : route('user.user-home-page');
+
         return response()->json([
             'message' => 'Login successful.',
-            'redirect' => route('admin.dashboard'),
+            'redirect' => $redirectRoute,
             'user' => $profile,
         ]);
     }
@@ -82,7 +84,7 @@ class AccessController extends Controller
     /**
      * Log the authenticated user out of the application.
      */
-    public function logout(Request $request): JsonResponse
+    public function logout(Request $request)
     {
         $user = Auth::user();
         Auth::logout();
@@ -100,9 +102,13 @@ class AccessController extends Controller
             logger()->warning('Failed to record logout activity', ['error' => $e->getMessage()]);
         }
 
-        return response()->json([
-            'message' => 'You have been signed out successfully.',
-            'redirect' => route('login'),
-        ]);
+        if ($request->wantsJson()) {
+            return response()->json([
+                'message' => 'You have been signed out successfully.',
+                'redirect' => route('login'),
+            ]);
+        }
+
+        return redirect()->route('login');
     }
 }
