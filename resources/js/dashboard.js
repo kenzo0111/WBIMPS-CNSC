@@ -16605,20 +16605,19 @@ window.logout = logout
 // ------------------------//
 
 function generateRolesManagementPage() {
-  // Initialize MockData if not exists (for backward compatibility)
+  // 1. Fetch Users
   if (!window.MockData) window.MockData = {}
   if (!window.MockData.users) window.MockData.users = []
 
-  // Fetch users from API synchronously
   try {
     const xhr = new XMLHttpRequest()
-    xhr.open('GET', '/api/users', false) // synchronous
+    xhr.open('GET', '/api/users', false)
     xhr.send()
     if (xhr.status === 200) {
       const apiUsers = JSON.parse(xhr.responseText)
       window.MockData.users = apiUsers.map((user) => ({
         id: user.id || '',
-        group: 'Group Juan', // Default group
+        group: 'Group Juan',
         name: user.name || 'Unknown',
         role: user.role || 'User',
         email: user.email || '',
@@ -16631,7 +16630,6 @@ function generateRolesManagementPage() {
         created: user.created_at
           ? new Date(user.created_at).toISOString().split('T')[0]
           : new Date().toISOString().split('T')[0],
-        // server-provided permission names (if available)
         permissionNames: Array.isArray(user.permissionNames)
           ? user.permissionNames
           : [],
@@ -16639,27 +16637,38 @@ function generateRolesManagementPage() {
     }
   } catch (e) {
     console.error('Error fetching users:', e)
-    // Use existing MockData
   }
 
-  // Calculate statistics
-  const totalMembers = window.MockData.users.length
-  const activeMembers = window.MockData.users.filter(
-    (m) => m.status === 'Active'
-  ).length
+  // 2. Fetch Roles & Permissions
+  let roles = []
+  let permissions = []
+  try {
+    const xhrRoles = new XMLHttpRequest()
+    xhrRoles.open('GET', '/api/roles', false)
+    xhrRoles.send()
+    if (xhrRoles.status === 200) {
+      roles = JSON.parse(xhrRoles.responseText).data
+    }
 
-  return renderRolesManagementPage(
-    totalMembers,
-    activeMembers,
-    window.MockData.users
-  )
+    const xhrPerms = new XMLHttpRequest()
+    xhrPerms.open('GET', '/api/permissions', false)
+    xhrPerms.send()
+    if (xhrPerms.status === 200) {
+      permissions = JSON.parse(xhrPerms.responseText).data
+    }
+  } catch (e) {
+    console.error('Error fetching roles/permissions:', e)
+  }
+
+  // Store in AppState
+  if (!window.AppState) window.AppState = {}
+  window.AppState.roles = roles
+  window.AppState.permissions = permissions
+
+  return renderRolesManagementPage(window.MockData.users, roles)
 }
 
-function renderRolesManagementPage(
-  totalMembers,
-  activeMembers,
-  membersToRender
-) {
+function renderRolesManagementPage(users, roles) {
   const html = `
         <div class="page-header">
             <div class="page-header-content">
@@ -16668,15 +16677,19 @@ function renderRolesManagementPage(
                         <i data-lucide="shield" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>
                         Roles & Management
                     </h1>
-                    <p class="page-subtitle">Manage team members, roles, and organizational structure</p>
+                    <p class="page-subtitle">Manage team members, roles, and permissions</p>
                 </div>
-                <div>
+                <div style="display: flex; gap: 10px;">
                   ${
                     can('manage everything')
                       ? `
                   <button class="btn btn-primary" onclick="openUserModal('create')" style="display: flex; align-items: center; gap: 8px; padding: 12px 20px; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); border: none; border-radius: 10px; color: white; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3); transition: all 0.2s;">
                     <i data-lucide="user-plus" style="width:18px;height:18px;"></i>
                     Add Member
+                  </button>
+                  <button class="btn btn-secondary" onclick="openRoleModal('create')" style="display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                    <i data-lucide="shield-plus" style="width:18px;height:18px;"></i>
+                    Add Role
                   </button>
                   `
                       : ''
@@ -16685,102 +16698,35 @@ function renderRolesManagementPage(
             </div>
         </div>
 
-        <!-- Statistics Cards -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 32px;">
-            <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <div>
-                        <p style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">Total Members</p>
-                        <h3 style="margin: 0; font-size: 32px; font-weight: 700;">${totalMembers}</h3>
-                    </div>
-                    <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                        <i data-lucide="users" style="width: 28px; height: 28px;"></i>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none;">
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <div>
-                        <p style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">Active Members</p>
-                        <h3 style="margin: 0; font-size: 32px; font-weight: 700;">${activeMembers}</h3>
-                    </div>
-                    <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                        <i data-lucide="user-check" style="width: 28px; height: 28px;"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Members Table -->
-        <div class="card" style="padding: 0; overflow: hidden;">
+        <!-- Users Table -->
+        <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 32px;">
             <div style="padding: 20px 24px; border-bottom: 1px solid #e5e7eb; background: #f9fafb;">
                 <h2 style="margin: 0; font-size: 18px; color: #111827; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-                    <i data-lucide="shield-check" style="width:20px;height:20px;color:#667eea;"></i>
-                    Team Members & Roles
+                    <i data-lucide="users" style="width:20px;height:20px;color:#667eea;"></i>
+                    Team Members
                 </h2>
-                <p style="margin: 4px 0 0 0; font-size: 14px; color: #6b7280;">Manage member accounts, roles, and permissions</p>
             </div>
             <div style="overflow-x: auto;">
                 <table class="table" style="margin: 0;">
                     <thead>
                         <tr>
-                            <th style="padding-left: 24px;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <i data-lucide="hash" style="width:14px;height:14px;"></i>
-                                    Member ID
-                                </div>
-                            </th>
-                            <th>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <i data-lucide="user" style="width:14px;height:14px;"></i>
-                                    Name
-                                </div>
-                            </th>
-                            <th>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <i data-lucide="mail" style="width:14px;height:14px;"></i>
-                                    Email
-                                </div>
-                            </th>
-                            <th>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <i data-lucide="shield" style="width:14px;height:14px;"></i>
-                                    Role
-                                </div>
-                            </th>
-                            <th>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <i data-lucide="circle-dot" style="width:14px;height:14px;"></i>
-                                    Status
-                                </div>
-                            </th>
-                            <th>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <i data-lucide="calendar" style="width:14px;height:14px;"></i>
-                                    Created
-                                </div>
-                            </th>
-                            <th style="padding-right: 24px;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <i data-lucide="settings" style="width:14px;height:14px;"></i>
-                                    Actions
-                                </div>
-                            </th>
+                            <th style="padding-left: 24px;">Member ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th style="padding-right: 24px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${membersToRender
+                        ${users
                           .map(
-                            (member, index) => `
-                            <tr data-user-id="${
-                              member.id
-                            }" style="transition: all 0.2s;">
-                                <td style="padding-left: 24px;">
-                                    <div style="font-family: 'Courier New', monospace; font-size: 13px; color: #6b7280; font-weight: 600;">
-                                        ${member.id}
-                                    </div>
-                                </td>
+                            (member) => `
+                            <tr data-user-id="${member.id}">
+                                <td style="padding-left: 24px; font-family: 'Courier New', monospace; font-size: 13px; color: #6b7280; font-weight: 600;">${
+                                  member.id
+                                }</td>
                                 <td>
                                     <div style="display: flex; align-items: center; gap: 12px;">
                                         <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px;">
@@ -16804,31 +16750,11 @@ function renderRolesManagementPage(
                                   member.email
                                 }</td>
                                 <td>
-                                    <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: ${
-                                      member.role === 'Leader'
-                                        ? '#fef3c7'
-                                        : member.role === 'Supply Coordinator'
-                                        ? '#fff7ed'
-                                        : '#e0f2fe'
-                                    }; color: ${
-                              member.role === 'Leader'
-                                ? '#92400e'
-                                : member.role === 'Supply Coordinator'
-                                ? '#92400e'
-                                : '#0c4a6e'
-                            }; border-radius: 20px; font-size: 13px; font-weight: 600;">
-                                        <i data-lucide="${
-                                          member.role === 'Leader'
-                                            ? 'crown'
-                                            : member.role ===
-                                              'Supply Coordinator'
-                                            ? 'briefcase'
-                                            : 'user'
-                                        }" style="width:12px;height:12px;"></i>
+                                    <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: #e0f2fe; color: #0c4a6e; border-radius: 20px; font-size: 13px; font-weight: 600;">
+                                        <i data-lucide="shield" style="width:12px;height:12px;"></i>
                                         ${member.role}
                                     </span>
                                 </td>
-                                <!-- Department cell removed -->
                                 <td>
                                     <span class="badge ${
                                       member.status === 'Active'
@@ -16844,18 +16770,16 @@ function renderRolesManagementPage(
                                 }</td>
                                 <td style="padding-right: 24px;">
                                     <div class="table-actions">
-                                      ${
-                                        can('manage everything')
-                                          ? `
-                                      <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openUserModal('edit', '${member.id}')">
-                                        <i data-lucide="edit"></i>
-                                      </button>
-                                      <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteMember('${member.id}')">
-                                        <i data-lucide="trash-2"></i>
-                                      </button>
-                                      `
-                                          : ''
-                                      }
+                                        <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openUserModal('edit', '${
+                                          member.id
+                                        }')">
+                                            <i data-lucide="edit"></i>
+                                        </button>
+                                        <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteMember('${
+                                          member.id
+                                        }')">
+                                            <i data-lucide="trash-2"></i>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -16866,14 +16790,310 @@ function renderRolesManagementPage(
                 </table>
             </div>
         </div>
+
+        <!-- Roles Table -->
+        <div class="card" style="padding: 0; overflow: hidden;">
+            <div style="padding: 20px 24px; border-bottom: 1px solid #e5e7eb; background: #f9fafb;">
+                <h2 style="margin: 0; font-size: 18px; color: #111827; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="shield-check" style="width:20px;height:20px;color:#667eea;"></i>
+                    System Roles
+                </h2>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="table" style="margin: 0;">
+                    <thead>
+                        <tr>
+                            <th style="padding-left: 24px;">Role Name</th>
+                            <th>Permissions</th>
+                            <th style="padding-right: 24px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${roles
+                          .map(
+                            (role) => `
+                            <tr>
+                                <td style="padding-left: 24px; font-weight: 600;">${
+                                  role.name
+                                }</td>
+                                <td>
+                                    <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                                        ${role.permissions
+                                          .map(
+                                            (p) => `
+                                            <span class="badge blue" style="font-size: 11px;">${p.name}</span>
+                                        `
+                                          )
+                                          .join('')}
+                                    </div>
+                                </td>
+                                <td style="padding-right: 24px;">
+                                    <div class="table-actions">
+                                        <button class="icon-action-btn icon-action-warning" title="Edit" onclick="openRoleModal('edit', ${
+                                          role.id
+                                        })">
+                                            <i data-lucide="edit"></i>
+                                        </button>
+                                        <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteRole(${
+                                          role.id
+                                        })">
+                                            <i data-lucide="trash-2"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `
+                          )
+                          .join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Role Modal -->
+        <div class="modal-overlay" id="role-modal">
+            <div class="modal-content" style="max-width: 800px; padding: 0; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+                <style>
+                    /* Enhanced modal styles matching User Modal */
+                    .user-modal-header {
+                        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+                        color: white;
+                        border-bottom: none;
+                        padding: 40px 32px;
+                        position: relative;
+                        overflow: hidden;
+                    }
+                    .user-modal-header::before {
+                        content: '';
+                        position: absolute;
+                        top: 0; left: 0; right: 0; bottom: 0;
+                        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.03)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.03)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.02)"/><circle cx="10" cy="50" r="0.5" fill="rgba(255,255,255,0.02)"/><circle cx="90" cy="30" r="0.5" fill="rgba(255,255,255,0.02)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+                        pointer-events: none;
+                    }
+                    .user-avatar-container {
+                        width: 80px; height: 80px;
+                        background: rgba(255,255,255,0.15);
+                        border: 4px solid rgba(255,255,255,0.3);
+                        border-radius: 50%;
+                        display: flex; align-items: center; justify-content: center;
+                        backdrop-filter: blur(20px);
+                        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+                    }
+                    .user-modal-title {
+                        color: white; font-size: 28px; margin-bottom: 8px; font-weight: 700;
+                        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    }
+                    .user-modal-subtitle {
+                        color: rgba(255,255,255,0.95); font-size: 16px; margin: 0; font-weight: 400; opacity: 0.9;
+                    }
+                    .modal-close-enhanced {
+                        color: white; background: rgba(255,255,255,0.1);
+                        border: 2px solid rgba(255,255,255,0.2);
+                        width: 44px; height: 44px; border-radius: 50%;
+                        display: flex; align-items: center; justify-content: center;
+                        transition: all 0.3s; backdrop-filter: blur(10px);
+                        cursor: pointer;
+                    }
+                    .modal-close-enhanced:hover {
+                        background: rgba(255,255,255,0.2); transform: rotate(90deg);
+                    }
+                    .form-section-card {
+                        transition: all 0.3s;
+                    }
+                    .form-section-card:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 8px 16px rgba(0,0,0,0.06), 0 20px 40px rgba(0,0,0,0.08);
+                    }
+                    .form-input:focus {
+                        outline: none; border-color: #3b82f6; background: white;
+                        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+                    }
+                </style>
+
+                <div class="modal-header user-modal-header">
+                    <div style="display: flex; align-items: center; gap: 24px; position: relative; z-index: 1;">
+                        <div class="user-avatar-container">
+                            <i data-lucide="shield-check" style="width: 40px; height: 40px; color: white;"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <h2 class="modal-title user-modal-title" id="role-modal-title">Add Role</h2>
+                            <p class="modal-subtitle user-modal-subtitle">Manage system access and permissions</p>
+                        </div>
+                    </div>
+                    <button class="modal-close modal-close-enhanced" onclick="closeRoleModal()" style="position: absolute; top: 24px; right: 24px;">
+                        <i data-lucide="x" style="width: 24px; height: 24px;"></i>
+                    </button>
+                </div>
+
+                <div class="modal-body" style="padding: 32px 32px; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); max-height: 70vh; overflow-y: auto;">
+                    <form id="role-form" onsubmit="event.preventDefault(); saveRole();">
+                        <input type="hidden" id="role-id">
+                        
+                        <!-- Role Details Section -->
+                        <div class="form-section-card" style="background: white; border-radius: 16px; padding: 32px; margin-bottom: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.04);">
+                            <div class="section-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #f1f5f9;">
+                                <div class="section-icon" style="width: 48px; height: 48px; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);">
+                                    <i data-lucide="shield" style="width: 24px; height: 24px; color: white;"></i>
+                                </div>
+                                <div>
+                                    <h3 style="margin: 0 0 4px 0; font-size: 20px; font-weight: 700; color: #111827;">Role Information</h3>
+                                    <p style="margin: 0; font-size: 14px; color: #6b7280;">Basic role details</p>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-weight: 600; color: #374151; font-size: 14px;">
+                                    <i data-lucide="tag" style="width: 16px; height: 16px; color: #6b7280;"></i>
+                                    Role Name
+                                </label>
+                                <div class="input-wrapper" style="position: relative;">
+                                    <input type="text" id="role-name" class="form-input" required placeholder="e.g. Manager" 
+                                           style="width: 100%; border: 2px solid #e5e7eb; padding: 14px 16px; font-size: 15px; border-radius: 10px; transition: all 0.3s; background: #fafbfc;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Permissions Section -->
+                        <div class="form-section-card" style="background: white; border-radius: 16px; padding: 32px; box-shadow: 0 4px 6px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.04);">
+                            <div class="section-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #f1f5f9;">
+                                <div class="section-icon" style="width: 48px; height: 48px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">
+                                    <i data-lucide="lock" style="width: 24px; height: 24px; color: white;"></i>
+                                </div>
+                                <div>
+                                    <h3 style="margin: 0 0 4px 0; font-size: 20px; font-weight: 700; color: #111827;">Permissions</h3>
+                                    <p style="margin: 0; font-size: 14px; color: #6b7280;">Select access capabilities</p>
+                                </div>
+                            </div>
+
+                            <div id="permissions-container" style="display: grid; gap: 20px;">
+                                <!-- Checkboxes will be injected here -->
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 32px; display: flex; justify-content: flex-end; gap: 12px;">
+                            <button type="button" class="btn-secondary" onclick="closeRoleModal()" style="padding: 12px 24px; border-radius: 10px; font-weight: 600; background: white; border: 1px solid #e5e7eb; color: #374151; cursor: pointer; transition: all 0.2s;">Cancel</button>
+                            <button type="submit" class="btn btn-primary" style="padding: 12px 32px; border-radius: 10px; font-weight: 600; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3); transition: all 0.2s;">Save Role</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     `
 
-  // Ensure icons render
   setTimeout(() => {
     if (window.lucide) lucide.createIcons()
   }, 0)
 
   return html
+}
+
+window.openRoleModal = function (mode, roleId) {
+  const modal = document.getElementById('role-modal')
+  const title = document.getElementById('role-modal-title')
+  const roleIdInput = document.getElementById('role-id')
+  const nameInput = document.getElementById('role-name')
+  const permsContainer = document.getElementById('permissions-container')
+
+  // Reset form
+  roleIdInput.value = ''
+  nameInput.value = ''
+  permsContainer.innerHTML = ''
+
+  // Render permissions checkboxes
+  const allPerms = window.AppState.permissions || []
+  let rolePerms = []
+
+  if (mode === 'edit' && roleId) {
+    const role = window.AppState.roles.find((r) => r.id === roleId)
+    if (role) {
+      roleIdInput.value = role.id
+      nameInput.value = role.name
+      rolePerms = role.permissions.map((p) => p.name)
+      title.textContent = 'Edit Role'
+    }
+  } else {
+    title.textContent = 'Add Role'
+  }
+
+  allPerms.forEach((p) => {
+    const isChecked = rolePerms.includes(p.name) ? 'checked' : ''
+    const checkboxHtml = `
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer;">
+                <input type="checkbox" name="permissions" value="${p.name}" ${isChecked} style="width: 16px; height: 16px;">
+                ${p.name}
+            </label>
+        `
+    permsContainer.insertAdjacentHTML('beforeend', checkboxHtml)
+  })
+
+  modal.classList.add('active')
+}
+
+window.closeRoleModal = function () {
+  const modal = document.getElementById('role-modal')
+  if (modal) modal.classList.remove('active')
+}
+
+window.saveRole = async function () {
+  const id = document.getElementById('role-id').value
+  const name = document.getElementById('role-name').value
+  const checkboxes = document.querySelectorAll(
+    'input[name="permissions"]:checked'
+  )
+  const permissions = Array.from(checkboxes).map((cb) => cb.value)
+
+  const url = id ? `/api/roles/${id}` : '/api/roles'
+  const method = id ? 'PUT' : 'POST'
+
+  try {
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      body: JSON.stringify({ name, permissions }),
+    })
+
+    if (response.ok) {
+      closeRoleModal()
+      loadPageContent('roles') // Refresh page
+      showAlert('Role saved successfully', 'success')
+    } else {
+      const data = await response.json()
+      showAlert(data.message || 'Failed to save role', 'error')
+    }
+  } catch (e) {
+    console.error(e)
+    showAlert('An error occurred', 'error')
+  }
+}
+
+window.deleteRole = async function (id) {
+  const ok = await showConfirm(
+    'Are you sure you want to delete this role?',
+    'Delete Role'
+  )
+  if (!ok) return
+
+  try {
+    const response = await fetch(`/api/roles/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+    })
+
+    if (response.ok) {
+      loadPageContent('roles')
+      showAlert('Role deleted successfully', 'success')
+    } else {
+      showAlert('Failed to delete role', 'error')
+    }
+  } catch (e) {
+    console.error(e)
+    showAlert('An error occurred', 'error')
+  }
 }
 
 async function saveUser(userId) {
@@ -17141,14 +17361,10 @@ function refreshRolesTable() {
         ? window.MockData.users
         : []
 
-    const totalMembers = users.length
-    const activeMembers = users.filter((m) => m.status === 'Active').length
+    const roles =
+      window.AppState && window.AppState.roles ? window.AppState.roles : []
 
-    const newPageHTML = renderRolesManagementPage(
-      totalMembers,
-      activeMembers,
-      users
-    )
+    const newPageHTML = renderRolesManagementPage(users, roles)
 
     mainContentArea.innerHTML = newPageHTML
 
@@ -17478,6 +17694,21 @@ function generateUserModal(mode = 'view', userData = null) {
                                 : `
                                 <select class="form-select" id="userRole" style="width: 100%; border: 2px solid #e5e7eb; padding: 14px 16px; font-size: 15px; border-radius: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #fafbfc; font-weight: 400; cursor: pointer;">
                                     <option value="">Select role</option>
+                                    ${
+                                      window.AppState &&
+                                      window.AppState.roles &&
+                                      window.AppState.roles.length > 0
+                                        ? window.AppState.roles
+                                            .map(
+                                              (role) =>
+                                                `<option value="${role.name}" ${
+                                                  userData?.role === role.name
+                                                    ? 'selected'
+                                                    : ''
+                                                }>${role.name}</option>`
+                                            )
+                                            .join('')
+                                        : `
                                     <option ${
                                       userData?.role === 'Student Assistant'
                                         ? 'selected'
@@ -17508,6 +17739,8 @@ function generateUserModal(mode = 'view', userData = null) {
                                         ? 'selected'
                                         : ''
                                     }>System Admin</option>
+                                    `
+                                    }
                                 </select>
                             `
                             }
@@ -17643,6 +17876,20 @@ function generateUserModal(mode = 'view', userData = null) {
 // ------------------------- //
 
 function generateUsersManagementPage() {
+  // Fetch Roles for Modal
+  if (!window.AppState) window.AppState = {}
+  // Always fetch roles to ensure we have the latest list
+  try {
+    const xhrRoles = new XMLHttpRequest()
+    xhrRoles.open('GET', '/api/roles', false)
+    xhrRoles.send()
+    if (xhrRoles.status === 200) {
+      window.AppState.roles = JSON.parse(xhrRoles.responseText).data
+    }
+  } catch (e) {
+    console.error('Error fetching roles:', e)
+  }
+
   // Initialize MockData if not exists
   if (!window.MockData) window.MockData = {}
   if (!window.MockData.users) {

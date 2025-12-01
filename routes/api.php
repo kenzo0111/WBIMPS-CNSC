@@ -26,6 +26,8 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::apiResource('stock-out', StockOutController::class);
     Route::apiResource('user-logs', UserLogController::class);
     Route::apiResource('users', App\Http\Controllers\Api\UserController::class);
+    Route::apiResource('roles', App\Http\Controllers\Api\RoleController::class);
+    Route::get('/permissions', [App\Http\Controllers\Api\RoleController::class, 'permissions']);
     // Purchase Request routes moved to web.php to enforce auth
     // Route::get('/purchase-requests', [PurchaseRequestController::class, 'index']);
     // Route::post('/purchase-requests', [PurchaseRequestController::class, 'store']);
