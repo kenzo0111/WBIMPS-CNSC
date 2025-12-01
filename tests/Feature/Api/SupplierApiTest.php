@@ -20,10 +20,10 @@ test('can list suppliers', function () {
         ->assertJsonStructure([
             'success',
             'data' => [
-                'data' => [
-                    '*' => ['id', 'name', 'contact', 'email'],
-                ],
+                '*' => ['id', 'name', 'contact', 'email'],
             ],
+            'links',
+            'meta',
         ]);
 });
 
@@ -91,7 +91,7 @@ test('can delete a supplier', function () {
 
     $response->assertStatus(200);
 
-    $this->assertDatabaseMissing('suppliers', [
+    $this->assertSoftDeleted('suppliers', [
         'id' => $supplier->id,
     ]);
 });

@@ -61,33 +61,35 @@
                     <div class="wizard-step active" id="step1">
                         <div class="form-grid">
                             <div class="form-group">
-                                <label class="form-label" for="email">Email Address</label>
-                                <input class="form-input" id="email" name="email" type="email"
-                                    placeholder="your.email@cnsc.edu.ph" required />
-                            </div>
-
-                            <div class="form-group">
                                 <label class="form-label" for="requester">Requester</label>
                                 <input class="form-input" id="requester" name="requester" type="text"
                                     placeholder="Full name" required />
                             </div>
 
                             <div class="form-group">
-                                <label class="form-label" for="department">Department</label>
-                                <input class="form-input" id="department" name="department" type="text"
-                                    placeholder="e.g., CCMS" required />
+                                <label class="form-label" for="email">Email Address</label>
+                                <input class="form-input" id="email" name="email" type="email"
+                                    placeholder="your.email@cnsc.edu.ph" required />
                             </div>
 
                             <div class="form-group">
-                                <label class="form-label" for="entityName">Entity Name <small class="small">(optional)</small></label>
-                                <input class="form-input" id="entityName" name="entityName" type="text"
-                                    placeholder="e.g., Camarines Norte State College" />
+                                <label class="form-label" for="department">Department</label>
+                                <select class="form-input" id="department" name="department" required>
+                                    <option value="" disabled selected>Select Department</option>
+                                    <!-- Options will be populated by JS -->
+                                </select>
                             </div>
 
                             <div class="form-group">
                                 <label class="form-label" for="designation">Designation</label>
                                 <input class="form-input" id="designation" name="designation" type="text"
                                     placeholder="e.g., Instructor" required />
+                            </div>
+
+                            <div class="form-group full">
+                                <label class="form-label" for="entityName">Entity Name <small class="small">(optional)</small></label>
+                                <input class="form-input" id="entityName" name="entityName" type="text"
+                                    placeholder="e.g., Camarines Norte State College" />
                             </div>
                         </div>
                         <div class="step-actions">
@@ -127,145 +129,216 @@
                                         </tbody>
                                     </table>
                                 </div>
-                                <button type="button" id="addItemBtn" class="btn-secondary-glass add-item-btn">+ Add Item</button>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; flex-wrap: wrap; gap: 1rem;">
+                                    <button type="button" id="addItemBtn" class="btn-secondary-glass add-item-btn" style="margin-top:0">+ Add Item</button>
+                                    
+                                    <div class="total-cost-display">
+                                        <label class="form-label" for="overallTotalCost">Overall Total (₱)</label>
+                                        <input class="form-input" id="overallTotalCost" name="overallTotalCost" type="text"
+                                            placeholder="0.00" readonly />
+                                        <input type="hidden" id="overallTotalCostRaw" name="overallTotalCostRaw" value="" />
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="form-group">
-                                <label class="form-label" for="overallTotalCost">Overall Total Cost (₱)</label>
-                                <input class="form-input" id="overallTotalCost" name="overallTotalCost" type="text"
-                                    placeholder="Auto-calculated" readonly />
-                                <input type="hidden" id="overallTotalCostRaw" name="overallTotalCostRaw" value="" />
-                            </div>
-
-                            <div class="form-group full">
                                 <label class="form-label" for="neededDate">Date Needed</label>
                                 <input class="form-input" id="neededDate" name="neededDate" type="date" />
                             </div>
 
-                            <!-- Purpose field placed below Date Needed -->
+                            <div class="form-group">
+                                <label class="form-label">Priority</label>
+                                <div class="priority-badge-group">
+                                    <label class="priority-option">
+                                        <input type="radio" name="priority" value="Low" required>
+                                        <span class="priority-chip"><span class="dot"
+                                                style="background:#22c55e"></span>Low</span>
+                                    </label>
+                                    <label class="priority-option">
+                                        <input type="radio" name="priority" value="Medium">
+                                        <span class="priority-chip"><span class="dot"
+                                                style="background:#eab308"></span>Medium</span>
+                                    </label>
+                                    <label class="priority-option">
+                                        <input type="radio" name="priority" value="High">
+                                        <span class="priority-chip"><span class="dot"
+                                                style="background:#ef4444"></span>High</span>
+                                    </label>
+                                    <label class="priority-option">
+                                        <input type="radio" name="priority" value="Urgent">
+                                        <span class="priority-chip"><span class="dot"
+                                                style="background:#dc2626"></span>Urgent</span>
+                                    </label>
+                                </div>
+                            </div>
+
                             <div class="form-group full">
                                 <label class="form-label" for="purpose">Purpose</label>
                                 <textarea class="form-textarea" id="purpose" name="purpose"
                                     placeholder="Describe the purpose / justification for this request" required></textarea>
                             </div>
 
-                        <div class="form-group full">
-                            <label class="form-label">Priority</label>
-                            <div class="priority-badge-group">
-                                <label class="priority-option">
-                                    <input type="radio" name="priority" value="Low" required>
-                                    <span class="priority-chip"><span class="dot"
-                                            style="background:#22c55e"></span>Low</span>
-                                </label>
-                                <label class="priority-option">
-                                    <input type="radio" name="priority" value="Medium">
-                                    <span class="priority-chip"><span class="dot"
-                                            style="background:#eab308"></span>Medium</span>
-                                </label>
-                                <label class="priority-option">
-                                    <input type="radio" name="priority" value="High">
-                                    <span class="priority-chip"><span class="dot"
-                                            style="background:#ef4444"></span>High</span>
-                                </label>
-                                <label class="priority-option">
-                                    <input type="radio" name="priority" value="Urgent">
-                                    <span class="priority-chip"><span class="dot"
-                                            style="background:#dc2626"></span>Urgent</span>
-                                </label>
+                            <!-- Optional Fields Header -->
+                            <div class="form-group full">
+                                <div style="margin: 1.5rem 0 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; color: var(--accent-gold); font-size: 0.9rem; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;">
+                                    Administrative Details (Optional)
+                                </div>
                             </div>
-                        </div>
-                        
-                        <!-- PR additional fields used by the PDF template (optional) -->
-                        <div class="form-grid">
+
                             <div class="form-group">
-                                <label class="form-label" for="prNo">PR No. <small class="small">(optional)</small></label>
+                                <label class="form-label" for="prNo">PR No.</label>
                                 <input class="form-input" id="prNo" name="prNo" type="text" placeholder="e.g., PR-2025-001" />
                             </div>
                             <div class="form-group">
-                                <label class="form-label" for="fundCluster">Fund Cluster <small class="small">(optional)</small></label>
-                                <input class="form-input" id="fundCluster" name="fundCluster" type="text" placeholder="e.g., 101" />
+                                <label class="form-label" for="fundCluster">Fund Cluster</label>
+                                <select class="form-input" id="fundCluster" name="fundCluster">
+                                    <option value="" disabled selected>Select Fund Cluster</option>
+                                    <option value="01 - Regular Agency Fund">01 - Regular Agency Fund</option>
+                                    <option value="05 - Internally Generated Funds">05 - Internally Generated Funds</option>
+                                    <option value="06 - Business Related Funds">06 - Business Related Funds</option>
+                                    <option value="07 - Trust Receipts">07 - Trust Receipts</option>
+                                </select>
                             </div>
                             <div class="form-group">
-                                <label class="form-label" for="responsibilityCenterCode">Responsibility Center Code <small class="small">(optional)</small></label>
+                                <label class="form-label" for="responsibilityCenterCode">Responsibility Center Code</label>
                                 <input class="form-input" id="responsibilityCenterCode" name="responsibilityCenterCode" type="text" placeholder="e.g., 1234" />
                             </div>
                         </div>
-                        <!-- close .form-grid -->
-                        </div>
 
                         <div class="step-actions">
-                            <button type="button" class="btn-secondary-glass" data-action="prev-step">← Back</button>
+                            <button type="button" class="btn-secondary-glass" data-action="prev-step"><span class="btn-icon-left">←</span> Back</button>
                             <button type="button" class="btn-glass" data-action="next-step">Next →</button>
                         </div>
                     </div>
 
                     <!-- Step 3: Review and Submit -->
                     <div class="wizard-step" id="step3">
-                        <!-- Request Summary -->
-                        <div class="request-summary">
-                            <h3 class="summary-title">Request Summary</h3>
-                            <div class="summary-content">
-                                <div class="summary-row">
-                                    <span class="summary-label">Email:</span>
-                                    <span class="summary-value" id="summary-email">-</span>
-                                </div>
-                                <div class="summary-row">
-                                    <span class="summary-label">Requester:</span>
-                                    <span class="summary-value" id="summary-requester">-</span>
-                                </div>
-                                <div class="summary-row">
-                                    <span class="summary-label">Entity:</span>
-                                    <span class="summary-value" id="summary-entityName">-</span>
-                                </div>
-                                <div class="summary-row">
-                                    <span class="summary-label">Department:</span>
-                                    <span class="summary-value" id="summary-department">-</span>
-                                </div>
-                                <div class="summary-row">
-                                    <span class="summary-label">Designation:</span>
-                                    <span class="summary-value" id="summary-designation">-</span>
-                                </div>
-                                <div class="summary-row full">
-                                    <span class="summary-label">Requested Items:</span>
-                                    <div class="summary-items-table" id="summary-items">
-                                        <!-- Items table will be populated here -->
+                        <div class="review-container">
+                            <div class="review-header">
+                                <h3>Review Your Request</h3>
+                                <p>Please verify the information below before submitting.</p>
+                            </div>
+
+                            <div class="review-sections">
+                                <!-- Section 1: Requester Info -->
+                                <div class="review-section">
+                                    <div class="review-section-header">
+                                        <h4 class="review-section-title">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                                            Requester Information
+                                        </h4>
+                                        <button type="button" class="btn-edit-section" data-action="goto-step-1">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                                            Edit
+                                        </button>
+                                    </div>
+                                    <div class="review-grid">
+                                        <div class="review-item">
+                                            <span class="label">Requester</span>
+                                            <span class="value" id="summary-requester">-</span>
+                                        </div>
+                                        <div class="review-item">
+                                            <span class="label">Email</span>
+                                            <span class="value" id="summary-email">-</span>
+                                        </div>
+                                        <div class="review-item">
+                                            <span class="label">Department</span>
+                                            <span class="value" id="summary-department">-</span>
+                                        </div>
+                                        <div class="review-item">
+                                            <span class="label">Designation</span>
+                                            <span class="value" id="summary-designation">-</span>
+                                        </div>
+                                        <div class="review-item full-width">
+                                            <span class="label">Entity Name</span>
+                                            <span class="value" id="summary-entityName">-</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="summary-row">
-                                    <span class="summary-label">Overall Total Cost:</span>
-                                    <span class="summary-value" id="summary-overallTotalCost">-</span>
+
+                                <!-- Section 2: Request Details -->
+                                <div class="review-section">
+                                    <div class="review-section-header">
+                                        <h4 class="review-section-title">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+                                            Request Details
+                                        </h4>
+                                        <button type="button" class="btn-edit-section" data-action="goto-step-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                                            Edit
+                                        </button>
+                                    </div>
+                                    <div class="review-grid">
+                                        <div class="review-item">
+                                            <span class="label">Date Needed</span>
+                                            <span class="value" id="summary-neededDate">-</span>
+                                        </div>
+                                        <div class="review-item">
+                                            <span class="label">Priority</span>
+                                            <span class="value" id="summary-priority">-</span>
+                                        </div>
+                                        <div class="review-item full-width">
+                                            <span class="label">Purpose</span>
+                                            <span class="value" id="summary-purpose">-</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="summary-row">
-                                    <span class="summary-label">PR No.:</span>
-                                    <span class="summary-value" id="summary-prNo">-</span>
+
+                                <!-- Section 3: Items -->
+                                <div class="review-section">
+                                    <div class="review-section-header">
+                                        <h4 class="review-section-title">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                                            Items Requested
+                                        </h4>
+                                        <button type="button" class="btn-edit-section" data-action="goto-step-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                                            Edit
+                                        </button>
+                                    </div>
+                                    <div class="summary-items-wrapper" id="summary-items">
+                                        <!-- Items table will be populated here -->
+                                    </div>
+                                    <div class="review-total">
+                                        <span class="label">Overall Total Cost</span>
+                                        <span class="value" id="summary-overallTotalCost">-</span>
+                                    </div>
                                 </div>
-                                <div class="summary-row">
-                                    <span class="summary-label">Fund Cluster:</span>
-                                    <span class="summary-value" id="summary-fundCluster">-</span>
-                                </div>
-                                <div class="summary-row">
-                                    <span class="summary-label">Responsibility Center Code:</span>
-                                    <span class="summary-value" id="summary-responsibilityCenterCode">-</span>
-                                </div>
-                                <div class="summary-row">
-                                    <span class="summary-label">Date Needed:</span>
-                                    <span class="summary-value" id="summary-neededDate">-</span>
-                                </div>
-                                <div class="summary-row">
-                                    <span class="summary-label">Priority:</span>
-                                    <span class="summary-value" id="summary-priority">-</span>
-                                </div>
-                                <div class="summary-row full">
-                                    <span class="summary-label">Purpose:</span>
-                                    <span class="summary-value" id="summary-purpose">-</span>
+
+                                <!-- Section 4: Admin Details (Conditional/Optional) -->
+                                <div class="review-section optional-section">
+                                    <div class="review-section-header">
+                                        <h4 class="review-section-title">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 18H6V4h12v16zM14 10h-4v2h4v-2zm0 4h-4v2h4v-2z"/></svg>
+                                            Administrative Details
+                                        </h4>
+                                        <button type="button" class="btn-edit-section" data-action="goto-step-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                                            Edit
+                                        </button>
+                                    </div>
+                                    <div class="review-grid">
+                                        <div class="review-item">
+                                            <span class="label">PR No.</span>
+                                            <span class="value" id="summary-prNo">-</span>
+                                        </div>
+                                        <div class="review-item">
+                                            <span class="label">Fund Cluster</span>
+                                            <span class="value" id="summary-fundCluster">-</span>
+                                        </div>
+                                        <div class="review-item">
+                                            <span class="label">Responsibility Center Code</span>
+                                            <span class="value" id="summary-responsibilityCenterCode">-</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="step-actions">
-                            <button type="button" class="btn-secondary-glass" data-action="prev-step">← Back</button>
-                            <button type="button" class="btn-neutral-glass" data-action="view-form">View Form</button>
+                            <button type="button" class="btn-secondary-glass" data-action="prev-step"><span class="btn-icon-left">←</span> Back</button>
                             <button type="reset" class="btn-secondary-glass" id="btnReset">Reset</button>
+                            <button type="button" class="btn-neutral-glass" data-action="view-form">View Form</button>
                             <button type="submit" class="btn-glass" data-action="submit-form">Submit Request →</button>
                         </div>
                     </div>

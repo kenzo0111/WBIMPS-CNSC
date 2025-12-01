@@ -2472,6 +2472,19 @@ function loadUserRequests() {
 // Global variable to track current notification filter
 let currentNotificationFilter = 'all'
 
+// Make renderNotifications globally available
+window.renderNotifications = renderNotifications
+window.toggleNotifications = toggleNotifications
+window.toggleNotificationRead = toggleNotificationRead
+window.markAllNotificationsRead = markAllNotificationsRead
+window.clearAllNotifications = clearAllNotifications
+window.viewAllNotifications = viewAllNotifications
+window.toggleSidebar = toggleSidebar
+window.navigateToPage = navigateToPage
+window.closeUserMenu = closeUserMenu
+window.toggleUserMenu = toggleUserMenu
+window.logout = logout
+
 function renderNotifications(filter = 'all') {
   // Update current filter
   currentNotificationFilter = filter
@@ -4544,7 +4557,7 @@ function generateItemsPage() {
                             <th>Action</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="items-table-body">
                         ${
                           pageItems.length
                             ? pageItems
@@ -14502,7 +14515,7 @@ function updateItemsTable() {
   const pageItems = filteredItems.slice(startIndex, endIndex)
 
   // Update table body
-  const tbody = document.getElementById('new-requests-table-body')
+  const tbody = document.getElementById('items-table-body')
   if (tbody) {
     tbody.innerHTML = pageItems.length
       ? pageItems
@@ -22034,7 +22047,7 @@ async function saveItem(ItemId) {
   await loadItemsFromAPI()
   // Try to update Items table in-place when present
   try {
-    const tbody = document.getElementById('Items-table-body')
+    const tbody = document.getElementById('items-table-body')
     if (tbody) {
       // If existing row, replace; otherwise append. Use authoritative MockData.
       const prod = MockData.Items.find(
@@ -22076,7 +22089,7 @@ async function deleteItem(ItemId) {
   // Update Items table in-place when possible
   await loadItemsFromAPI()
   try {
-    const tbody = document.getElementById('Items-table-body')
+    const tbody = document.getElementById('items-table-body')
     if (tbody) {
       const row = tbody.querySelector(`tr[data-id="${ItemId}"]`)
       if (row) row.remove()

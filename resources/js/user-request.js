@@ -769,6 +769,142 @@
     preview.document.close()
   }
 
+  // --- Department Dropdown Helpers ---
+  function getDepartmentCategories() {
+    return {
+      'Academic Departments': [
+        { value: 'CAS', label: 'College of Arts and Sciences (CAS)' },
+        {
+          value: 'CBPA',
+          label: 'College of Business and Public Administration (CBPA)',
+        },
+        {
+          value: 'CCMS',
+          label: 'College of Computing and Multimedia Studies (CCMS)',
+        },
+        { value: 'COENG', label: 'College of Engineering (COEng)' },
+        { value: 'GS', label: 'Graduate School (GS)' },
+      ],
+      'Key Executive Offices': [
+        { value: 'OP', label: 'Office of the President (OP)' },
+        {
+          value: 'OVPAA',
+          label: 'Office of the Vice President for Academic Affairs (OVPAA)',
+        },
+        {
+          value: 'OVPFA',
+          label:
+            'Office of the Vice President for Administration & Finance (OVPFA)',
+        },
+        {
+          value: 'OVPRE',
+          label:
+            'Office of the Vice President for Research and Extension (OVPRE)',
+        },
+        {
+          value: 'OVPFA_alt',
+          label: 'Office of the Vice President for Finance Affairs (OVPFA)',
+        },
+      ],
+      'Student Services': [
+        { value: 'AO', label: 'Admission Office (AO)' },
+        {
+          value: 'OSSD',
+          label: 'Office of Student Services and Development (OSSD)',
+        },
+        { value: 'GCO', label: 'Guidance and Counseling Office (GCO)' },
+        { value: 'LIB', label: 'Library (LIB)' },
+        { value: 'MDS', label: 'Medical and Dental Services (MDS)' },
+        { value: 'RO', label: "Registrar's Office (RO)" },
+        { value: 'SFAU', label: 'Student Financial Assistance Unit (SFAU)' },
+        { value: 'TEO', label: 'Testing and Evaluation Office (TEO)' },
+        { value: 'ECS', label: 'Electronic Counseling Services (ECS)' },
+      ],
+      'Administrative & Operational Units': [
+        { value: 'AAO', label: 'Alumni Affairs Office (AAO)' },
+        { value: 'ICO', label: 'Internal Control Office (ICO)' },
+        { value: 'ASD', label: 'Auxilliary Services Division (ASD)' },
+        { value: 'GSO', label: 'General Services Office (GSO)' },
+        {
+          value: 'ITSO',
+          label: 'Information Technology Services Office (ITSO)',
+        },
+        { value: 'LAO', label: 'Legal Affairs Office (LAO)' },
+        { value: 'MP', label: 'Motorpool (MP)' },
+        { value: 'PPD', label: 'Physical Plan Division (PPD)' },
+        { value: 'PDO', label: 'Planning and Development Office (PDO)' },
+        {
+          value: 'PICRO',
+          label: 'Public Information and Community Relations Office (PICRO)',
+        },
+        { value: 'ADMIN', label: 'Administrative Office (ADMIN)' },
+        { value: 'HR', label: 'Human Resources (HR)' },
+        { value: 'ACCOUNTING', label: 'Accounting Office (ACCOUNTING)' },
+        { value: 'CASHIER', label: 'Cashier (CASHIER)' },
+      ],
+      'Academic & Research Support': [
+        {
+          value: 'CEID',
+          label: 'Center for Education and Instructional Development (CEID)',
+        },
+        {
+          value: 'CEID2',
+          label: 'Center for Equity, Inclusivity, and Diversity (CEID2)',
+        },
+        { value: 'CPAU', label: 'Culture and Performing Arts Unit (CPAU)' },
+        { value: 'ESD', label: 'Extension Services Division (ESD)' },
+        {
+          value: 'FMRC',
+          label: 'Fabrication and Manufacturing Research Center (FMRC)',
+        },
+        {
+          value: 'IPMO',
+          label: 'Intellectual Property Management Office (IPMO)',
+        },
+        {
+          value: 'ISRO',
+          label: 'Integrated Sustainability and Resilience Office (ISRO)',
+        },
+        { value: 'IRO', label: 'International Relations Office (IRO)' },
+        {
+          value: 'MSIO',
+          label: 'Management System and Improvement Office (MSIO)',
+        },
+        { value: 'NSTP', label: 'NSTP Office (NSTP)' },
+        { value: 'QAO', label: 'Quality Assurance Office (QAO)' },
+        {
+          value: 'QPRDI',
+          label: 'Queen Pineapple Research and Development Institute (QPRDI)',
+        },
+        { value: 'RSD', label: 'Research Services Division (RSD)' },
+        { value: 'SWK', label: 'Sentro ng Wika at Kultura (SWK)' },
+        { value: 'SPRC', label: 'Social Policy Research Center (SPRC)' },
+        { value: 'SDO', label: 'Sports and Development Office (SDO)' },
+        { value: 'LAB', label: 'Laboratory Services (LAB)' },
+        { value: 'RND', label: 'Research & Development (RND)' },
+      ],
+      Other: [{ value: '__other__', label: 'Other (enter manually)' }],
+    }
+  }
+
+  function generateDepartmentOptionsHTMLWithLabels(currentLabel = '') {
+    const departmentCategories = getDepartmentCategories()
+    return Object.keys(departmentCategories)
+      .map((category) => {
+        const departments = departmentCategories[category]
+        const options = departments
+          .map(
+            (d) =>
+              `<option value="${d.label}" ${
+                currentLabel === d.label ? 'selected' : ''
+              }>${d.label}</option>`
+          )
+          .join('')
+        return `<optgroup label="${category}">${options}</optgroup>`
+      })
+      .join('')
+  }
+
   // --- Event wiring ---
   function handleActionClick(e) {
     const btn = e.target.closest('button')
@@ -785,6 +921,14 @@
         return viewFormPreview()
       case 'prev-step':
         return prevStep()
+      case 'goto-step-1':
+        currentStep = 1
+        updateProgress()
+        break
+      case 'goto-step-2':
+        currentStep = 2
+        updateProgress()
+        break
       case 'submit-form':
         // prefer the newer requestSubmit API when available (it triggers the submit event)
         if (typeof form.requestSubmit === 'function')
@@ -795,6 +939,15 @@
 
   function init() {
     updateProgress()
+
+    // Populate department dropdown
+    const deptSelect = byId('department')
+    if (deptSelect) {
+      const defaultOption =
+        '<option value="" disabled selected>Select Department</option>'
+      deptSelect.innerHTML =
+        defaultOption + generateDepartmentOptionsHTMLWithLabels()
+    }
 
     // Add initial item row
     addItemRow()
