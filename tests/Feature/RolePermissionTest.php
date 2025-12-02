@@ -5,7 +5,7 @@ use Spatie\Permission\Models\Role;
 
 beforeEach(function () {
     // Ensure five example roles exist in the test DB so the assertion is stable
-    $this->roles = [
+    $roles = [
         'admin',
         'head officer',
         'employee',
@@ -13,7 +13,7 @@ beforeEach(function () {
         'viewer',
     ];
 
-    foreach ($this->roles as $r) {
+    foreach ($roles as $r) {
         Role::firstOrCreate(['name' => $r, 'guard_name' => 'web']);
     }
 });

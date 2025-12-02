@@ -7282,30 +7282,55 @@ function generateReportsLandingPage() {
             </div>
         </div>
         <div class="page-content">
-          <div class="card report-list-card">
-            <div class="report-grid">
-              <div class="report-card" onclick="navigateToPage('rcpi-reports')">
-                <div class="report-card-icon blue"><i data-lucide="file-text"></i></div>
-                <h4>RCPI</h4>
-                <p>Inspection Acceptance & RCPI records</p>
-              </div>
-              <div class="report-card" onclick="navigateToPage('rsmi-reports')">
-                <div class="report-card-icon purple"><i data-lucide="clipboard"></i></div>
-                <h4>RSMI</h4>
-                <p>Requisition and Supply Monitoring</p>
-              </div>
-              <div class="report-card" onclick="navigateToPage('stock-cards')">
-                <div class="report-card-icon green"><i data-lucide="book-open"></i></div>
-                <h4>Stock Cards</h4>
-                <p>Item-level transaction ledger</p>
-              </div>
-              <div class="report-card" onclick="navigateToPage('consolidate-monitoring')">
-                <div class="report-card-icon orange"><i data-lucide="layers"></i></div>
-                <h4>Consolidate Monitoring</h4>
-                <p>Consolidated monitoring for inventory and requisitions</p>
-              </div>
+            <div class="metrics-grid">
+                <div class="metric-card" onclick="navigateToPage('rcpi-reports')" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3); transition: transform 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <h3 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">RCPI</h3>
+                            <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Inspection Acceptance & RCPI records</p>
+                        </div>
+                        <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+                            <i data-lucide="file-text" style="width: 32px; height: 32px;"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-card" onclick="navigateToPage('rsmi-reports')" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(139, 92, 246, 0.3); transition: transform 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <h3 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">RSMI</h3>
+                            <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Requisition and Supply Monitoring</p>
+                        </div>
+                        <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+                            <i data-lucide="clipboard" style="width: 32px; height: 32px;"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-card" onclick="navigateToPage('stock-cards')" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3); transition: transform 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <h3 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Stock Cards</h3>
+                            <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Item-level transaction ledger</p>
+                        </div>
+                        <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+                            <i data-lucide="book-open" style="width: 32px; height: 32px;"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-card" onclick="navigateToPage('consolidate-monitoring')" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(249, 115, 22, 0.3); transition: transform 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <h3 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Consolidate Monitoring</h3>
+                            <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Consolidated monitoring for inventory and requisitions</p>
+                        </div>
+                        <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+                            <i data-lucide="layers" style="width: 32px; height: 32px;"></i>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
       `
 }
@@ -7353,20 +7378,40 @@ function generateRcpiReportsPage() {
             <div class="card-body">
                 <div class="summary-grid">
                     <div class="summary-item">
-                        <div class="label">Total Items</div>
-                        <div class="value" id="rpci-total-items">-</div>
+                        <div class="summary-icon" style="background-color: #e0f2fe; color: #0284c7;">
+                            <i data-lucide="package" style="width:24px;height:24px;"></i>
+                        </div>
+                        <div class="summary-content">
+                            <div class="summary-value" id="rpci-total-items">-</div>
+                            <div class="summary-label">Total Items</div>
+                        </div>
                     </div>
                     <div class="summary-item">
-                        <div class="label">Total Inventory Value</div>
-                        <div class="value" id="rpci-total-value">-</div>
+                        <div class="summary-icon" style="background-color: #ffedd5; color: #ea580c;">
+                            <i data-lucide="credit-card" style="width:24px;height:24px;"></i>
+                        </div>
+                        <div class="summary-content">
+                            <div class="summary-value" id="rpci-total-value">-</div>
+                            <div class="summary-label">Total Inventory Value</div>
+                        </div>
                     </div>
                     <div class="summary-item">
-                        <div class="label">Categories</div>
-                        <div class="value" id="rpci-total-categories">-</div>
+                        <div class="summary-icon" style="background-color: #f3e8ff; color: #9333ea;">
+                            <i data-lucide="folder" style="width:24px;height:24px;"></i>
+                        </div>
+                        <div class="summary-content">
+                            <div class="summary-value" id="rpci-total-categories">-</div>
+                            <div class="summary-label">Categories</div>
+                        </div>
                     </div>
                     <div class="summary-item">
-                        <div class="label">Discrepancies</div>
-                        <div class="value" id="rpci-discrepancies">0</div>
+                        <div class="summary-icon" style="background-color: #fee2e2; color: #ef4444;">
+                            <i data-lucide="alert-triangle" style="width:24px;height:24px;"></i>
+                        </div>
+                        <div class="summary-content">
+                            <div class="summary-value" id="rpci-discrepancies">0</div>
+                            <div class="summary-label">Discrepancies</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -7443,16 +7488,31 @@ function generateRsmiReportsPage() {
             <div class="card-body">
                 <div class="summary-grid">
                     <div class="summary-item">
-                        <div class="label">Total Items Issued</div>
-                        <div class="value" id="rsmi-total-items">-</div>
+                        <div class="summary-icon" style="background-color: #e0f2fe; color: #0284c7;">
+                            <i data-lucide="package" style="width:24px;height:24px;"></i>
+                        </div>
+                        <div class="summary-content">
+                            <div class="summary-value" id="rsmi-total-items">-</div>
+                            <div class="summary-label">Total Items Issued</div>
+                        </div>
                     </div>
                     <div class="summary-item">
-                        <div class="label">Total Value Issued</div>
-                        <div class="value" id="rsmi-total-value">-</div>
+                        <div class="summary-icon" style="background-color: #ffedd5; color: #ea580c;">
+                            <i data-lucide="credit-card" style="width:24px;height:24px;"></i>
+                        </div>
+                        <div class="summary-content">
+                            <div class="summary-value" id="rsmi-total-value">-</div>
+                            <div class="summary-label">Total Value Issued</div>
+                        </div>
                     </div>
                     <div class="summary-item">
-                        <div class="label">Requests Processed</div>
-                        <div class="value" id="rsmi-total-requests">-</div>
+                        <div class="summary-icon" style="background-color: #f3e8ff; color: #9333ea;">
+                            <i data-lucide="file-text" style="width:24px;height:24px;"></i>
+                        </div>
+                        <div class="summary-content">
+                            <div class="summary-value" id="rsmi-total-requests">-</div>
+                            <div class="summary-label">Requests Processed</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -24478,6 +24538,9 @@ function renderStockOutRow(s) {
                 <div class="table-actions">
                     <button class="icon-action-btn" title="View" onclick="viewStockOutDetails('${id}')">
                         <i data-lucide="eye"></i>
+                    </button>
+                    <button class="icon-action-btn" title="Download Receipt" onclick="window.open('/stock-out/${id}/pdf', '_blank')">
+                        <i data-lucide="download"></i>
                     </button>
                     ${
                       can('manage stock out')

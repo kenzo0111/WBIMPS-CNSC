@@ -76,6 +76,9 @@ Route::get('/requisition-issue-slip/{id}', [RequisitionIssueSlipController::clas
 Route::post('/property-acknowledgement-receipt/generate', [PropertyAcknowledgementReceiptController::class, 'generatePDF'])->name('property-acknowledgement-receipt.generate');
 Route::get('/property-acknowledgement-receipt/{id}/pdf', [PropertyAcknowledgementReceiptController::class, 'downloadPDF'])->name('property-acknowledgement-receipt.download');
 
+// Stock Out routes
+Route::get('/stock-out/{id}/pdf', [App\Http\Controllers\StockOutController::class, 'downloadPDF'])->name('stock-out.download');
+
 // Human-friendly 'view' endpoints used by the dashboard chooser/popover.
 // These accept an {id} parameter so client-side code can open a specific
 // document preview page. They map to the existing preview actions when

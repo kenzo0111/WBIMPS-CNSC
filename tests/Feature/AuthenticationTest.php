@@ -68,7 +68,7 @@ test('authenticated users can logout', function () {
 
     $this->actingAs($user);
 
-    $response = $this->post('/logout');
+    $response = $this->postJson('/logout');
 
     $this->assertGuest();
     $response->assertStatus(200)
