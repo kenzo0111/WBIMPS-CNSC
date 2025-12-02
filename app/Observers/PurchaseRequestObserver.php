@@ -37,12 +37,14 @@ class PurchaseRequestObserver
                 }
             }
 
-            // Also send to all admin users
+            // Also send to all admin users (System Admin or users with 'manage requests' permission)
             try {
-                // Find users who have admin roles (System Admin or Administrator)
                 $admins = User::whereHas('roles', function ($q) {
-                    $q->whereIn('name', ['System Admin', 'Administrator']);
+                    $q->where('name', 'System Admin');
+                })->orWhere(function ($q) {
+                    $q->permission('manage requests');
                 })->pluck('email')->filter()->unique()->toArray();
+
                 foreach (array_chunk($admins, 50) as $batch) {
                     Mail::to($batch)->send($mail);
                 }

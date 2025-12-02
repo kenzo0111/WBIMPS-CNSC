@@ -4368,40 +4368,49 @@ function generateItemsPage() {
                     </div>
                 </div>
                 <div class="filter-right">
-                    <select class="filter-dropdown" id="sort-by">
-                        <option>Sort By</option>
-                        <option>Item Name (A-Z)</option>
-                        <option>Item Name (Z-A)</option>
-                        <option>Date (Newest)</option>
-                        <option>Date (Oldest)</option>
-                        <option>Total Value (High to Low)</option>
-                        <option>Total Value (Low to High)</option>
-                    </select>
-                    <select class="filter-dropdown" id="filter-by">
-                        <option>Filter By</option>
-                        <option>High Value (>₱5,000)</option>
-                        <option>Medium Value (₱1,000-₱5,000)</option>
-                        <option>Low Value (<₱1,000)</option>
-                        <option>Recent (Last 30 days)</option>
-                        <option>Low Quantity (<20)</option>
-                    </select>
-                    <select class="filter-dropdown" id="rows-per-page" style="width:130px;">
-                      <option value="10" ${
-                        AppState.itemsPageSize == 10 ? 'selected' : ''
-                      }>Rows: 10</option>
-                      <option value="25" ${
-                        AppState.itemsPageSize == 25 ? 'selected' : ''
-                      }>Rows: 25</option>
-                      <option value="50" ${
-                        AppState.itemsPageSize == 50 ? 'selected' : ''
-                      }>Rows: 50</option>
-                      <option value="100" ${
-                        AppState.itemsPageSize == 100 ? 'selected' : ''
-                      }>Rows: 100</option>
-                      <option value="0" ${
-                        AppState.itemsPageSize == 0 ? 'selected' : ''
-                      }>Rows: All</option>
-                    </select>
+                    <div class="filter-wrapper">
+                        <i data-lucide="arrow-up-down" class="filter-icon"></i>
+                        <select class="filter-dropdown" id="sort-by">
+                            <option>Sort By</option>
+                            <option>Item Name (A-Z)</option>
+                            <option>Item Name (Z-A)</option>
+                            <option>Date (Newest)</option>
+                            <option>Date (Oldest)</option>
+                            <option>Total Value (High to Low)</option>
+                            <option>Total Value (Low to High)</option>
+                        </select>
+                    </div>
+                    <div class="filter-wrapper">
+                        <i data-lucide="filter" class="filter-icon"></i>
+                        <select class="filter-dropdown" id="filter-by">
+                            <option>Filter By</option>
+                            <option>High Value (>₱5,000)</option>
+                            <option>Medium Value (₱1,000-₱5,000)</option>
+                            <option>Low Value (<₱1,000)</option>
+                            <option>Recent (Last 30 days)</option>
+                            <option>Low Quantity (<20)</option>
+                        </select>
+                    </div>
+                    <div class="filter-wrapper">
+                        <i data-lucide="list" class="filter-icon"></i>
+                        <select class="filter-dropdown" id="rows-per-page" style="width:130px;">
+                          <option value="10" ${
+                            AppState.itemsPageSize == 10 ? 'selected' : ''
+                          }>Rows: 10</option>
+                          <option value="25" ${
+                            AppState.itemsPageSize == 25 ? 'selected' : ''
+                          }>Rows: 25</option>
+                          <option value="50" ${
+                            AppState.itemsPageSize == 50 ? 'selected' : ''
+                          }>Rows: 50</option>
+                          <option value="100" ${
+                            AppState.itemsPageSize == 100 ? 'selected' : ''
+                          }>Rows: 100</option>
+                          <option value="0" ${
+                            AppState.itemsPageSize == 0 ? 'selected' : ''
+                          }>Rows: All</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             
@@ -5964,37 +5973,54 @@ function generateStockInPage() {
                     </div>
                 </div>
                 <div class="filter-right">
-                    <input type="date" class="form-input" style="width: 160px;" id="date-filter">
-                    <select class="filter-dropdown" id="supplier-filter">
+                    <div class="filter-wrapper">
+                        <i data-lucide="calendar" class="filter-icon"></i>
+                        <input type="date" class="form-input" style="width: 160px; padding-left: 40px;" id="date-filter">
+                    </div>
+                    <div class="filter-wrapper">
+                        <i data-lucide="users" class="filter-icon"></i>
+                        <input list="supplier-options" class="filter-dropdown" id="supplier-filter" placeholder="Select Supplier" value="${
+                          AppState.stockInSupplierFilter === 'All Suppliers'
+                            ? ''
+                            : AppState.stockInSupplierFilter || ''
+                        }">
+                    </div>
+                    <datalist id="supplier-options">
                         ${uniqueSuppliers
-                          .map((s) => `<option value="${s}">${s}</option>`)
+                          .map((s) => `<option value="${s}">`)
                           .join('')}
-                    </select>
-                    <select class="filter-dropdown" id="sort-stock">
-                        <option>Sort By</option>
-                        <option>Date (Newest)</option>
-                        <option>Date (Oldest)</option>
-                        <option>Amount (High to Low)</option>
-                        <option>Amount (Low to High)</option>
-                        <option>Item Name (A-Z)</option>
-                    </select>
-                    <select class="filter-dropdown" id="stockin-rows-per-page" style="width:130px;margin-left:8px;">
-                      <option value="10" ${
-                        AppState.stockInPageSize == 10 ? 'selected' : ''
-                      }>Rows: 10</option>
-                      <option value="25" ${
-                        AppState.stockInPageSize == 25 ? 'selected' : ''
-                      }>Rows: 25</option>
-                      <option value="50" ${
-                        AppState.stockInPageSize == 50 ? 'selected' : ''
-                      }>Rows: 50</option>
-                      <option value="100" ${
-                        AppState.stockInPageSize == 100 ? 'selected' : ''
-                      }>Rows: 100</option>
-                      <option value="0" ${
-                        AppState.stockInPageSize == 0 ? 'selected' : ''
-                      }>Rows: All</option>
-                    </select>
+                    </datalist>
+                    <div class="filter-wrapper">
+                        <i data-lucide="arrow-up-down" class="filter-icon"></i>
+                        <select class="filter-dropdown" id="sort-stock">
+                            <option>Sort By</option>
+                            <option>Date (Newest)</option>
+                            <option>Date (Oldest)</option>
+                            <option>Amount (High to Low)</option>
+                            <option>Amount (Low to High)</option>
+                            <option>Item Name (A-Z)</option>
+                        </select>
+                    </div>
+                    <div class="filter-wrapper">
+                        <i data-lucide="list" class="filter-icon"></i>
+                        <select class="filter-dropdown" id="stockin-rows-per-page" style="width:130px;">
+                          <option value="10" ${
+                            AppState.stockInPageSize == 10 ? 'selected' : ''
+                          }>Rows: 10</option>
+                          <option value="25" ${
+                            AppState.stockInPageSize == 25 ? 'selected' : ''
+                          }>Rows: 25</option>
+                          <option value="50" ${
+                            AppState.stockInPageSize == 50 ? 'selected' : ''
+                          }>Rows: 50</option>
+                          <option value="100" ${
+                            AppState.stockInPageSize == 100 ? 'selected' : ''
+                          }>Rows: 100</option>
+                          <option value="0" ${
+                            AppState.stockInPageSize == 0 ? 'selected' : ''
+                          }>Rows: All</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             
@@ -6099,18 +6125,24 @@ function generateStockOutPage() {
                         <input type="text" class="form-input" placeholder="Search stock issues..." id="stockOutSearch">
                         <i data-lucide="search" class="search-icon"></i>
                     </div>
-                    <select class="filter-dropdown" id="departmentFilter">
-                        <option value="">All Departments</option>
+                    <div class="filter-wrapper">
+                        <i data-lucide="building" class="filter-icon"></i>
+                        <input list="department-options" class="filter-dropdown" id="departmentFilter" placeholder="Select Department" value="${
+                          AppState.stockOutDepartmentFilter || ''
+                        }">
+                    </div>
+                    <datalist id="department-options">
                         ${uniqueDepartments
-                          .map(
-                            (dept) => `<option value="${dept}">${dept}</option>`
-                          )
+                          .map((dept) => `<option value="${dept}">`)
                           .join('')}
-                    </select>
+                    </datalist>
                     <!-- Status filter removed as part of UI simplification -->
                 </div>
                 <div class="filter-right">
-                    <input type="date" class="filter-dropdown" id="dateFrom" title="From Date" style="width: 150px;">
+                    <div class="filter-wrapper">
+                        <i data-lucide="calendar" class="filter-icon"></i>
+                        <input type="date" class="filter-dropdown" id="dateFrom" title="From Date" style="width: 150px; padding-left: 40px;">
+                    </div>
                     <button class="btn btn-secondary" onclick="clearStockOutFilters()" title="Clear Filters">
                         <i data-lucide="x" class="icon"></i>
                         Clear
@@ -6119,23 +6151,26 @@ function generateStockOutPage() {
                         <i data-lucide="download" class="icon"></i>
                         Export
                     </button>
-                    <select class="filter-dropdown" id="stockout-rows-per-page" style="width:130px;margin-left:8px;">
-                      <option value="10" ${
-                        AppState.stockOutPageSize == 10 ? 'selected' : ''
-                      }>Rows: 10</option>
-                      <option value="25" ${
-                        AppState.stockOutPageSize == 25 ? 'selected' : ''
-                      }>Rows: 25</option>
-                      <option value="50" ${
-                        AppState.stockOutPageSize == 50 ? 'selected' : ''
-                      }>Rows: 50</option>
-                      <option value="100" ${
-                        AppState.stockOutPageSize == 100 ? 'selected' : ''
-                      }>Rows: 100</option>
-                      <option value="0" ${
-                        AppState.stockOutPageSize == 0 ? 'selected' : ''
-                      }>Rows: All</option>
-                    </select>
+                    <div class="filter-wrapper">
+                        <i data-lucide="list" class="filter-icon"></i>
+                        <select class="filter-dropdown" id="stockout-rows-per-page" style="width:130px;">
+                          <option value="10" ${
+                            AppState.stockOutPageSize == 10 ? 'selected' : ''
+                          }>Rows: 10</option>
+                          <option value="25" ${
+                            AppState.stockOutPageSize == 25 ? 'selected' : ''
+                          }>Rows: 25</option>
+                          <option value="50" ${
+                            AppState.stockOutPageSize == 50 ? 'selected' : ''
+                          }>Rows: 50</option>
+                          <option value="100" ${
+                            AppState.stockOutPageSize == 100 ? 'selected' : ''
+                          }>Rows: 100</option>
+                          <option value="0" ${
+                            AppState.stockOutPageSize == 0 ? 'selected' : ''
+                          }>Rows: All</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -6229,7 +6264,14 @@ function generateStockOutPage() {
 
 function generateNewRequestPage() {
   // Department dropdown uses the global department categories to ensure consistency
-  const departmentsOptionsHTML = generateDepartmentOptionsHTMLWithLabels()
+  const departmentCategories = getDepartmentCategories()
+  const allDepartments = []
+  Object.values(departmentCategories).forEach((depts) => {
+    depts.forEach((d) => allDepartments.push(d.label))
+  })
+  const departmentsOptionsHTML = allDepartments
+    .map((d) => `<option value="${d}">`)
+    .join('')
 
   // Pagination calculations for initial render
   const rawPageSize = Number(AppState.newRequestsPageSize || 10)
@@ -6279,37 +6321,48 @@ function generateNewRequestPage() {
                     </div>
 
                     <label for="newRequestStatusFilter" class="visually-hidden">Filter by Status</label>
-                    <select class="filter-dropdown" id="newRequestStatusFilter">
-                        <option value="">All Status</option>
-                        <option value="draft">Draft</option>
-                        <option value="submitted">Submitted</option>
-                        <option value="pending">Pending</option>
-                    </select>
+                    <div class="filter-wrapper">
+                        <i data-lucide="filter" class="filter-icon"></i>
+                        <select class="filter-dropdown" id="newRequestStatusFilter">
+                            <option value="">All Status</option>
+                            <option value="draft">Draft</option>
+                            <option value="submitted">Submitted</option>
+                            <option value="pending">Pending</option>
+                        </select>
+                    </div>
 
                     <label for="newRequestDepartmentFilter" class="visually-hidden">Filter by Department</label>
-                    <select class="filter-dropdown" id="newRequestDepartmentFilter" style="max-width: 300px;">
-                        <option value="">All Departments</option>
+                    <div class="filter-wrapper">
+                        <i data-lucide="building" class="filter-icon"></i>
+                        <input list="newRequestDepartmentOptions" class="filter-dropdown" id="newRequestDepartmentFilter" style="max-width: 300px;" placeholder="Select Department">
+                    </div>
+                    <datalist id="newRequestDepartmentOptions">
                         ${departmentsOptionsHTML}
-                    </select>
+                    </datalist>
                 </div>
                 <div class="filter-right">
-                    <select class="filter-dropdown" id="newrequest-rows-per-page" style="width:130px;margin-left:8px;">
-                      <option value="10" ${
-                        AppState.newRequestsPageSize == 10 ? 'selected' : ''
-                      }>Rows: 10</option>
-                      <option value="25" ${
-                        AppState.newRequestsPageSize == 25 ? 'selected' : ''
-                      }>Rows: 25</option>
-                      <option value="50" ${
-                        AppState.newRequestsPageSize == 50 ? 'selected' : ''
-                      }>Rows: 50</option>
-                      <option value="100" ${
-                        AppState.newRequestsPageSize == 100 ? 'selected' : ''
-                      }>Rows: 100</option>
-                      <option value="0" ${
-                        AppState.newRequestsPageSize == 0 ? 'selected' : ''
-                      }>Rows: All</option>
-                    </select>
+                    <div class="filter-wrapper">
+                        <i data-lucide="list" class="filter-icon"></i>
+                        <select class="filter-dropdown" id="newrequest-rows-per-page" style="width:130px;">
+                          <option value="10" ${
+                            AppState.newRequestsPageSize == 10 ? 'selected' : ''
+                          }>Rows: 10</option>
+                          <option value="25" ${
+                            AppState.newRequestsPageSize == 25 ? 'selected' : ''
+                          }>Rows: 25</option>
+                          <option value="50" ${
+                            AppState.newRequestsPageSize == 50 ? 'selected' : ''
+                          }>Rows: 50</option>
+                          <option value="100" ${
+                            AppState.newRequestsPageSize == 100
+                              ? 'selected'
+                              : ''
+                          }>Rows: 100</option>
+                          <option value="0" ${
+                            AppState.newRequestsPageSize == 0 ? 'selected' : ''
+                          }>Rows: All</option>
+                        </select>
+                    </div>
                 </div>
             </section>
 
@@ -6516,22 +6569,28 @@ function generatePendingApprovalPage() {
 
                     <!-- Status Filter -->
                     <label for="statusFilter" class="visually-hidden">Filter by Status</label>
-                    <select class="filter-dropdown" id="statusFilter">
-                        <option value="">All Status</option>
-                        <option value="pending">Pending</option>
-                        <option value="under-review">Under Review</option>
-                        <option value="awaiting-approval">Awaiting Approval</option>
-                    </select>
+                    <div class="filter-wrapper">
+                        <i data-lucide="filter" class="filter-icon"></i>
+                        <select class="filter-dropdown" id="statusFilter">
+                            <option value="">All Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="under-review">Under Review</option>
+                            <option value="awaiting-approval">Awaiting Approval</option>
+                        </select>
+                    </div>
 
                     <!-- Priority Filter -->
                     <label for="priorityFilter" class="visually-hidden">Filter by Priority</label>
-                    <select class="filter-dropdown" id="priorityFilter">
-                        <option value="">All Priority</option>
-                        <option value="urgent">Urgent</option>
-                        <option value="high">High</option>
-                        <option value="medium">Medium</option>
-                        <option value="low">Low</option>
-                    </select>
+                    <div class="filter-wrapper">
+                        <i data-lucide="alert-circle" class="filter-icon"></i>
+                        <select class="filter-dropdown" id="priorityFilter">
+                            <option value="">All Priority</option>
+                            <option value="urgent">Urgent</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                    </div>
                 </div>
             </section>
 
@@ -6704,13 +6763,16 @@ function generateCompletedRequestPage() {
 
                     <!-- Status Filter -->
                     <label for="completedStatusFilter" class="visually-hidden">Filter by Status</label>
-                    <select class="filter-dropdown" id="completedStatusFilter">
-                        <option value="">All Status</option>
-                        <option value="approved">Approved</option>
-                        <option value="delivered">Delivered</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
-                    </select>
+                    <div class="filter-wrapper">
+                        <i data-lucide="filter" class="filter-icon"></i>
+                        <select class="filter-dropdown" id="completedStatusFilter">
+                            <option value="">All Status</option>
+                            <option value="approved">Approved</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
 
                     <!-- payment filter removed -->
                 </div>
@@ -6868,38 +6930,23 @@ function generateInventoryReportsPage() {
 
         <div class="page-content">
             <!-- Filters Card -->
-            <div class="card report-filters-card">
-                <div class="card-header-inline">
-                    <h3 class="card-title-small">
-                        <i data-lucide="filter" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;"></i>
-                        Filters
-                    </h3>
-                </div>
-                <div class="filter-grid">
-                    <div class="filter-item">
-                        <label class="form-label">
-                            <i data-lucide="folder" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>
-                            Categories
-                        </label>
-                        <select id="inventory-category-filter" class="form-select">
+            <div class="enhanced-filter-bar" style="margin-bottom: 24px;">
+                <div class="filter-left">
+                    <div class="filter-wrapper">
+                        <i data-lucide="folder" class="filter-icon"></i>
+                        <select id="inventory-category-filter" class="filter-dropdown">
                             ${categories
                               .map((c) => `<option value="${c}">${c}</option>`)
                               .join('')}
                         </select>
                     </div>
-                    <div class="filter-item">
-                        <label class="form-label">
-                            <i data-lucide="calendar" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>
-                            From Date
-                        </label>
-                        <input type="date" id="inventory-date-from" class="form-input">
+                    <div class="filter-wrapper">
+                        <i data-lucide="calendar" class="filter-icon"></i>
+                        <input type="date" id="inventory-date-from" class="filter-dropdown" style="padding-left: 40px;">
                     </div>
-                    <div class="filter-item">
-                        <label class="form-label">
-                            <i data-lucide="calendar" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>
-                            To Date
-                        </label>
-                        <input type="date" id="inventory-date-to" class="form-input">
+                    <div class="filter-wrapper">
+                        <i data-lucide="calendar" class="filter-icon"></i>
+                        <input type="date" id="inventory-date-to" class="filter-dropdown" style="padding-left: 40px;">
                     </div>
                 </div>
             </div>
@@ -7034,38 +7081,23 @@ function generateRequisitionReportsPage() {
 
         <div class="page-content">
             <!-- Filters Card -->
-            <div class="card report-filters-card">
-                <div class="card-header-inline">
-                    <h3 class="card-title-small">
-                        <i data-lucide="filter" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;"></i>
-                        Filters
-                    </h3>
-                </div>
-                <div class="filter-grid">
-                    <div class="filter-item">
-                        <label class="form-label">
-                            <i data-lucide="truck" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>
-                            Supplier
-                        </label>
-                        <select id="requisition-supplier-filter" class="form-select">
+            <div class="enhanced-filter-bar" style="margin-bottom: 24px;">
+                <div class="filter-left">
+                    <div class="filter-wrapper">
+                        <i data-lucide="truck" class="filter-icon"></i>
+                        <select id="requisition-supplier-filter" class="filter-dropdown">
                             ${uniqueSuppliers
                               .map((s) => `<option value="${s}">${s}</option>`)
                               .join('')}
                         </select>
                     </div>
-                    <div class="filter-item">
-                        <label class="form-label">
-                            <i data-lucide="calendar" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>
-                            From Date
-                        </label>
-                        <input type="date" id="requisition-date-from" class="form-input">
+                    <div class="filter-wrapper">
+                        <i data-lucide="calendar" class="filter-icon"></i>
+                        <input type="date" id="requisition-date-from" class="filter-dropdown" style="padding-left: 40px;">
                     </div>
-                    <div class="filter-item">
-                        <label class="form-label">
-                            <i data-lucide="calendar" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>
-                            To Date
-                        </label>
-                        <input type="date" id="requisition-date-to" class="form-input">
+                    <div class="filter-wrapper">
+                        <i data-lucide="calendar" class="filter-icon"></i>
+                        <input type="date" id="requisition-date-to" class="filter-dropdown" style="padding-left: 40px;">
                     </div>
                 </div>
             </div>
@@ -7153,31 +7185,19 @@ function generateStatusReportsPage() {
 
         <div class="page-content">
             <!-- Filters Card -->
-            <div class="card report-filters-card">
-                <div class="card-header-inline">
-                    <h3 class="card-title-small">
-                        <i data-lucide="filter" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;"></i>
-                        Filters
-                    </h3>
-                </div>
-                <div class="filter-grid filter-grid-four">
-                    <div class="filter-item">
-                        <label class="form-label">
-                            <i data-lucide="building-2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>
-                            Department
-                        </label>
-                        <select id="status-department-filter" class="form-select">
+            <div class="enhanced-filter-bar" style="margin-bottom: 24px;">
+                <div class="filter-left">
+                    <div class="filter-wrapper">
+                        <i data-lucide="building-2" class="filter-icon"></i>
+                        <select id="status-department-filter" class="filter-dropdown">
                             ${uniqueDepartments
                               .map((d) => `<option value="${d}">${d}</option>`)
                               .join('')}
                         </select>
                     </div>
-                    <div class="filter-item">
-                        <label class="form-label">
-                            <i data-lucide="check-circle-2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>
-                            Status
-                        </label>
-                        <select id="status-status-filter" class="form-select">
+                    <div class="filter-wrapper">
+                        <i data-lucide="check-circle-2" class="filter-icon"></i>
+                        <select id="status-status-filter" class="filter-dropdown">
                             ${uniqueStatuses
                               .map(
                                 (s) =>
@@ -7190,19 +7210,13 @@ function generateStatusReportsPage() {
                               .join('')}
                         </select>
                     </div>
-                    <div class="filter-item">
-                        <label class="form-label">
-                            <i data-lucide="calendar" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>
-                            From Date
-                        </label>
-                        <input type="date" id="status-date-from" class="form-input">
+                    <div class="filter-wrapper">
+                        <i data-lucide="calendar" class="filter-icon"></i>
+                        <input type="date" id="status-date-from" class="filter-dropdown" style="padding-left: 40px;">
                     </div>
-                    <div class="filter-item">
-                        <label class="form-label">
-                            <i data-lucide="calendar" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>
-                            To Date
-                        </label>
-                        <input type="date" id="status-date-to" class="form-input">
+                    <div class="filter-wrapper">
+                        <i data-lucide="calendar" class="filter-icon"></i>
+                        <input type="date" id="status-date-to" class="filter-dropdown" style="padding-left: 40px;">
                     </div>
                 </div>
             </div>
@@ -7316,17 +7330,17 @@ function generateRcpiReportsPage() {
           </div>
         </div>
         <div class="page-content">
-          <div class="card report-filters-card">
-            <div class="filter-grid">
-              <div class="filter-item">
-                <label class="form-label">Category</label>
-                <select id="rcpi-category-filter" class="form-select">${categories
+          <div class="enhanced-filter-bar" style="margin-bottom: 24px;">
+            <div class="filter-left">
+              <div class="filter-wrapper">
+                <i data-lucide="folder" class="filter-icon"></i>
+                <select id="rcpi-category-filter" class="filter-dropdown">${categories
                   .map((s) => `<option value="${s}">${s}</option>`)
                   .join('')}</select>
               </div>
-              <div class="filter-item">
-                <label class="form-label">As of Date</label>
-                <input type="date" id="rcpi-date-as-of" class="form-input" value="${
+              <div class="filter-wrapper">
+                <i data-lucide="calendar" class="filter-icon"></i>
+                <input type="date" id="rcpi-date-as-of" class="filter-dropdown" style="padding-left: 40px;" value="${
                   new Date().toISOString().split('T')[0]
                 }">
               </div>
@@ -7404,21 +7418,21 @@ function generateRsmiReportsPage() {
           </div>
         </div>
         <div class="page-content">
-          <div class="card report-filters-card">
-            <div class="filter-grid">
-              <div class="filter-item">
-                <label class="form-label">Department</label>
-                <select id="rsmi-department-filter" class="form-select">${departments
+          <div class="enhanced-filter-bar" style="margin-bottom: 24px;">
+            <div class="filter-left">
+              <div class="filter-wrapper">
+                <i data-lucide="building" class="filter-icon"></i>
+                <select id="rsmi-department-filter" class="filter-dropdown">${departments
                   .map((d) => `<option value="${d}">${d}</option>`)
                   .join('')}</select>
               </div>
-              <div class="filter-item">
-                <label class="form-label">From Date</label>
-                <input type="date" id="rsmi-date-from" class="form-input">
+              <div class="filter-wrapper">
+                <i data-lucide="calendar" class="filter-icon"></i>
+                <input type="date" id="rsmi-date-from" class="filter-dropdown" style="padding-left: 40px;">
               </div>
-              <div class="filter-item">
-                <label class="form-label">To Date</label>
-                <input type="date" id="rsmi-date-to" class="form-input">
+              <div class="filter-wrapper">
+                <i data-lucide="calendar" class="filter-icon"></i>
+                <input type="date" id="rsmi-date-to" class="filter-dropdown" style="padding-left: 40px;">
               </div>
             </div>
           </div>
@@ -7486,21 +7500,21 @@ function generateStockCardsPage() {
           </div>
         </div>
         <div class="page-content">
-          <div class="card report-filters-card">
-            <div class="filter-grid">
-              <div class="filter-item">
-                <label class="form-label">Item</label>
-                <select id="stock-card-item-filter" class="form-select">${items
+          <div class="enhanced-filter-bar" style="margin-bottom: 24px;">
+            <div class="filter-left">
+              <div class="filter-wrapper">
+                <i data-lucide="box" class="filter-icon"></i>
+                <select id="stock-card-item-filter" class="filter-dropdown">${items
                   .map((d) => `<option value="${d}">${d}</option>`)
                   .join('')}</select>
               </div>
-              <div class="filter-item">
-                <label class="form-label">From Date</label>
-                <input type="date" id="stock-card-date-from" class="form-input">
+              <div class="filter-wrapper">
+                <i data-lucide="calendar" class="filter-icon"></i>
+                <input type="date" id="stock-card-date-from" class="filter-dropdown" style="padding-left: 40px;">
               </div>
-              <div class="filter-item">
-                <label class="form-label">To Date</label>
-                <input type="date" id="stock-card-date-to" class="form-input">
+              <div class="filter-wrapper">
+                <i data-lucide="calendar" class="filter-icon"></i>
+                <input type="date" id="stock-card-date-to" class="filter-dropdown" style="padding-left: 40px;">
               </div>
             </div>
           </div>
@@ -7631,17 +7645,19 @@ function generateConsolidateMonitoringPage() {
             </div>
           </div>
 
-          <div class="card report-filters-card">
-            <div class="filter-grid">
-              <div class="filter-item">
-                <label class="form-checkbox"><input type="checkbox" id="consolidate-filter-expiration" /> Show only items with expiration</label>
+          <div class="enhanced-filter-bar" style="margin-bottom: 24px;">
+            <div class="filter-left">
+               <div class="filter-wrapper" style="display: flex; align-items: center; gap: 8px; background: white; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
+                  <input type="checkbox" id="consolidate-filter-expiration" style="width: 16px; height: 16px;">
+                  <label for="consolidate-filter-expiration" style="font-size: 14px; color: #374151; cursor: pointer;">Show only items with expiration</label>
+               </div>
+               <div class="filter-wrapper">
+                <i data-lucide="calendar" class="filter-icon"></i>
+                <input type="date" id="consolidate-date-from" class="filter-dropdown" style="padding-left: 40px;">
               </div>
-              <div class="filter-item">
-                <label class="form-label">Date Range</label>
-                <div class="date-range">
-                  <input type="date" class="form-input" id="consolidate-date-from" placeholder="From">
-                  <input type="date" class="form-input" id="consolidate-date-to" placeholder="To">
-                </div>
+              <div class="filter-wrapper">
+                <i data-lucide="calendar" class="filter-icon"></i>
+                <input type="date" id="consolidate-date-to" class="filter-dropdown" style="padding-left: 40px;">
               </div>
             </div>
           </div>
@@ -24590,56 +24606,134 @@ async function initStatusManagement(filter = 'all') {
         <div class="page-content">
             <div class="status-container">
                 <!-- Cards -->
-                <div class="status-cards">
-                    <div class="status-card incoming" data-status="incoming">
-                        <h3>Incoming</h3>
-                        <div class="count" data-count="incoming">0</div>
-                        <p>New requests received</p>
+                <div class="metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-bottom: 32px;">
+                    <!-- Incoming -->
+                    <div class="metric-card status-card" data-status="incoming" style="cursor: pointer; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 500; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px; color: white;">Incoming</p>
+                                <h3 class="count" data-count="incoming" style="margin: 0; font-size: 36px; font-weight: 800; letter-spacing: -1px; color: white;">0</h3>
+                                <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8; color: white;">New requests received</p>
+                            </div>
+                            <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+                                <i data-lucide="inbox" style="width: 32px; height: 32px; color: white;"></i>
+                            </div>
+                        </div>
                     </div>
-                    <div class="status-card received" data-status="received">
-                        <h3>Received</h3>
-                        <div class="count" data-count="received">0</div>
-                        <p>Awaiting processing</p>
+
+                    <!-- Received -->
+                    <div class="metric-card status-card" data-status="received" style="cursor: pointer; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(139, 92, 246, 0.3); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 500; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px; color: white;">Received</p>
+                                <h3 class="count" data-count="received" style="margin: 0; font-size: 36px; font-weight: 800; letter-spacing: -1px; color: white;">0</h3>
+                                <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8; color: white;">Awaiting processing</p>
+                            </div>
+                            <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+                                <i data-lucide="package-check" style="width: 32px; height: 32px; color: white;"></i>
+                            </div>
+                        </div>
                     </div>
-                    <div class="status-card finished" data-status="finished">
-                        <h3>Finished</h3>
-                        <div class="count" data-count="finished">0</div>
-                        <p>Successfully completed</p>
+
+                    <!-- Finished -->
+                    <div class="metric-card status-card" data-status="finished" style="cursor: pointer; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 500; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px; color: white;">Finished</p>
+                                <h3 class="count" data-count="finished" style="margin: 0; font-size: 36px; font-weight: 800; letter-spacing: -1px; color: white;">0</h3>
+                                <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8; color: white;">Successfully completed</p>
+                            </div>
+                            <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+                                <i data-lucide="check-circle" style="width: 32px; height: 32px; color: white;"></i>
+                            </div>
+                        </div>
                     </div>
-                    <div class="status-card cancelled" data-status="cancelled">
-                        <h3>Cancelled</h3>
-                        <div class="count" data-count="cancelled">0</div>
-                        <p>Request withdrawn</p>
+
+                    <!-- Cancelled -->
+                    <div class="metric-card status-card" data-status="cancelled" style="cursor: pointer; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.3); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 500; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px; color: white;">Cancelled</p>
+                                <h3 class="count" data-count="cancelled" style="margin: 0; font-size: 36px; font-weight: 800; letter-spacing: -1px; color: white;">0</h3>
+                                <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8; color: white;">Request withdrawn</p>
+                            </div>
+                            <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+                                <i data-lucide="x-circle" style="width: 32px; height: 32px; color: white;"></i>
+                            </div>
+                        </div>
                     </div>
-                    <div class="status-card rejected" data-status="rejected">
-                        <h3>Rejected</h3>
-                        <div class="count" data-count="rejected">0</div>
-                        <p>Request denied</p>
+
+                    <!-- Rejected -->
+                    <div class="metric-card status-card" data-status="rejected" style="cursor: pointer; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.3); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 500; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px; color: white;">Rejected</p>
+                                <h3 class="count" data-count="rejected" style="margin: 0; font-size: 36px; font-weight: 800; letter-spacing: -1px; color: white;">0</h3>
+                                <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8; color: white;">Request denied</p>
+                            </div>
+                            <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+                                <i data-lucide="ban" style="width: 32px; height: 32px; color: white;"></i>
+                            </div>
+                        </div>
                     </div>
-                    <div class="status-card returned" data-status="returned">
-                        <h3>Returned</h3>
-                        <div class="count" data-count="returned">0</div>
-                        <p>Items sent back</p>
+
+                    <!-- Returned -->
+                    <div class="metric-card status-card" data-status="returned" style="cursor: pointer; background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(107, 114, 128, 0.3); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 500; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px; color: white;">Returned</p>
+                                <h3 class="count" data-count="returned" style="margin: 0; font-size: 36px; font-weight: 800; letter-spacing: -1px; color: white;">0</h3>
+                                <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8; color: white;">Items sent back</p>
+                            </div>
+                            <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+                                <i data-lucide="rotate-ccw" style="width: 32px; height: 32px; color: white;"></i>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Filters -->
-            <div class="filters">
-                <input type="text" id="searchInput" placeholder="Search by Requester, ID, or Item">
-                <input type="text" id="deptInput" placeholder="Filter by Department">
-                <select id="deptSelect">
-                    <option>All Department</option>
-                </select>
-                <select id="prioritySelect">
-                    <option>Filter by Priority</option>
-                    <option>High</option>
-                    <option>Medium</option>
-                    <option>Low</option>
-                </select>
-      </div>
+                <!-- Status Management Card -->
+        <div class="card" style="padding: 0; overflow: visible;">
+            <div style="padding: 20px 24px; border-bottom: 1px solid #e5e7eb; background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); color: white;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <h2 style="margin: 0; font-size: 18px; color: white; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="list" style="width:20px;height:20px;color:white;"></i>
+                            Request Status Overview
+                        </h2>
+                        <p style="margin: 4px 0 0 0; font-size: 14px; color: rgba(255, 255, 255, 0.8);">Comprehensive list of all request statuses</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Filters -->
+            <div style="padding: 20px 24px; border-bottom: 1px solid #f1f5f9;">
+                <div class="enhanced-filter-bar" style="margin-bottom: 0;">
+                    <div class="filter-left">
+                        <div class="enhanced-search">
+                            <input type="text" class="form-input" id="searchInput" placeholder="Search by Requester, ID, or Item">
+                            <i data-lucide="search" class="search-icon"></i>
+                        </div>
+                        <div class="filter-wrapper">
+                            <i data-lucide="building" class="filter-icon"></i>
+                            <input list="deptOptions" class="filter-dropdown" id="deptFilter" placeholder="Filter by Department">
+                        </div>
+                        <datalist id="deptOptions"></datalist>
+                        <div class="filter-wrapper">
+                            <i data-lucide="alert-circle" class="filter-icon"></i>
+                            <select class="filter-dropdown" id="prioritySelect">
+                                <option>Filter by Priority</option>
+                                <option>High</option>
+                                <option>Medium</option>
+                                <option>Low</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- Table -->
-            <div class="table-container">
+            <div class="table-container" style="border: none; border-radius: 0; box-shadow: none;">
                 <table class="table">
                   <thead>
                     <tr>
@@ -24662,6 +24756,7 @@ async function initStatusManagement(filter = 'all') {
                     </tbody>
                 </table>
             </div>
+        </div>
             </div>
         </div>
     `
@@ -24770,8 +24865,7 @@ async function initStatusManagement(filter = 'all') {
 
   // ===== Attach Filter Events =====
   document.getElementById('searchInput').addEventListener('input', applyFilters)
-  document.getElementById('deptInput').addEventListener('input', applyFilters)
-  document.getElementById('deptSelect').addEventListener('change', applyFilters)
+  document.getElementById('deptFilter').addEventListener('input', applyFilters)
   document
     .getElementById('prioritySelect')
     .addEventListener('change', applyFilters)
@@ -24816,8 +24910,8 @@ function refreshStatusCards() {
 
 // Populate department filter dropdown dynamically based on table data
 function populateDepartmentFilter() {
-  const deptSelect = document.getElementById('deptSelect')
-  if (!deptSelect) return
+  const deptOptions = document.getElementById('deptOptions')
+  if (!deptOptions) return
 
   // Extract unique departments from statusRequests
   const departments = [
@@ -24826,29 +24920,15 @@ function populateDepartmentFilter() {
     ),
   ].sort()
 
-  // Keep the current selection if it exists
-  const currentValue = deptSelect.value
-
-  // Clear existing options except "All Department"
-  deptSelect.innerHTML = '<option>All Department</option>'
+  // Clear existing options
+  deptOptions.innerHTML = ''
 
   // Add unique departments as options
   departments.forEach((dept) => {
     const option = document.createElement('option')
     option.value = dept
-    option.textContent = dept
-    deptSelect.appendChild(option)
+    deptOptions.appendChild(option)
   })
-
-  // Restore previous selection if it still exists
-  if (currentValue && currentValue !== 'All Department') {
-    const optionExists = Array.from(deptSelect.options).some(
-      (opt) => opt.value === currentValue
-    )
-    if (optionExists) {
-      deptSelect.value = currentValue
-    }
-  }
 }
 
 // ===== Dummy Rows =====
@@ -25049,8 +25129,7 @@ async function autoProcessRequests() {
 // ===== Apply Filters =====
 function applyFilters() {
   const search = document.getElementById('searchInput').value.toLowerCase()
-  const deptText = document.getElementById('deptInput').value.toLowerCase()
-  const deptSelect = document.getElementById('deptSelect').value.toLowerCase()
+  const deptFilter = document.getElementById('deptFilter').value.toLowerCase()
   const priority = document.getElementById('prioritySelect').value.toLowerCase()
 
   const rows = document.querySelectorAll('#status-table-body tr')
@@ -25062,9 +25141,7 @@ function applyFilters() {
 
     let match = true
     if (search && !text.includes(search)) match = false
-    if (deptText && !department.includes(deptText)) match = false
-    if (deptSelect !== 'all department' && !department.includes(deptSelect))
-      match = false
+    if (deptFilter && !department.includes(deptFilter)) match = false
     if (priority !== 'filter by priority' && !rowPriority.includes(priority))
       match = false
 
@@ -25096,8 +25173,7 @@ function filterByStatus(status) {
 
   // Clear other filters when switching status
   document.getElementById('searchInput').value = ''
-  document.getElementById('deptInput').value = ''
-  document.getElementById('deptSelect').value = 'All Department'
+  document.getElementById('deptFilter').value = ''
   document.getElementById('prioritySelect').value = 'Filter by Priority'
 }
 

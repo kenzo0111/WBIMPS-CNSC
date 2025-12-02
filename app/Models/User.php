@@ -83,13 +83,13 @@ class User extends Authenticatable
         // legacy single `role` column may contain a human-readable role name
         if (!empty($this->role)) {
             $legacy = strtolower(trim($this->role));
-            if (in_array($legacy, ['system admin', 'administrator'], true)) {
+            if (in_array($legacy, ['system admin'], true)) {
                 return true;
             }
         }
 
-        // Spatie roles: consider both 'System Admin' and 'Administrator' as admin roles
-        return $this->traitHasRole(['System Admin', 'Administrator']);
+        // Spatie roles: consider 'System Admin' as the only implicit admin role
+        return $this->traitHasRole('System Admin');
     }
 
     /**

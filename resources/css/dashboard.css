@@ -3104,12 +3104,69 @@ body {
   }
 }
 
+.filter-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.filter-wrapper .filter-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: #9ca3af;
+  pointer-events: none;
+  z-index: 1;
+  transition: color 0.2s ease;
+}
+
 .filter-dropdown {
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  height: 42px;
+  padding: 0 16px;
+  padding-right: 2.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   font-size: 14px;
-  min-width: 120px;
+  font-weight: 500;
+  color: #374151;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  appearance: none; /* Remove default arrow */
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.75rem center;
+  background-repeat: no-repeat;
+  background-size: 1.25em 1.25em;
+  min-width: 140px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.filter-wrapper .filter-dropdown {
+  padding-left: 40px; /* Left padding for icon */
+}
+
+.filter-dropdown:hover {
+  border-color: #d1d5db;
+  background-color: #f9fafb;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.filter-dropdown:focus {
+  outline: none;
+  border-color: #dc2626;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.1);
+}
+
+.filter-wrapper:hover .filter-icon {
+  color: #4b5563;
+}
+
+.filter-wrapper:focus-within .filter-icon {
+  color: #dc2626;
 }
 
 /* Enhanced Pagination */
@@ -3860,21 +3917,6 @@ textarea:focus {
 }
 
 /* Filters */
-.filters {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.filters input,
-.filters select,
-.filters button {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-}
-
 /* Request Table */
 .request-table {
   width: 100%;
@@ -4258,13 +4300,6 @@ textarea:focus {
 /* REPORTS PAGE STYLES */
 /* ================================ */
 
-/* Report Filters Card */
-.report-filters-card {
-  background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
 .card-header-inline {
   margin-bottom: 16px;
   padding-bottom: 12px;
@@ -4275,33 +4310,6 @@ textarea:focus {
   font-size: 16px;
   font-weight: 600;
   color: #111827;
-  margin: 0;
-  display: flex;
-  align-items: center;
-}
-
-/* Filter Grid Layout */
-.filter-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  align-items: end;
-}
-
-.filter-grid-four {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-}
-
-.filter-item {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.filter-item .form-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #374151;
   margin: 0;
   display: flex;
   align-items: center;
@@ -6115,27 +6123,12 @@ tbody tr:hover td {
     color: var(--text-secondary);
   }
 
-  /* Report Filters Card Dark Mode */
-  .report-filters-card {
-    background: linear-gradient(
-      135deg,
-      var(--bg-secondary) 0%,
-      var(--bg-tertiary) 100%
-    );
-    border-color: var(--border-primary);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  }
-
   .card-header-inline {
     border-bottom-color: var(--border-primary);
   }
 
   .card-title-small {
     color: var(--text-primary);
-  }
-
-  .filter-item .form-label {
-    color: var(--text-secondary);
   }
 
   /* Low Stock Card Dark Mode */
@@ -6605,38 +6598,6 @@ tbody tr:hover td {
   outline: none;
   border-color: #dc2626;
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
-}
-
-/* Report filters card */
-.report-filters-card {
-  margin-bottom: 24px;
-}
-
-.filter-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-}
-
-.filter-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.filter-item label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #374151;
-}
-
-.date-range {
-  display: flex;
-  gap: 8px;
-}
-
-.date-range input {
-  flex: 1;
 }
 
 /* Chart card styles */

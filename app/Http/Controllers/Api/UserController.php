@@ -180,8 +180,6 @@ class UserController extends Controller
                 // remove the known admin roles if it's being turned off
                 if ($user->hasRole('System Admin'))
                     $user->removeRole('System Admin');
-                if ($user->hasRole('Administrator'))
-                    $user->removeRole('Administrator');
             }
         }
 
