@@ -41,6 +41,8 @@
     obj.prNo = byId('prNo')?.value || ''
     obj.fundCluster = byId('fundCluster')?.value || ''
     obj.responsibilityCenterCode = byId('responsibilityCenterCode')?.value || ''
+    obj.approvedBy = byId('approvedBy')?.value || ''
+    obj.approverDesignation = byId('approverDesignation')?.value || ''
 
     // Also include a numeric overall total (unformatted) to make it easier for the server
     // be robust to the '₱' formatting in the UI field.
@@ -277,6 +279,8 @@
       'prNo',
       'fundCluster',
       'responsibilityCenterCode',
+      'approvedBy',
+      'approverDesignation',
     ]
     fields.forEach((field) => {
       const target = byId(`summary-${field}`)
@@ -655,6 +659,9 @@
       if (payload.responsibilityCenterCode)
         serverPayload.responsibility_center_code =
           payload.responsibilityCenterCode
+      if (payload.approvedBy) serverPayload.approved_by = payload.approvedBy
+      if (payload.approverDesignation)
+        serverPayload.approver_designation = payload.approverDesignation
       // Provide numeric overall_total_cost if the client generated it
       if (typeof payload.overallTotalCost !== 'undefined')
         serverPayload.overall_total_cost = payload.overallTotalCost || 0
@@ -767,6 +774,8 @@
       tableRow('Date Needed', payload.neededDate) +
       tableRow('Priority', payload.priority) +
       tableRow('Purpose', payload.purpose) +
+      tableRow('Approved By', payload.approvedBy) +
+      tableRow('Designation', payload.approverDesignation) +
       `</table><div class="actions"><button class="btn" onclick="window.print()">Print</button><button class="btn" onclick="window.close()">Close</button></div><div style="margin-top:12px;font-size:12px;color:#666">Preview generated locally — not submitted.</div></div></body></html>`
 
     preview.document.open()
@@ -987,6 +996,25 @@
 
     // Add item button
     byId('addItemBtn').addEventListener('click', addItemRow)
+
+    // Auto-fill designation based on approver
+    const approvedBySelect = byId('approvedBy')
+    const designationInput = byId('approverDesignation')
+    if (approvedBySelect && designationInput) {
+      approvedBySelect.addEventListener('change', () => {
+        const val = approvedBySelect.value
+        let desig = ''
+        if (val === 'ATTY. RYAN L. ESTEVEZ, DPA') desig = 'PRESIDENT'
+        else if (val === 'DR. DOLORES C. VOLANTE')
+          desig = 'VICE PRESIDENT FOR ACADEMIC AFFAIRS (VPAA)'
+        else if (val === 'DR. MARIA CRISTINA C. AZUELO')
+          desig = 'VICE PRESIDENT FOR ADMINISTRATION AND FINANCE (VPAF)'
+        else if (val === 'DR. ROSALIE A. ALMADRONES')
+          desig = 'VICE PRESIDENT FOR RESEARCH AND EXTENSION (VPRE)'
+
+        if (desig) designationInput.value = desig
+      })
+    }
 
     // form submit, reset
     form.addEventListener('submit', handleRequestSubmit)

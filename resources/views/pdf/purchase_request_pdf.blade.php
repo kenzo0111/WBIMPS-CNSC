@@ -125,16 +125,16 @@
                 <td colspan="2" style="padding:8px; vertical-align:top;">
                     <div style="text-align:center;"><strong>Requested by:</strong></div>
                     <div style="border-bottom:1px solid #000; height:18px;"></div>
-                    <div style="border-bottom:1px solid #000; height:18px;"></div>
-                    <div style="border-bottom:1px solid #000; height:18px;"></div>
+                    <div style="border-bottom:1px solid #000; height:18px; text-align: center; font-weight: bold;">{{ $requested_by ?? '' }}</div>
+                    <div style="border-bottom:1px solid #000; height:18px; text-align: center;">{{ $designation ?? '' }}</div>
                 </td>
 
                 <!-- Approved by (columns 5-6) -->
                 <td colspan="2" style="padding:8px; vertical-align:top;">
                     <div style="text-align:center;"><strong>Approved by:</strong></div>
                     <div style="border-bottom:1px solid #000; height:18px;"></div>
-                    <div style="border-bottom:1px solid #000; height:18px;"></div>
-                    <div style="border-bottom:1px solid #000; height:18px;"></div>
+                    <div style="border-bottom:1px solid #000; height:18px; text-align: center; font-weight: bold;">{{ $approved_by ?? '' }}</div>
+                    <div style="border-bottom:1px solid #000; height:18px; text-align: center;">{{ $approved_position ?? '' }}</div>
                 </td>
             </tr>
         </tbody>

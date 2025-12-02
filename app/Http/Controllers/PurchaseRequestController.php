@@ -102,8 +102,8 @@ class PurchaseRequestController extends Controller
         $data['purpose'] = $data['purpose'] ?? '';
         $data['requested_by'] = $data['requested_by'] ?? ($data['requestedBy'] ?? ($data['requester'] ?? ''));
         $data['designation'] = $data['designation'] ?? '';
-        $data['approved_by'] = $data['approved_by'] ?? '';
-        $data['approved_position'] = $data['approved_position'] ?? '';
+        $data['approved_by'] = $data['approved_by'] ?? ($data['approvedBy'] ?? '');
+        $data['approved_position'] = $data['approved_position'] ?? ($data['approvedPosition'] ?? ($data['approver_designation'] ?? ''));
         $data['fund_cluster'] = $data['fund_cluster'] ?? '';
         $data['responsibility_center_code'] = $data['responsibility_center_code'] ?? '';
 

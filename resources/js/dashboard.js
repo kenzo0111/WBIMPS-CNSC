@@ -1330,6 +1330,7 @@ async function loadPersistedInventoryData() {
     loadStockOutFromAPI(),
     loadPurchaseOrdersFromAPI(),
   ])
+  refreshItemsViewIfOpen()
   return
 }
 
@@ -3216,6 +3217,7 @@ function loadPageContent(pageId) {
   switch (pageId) {
     case 'dashboard':
       mainContent.innerHTML = generateDashboardPage()
+      renderDashboardCharts()
       // ensure notifications badge/menu is in sync
       try {
         renderNotifications(currentNotificationFilter)
@@ -3404,6 +3406,95 @@ function renderMetricCard(
           </div>
         </div>
       `
+}
+
+function renderDashboardCharts() {
+  if (!MockData.Items || MockData.Items.length === 0) return
+
+  // Prepare data for Items by Category
+  const categoryCounts = {}
+  MockData.Items.forEach((item) => {
+    const catName = item.category ? item.category.name : 'Uncategorized'
+    categoryCounts[catName] = (categoryCounts[catName] || 0) + 1
+  })
+
+  const categoryData = Object.keys(categoryCounts).map((cat) => ({
+    label: cat,
+    value: categoryCounts[cat],
+  }))
+
+  // Prepare data for Stock Status
+  let inStock = 0
+  let lowStock = 0
+  let outOfStock = 0
+  const lowStockThreshold = AppState.lowStockThreshold || 20
+
+  MockData.Items.forEach((item) => {
+    const qty = Number(item.quantity) || 0
+    if (qty === 0) {
+      outOfStock++
+    } else if (qty <= lowStockThreshold) {
+      lowStock++
+    } else {
+      inStock++
+    }
+  })
+
+  const stockData = [
+    { label: 'In Stock', value: inStock, color: '#10b981' },
+    { label: 'Low Stock', value: lowStock, color: '#f59e0b' },
+    { label: 'Out of Stock', value: outOfStock, color: '#ef4444' },
+  ]
+
+  // Render Items by Category Chart
+  FusionCharts.ready(function () {
+    new FusionCharts({
+      type: 'doughnut2d',
+      renderAt: 'chart-items-by-category',
+      width: '100%',
+      height: '300',
+      dataFormat: 'json',
+      dataSource: {
+        chart: {
+          theme: 'fusion',
+          caption: '',
+          subCaption: '',
+          showPercentValues: '1',
+          doughnutRadius: '60',
+          enableSmartLabels: '1',
+          showLegend: '1',
+          legendPosition: 'right',
+          bgColor: '#ffffff',
+          bgAlpha: '0',
+          canvasBgAlpha: '0',
+        },
+        data: categoryData,
+      },
+    }).render()
+
+    // Render Stock Status Chart
+    new FusionCharts({
+      type: 'column2d',
+      renderAt: 'chart-stock-status',
+      width: '100%',
+      height: '300',
+      dataFormat: 'json',
+      dataSource: {
+        chart: {
+          theme: 'fusion',
+          caption: '',
+          subCaption: '',
+          xAxisName: 'Status',
+          yAxisName: 'Count',
+          paletteColors: '#10b981,#f59e0b,#ef4444',
+          bgColor: '#ffffff',
+          bgAlpha: '0',
+          canvasBgAlpha: '0',
+        },
+        data: stockData,
+      },
+    }).render()
+  })
 }
 
 function generateDashboardPage() {
@@ -3807,6 +3898,22 @@ function generateDashboardPage() {
                   'indigo',
                   true
                 )}
+            </div>
+
+            <!-- Analytics Charts -->
+            <div class="charts-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 24px;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Items by Category</h3>
+                    </div>
+                    <div id="chart-items-by-category" style="height: 300px;"></div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Stock Status</h3>
+                    </div>
+                    <div id="chart-stock-status" style="height: 300px;"></div>
+                </div>
             </div>
             
             <!-- Quick Actions & Recent Activity -->

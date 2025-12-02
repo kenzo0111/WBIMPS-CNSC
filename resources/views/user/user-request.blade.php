@@ -212,6 +212,22 @@
                                 <label class="form-label" for="responsibilityCenterCode">Responsibility Center Code</label>
                                 <input class="form-input" id="responsibilityCenterCode" name="responsibilityCenterCode" type="text" placeholder="e.g., 1234" />
                             </div>
+                            <div class="form-group">
+                                <label class="form-label" for="approvedBy">Approved By</label>
+                                <select class="form-input" id="approvedBy" name="approvedBy">
+                                    <option value="" disabled selected>Select Approver</option>
+                                    <option value="ATTY. RYAN L. ESTEVEZ, DPA">ATTY. RYAN L. ESTEVEZ, DPA</option>
+                                    <option value="DR. DOLORES C. VOLANTE">DR. DOLORES C. VOLANTE</option>
+                                    <option value="DR. MARIA CRISTINA C. AZUELO">DR. MARIA CRISTINA C. AZUELO</option>
+                                    <option value="DR. ROSALIE A. ALMADRONES">DR. ROSALIE A. ALMADRONES</option>
+                                    <option value="Dean">Dean</option>
+                                    <option value="Head of Office">Head of Office</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="approverDesignation">Designation</label>
+                                <input class="form-input" id="approverDesignation" name="approverDesignation" type="text" placeholder="e.g., University President" />
+                            </div>
                         </div>
 
                         <div class="step-actions">
@@ -338,6 +354,14 @@
                                         <div class="review-item">
                                             <span class="label">Responsibility Center Code</span>
                                             <span class="value" id="summary-responsibilityCenterCode">-</span>
+                                        </div>
+                                        <div class="review-item">
+                                            <span class="label">Approved By</span>
+                                            <span class="value" id="summary-approvedBy">-</span>
+                                        </div>
+                                        <div class="review-item">
+                                            <span class="label">Designation</span>
+                                            <span class="value" id="summary-approverDesignation">-</span>
                                         </div>
                                     </div>
                                 </div>

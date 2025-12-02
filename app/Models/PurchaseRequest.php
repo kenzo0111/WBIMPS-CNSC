@@ -35,6 +35,8 @@ class PurchaseRequest extends Model
         'email',
         'requester',
         'designation',
+        'approved_by',
+        'approved_position',
         'department',
         'items',
         'purpose',
