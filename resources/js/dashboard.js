@@ -1836,6 +1836,23 @@ function formatCurrency(amount) {
   return `₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
 }
 
+// Format number with thousand separators for input fields (without currency symbol)
+function formatNumberWithSeparators(value) {
+  if (!value && value !== 0) return ''
+  const num = parseFloat(String(value).replace(/,/g, ''))
+  if (isNaN(num)) return ''
+  return num.toLocaleString('en-PH', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
+// Parse formatted number string back to float
+function parseFormattedNumber(value) {
+  if (!value) return 0
+  return parseFloat(String(value).replace(/,/g, '')) || 0
+}
+
 // Format date-like values into YYYY-MM-DD. Accepts ISO strings and Date objects.
 function formatDate(d) {
   if (!d && d !== 0) return ''
@@ -22572,14 +22589,68 @@ function openItemModal(mode = 'create', ItemId = null) {
 
     function updateTotalValue() {
       if (!unitCostInput || !quantityInput || !totalValueInput) return
-      const unitCost = parseFloat(unitCostInput.value) || 0
+      const unitCost = parseFormattedNumber(unitCostInput.value)
       const quantity = parseInt(quantityInput.value) || 0
       const totalValue = unitCost * quantity
       totalValueInput.value = formatCurrency(totalValue)
     }
 
+    // Format unit cost input with thousand separators as user types
+    function formatUnitCostInput() {
+      const cursorPos = unitCostInput.selectionStart
+      const oldValue = unitCostInput.value
+      const oldLength = oldValue.length
+
+      // Remove non-numeric characters except decimal point
+      let cleanValue = oldValue.replace(/[^0-9.]/g, '')
+      // Ensure only one decimal point
+      const parts = cleanValue.split('.')
+      if (parts.length > 2) {
+        cleanValue = parts[0] + '.' + parts.slice(1).join('')
+      }
+      // Limit decimal places to 2
+      if (parts.length === 2 && parts[1].length > 2) {
+        cleanValue = parts[0] + '.' + parts[1].substring(0, 2)
+      }
+
+      const numValue = parseFloat(cleanValue)
+      if (!isNaN(numValue) && cleanValue !== '') {
+        // Only format if not currently typing decimals
+        if (
+          !cleanValue.endsWith('.') &&
+          !(parts.length === 2 && parts[1].length < 2)
+        ) {
+          unitCostInput.value = formatNumberWithSeparators(numValue)
+        } else {
+          // Keep the clean value while typing decimals
+          const intPart = parts[0]
+            ? parseInt(parts[0]).toLocaleString('en-PH')
+            : '0'
+          unitCostInput.value =
+            parts.length === 2 ? intPart + '.' + parts[1] : intPart + '.'
+        }
+      } else if (cleanValue === '' || cleanValue === '.') {
+        unitCostInput.value = ''
+      }
+
+      // Adjust cursor position
+      const newLength = unitCostInput.value.length
+      const diff = newLength - oldLength
+      unitCostInput.setSelectionRange(cursorPos + diff, cursorPos + diff)
+    }
+
     if (unitCostInput && quantityInput) {
-      unitCostInput.addEventListener('input', updateTotalValue)
+      unitCostInput.addEventListener('input', () => {
+        formatUnitCostInput()
+        updateTotalValue()
+      })
+      unitCostInput.addEventListener('blur', () => {
+        // Ensure proper formatting on blur
+        const numValue = parseFormattedNumber(unitCostInput.value)
+        if (numValue > 0) {
+          unitCostInput.value = formatNumberWithSeparators(numValue)
+        }
+      })
       quantityInput.addEventListener('input', updateTotalValue)
       // Initial calculation
       updateTotalValue()
@@ -22605,7 +22676,9 @@ async function saveItem(ItemId) {
   const name = modal.querySelector('#ItemName').value.trim()
   const selectedCategoryId = modal.querySelector('#ItemCategory').value.trim()
   const description = modal.querySelector('#ItemDescription').value.trim()
-  const unitCost = parseFloat(modal.querySelector('#ItemUnitCost').value) || 0
+  const unitCost = parseFormattedNumber(
+    modal.querySelector('#ItemUnitCost').value
+  )
   const quantity = parseInt(modal.querySelector('#ItemQuantity').value) || 0
   const unit = modal.querySelector('#ItemUnit')
     ? modal.querySelector('#ItemUnit').value.trim()
@@ -22933,9 +23006,14 @@ function generateItemModal(mode = 'create', ItemData = null) {
                             <i data-lucide="tag" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             Unit Cost
                         </label>
-                        <input type="number" class="form-input" id="ItemUnitCost"
-                               step="0.01" min="0"
-                               value="${ItemData?.unitCost || ''}"
+                        <input type="text" class="form-input" id="ItemUnitCost"
+                               value="${
+                                 ItemData?.unitCost
+                                   ? formatNumberWithSeparators(
+                                       ItemData.unitCost
+                                     )
+                                   : ''
+                               }"
                                placeholder="0.00"
                                style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                                ${isReadOnly ? 'readonly' : ''}>
@@ -23464,12 +23542,66 @@ function openStockInModal(mode = 'create', stockId = null) {
 
     function updateTotal() {
       const q = parseFloat(qtyInput.value) || 0
-      const u = parseFloat(ucInput.value) || 0
+      const u = parseFormattedNumber(ucInput.value)
       totalInput.value = formatCurrency(q * u)
     }
 
+    // Format unit cost input with thousand separators as user types
+    function formatUcInput() {
+      const cursorPos = ucInput.selectionStart
+      const oldValue = ucInput.value
+      const oldLength = oldValue.length
+
+      // Remove non-numeric characters except decimal point
+      let cleanValue = oldValue.replace(/[^0-9.]/g, '')
+      // Ensure only one decimal point
+      const parts = cleanValue.split('.')
+      if (parts.length > 2) {
+        cleanValue = parts[0] + '.' + parts.slice(1).join('')
+      }
+      // Limit decimal places to 2
+      if (parts.length === 2 && parts[1].length > 2) {
+        cleanValue = parts[0] + '.' + parts[1].substring(0, 2)
+      }
+
+      const numValue = parseFloat(cleanValue)
+      if (!isNaN(numValue) && cleanValue !== '') {
+        // Only format if not currently typing decimals
+        if (
+          !cleanValue.endsWith('.') &&
+          !(parts.length === 2 && parts[1].length < 2)
+        ) {
+          ucInput.value = formatNumberWithSeparators(numValue)
+        } else {
+          // Keep the clean value while typing decimals
+          const intPart = parts[0]
+            ? parseInt(parts[0]).toLocaleString('en-PH')
+            : '0'
+          ucInput.value =
+            parts.length === 2 ? intPart + '.' + parts[1] : intPart + '.'
+        }
+      } else if (cleanValue === '' || cleanValue === '.') {
+        ucInput.value = ''
+      }
+
+      // Adjust cursor position
+      const newLength = ucInput.value.length
+      const diff = newLength - oldLength
+      ucInput.setSelectionRange(cursorPos + diff, cursorPos + diff)
+    }
+
     qtyInput.addEventListener('input', updateTotal)
-    ucInput.addEventListener('input', updateTotal)
+    ucInput.addEventListener('input', () => {
+      formatUcInput()
+      updateTotal()
+    })
+    ucInput.addEventListener('blur', () => {
+      // Ensure proper formatting on blur
+      const numValue = parseFormattedNumber(ucInput.value)
+      if (numValue > 0) {
+        ucInput.value = formatNumberWithSeparators(numValue)
+      }
+    })
     updateTotal()
 
     function autoFillFromSku() {
@@ -23484,9 +23616,9 @@ function openStockInModal(mode = 'create', stockId = null) {
       if (prod) {
         ItemInput.value = prod.name
         // If existing Item and unit cost empty or zero, default to Item's unitCost (if present)
-        if (!ucInput.value || parseFloat(ucInput.value) === 0) {
+        if (!ucInput.value || parseFormattedNumber(ucInput.value) === 0) {
           if (typeof prod.unitCost === 'number')
-            ucInput.value = prod.unitCost.toFixed(2)
+            ucInput.value = formatNumberWithSeparators(prod.unitCost)
         }
         ItemInput.setAttribute('readonly', 'readonly')
         stockBadge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;background:#f3f4f6;padding:4px 8px;border-radius:12px;">Current Stock: <strong>${prod.quantity}</strong></span>`
@@ -23571,7 +23703,9 @@ function generateStockInModal(mode = 'create', stockData = null) {
   const dateValue =
     normalizedStock.date ||
     (mode === 'create' ? new Date().toISOString().split('T')[0] : '')
-  const unitCostValue = (normalizedStock.unitCost || 0).toFixed(2)
+  const unitCostValue = normalizedStock.unitCost
+    ? formatNumberWithSeparators(normalizedStock.unitCost)
+    : ''
   const totalValue = formatCurrency(normalizedStock.totalCost || 0)
   const skuValue = normalizedStock.sku
   const ItemNameValue = normalizedStock.ItemName
@@ -23692,8 +23826,7 @@ function generateStockInModal(mode = 'create', stockData = null) {
                             <i data-lucide="tag" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             Unit Cost
                         </label>
-         <input type="number" class="form-input" id="uc-input"
-                               step="0.01" min="0"
+         <input type="text" class="form-input" id="uc-input"
            value="${unitCostValue}"
                                placeholder="0.00"
                                style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
@@ -23817,7 +23950,9 @@ async function saveStockIn(stockId) {
   const sku = document.getElementById('sku-input').value
   const ItemName = document.getElementById('Item-input').value
   const quantity = parseInt(document.getElementById('qty-input').value) || 0
-  const unitCost = parseFloat(document.getElementById('uc-input').value) || 0
+  const unitCost = parseFormattedNumber(
+    document.getElementById('uc-input').value
+  )
   const totalCost = quantity * unitCost
   const supplier = document.getElementById('supplier-input').value
   const receivedBy = document.getElementById('receivedby-input').value
@@ -24061,13 +24196,67 @@ function openStockOutModal(mode = 'create', stockId = null) {
 
     function updateTotal() {
       const q = parseFloat(qty.value) || 0
-      const u = parseFloat(uc.value) || 0
+      const u = parseFormattedNumber(uc.value)
       total.value = formatCurrency(q * u)
+    }
+
+    // Format unit cost input with thousand separators as user types
+    function formatSoUcInput() {
+      const cursorPos = uc.selectionStart
+      const oldValue = uc.value
+      const oldLength = oldValue.length
+
+      // Remove non-numeric characters except decimal point
+      let cleanValue = oldValue.replace(/[^0-9.]/g, '')
+      // Ensure only one decimal point
+      const parts = cleanValue.split('.')
+      if (parts.length > 2) {
+        cleanValue = parts[0] + '.' + parts.slice(1).join('')
+      }
+      // Limit decimal places to 2
+      if (parts.length === 2 && parts[1].length > 2) {
+        cleanValue = parts[0] + '.' + parts[1].substring(0, 2)
+      }
+
+      const numValue = parseFloat(cleanValue)
+      if (!isNaN(numValue) && cleanValue !== '') {
+        // Only format if not currently typing decimals
+        if (
+          !cleanValue.endsWith('.') &&
+          !(parts.length === 2 && parts[1].length < 2)
+        ) {
+          uc.value = formatNumberWithSeparators(numValue)
+        } else {
+          // Keep the clean value while typing decimals
+          const intPart = parts[0]
+            ? parseInt(parts[0]).toLocaleString('en-PH')
+            : '0'
+          uc.value =
+            parts.length === 2 ? intPart + '.' + parts[1] : intPart + '.'
+        }
+      } else if (cleanValue === '' || cleanValue === '.') {
+        uc.value = ''
+      }
+
+      // Adjust cursor position
+      const newLength = uc.value.length
+      const diff = newLength - oldLength
+      uc.setSelectionRange(cursorPos + diff, cursorPos + diff)
     }
 
     if (qty && uc && total) {
       qty.addEventListener('input', updateTotal)
-      uc.addEventListener('input', updateTotal)
+      uc.addEventListener('input', () => {
+        formatSoUcInput()
+        updateTotal()
+      })
+      uc.addEventListener('blur', () => {
+        // Ensure proper formatting on blur
+        const numValue = parseFormattedNumber(uc.value)
+        if (numValue > 0) {
+          uc.value = formatNumberWithSeparators(numValue)
+        }
+      })
       updateTotal()
     }
 
@@ -24089,9 +24278,9 @@ function openStockOutModal(mode = 'create', stockId = null) {
           ItemInput.value = prod.name
           ItemInput.setAttribute('readonly', 'readonly')
         }
-        if (uc && (!uc.value || parseFloat(uc.value) === 0)) {
+        if (uc && (!uc.value || parseFormattedNumber(uc.value) === 0)) {
           if (typeof prod.unitCost === 'number')
-            uc.value = prod.unitCost.toFixed(2)
+            uc.value = formatNumberWithSeparators(prod.unitCost)
         }
         if (stockBadge) {
           stockBadge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;background:#eef2ff;padding:4px 8px;border-radius:12px;">Available: <strong>${prod.quantity}</strong></span>`
@@ -24377,9 +24566,14 @@ function generateStockOutModal(mode = 'create', stockData = null) {
                             <i data-lucide="tag" style="width: 14px; height: 14px; color: #6b7280;"></i>
                             Unit Cost
                         </label>
-                        <input id="so-uc" type="number" class="form-input"
-                               step="0.01" min="0"
-                               value="${stockData?.unitCost || ''}"
+                        <input id="so-uc" type="text" class="form-input"
+                               value="${
+                                 stockData?.unitCost
+                                   ? formatNumberWithSeparators(
+                                       stockData.unitCost
+                                     )
+                                   : ''
+                               }"
                                placeholder="0.00"
                                style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
                                ${isReadOnly ? 'readonly' : ''}>
@@ -24493,7 +24687,7 @@ async function saveStockOut(stockId) {
         '#stockout-modal input[placeholder="Enter Item name"]'
       )?.value || ''
   let quantity = parseInt(document.getElementById('so-qty').value) || 0
-  const unitCost = parseFloat(document.getElementById('so-uc').value) || 0
+  const unitCost = parseFormattedNumber(document.getElementById('so-uc').value)
   const totalCost = quantity * unitCost
   const department = document.getElementById('so-dept').value || ''
   const issuedTo = document.getElementById('so-issued-to').value || ''

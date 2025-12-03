@@ -45,14 +45,24 @@
 body {
   min-height: 100vh;
   color: #fff;
-  background: url('/images/cnscbg.jpg') no-repeat center center/cover;
   position: relative;
   overflow-x: hidden;
 }
 
 body::before {
   content: '';
-  position: absolute;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('/images/cnscbg.jpg') no-repeat center center/cover;
+  z-index: -1;
+}
+
+body::after {
+  content: '';
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
@@ -902,8 +912,11 @@ dialog.login-dialog button[value='confirm'] {
 /* Consistent input heights in table & form */
 .form-input,
 .items-table td input {
-  height: 44px;
-  line-height: 1.2;
+  min-height: 44px;
+  height: auto;
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+  line-height: 1.4;
 }
 
 /* Textareas should keep proper min-height but match padding metrics */
@@ -1095,12 +1108,11 @@ input[type='number']::-webkit-inner-spin-button {
     justify-content: space-between;
     margin-top: 1rem;
   }
-  
+
   .total-cost-display input {
     width: 140px;
   }
 }
-
 
 /* =========================================
    15. Step 3 Review Enhancements
@@ -1254,18 +1266,17 @@ input[type='number']::-webkit-inner-spin-button {
     grid-template-columns: 1fr;
     gap: 1.2rem;
   }
-  
+
   .review-total {
     flex-direction: column;
     align-items: flex-end;
     gap: 0.5rem;
   }
-  
+
   .review-total .value {
     font-size: 1.5rem;
   }
 }
-
 
 /* =========================================
    16. Step 3 UX Enhancements (Edit Buttons & Icons)
@@ -1338,7 +1349,6 @@ input[type='number']::-webkit-inner-spin-button {
   transform: translateY(-3px) scale(1.02);
 }
 
-
 /* =========================================
    17. Button Alignment & Consistency Fixes
    ========================================= */
@@ -1358,13 +1368,12 @@ input[type='number']::-webkit-inner-spin-button {
   .step-actions > button:first-child {
     margin-right: 0;
   }
-  
+
   /* Ensure consistent spacing in column mode */
   .step-actions {
     gap: 1rem;
   }
 }
-
 
 /* =========================================
    18. Select Dropdown Visibility Fix
@@ -1377,6 +1386,9 @@ select.form-input {
   background-size: 1em;
   padding-right: 2.5rem; /* Make room for the arrow */
   cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 select.form-input option {
@@ -1391,4 +1403,3 @@ select.form-input optgroup {
   color: var(--accent-gold);
   font-weight: bold;
 }
-

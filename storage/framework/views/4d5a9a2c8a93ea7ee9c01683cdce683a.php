@@ -151,7 +151,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label class="form-label" for="neededDate">Date Needed</label>
+                                <label class="form-label" for="neededDate">Date of Request</label>
                                 <input class="form-input" id="neededDate" name="neededDate" type="date" />
                             </div>
 
@@ -295,7 +295,7 @@
                                     </div>
                                     <div class="review-grid">
                                         <div class="review-item">
-                                            <span class="label">Date Needed</span>
+                                            <span class="label">Date of Request</span>
                                             <span class="value" id="summary-neededDate">-</span>
                                         </div>
                                         <div class="review-item">

@@ -30,8 +30,12 @@
         item_description: row.querySelector('.item-description').value,
         unit: row.querySelector('.item-unit').value,
         quantity: row.querySelector('.item-quantity').value,
-        unit_cost: row.querySelector('.item-unit-cost').value,
-        total_cost: row.querySelector('.item-total-cost').value,
+        unit_cost: parseFormattedNumber(
+          row.querySelector('.item-unit-cost').value
+        ),
+        total_cost: parseFormattedNumber(
+          row.querySelector('.item-total-cost').value
+        ),
       }
       items.push(item)
     })
@@ -182,13 +186,41 @@
     }
   }
 
+  // Format number with thousand separators (no currency symbol)
+  function formatNumberWithCommas(value) {
+    if (value === null || value === undefined || String(value).trim() === '')
+      return ''
+    const raw = String(value).replace(/,/g, '').trim()
+    const num = Number(raw)
+    if (Number.isNaN(num) || num === 0) return ''
+    try {
+      return new Intl.NumberFormat('en-PH', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(num)
+    } catch (e) {
+      const fixed = num.toFixed(2)
+      return fixed.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+    }
+  }
+
+  // Parse formatted number (remove commas)
+  function parseFormattedNumber(value) {
+    if (value === null || value === undefined || String(value).trim() === '')
+      return 0
+    const raw = String(value).replace(/,/g, '').trim()
+    return parseFloat(raw) || 0
+  }
+
   // --- Calculation / validation ---
   function calculateRowTotal(row) {
     const qty = parseFloat(row.querySelector('.item-quantity').value) || 0
-    const unitCost = parseFloat(row.querySelector('.item-unit-cost').value) || 0
+    const unitCost = parseFormattedNumber(
+      row.querySelector('.item-unit-cost').value
+    )
     const total = qty * unitCost
     row.querySelector('.item-total-cost').value =
-      total > 0 ? total.toFixed(2) : ''
+      total > 0 ? formatNumberWithCommas(total) : ''
     calculateOverallTotal()
   }
 
@@ -196,7 +228,9 @@
     const rows = document.querySelectorAll('#itemsTableBody tr')
     let overallTotal = 0
     rows.forEach((row) => {
-      const total = parseFloat(row.querySelector('.item-total-cost').value) || 0
+      const total = parseFormattedNumber(
+        row.querySelector('.item-total-cost').value
+      )
       overallTotal += total
     })
     const overallField = byId('overallTotalCost')
@@ -214,19 +248,37 @@
             <td class="col-desc"><input type="text" class="item-description" placeholder="e.g., Laptop" required></td>
             <td class="col-unit"><input type="text" class="item-unit" placeholder="e.g., pcs" required></td>
             <td class="col-qty"><input type="number" class="item-quantity" min="1" step="1" placeholder="1" required></td>
-            <td class="col-unit-cost"><input type="number" class="item-unit-cost" min="0" step="0.01" placeholder="0.00" required></td>
+            <td class="col-unit-cost"><input type="text" class="item-unit-cost" inputmode="decimal" placeholder="0.00" required></td>
             <td class="col-total"><input type="text" class="item-total-cost" placeholder="Auto-calculated" readonly></td>
             <td class="col-actions"><button type="button" class="remove-item-btn" title="Remove Item">×</button></td>
         `
     tbody.appendChild(row)
 
+    // Get unit cost input for formatting
+    const unitCostInput = row.querySelector('.item-unit-cost')
+
     // Add event listeners
     row
       .querySelector('.item-quantity')
       .addEventListener('input', () => calculateRowTotal(row))
-    row
-      .querySelector('.item-unit-cost')
-      .addEventListener('input', () => calculateRowTotal(row))
+
+    // Format unit cost on blur (when user leaves the field)
+    unitCostInput.addEventListener('blur', () => {
+      const value = parseFormattedNumber(unitCostInput.value)
+      if (value > 0) {
+        unitCostInput.value = formatNumberWithCommas(value)
+      }
+      calculateRowTotal(row)
+    })
+
+    // Allow only numbers, decimal point, and commas during input
+    unitCostInput.addEventListener('input', () => {
+      // Remove non-numeric characters except decimal and comma
+      let value = unitCostInput.value.replace(/[^\d.,]/g, '')
+      unitCostInput.value = value
+      calculateRowTotal(row)
+    })
+
     row
       .querySelector('.remove-item-btn')
       .addEventListener('click', () => removeItemRow(row))
@@ -771,7 +823,7 @@
       tableRow('Designation', payload.designation) +
       tableRow('Items', itemsHtml) +
       tableRow('Overall Total Cost', overallTotal) +
-      tableRow('Date Needed', payload.neededDate) +
+      tableRow('Date of Request', payload.neededDate) +
       tableRow('Priority', payload.priority) +
       tableRow('Purpose', payload.purpose) +
       tableRow('Approved By', payload.approvedBy) +
@@ -1036,10 +1088,15 @@
       const minDate = `${yyyy}-${mm}-${dd}`
       neededEl.setAttribute('min', minDate)
 
+      // Default to today
+      if (!neededEl.value) {
+        neededEl.value = minDate
+      }
+
       // If the current value is before min, clear it
       if (neededEl.value && neededEl.value < minDate) {
         neededEl.value = ''
-        toast('Date needed cannot be earlier than today')
+        toast('Date of request cannot be earlier than today')
       }
 
       // guard manual input/change as well
@@ -1047,7 +1104,7 @@
         if (neededEl.value && neededEl.value < minDate) {
           neededEl.value = ''
           showToast({
-            message: 'Date needed cannot be in the past',
+            message: 'Date of request cannot be in the past',
             type: 'error',
           })
         }
