@@ -5,6 +5,7 @@
     <title>Stock Out Receipt</title>
     <style>
         @page {
+            size: A4;
             margin: 30px;
         }
         body {

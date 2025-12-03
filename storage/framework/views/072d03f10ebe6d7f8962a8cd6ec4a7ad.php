@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="<?php echo e(asset('images/UCN1.png')); ?>" type="image/png">
+    <link rel="icon" href="<?php echo e(asset('images/UCN1.png')); ?>" type="image/png">
+    <title>Contact Support - SPMO System</title>
+    <?php echo app('Illuminate\Foundation\Vite')('resources/css/ContactSupport.css'); ?>
+</head>
+
+<body>
+    <header>
+        <div class="header-container">
+            <div class="logo">
+                <img src="<?php echo e($imagesPath); ?>/cnscrefine.png" alt="CNSC Logo" />
+                <div class="logo-text">
+                    <h1>Supply and Property Management</h1>
+                    <hr />
+                    <p>WEB-BASED INVENTORY AND PROCUREMENT MANAGEMENT SYSTEM</p>
+                </div>
+            </div>
+            <div class="nav-menu">
+                <a href="<?php echo e(url('user/home')); ?>" class="back-btn">
+                    <span class="btn-icon">←</span>
+                    <span class="btn-text">Back to Home</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="support-main">
+        <div class="support-container">
+            <div class="support-content">
+                <div class="support-badge">
+                    <span>One CNSC, One Goal</span>
+                </div>
+
+                <div class="support-header">
+                    <h2>Contact Support</h2>
+                    <div class="support-subtitle">
+                        We're here to help—share your thoughts or inquiries with us,
+                        and we'll get back to you soon!
+                    </div>
+                </div>
+
+                <?php if(session('support_success')): ?>
+                    <div class="support-success"><?php echo e(session('support_success')); ?></div>
+                <?php endif; ?>
+
+                <form class="support-form" method="POST" action="<?php echo e(route('support.submit')); ?>" enctype="multipart/form-data">
+                    <?php echo csrf_field(); ?>
+                    <div class="form-section">
+                        <div class="form-left">
+                            <div class="form-group">
+                                <label class="form-label" for="name">Full Name</label>
+                                <input class="form-input" type="text" id="name" placeholder="Enter your full name"
+                                    required>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="email">Email Address</label>
+                                <input class="form-input" type="email" id="email" placeholder="your.email@example.com"
+                                    required>
+                            </div>
+
+                            <div class="contact-info">
+                                <div class="contact-card">
+                                    <div class="contact-icon">📞</div>
+                                    <div class="contact-details">
+                                        <div class="contact-title">Phone Support</div>
+                                        <div class="contact-value">0934 567 3312</div>
+                                    </div>
+                                </div>
+
+                                <div class="social-card">
+                                    <div class="social-title">Follow Us</div>
+                                    <div class="social-links">
+                                        <a href="#" class="social-link">
+                                            <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png"
+                                                alt="Facebook">
+                                        </a>
+                                        <a href="#" class="social-link">
+                                            <img src="https://cdn-icons-png.flaticon.com/512/733/733558.png"
+                                                alt="Instagram">
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-right">
+                            <div class="form-group">
+                                <label class="form-label" for="message">Your Message</label>
+                                <textarea class="form-textarea" id="message"
+                                    placeholder="Please describe your issue or inquiry in detail..."
+                                    required></textarea>
+                            </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="screenshot">Screenshots (Optional)</label>
+                                    <div class="upload-area" id="uploadArea" role="button" tabindex="0" aria-label="Upload attachments">
+                                        <div class="upload-icon">📎</div>
+                                        <div class="upload-text">
+                                            <span class="upload-primary">Drop files here or click to browse</span>
+                                            <span class="upload-secondary">Supports: JPG, PNG, PDF (Max 10MB)</span>
+                                        </div>
+                                        <input type="file" id="screenshot" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.pdf"
+                                            style="display: none;">
+                                    </div>
+                                    <div id="upload-previews" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;"></div>
+                                    <div id="upload-error" style="color:#b91c1c;font-size:13px;margin-top:6px;display:none;"></div>
+                                </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="submit-btn">
+                            <span class="btn-text">Send Message</span>
+                            <span class="btn-icon">✉️</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- Confirmation Modal -->
+    <div class="modal-overlay" id="confirm-modal">
+        <div class="modal-content modern-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+            <div class="confirm-icon-wrapper">
+                <svg class="confirm-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+            </div>
+            <div class="modal-header">
+                <h2 class="modal-title" id="confirm-title">Confirm Action</h2>
+                <button class="modal-close" onclick="closeConfirm(false)" aria-label="Close confirmation dialog" type="button">
+                    <span style="font-size: 24px; line-height: 1;">×</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-message" class="confirm-message">Are you sure you want to proceed with this action?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary confirm-btn-cancel" id="confirm-cancel" type="button">
+                    <span>Cancel</span>
+                </button>
+                <button class="btn btn-primary confirm-btn-confirm" id="confirm-ok" type="button">
+                    <span>Confirm</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Confirmation Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modern-confirm-modal {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 440px;
+            width: 90%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            animation: confirmModalEnter 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes confirmModalEnter {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        @keyframes confirmModalExit {
+            from {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: scale(0.95) translateY(-10px);
+            }
+        }
+
+        .confirm-icon-wrapper {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+
+        .confirm-icon {
+            width: 48px;
+            height: 48px;
+            color: #f59e0b;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #111827;
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            color: #6b7280;
+            font-size: 20px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            color: #111827;
+        }
+
+        .modal-body {
+            margin-bottom: 24px;
+        }
+
+        .confirm-message {
+            color: #374151;
+            font-size: 15px;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .btn-secondary {
+            padding: 10px 20px;
+            border: 1px solid #d1d5db;
+            background: white;
+            color: #374151;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
+
+        .btn-primary {
+            padding: 10px 20px;
+            border: none;
+            background: #3b82f6;
+            color: white;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+    </style>
+
+    <script>
+        // Confirmation modal helper
+        function showConfirm(message, title = 'Confirm Action') {
+            return new Promise((resolve) => {
+                let modal = document.getElementById('confirm-modal')
+                if (!modal) {
+                    resolve(window.confirm(message))
+                    return
+                }
+
+                const msgEl = modal.querySelector('#confirm-message')
+                const titleEl = modal.querySelector('#confirm-title')
+                const okBtn = modal.querySelector('#confirm-ok')
+                const cancelBtn = modal.querySelector('#confirm-cancel')
+
+                titleEl.textContent = title
+                msgEl.textContent = message
+
+                let previousActiveElement = document.activeElement
+
+                function cleanup(result) {
+                    const modalContent = modal.querySelector('.modal-content')
+                    if (modalContent) {
+                        modalContent.style.animation = 'confirmModalExit 0.25s cubic-bezier(0.4, 0, 1, 1)'
+                    }
+
+                    setTimeout(() => {
+                        modal.classList.remove('active')
+                        okBtn.removeEventListener('click', onOk)
+                        cancelBtn.removeEventListener('click', onCancel)
+                        document.removeEventListener('keydown', onKeyDown)
+                        modal.removeEventListener('click', onOverlayClick)
+
+                        if (modalContent) {
+                            modalContent.style.animation = ''
+                        }
+
+                        if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
+                            previousActiveElement.focus()
+                        }
+
+                        resolve(result)
+                    }, 250)
+                }
+
+                function onOk() {
+                    cleanup(true)
+                }
+
+                function onCancel() {
+                    cleanup(false)
+                }
+
+                function onKeyDown(e) {
+                    if (e.key === 'Escape') {
+                        cleanup(false)
+                    }
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        cleanup(true)
+                    }
+                }
+
+                function onOverlayClick(e) {
+                    if (e.target === modal) {
+                        cleanup(false)
+                    }
+                }
+
+                okBtn.addEventListener('click', onOk)
+                cancelBtn.addEventListener('click', onCancel)
+                document.addEventListener('keydown', onKeyDown)
+                modal.addEventListener('click', onOverlayClick)
+
+                modal.classList.add('active')
+
+                setTimeout(() => {
+                    if (cancelBtn) {
+                        cancelBtn.focus()
+                    }
+                }, 50)
+            })
+        }
+
+        function closeConfirm(value = false) {
+            const modal = document.getElementById('confirm-modal')
+            if (!modal) return
+            modal.classList.remove('active')
+        }
+
+        // File upload functionality
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('screenshot');
+
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            handleFiles(files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length > 0) {
+                const uploadText = uploadArea.querySelector('.upload-primary');
+                uploadText.textContent = `${files.length} file(s) selected`;
+            }
+        }
+
+        // Form submission -> persist ticket so it appears in Dashboard Support page
+        const supportForm = document.querySelector('.support-form');
+            supportForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nameEl = document.getElementById('name');
+            const emailEl = document.getElementById('email');
+            const msgEl = document.getElementById('message');
+            const filesEl = document.getElementById('screenshot');
+
+            const name = (nameEl.value || '').trim();
+            const email = (emailEl.value || '').trim();
+            const message = (msgEl.value || '').trim();
+            if (!name || !email || !message) {
+                // show inline message
+                const err = document.getElementById('upload-error')
+                err.style.display = 'block'
+                err.textContent = 'Please fill in all required fields.'
+                return;
+            }
+
+            // Show confirmation dialog
+            const confirmed = await showConfirm(
+                'Are you sure you want to submit this support ticket?',
+                'Confirm Submission'
+            );
+            
+            if (!confirmed) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('email', email);
+            formData.append('message', message);
+            if (filesEl && filesEl.files && filesEl.files.length) {
+                for (let i = 0; i < filesEl.files.length; i++) {
+                    formData.append('attachments[]', filesEl.files[i]);
+                }
+            }
+
+            const submitBtn = document.querySelector('.submit-btn');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="btn-text">Sending...</span>';
+            submitBtn.disabled = true;
+            submitBtn.setAttribute('aria-busy', 'true')
+
+            try {
+                const token = document.querySelector('input[name="_token"]').value;
+                const res = await fetch('<?php echo e(route('support.submit')); ?>', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': token },
+                    body: formData,
+                });
+                if (!res.ok) throw new Error('Failed to submit');
+                submitBtn.innerHTML = '<span class="btn-text">Ticket Submitted!</span><span class="btn-icon">✅</span>';
+                setTimeout(() => {
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                    submitBtn.removeAttribute('aria-busy')
+                    supportForm.reset();
+                    document.querySelector('.upload-primary').textContent = 'Drop files here or click to browse';
+                    document.getElementById('upload-previews').innerHTML = '';
+                    document.getElementById('upload-error').style.display = 'none';
+                }, 1500);
+            } catch (err) {
+                const errEl = document.getElementById('upload-error')
+                if (errEl) {
+                    errEl.style.display = 'block'
+                    errEl.textContent = 'Unable to submit ticket. Please try again or contact support.'
+                } else {
+                    alert('Unable to submit ticket. Please try again or contact support.');
+                }
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                submitBtn.removeAttribute('aria-busy')
+            }
+        });
+
+        // show preview thumbnails for selected files
+        const uploadPreviews = document.getElementById('upload-previews')
+        function renderPreviews(list) {
+            uploadPreviews.innerHTML = ''
+            Array.from(list).forEach((file) => {
+                const name = file.name
+                const ext = name.split('.').pop().toLowerCase()
+                const item = document.createElement('div')
+                item.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:84px;'
+                if (['png','jpg','jpeg','gif','webp'].includes(ext)) {
+                    const img = document.createElement('img')
+                    img.style.cssText = 'width:72px;height:54px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb;'
+                    img.src = URL.createObjectURL(file)
+                    img.onload = () => URL.revokeObjectURL(img.src)
+                    item.appendChild(img)
+                } else {
+                    const box = document.createElement('div')
+                    box.style.cssText = 'width:72px;height:54px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px solid #e5e7eb;background:#fff;font-size:12px;color:#6b7280;'
+                    box.textContent = ext.toUpperCase()
+                    item.appendChild(box)
+                }
+                const label = document.createElement('div')
+                label.style.cssText = 'font-size:11px;color:#374151;margin-top:6px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:84px;'
+                label.textContent = name
+                item.appendChild(label)
+                uploadPreviews.appendChild(item)
+            })
+        }
+
+        // update previews when files selected
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length) {
+                renderPreviews(e.target.files)
+                document.querySelector('.upload-primary').textContent = `${e.target.files.length} file(s) selected`
+            } else {
+                uploadPreviews.innerHTML = ''
+                document.querySelector('.upload-primary').textContent = 'Drop files here or click to browse'
+            }
+        })
+
+        // keyboard activation for upload area
+        uploadArea.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                fileInput.click();
+            }
+        })
+
+        // Pre-fill name/email from session if available
+        try {
+            const sessionRaw = localStorage.getItem('userSession');
+            if (sessionRaw) {
+                const session = JSON.parse(sessionRaw);
+                if (session.name) document.getElementById('name').value = session.name;
+                if (session.email) document.getElementById('email').value = session.email;
+            }
+        } catch (_) { }
+    </script>
+</body>
+
+</html><?php /**PATH C:\xampp\htdocs\SupplySystem\resources\views/contact-support.blade.php ENDPATH**/ ?>
