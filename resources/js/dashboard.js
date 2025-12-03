@@ -23035,15 +23035,133 @@ function generateItemModal(mode = 'create', ItemData = null) {
 
                 <div class="grid-2">
                     <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                            <i data-lucide="ruler" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                            Unit
+                        <label class="form-label" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="display: flex; align-items: center; gap: 6px; font-weight: 500; color: #374151;">
+                                <i data-lucide="ruler" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                                Unit of Measurement
+                            </span>
+                            ${
+                              !isReadOnly
+                                ? '<span style="font-size: 11px; color: #3b82f6; cursor: pointer; font-weight: 500;" onclick="document.getElementById(\'ItemUnit\').focus()">Select from list</span>'
+                                : ''
+                            }
                         </label>
-                        <input type="text" class="form-input" id="ItemUnit"
-                               value="${ItemData?.unit || ''}"
-                               placeholder="e.g., pcs (pieces), box, pack, ream, kg, liter"
-                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                               ${isReadOnly ? 'readonly' : ''}>
+                        <div style="position: relative;">
+                            <select class="form-select" id="ItemUnit" ${
+                              isReadOnly ? 'disabled' : ''
+                            } style="width: 100%; border: 2px solid #e5e7eb; padding: 12px 36px 12px 14px; font-size: 14px; transition: all 0.2s; border-radius: 10px; appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 12px center; background-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); ${
+    isReadOnly
+      ? 'background-color: #f9fafb;'
+      : 'background-color: #fff; cursor: pointer;'
+  }" onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)'" onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.02)'">
+                                <option value="">Select Unit...</option>
+                                <optgroup label="Common">
+                                    <option value="pc" ${
+                                      ItemData?.unit === 'pc' ? 'selected' : ''
+                                    }>Piece (pc)</option>
+                                    <option value="box" ${
+                                      ItemData?.unit === 'box' ? 'selected' : ''
+                                    }>Box</option>
+                                    <option value="unit" ${
+                                      ItemData?.unit === 'unit'
+                                        ? 'selected'
+                                        : ''
+                                    }>Unit</option>
+                                    <option value="set" ${
+                                      ItemData?.unit === 'set' ? 'selected' : ''
+                                    }>Set</option>
+                                </optgroup>
+                                <optgroup label="Packaging">
+                                    <option value="pack" ${
+                                      ItemData?.unit === 'pack'
+                                        ? 'selected'
+                                        : ''
+                                    }>Pack</option>
+                                    <option value="bundle" ${
+                                      ItemData?.unit === 'bundle'
+                                        ? 'selected'
+                                        : ''
+                                    }>Bundle</option>
+                                    <option value="roll" ${
+                                      ItemData?.unit === 'roll'
+                                        ? 'selected'
+                                        : ''
+                                    }>Roll</option>
+                                    <option value="ream" ${
+                                      ItemData?.unit === 'ream'
+                                        ? 'selected'
+                                        : ''
+                                    }>Ream</option>
+                                    <option value="pad" ${
+                                      ItemData?.unit === 'pad' ? 'selected' : ''
+                                    }>Pad</option>
+                                    <option value="book" ${
+                                      ItemData?.unit === 'book'
+                                        ? 'selected'
+                                        : ''
+                                    }>Book</option>
+                                    <option value="cartridge" ${
+                                      ItemData?.unit === 'cartridge'
+                                        ? 'selected'
+                                        : ''
+                                    }>Cartridge</option>
+                                    <option value="bottle" ${
+                                      ItemData?.unit === 'bottle'
+                                        ? 'selected'
+                                        : ''
+                                    }>Bottle</option>
+                                    <option value="can" ${
+                                      ItemData?.unit === 'can' ? 'selected' : ''
+                                    }>Can</option>
+                                </optgroup>
+                                <optgroup label="Weight & Volume">
+                                    <option value="kg" ${
+                                      ItemData?.unit === 'kg' ? 'selected' : ''
+                                    }>Kilogram (kg)</option>
+                                    <option value="g" ${
+                                      ItemData?.unit === 'g' ? 'selected' : ''
+                                    }>Gram (g)</option>
+                                    <option value="liter" ${
+                                      ItemData?.unit === 'liter'
+                                        ? 'selected'
+                                        : ''
+                                    }>Liter (L)</option>
+                                    <option value="ml" ${
+                                      ItemData?.unit === 'ml' ? 'selected' : ''
+                                    }>Milliliter (ml)</option>
+                                    <option value="gal" ${
+                                      ItemData?.unit === 'gal' ? 'selected' : ''
+                                    }>Gallon (gal)</option>
+                                </optgroup>
+                                <optgroup label="Length">
+                                    <option value="meter" ${
+                                      ItemData?.unit === 'meter'
+                                        ? 'selected'
+                                        : ''
+                                    }>Meter (m)</option>
+                                    <option value="cm" ${
+                                      ItemData?.unit === 'cm' ? 'selected' : ''
+                                    }>Centimeter (cm)</option>
+                                    <option value="ft" ${
+                                      ItemData?.unit === 'ft' ? 'selected' : ''
+                                    }>Foot (ft)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        ${
+                          !isReadOnly
+                            ? `
+                        <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+                            <span style="font-size: 11px; color: #9ca3af; font-weight: 500; margin-right: 2px;">Quick Select:</span>
+                            <button type="button" onclick="document.getElementById('ItemUnit').value='pc'; document.getElementById('ItemUnit').dispatchEvent(new Event('change'));" style="border: 1px solid #e5e7eb; background: white; padding: 4px 10px; border-radius: 20px; font-size: 11px; color: #4b5563; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#3b82f6'; this.style.color='#3b82f6'; this.style.background='#eff6ff'" onmouseout="this.style.borderColor='#e5e7eb'; this.style.color='#4b5563'; this.style.background='white'">Piece</button>
+                            <button type="button" onclick="document.getElementById('ItemUnit').value='box'; document.getElementById('ItemUnit').dispatchEvent(new Event('change'));" style="border: 1px solid #e5e7eb; background: white; padding: 4px 10px; border-radius: 20px; font-size: 11px; color: #4b5563; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#3b82f6'; this.style.color='#3b82f6'; this.style.background='#eff6ff'" onmouseout="this.style.borderColor='#e5e7eb'; this.style.color='#4b5563'; this.style.background='white'">Box</button>
+                            <button type="button" onclick="document.getElementById('ItemUnit').value='set'; document.getElementById('ItemUnit').dispatchEvent(new Event('change'));" style="border: 1px solid #e5e7eb; background: white; padding: 4px 10px; border-radius: 20px; font-size: 11px; color: #4b5563; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#3b82f6'; this.style.color='#3b82f6'; this.style.background='#eff6ff'" onmouseout="this.style.borderColor='#e5e7eb'; this.style.color='#4b5563'; this.style.background='white'">Set</button>
+                            <button type="button" onclick="document.getElementById('ItemUnit').value='unit'; document.getElementById('ItemUnit').dispatchEvent(new Event('change'));" style="border: 1px solid #e5e7eb; background: white; padding: 4px 10px; border-radius: 20px; font-size: 11px; color: #4b5563; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#3b82f6'; this.style.color='#3b82f6'; this.style.background='#eff6ff'" onmouseout="this.style.borderColor='#e5e7eb'; this.style.color='#4b5563'; this.style.background='white'">Unit</button>
+                            <button type="button" onclick="document.getElementById('ItemUnit').value='ream'; document.getElementById('ItemUnit').dispatchEvent(new Event('change'));" style="border: 1px solid #e5e7eb; background: white; padding: 4px 10px; border-radius: 20px; font-size: 11px; color: #4b5563; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#3b82f6'; this.style.color='#3b82f6'; this.style.background='#eff6ff'" onmouseout="this.style.borderColor='#e5e7eb'; this.style.color='#4b5563'; this.style.background='white'">Ream</button>
+                        </div>
+                        `
+                            : ''
+                        }
                     </div>
 
                     <div class="form-group" style="margin-bottom: 20px;">

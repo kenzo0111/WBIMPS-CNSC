@@ -444,15 +444,6 @@ header {
   letter-spacing: 0.5px;
 }
 
-.items-table th:nth-child(6)::before {
-  content: 'Actions';
-  color: var(--accent-gold);
-  font-weight: 600;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
 .items-table td {
   padding: 1rem 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -517,7 +508,7 @@ header {
 
 /* Refined Landscape Column Sizes */
 .items-table .col-desc {
-  width: 42%;
+  width: 38%;
 }
 .items-table .col-unit {
   width: 10%;
@@ -532,7 +523,7 @@ header {
   width: 16%;
 }
 .items-table .col-actions {
-  width: 6%;
+  width: 10%;
   text-align: center;
 }
 

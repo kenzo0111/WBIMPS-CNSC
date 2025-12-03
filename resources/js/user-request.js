@@ -272,10 +272,49 @@
     })
 
     // Allow only numbers, decimal point, and commas during input
-    unitCostInput.addEventListener('input', () => {
-      // Remove non-numeric characters except decimal and comma
-      let value = unitCostInput.value.replace(/[^\d.,]/g, '')
-      unitCostInput.value = value
+    unitCostInput.addEventListener('input', function () {
+      const start = this.selectionStart
+      const oldVal = this.value
+
+      // Remove non-numeric characters except decimal
+      let value = this.value.replace(/[^\d.]/g, '')
+
+      // Split integer and decimal
+      const parts = value.split('.')
+      let integerPart = parts[0]
+      let decimalPart = parts.length > 1 ? '.' + parts[1] : ''
+
+      // Format integer part
+      integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+
+      const newVal = integerPart + decimalPart
+
+      if (newVal !== oldVal) {
+        this.value = newVal
+
+        // Restore cursor position
+        let count = 0
+        for (let i = 0; i < start; i++) {
+          if (oldVal[i] !== ',') count++
+        }
+
+        let newPos = 0
+        if (count === 0) {
+          newPos = 0
+        } else {
+          let newCount = 0
+          for (let i = 0; i < newVal.length; i++) {
+            if (newVal[i] !== ',') {
+              newCount++
+            }
+            if (newCount === count) {
+              newPos = i + 1
+              break
+            }
+          }
+        }
+        this.setSelectionRange(newPos, newPos)
+      }
       calculateRowTotal(row)
     })
 
