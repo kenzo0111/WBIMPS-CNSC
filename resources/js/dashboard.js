@@ -23725,8 +23725,7 @@ function openStockInModal(mode = 'create', stockId = null) {
     function autoFillFromSku() {
       const raw = skuInput.value.trim()
       if (!raw) {
-        // Keep Item input readonly at all times; clear value & badge when no SKU
-        ItemInput.setAttribute('readonly', 'readonly')
+        // Clear value & badge when no SKU
         stockBadge.textContent = ''
         return
       }
@@ -23738,12 +23737,10 @@ function openStockInModal(mode = 'create', stockId = null) {
           if (typeof prod.unitCost === 'number')
             ucInput.value = formatNumberWithSeparators(prod.unitCost)
         }
-        ItemInput.setAttribute('readonly', 'readonly')
         stockBadge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;background:#f3f4f6;padding:4px 8px;border-radius:12px;">Current Stock: <strong>${prod.quantity}</strong></span>`
         updateTotal()
       } else {
-        // Keep Item input readonly; allow user to see SKU not found state
-        ItemInput.setAttribute('readonly', 'readonly')
+        // Allow user to see SKU not found state
         stockBadge.textContent = 'SKU not found in Items list'
       }
     }
@@ -23910,8 +23907,7 @@ function generateStockInModal(mode = 'create', stockData = null) {
           <input type="text" class="form-input" id="Item-input"
             value="${ItemNameValue || ''}"
                            placeholder="Enter Item name"
-                           style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                           readonly>
+                           style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                     </div>
                 </div>
 
@@ -24382,8 +24378,7 @@ function openStockOutModal(mode = 'create', stockId = null) {
       if (!skuInput) return
       const raw = skuInput.value.trim()
       if (!raw) {
-        // Keep Item input readonly at all times; clear value & badge when no SKU
-        if (ItemInput) ItemInput.setAttribute('readonly', 'readonly')
+        // Clear value & badge when no SKU
         if (stockBadge) stockBadge.textContent = ''
         return
       }
@@ -24394,7 +24389,6 @@ function openStockOutModal(mode = 'create', stockId = null) {
       if (prod) {
         if (ItemInput) {
           ItemInput.value = prod.name
-          ItemInput.setAttribute('readonly', 'readonly')
         }
         if (uc && (!uc.value || parseFormattedNumber(uc.value) === 0)) {
           if (typeof prod.unitCost === 'number')
@@ -24441,8 +24435,7 @@ function openStockOutModal(mode = 'create', stockId = null) {
         }
         updateTotal()
       } else {
-        // Keep Item input readonly; show SKU-not-found state
-        if (ItemInput) ItemInput.setAttribute('readonly', 'readonly')
+        // Show SKU-not-found state
         if (stockBadge) stockBadge.textContent = 'SKU not found in Items list'
         if (qty) qty.removeAttribute('max')
       }
@@ -24648,8 +24641,7 @@ function generateStockOutModal(mode = 'create', stockData = null) {
                             <input id="so-Item" type="text" class="form-input"
                               value="${stockData?.ItemName || ''}"
                               placeholder="Enter Item name"
-                              style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                              readonly>
+                              style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                     <!-- Inline low-stock banner (hidden by default). Visible until modal close or SKU change -->
                     <div id="so-lowstock-banner" style="display:none;margin-top:8px;padding:8px 12px;border-radius:8px;background:#fff7ed;color:#92400e;font-weight:600;font-size:13px;">Low stock</div>
                         </div>
