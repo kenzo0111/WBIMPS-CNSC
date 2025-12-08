@@ -1944,7 +1944,7 @@ function logUserLogin(email, name, status = 'Success') {
 
     // Update user status to Active on successful login
     if (status === 'Success') {
-      updateUserStatus(email, 'Active')
+      updateUserStatus(email, 'active')
     }
 
     // Generate unique log ID
@@ -2037,7 +2037,7 @@ async function logUserLogout(email, name) {
     if (!window.MockData.userLogs) window.MockData.userLogs = []
 
     // Update user status to Inactive on logout
-    updateUserStatus(email, 'Inactive')
+    updateUserStatus(email, 'inactive')
 
     // Generate unique log ID
     const logId =
@@ -3042,6 +3042,12 @@ window.clearMockLocalData = clearMockLocalData
 
 // Add new notification (for demo/testing purposes)
 function addNotification(title, message, type = 'info', icon = 'bell') {
+  // Check for duplicates
+  const isDuplicate = AppState.notifications.some(
+    (n) => n.title === title && n.message === message && n.type === type
+  )
+  if (isDuplicate) return
+
   const newNotification = {
     id: 'n' + Date.now(),
     title: title,
@@ -16101,21 +16107,22 @@ async function archiveRequest(requestId) {
     // This might be a string like "PO-2023-001".
     // The controller expects `PurchaseOrder::find($id)`. If $id is a string "PO-...", find() might fail if primary key is integer.
     // I should probably use the database ID.
-    
+
     // Let's look at how loadPurchaseOrdersFromAPI constructs the object.
     // id: po.po_number || `PO-${po.id}`,
     // databaseId: po.id,
-    
+
     // So request.id is the PO Number.
     // I should change the onclick to pass databaseId or handle PO Number in backend.
     // Changing onclick in a template string in a huge file is risky if I miss context.
     // But I can change the backend to search by po_number if the ID is not numeric or if find fails.
     // OR, I can look up the request in AppState.completedRequests to get the databaseId.
-    
-    const request = AppState.completedRequests.find(r => r.id === requestId) || 
-                    AppState.newRequests.find(r => r.id === requestId);
-                    
-    const dbId = request ? request.databaseId : requestId; // Fallback to requestId if not found (maybe it is the ID)
+
+    const request =
+      AppState.completedRequests.find((r) => r.id === requestId) ||
+      AppState.newRequests.find((r) => r.id === requestId)
+
+    const dbId = request ? request.databaseId : requestId // Fallback to requestId if not found (maybe it is the ID)
 
     const response = await fetch(`/purchase-order/${dbId}/archive`, {
       method: 'POST',
@@ -16131,7 +16138,10 @@ async function archiveRequest(requestId) {
       loadPageContent(AppState.currentPage)
     } else {
       const error = await response.json()
-      showAlert(`Failed to archive request: ${error.message || 'Unknown error'}`, 'error')
+      showAlert(
+        `Failed to archive request: ${error.message || 'Unknown error'}`,
+        'error'
+      )
     }
   } catch (error) {
     console.error('Error archiving request:', error)
@@ -17237,7 +17247,7 @@ async function saveUser(userId) {
     name: nameInput ? nameInput.value : '',
     email: emailInput ? emailInput.value : '',
     role: roleInput ? roleInput.value : 'User',
-    status: statusInput ? statusInput.value : 'Active',
+    status: statusInput ? statusInput.value : 'active',
     created: createdInput
       ? createdInput.value || new Date().toISOString().split('T')[0]
       : new Date().toISOString().split('T')[0],
@@ -17361,18 +17371,20 @@ async function saveUser(userId) {
     // --- UPDATE EXISTING USER (EDIT) ---
     // Update existing user via API so server-side roles/permissions are synced
     try {
+      const updatePayload = {
+        role: userData.role,
+        status: userData.status,
+      }
+      if (userData.name) updatePayload.name = userData.name
+      if (userData.email) updatePayload.email = userData.email
+
       const resp = await fetch(`/api/users/${userId}`, {
         method: 'PUT',
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name: userData.name,
-          email: userData.email,
-          role: userData.role,
-          status: userData.status,
-        }),
+        body: JSON.stringify(updatePayload),
       })
 
       const payload = await resp.json().catch(() => null)
@@ -17512,7 +17524,9 @@ function openUserModal(mode = 'view', userId = null) {
     userData = AppState.currentUser
   } else if (userId && window.MockData && window.MockData.users) {
     // Find user data for 'edit' or 'view' mode
-    userData = window.MockData.users.find((u) => u.id === userId)
+    userData = window.MockData.users.find(
+      (u) => String(u.id) === String(userId)
+    )
   }
 
   modalContent.innerHTML = generateUserModal(mode, userData)
@@ -17923,13 +17937,13 @@ function generateUserModal(mode = 'view', userData = null) {
                             `
                                 : `
                                 <select class="form-select" id="userStatus" style="width: 100%; border: 2px solid #e5e7eb; padding: 14px 16px; font-size: 15px; border-radius: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #fafbfc; font-weight: 400; cursor: pointer;">
-                                    <option value="Active" ${
-                                      userData?.status === 'Active'
+                                    <option value="active" ${
+                                      (userData?.status || '').toLowerCase() === 'active'
                                         ? 'selected'
                                         : ''
                                     }>Active</option>
-                                    <option value="Inactive" ${
-                                      userData?.status === 'Inactive'
+                                    <option value="inactive" ${
+                                      (userData?.status || '').toLowerCase() === 'inactive'
                                         ? 'selected'
                                         : ''
                                     }>Inactive</option>
@@ -22462,7 +22476,22 @@ function loadNotifications() {
     const raw = localStorage.getItem(NOTIFICATIONS_KEY)
     const parsed = raw ? JSON.parse(raw) : null
     if (Array.isArray(parsed)) {
-      AppState.notifications = parsed.map((n) => ({
+      // Deduplicate notifications
+      const seen = new Set()
+      const unique = []
+      for (const n of parsed) {
+        const title = n.title || n.type || 'Notification'
+        const message = n.message || ''
+        const type = n.type || 'info'
+        const key = `${title}|${message}|${type}`
+
+        if (!seen.has(key)) {
+          seen.add(key)
+          unique.push(n)
+        }
+      }
+
+      AppState.notifications = unique.map((n) => ({
         id: n.id,
         title: n.title || n.type || 'Notification',
         message: n.message || '',
@@ -22516,6 +22545,16 @@ function createNotification({
   silent = false,
 } = {}) {
   loadNotifications()
+
+  // Check for duplicates to prevent spamming the user with the same notification
+  const isDuplicate = (AppState.notifications || []).some(
+    (n) => n.title === title && n.message === message && n.type === type
+  )
+
+  if (isDuplicate) {
+    return
+  }
+
   const n = {
     id: generateNotificationId(),
     title: title || (type ? String(type) : 'Notification'),

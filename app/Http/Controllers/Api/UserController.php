@@ -142,8 +142,8 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
+            'name' => 'sometimes|required|string|max:255',
+            'email' => ['sometimes', 'required', 'email', Rule::unique('users')->ignore($user->id)],
             // keep `role` / `is_admin` in validation so front-end can still send them, but we will map
             // them to spatie roles instead of updating legacy columns.
             'role' => 'nullable|string|max:255',
