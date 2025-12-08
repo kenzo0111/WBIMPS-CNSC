@@ -17,7 +17,7 @@
       <div class="logo">
   <img src="{{ $imagesPath }}/cnscrefine.png" alt="School Logo">
         <div class="logo-text">
-          <h1>Supply and Property Management</h1>
+          <h1>Supply and Property Management Office</h1>
           <hr>
           <p>WEB - BASED SUPPLY AND PROPERTY MANAGEMENT SYSTEM</p>
         </div>

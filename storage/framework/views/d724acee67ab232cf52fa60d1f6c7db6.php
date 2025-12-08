@@ -13,65 +13,89 @@
     /* Additional styles for forgot password page */
     .forgot-header {
       text-align: center;
-      margin-bottom: 24px;
+      margin-bottom: 32px;
+      animation: fadeInUp 0.8s ease-out;
     }
 
     .forgot-icon {
-      width: 70px;
-      height: 70px;
-      margin: 0 auto 16px;
-      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 20px;
+      background: linear-gradient(135deg, #dc2626, #991b1b);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 8px 24px rgba(220, 38, 38, 0.3);
+      box-shadow: 0 10px 30px rgba(220, 38, 38, 0.4);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      animation: pulse 3s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+      70% { box-shadow: 0 0 0 15px rgba(220, 38, 38, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
     }
 
     .forgot-icon svg {
-      width: 36px;
-      height: 36px;
+      width: 40px;
+      height: 40px;
       color: white;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
     }
 
     .forgot-header h2 {
-      margin: 0 0 8px;
-      font-size: 26px;
+      margin: 0 0 12px;
+      font-size: 28px;
       font-weight: 700;
-      color: #111827;
+      color: #ffffff;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     }
 
     .forgot-header p {
       margin: 0;
-      font-size: 14px;
-      color: #6b7280;
-      line-height: 1.5;
+      font-size: 15px;
+      color: rgba(255, 255, 255, 0.8);
+      line-height: 1.6;
+      max-width: 90%;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .back-to-login {
       text-align: center;
-      margin-top: 20px;
+      margin-top: 24px;
+      animation: fadeInUp 0.8s ease-out 0.6s both;
     }
 
     .back-to-login a {
-      color: #dc2626;
+      color: rgba(255, 255, 255, 0.7);
       text-decoration: none;
       font-size: 14px;
       font-weight: 500;
-      transition: color 0.3s;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .back-to-login a:hover {
-      color: #b91c1c;
-      text-decoration: underline;
+      color: #ffffff;
+      text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+      transform: translateX(-4px);
     }
 
+    /* Dialog Styles */
     dialog.loading-dialog,
     dialog.success-dialog {
-      border: none;
-      border-radius: 14px;
-      padding: 32px 40px;
-      box-shadow: 0 10px 40px -5px rgba(0, 0, 0, .25);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(20, 20, 20, 0.85);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+      color: white;
+      border-radius: 24px;
+      padding: 40px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
       font-family: system-ui, sans-serif;
     }
 
@@ -83,36 +107,40 @@
       margin: 0;
       max-width: 460px;
       width: calc(100% - 40px);
+      animation: dialogFadeIn 0.3s ease-out;
+    }
+
+    @keyframes dialogFadeIn {
+      from { opacity: 0; transform: translate(-50%, -40%); }
+      to { opacity: 1; transform: translate(-50%, -50%); }
     }
 
     dialog.loading-dialog {
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 20px;
       align-items: center;
       text-align: center;
     }
 
     .loading-spinner {
-      width: 58px;
-      height: 58px;
-      border: 5px solid #e5e7eb;
+      width: 60px;
+      height: 60px;
+      border: 4px solid rgba(255, 255, 255, 0.1);
       border-top-color: #dc2626;
       border-radius: 50%;
       animation: spin 1s linear infinite;
     }
 
     @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
+      to { transform: rotate(360deg); }
     }
 
     .loading-text {
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 500;
-      color: #374151;
-      letter-spacing: .3px;
+      color: rgba(255, 255, 255, 0.9);
+      letter-spacing: 0.5px;
     }
 
     dialog.success-dialog {
@@ -127,8 +155,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 12px;
-      box-shadow: 0 4px 12px rgba(22, 163, 74, .4);
+      margin: 0 auto 16px;
+      box-shadow: 0 0 20px rgba(22, 163, 74, 0.4);
     }
 
     .success-icon svg {
@@ -138,16 +166,17 @@
     }
 
     dialog.success-dialog h3 {
-      margin: 0 0 4px;
-      font-size: 22px;
-      font-weight: 600;
-      color: #111827;
+      margin: 0 0 8px;
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
     }
 
     dialog.success-dialog p {
-      margin: 0 0 20px;
-      color: #4b5563;
-      font-size: 14px;
+      margin: 0 0 24px;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 15px;
+      line-height: 1.5;
     }
 
     dialog.success-dialog menu {
@@ -158,21 +187,22 @@
     }
 
     .primary-btn {
-      background: #dc2626;
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
       color: #fff;
       border: none;
-      padding: 10px 26px;
+      padding: 12px 32px;
       border-radius: 999px;
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 600;
       cursor: pointer;
-      letter-spacing: .5px;
-      box-shadow: 0 4px 14px -2px rgba(220, 38, 38, .5);
-      transition: background .25s, transform .25s;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+      transition: all 0.3s ease;
     }
 
     .primary-btn:hover {
-      background: #b91c1c;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(220, 38, 38, 0.5);
     }
 
     .primary-btn:active {
@@ -180,18 +210,28 @@
     }
 
     dialog::backdrop {
-      background: rgba(17, 24, 39, .55);
-      backdrop-filter: blur(3px);
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(5px);
     }
 
     .error-message {
-      background: #fee2e2;
-      color: #991b1b;
-      padding: 12px 16px;
-      border-radius: 8px;
+      background: rgba(254, 226, 226, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+      padding: 14px 18px;
+      border-radius: 12px;
       font-size: 14px;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
       display: none;
+      backdrop-filter: blur(5px);
+      animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+    }
+
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-1px, 0, 0); }
+      20%, 80% { transform: translate3d(2px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+      40%, 60% { transform: translate3d(4px, 0, 0); }
     }
 
     .error-message.show {
@@ -206,7 +246,7 @@
       <div class="logo">
         <img src="<?php echo e(asset('images/cnscrefine.png')); ?>" alt="CNSC Logo" />
         <div class="logo-text">
-          <h1>Supply and Property Management</h1>
+          <h1>Supply and Property Management Office</h1>
           <hr />
           <p>WEB-BASED INVENTORY AND PROCUREMENT MANAGEMENT SYSTEM</p>
         </div>

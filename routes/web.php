@@ -95,16 +95,17 @@ Route::get('/property-acknowledgement-receipt/view/{id}', [PropertyAcknowledgeme
 // Appendix 71 preview now handled by the dedicated PropertyAcknowledgementReceiptController
 Route::get('/pdf/preview/appendix71', [PropertyAcknowledgementReceiptController::class, 'preview'])->name('pdf.preview.appendix71');
 
+Route::get('/contact-support', function () {
+    return view('contact-support');
+})->name('contact.support');
+Route::post('/contact-support', [App\Http\Controllers\SupportController::class, 'store'])->name('support.submit');
+
 Route::middleware('auth')->group(function () {
     // Protected API routes
     Route::get('/api/purchase-requests', [ApiPurchaseRequestController::class, 'index']);
     Route::post('/api/purchase-requests', [ApiPurchaseRequestController::class, 'store']);
     Route::post('/api/status-requests/{id}/status', [ApiPurchaseRequestController::class, 'updateStatus']);
 
-    Route::get('/contact-support', function () {
-        return view('contact-support');
-    })->name('contact.support');
-    Route::post('/contact-support', [App\Http\Controllers\SupportController::class, 'store'])->name('support.submit');
     Route::get('/support/attachment/{id}', [App\Http\Controllers\SupportController::class, 'attachment'])->name('support.attachment');
     Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 });

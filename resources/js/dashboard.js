@@ -3316,6 +3316,7 @@ function loadPageContent(pageId) {
     // user-activities page removed: no client-side rendering
     case 'activity': // Activity & Notifications
       mainContent.innerHTML = generateActivityPage()
+      loadUserActivities()
       break
     case 'activity-feed': // Activity Feed
       mainContent.innerHTML = generateActivityPage()
@@ -7506,7 +7507,7 @@ function generateRcpiReportsPage() {
           <div class="card mb-4">
             <div class="card-header-inline"><h3 class="card-title-small">Inventory Overview</h3></div>
             <div class="card-body">
-                <div class="summary-grid">
+                <div class="summary-grid rcpi-summary-grid">
                     <div class="summary-item">
                         <div class="summary-icon" style="background-color: #e0f2fe; color: #0284c7;">
                             <i data-lucide="package" style="width:24px;height:24px;"></i>
@@ -7751,7 +7752,7 @@ function generateConsolidateMonitoringPage() {
           <div class="card">
             <div class="card-header-inline"><h3 class="card-title-small">Key Metrics Overview</h3></div>
             <div class="card-body">
-              <div class="summary-grid">
+              <div class="summary-grid consolidate-summary-grid">
                 <div class="summary-item">
                     <div class="summary-icon" style="background-color: #e0f2fe; color: #0284c7;">
                         <i data-lucide="package" style="width:24px;height:24px;"></i>
@@ -13166,7 +13167,10 @@ function renderDynamicPOForms() {
               <input type="text" class="form-input" id="ics_ics_no" value="${
                 (AppState.purchaseOrderDraft.icsFormData &&
                   AppState.purchaseOrderDraft.icsFormData.ics_no) ||
-                ''
+                new Date().getFullYear() +
+                  '-' +
+                  String(new Date().getMonth() + 1).padStart(2, '0') +
+                  '-'
               }" onchange="updatePOFormDraft('ics','ics_no', this.value)" placeholder="e.g., ICS-2025-001" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#0369a1'; this.style.boxShadow='0 0 0 3px rgba(3, 105, 161, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
@@ -13364,7 +13368,10 @@ function renderDynamicPOForms() {
               <input type="text" class="form-input" id="ris_ris_no" value="${
                 (AppState.purchaseOrderDraft.risFormData &&
                   AppState.purchaseOrderDraft.risFormData.ris_no) ||
-                ''
+                new Date().getFullYear() +
+                  '-' +
+                  String(new Date().getMonth() + 1).padStart(2, '0') +
+                  '-'
               }" onchange="updatePOFormDraft('ris','ris_no', this.value)" placeholder="e.g., RIS-2025-001" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
@@ -13707,7 +13714,10 @@ function renderDynamicPOForms() {
               <input type="text" class="form-input" id="par_par_no" value="${
                 (AppState.purchaseOrderDraft.parFormData &&
                   AppState.purchaseOrderDraft.parFormData.par_no) ||
-                ''
+                new Date().getFullYear() +
+                  '-' +
+                  String(new Date().getMonth() + 1).padStart(2, '0') +
+                  '-'
               }" onchange="updatePOFormDraft('par','par_no', this.value)" placeholder="e.g., PAR-2025-001" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#a16207'; this.style.boxShadow='0 0 0 3px rgba(161, 98, 7, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
@@ -13907,7 +13917,10 @@ function renderDynamicPOForms() {
                 <input type="text" class="form-input" id="iar_iar_no" value="${
                   (AppState.purchaseOrderDraft.iarFormData &&
                     AppState.purchaseOrderDraft.iarFormData.iar_no) ||
-                  ''
+                  new Date().getFullYear() +
+                    '-' +
+                    String(new Date().getMonth() + 1).padStart(2, '0') +
+                    '-'
                 }" onchange="updatePOFormDraft('iar','iar_no', this.value)" placeholder="e.g., IAR-2024-001" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
@@ -18410,7 +18423,7 @@ function generateLoginActivityPage() {
                 : `
                 <div style="overflow-x: visible;">
                     <div style="max-height: none; overflow-y: visible;">
-                    <table class="table sticky-header" style="margin:0; width: 100%; table-layout: auto;">
+                    <table class="table" style="margin:0; width: 100%; table-layout: auto;">
                         <thead>
                             <tr>
                                 <th style="padding-left: 24px; min-width: 220px;">
@@ -18486,18 +18499,27 @@ function generateLoginActivityPage() {
                                             </div>
                                             <div>
                                                 <div style="font-family: 'Courier New', monospace; font-size: 13px; color: #111827; font-weight: 600;">
-                                                    ${
-                                                      log.timestamp.split(
-                                                        ' '
-                                                      )[1]
-                                                    }
+                                                    ${(() => {
+                                                      try {
+                                                        return log.timestamp
+                                                          .replace('T', ' ')
+                                                          .split(' ')[1]
+                                                          .split('.')[0]
+                                                      } catch (e) {
+                                                        return '--:--:--'
+                                                      }
+                                                    })()}
                                                 </div>
                                                 <div style="font-family: 'Courier New', monospace; font-size: 11px; color: #6b7280;">
-                                                    ${
-                                                      log.timestamp.split(
-                                                        ' '
-                                                      )[0]
-                                                    }
+                                                    ${(() => {
+                                                      try {
+                                                        return log.timestamp
+                                                          .replace('T', ' ')
+                                                          .split(' ')[0]
+                                                      } catch (e) {
+                                                        return log.timestamp
+                                                      }
+                                                    })()}
                                                 </div>
                                             </div>
                                         </div>
@@ -18544,7 +18566,7 @@ function generateLoginActivityPage() {
                                         <div style="display: flex; align-items: center; gap: 6px;">
                                             <i data-lucide="wifi" style="width:12px;height:12px;color:#9ca3af;"></i>
                                             <span style="font-family: 'Courier New', monospace; font-size: 12px; color: #6b7280;">${
-                                              log.ipAddress
+                                              log.ipAddress || 'Unknown'
                                             }</span>
                                         </div>
                                     </td>
@@ -18700,6 +18722,27 @@ function renderUserActionsTable(actions) {
                           ? action.actor.name || action.actor.email || 'Unknown'
                           : 'System'
 
+                        let detailsHtml = '-'
+                        if (
+                          action.meta &&
+                          typeof action.meta === 'object' &&
+                          Object.keys(action.meta).length > 0
+                        ) {
+                          detailsHtml = Object.entries(action.meta)
+                            .map(([k, v]) => {
+                              const label = k
+                                .replace(/_/g, ' ')
+                                .replace(/\b\w/g, (l) => l.toUpperCase())
+                              let val = v
+                              if (typeof v === 'object' && v !== null)
+                                val = JSON.stringify(v)
+                              return `<div style="margin-bottom: 2px;"><span style="font-weight: 600;">${label}:</span> ${val}</div>`
+                            })
+                            .join('')
+                        } else if (action.meta) {
+                          detailsHtml = String(action.meta)
+                        }
+
                         return `
                             <tr>
                                 <td style="padding-left: 24px;">
@@ -18715,18 +18758,7 @@ function renderUserActionsTable(actions) {
                                     </span>
                                 </td>
                                 <td style="color: #6b7280; font-size: 13px;">
-                                    ${
-                                      action.meta
-                                        ? JSON.stringify(action.meta).substring(
-                                            0,
-                                            50
-                                          ) +
-                                          (JSON.stringify(action.meta).length >
-                                          50
-                                            ? '...'
-                                            : '')
-                                        : '-'
-                                    }
+                                    ${detailsHtml}
                                 </td>
                             </tr>
                         `
@@ -21652,6 +21684,82 @@ window.stopGalleryAutoPlay = stopGalleryAutoPlay
 // Activity & Notifications Page //
 // -----------------------------//
 
+async function loadUserActivities() {
+  const container = document.getElementById('user-activities-container')
+  if (!container) return
+
+  container.innerHTML =
+    '<div style="padding: 20px; text-align: center; color: #6b7280;">Loading your activities...</div>'
+
+  try {
+    const userId = AppState.currentUser ? AppState.currentUser.id : null
+    if (!userId) {
+      container.innerHTML = ''
+      return
+    }
+
+    const response = await fetch(`/api/activities?user_id=${userId}&limit=5`)
+    if (!response.ok) throw new Error('Failed to fetch activities')
+
+    const json = await response.json()
+    const activities = json.data || []
+
+    if (activities.length === 0) {
+      container.innerHTML =
+        '<div style="padding: 20px; text-align: center; color: #6b7280;">No recent activities found.</div>'
+      return
+    }
+
+    const html = activities
+      .map((activity) => {
+        const time = new Date(activity.created_at).toLocaleString()
+        // Format properties nicely if they exist
+        let details = ''
+        if (
+          activity.properties &&
+          Object.keys(activity.properties).length > 0
+        ) {
+          // Filter out internal keys if needed, or just show count
+          const props = activity.properties
+          // simple representation
+          details = Object.entries(props)
+            .map(([k, v]) => `${k}: ${v}`)
+            .join(', ')
+          if (details.length > 50) details = details.substring(0, 50) + '...'
+        }
+
+        return `
+            <div class="activity-item" style="display: flex; align-items: flex-start; gap: 16px; padding: 20px 24px; background: #fff; border-bottom: 1px solid #e5e7eb;">
+                <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: #eff6ff; border-radius: 50%; color: #3b82f6;">
+                    <i data-lucide="user" style="width: 20px; height: 20px;"></i>
+                </div>
+                <div style="flex: 1;">
+                    <h4 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: #111827;">${activity.description}</h4>
+                    <p style="margin: 0; font-size: 14px; color: #6b7280;">${details}</p>
+                </div>
+                <div style="font-size: 12px; color: #9ca3af;">${time}</div>
+            </div>
+        `
+      })
+      .join('')
+
+    container.innerHTML = `
+        <div class="activity-group-header" style="padding: 16px 24px 8px; border-bottom: 1px solid #e5e7eb; background: #f9fafb;">
+            <h4 style="margin: 0; font-size: 14px; font-weight: 600; color: #374151;">My Recent Activities</h4>
+        </div>
+        <div class="activity-group" style="display: flex; flex-direction: column;">
+            ${html}
+        </div>
+    `
+    // Re-initialize icons for the new content
+    if (window.lucide) lucide.createIcons()
+  } catch (error) {
+    console.error('Error loading user activities:', error)
+    container.innerHTML =
+      '<div style="padding: 20px; text-align: center; color: #ef4444;">Failed to load activities.</div>'
+  }
+}
+
 function generateActivityPage() {
   // Get all notifications with additional system activities
   const allNotifications = AppState.notifications || []
@@ -22176,6 +22284,11 @@ function generateActivityPage() {
           <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
           Dismiss
         </button>
+      </div>
+
+      <!-- User Activities Section -->
+      <div id="user-activities-container" class="card" style="margin-bottom: 24px; padding: 0; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-radius: 12px;">
+        <!-- Content loaded via loadUserActivities() -->
       </div>
 
       ${
@@ -25516,6 +25629,42 @@ function populateDepartmentFilter() {
   })
 }
 
+function formatItemDisplay(itemStr) {
+  if (!itemStr) return '-'
+  if (typeof itemStr !== 'string') return itemStr
+
+  // Check if it starts with { which indicates JSON
+  if (itemStr.trim().startsWith('{')) {
+    try {
+      // Split by semicolon for multiple items
+      const parts = itemStr.split(';')
+      const items = parts
+        .map((part) => {
+          try {
+            const obj = JSON.parse(part)
+            return obj.item_description || 'Unknown Item'
+          } catch (e) {
+            return part
+          }
+        })
+        .filter(Boolean)
+
+      if (items.length === 0) return itemStr
+
+      if (items.length === 1) return items[0]
+
+      // For multiple items, return a list
+      return `<ul style="margin:0;padding-left:15px;font-size:0.9em;">
+        ${items.map((item) => `<li>${item}</li>`).join('')}
+      </ul>`
+    } catch (e) {
+      return itemStr
+    }
+  }
+
+  return itemStr
+}
+
 // ===== Dummy Rows =====
 function renderStatusRows(status) {
   const list = (AppState.statusRequests || []).filter((r) =>
@@ -25572,7 +25721,7 @@ function renderStatusRows(status) {
                 <td>${r.requester}</td>
                 <td>${r.designation || '-'}</td>
                 <td>${r.department}</td>
-                <td>${r.item}</td>
+                <td>${formatItemDisplay(r.item)}</td>
                 <td>${
                   typeof r.quantity !== 'undefined'
                     ? r.quantity || r.quantity === 0
@@ -26471,13 +26620,13 @@ async function fetchAndCountRequisitions() {
         // Wait, if I overwrite AppState.statusRequests with incomplete data, it might break the Status Management page if it relies on this data without re-fetching.
         // The Status Management page (renderStatusManagementPage) does its own fetch.
         // So it should be fine.
-        return r // Store the raw object or mapped object? 
+        return r // Store the raw object or mapped object?
         // Let's store the raw object but ensure status is normalized for our counting
       })
-      
+
       // Normalize status for counting
-      AppState.statusRequests.forEach(r => {
-          if (r.status) r.status = r.status.toString().toLowerCase()
+      AppState.statusRequests.forEach((r) => {
+        if (r.status) r.status = r.status.toString().toLowerCase()
       })
 
       updateRequisitionBadges()
@@ -26494,7 +26643,9 @@ function updateRequisitionBadges() {
   const newCount = requests.filter((r) => r.status === 'incoming').length
 
   // Count Pending Requests (status: pending)
-  const pendingCount = requests.filter((r) => r.status === 'pending' || r.status === 'pending approval').length
+  const pendingCount = requests.filter(
+    (r) => r.status === 'pending' || r.status === 'pending approval'
+  ).length
 
   // Count Status Management (Incoming)
   const incomingCount = requests.filter((r) => r.status === 'incoming').length
@@ -26511,4 +26662,3 @@ function updateBadge(id, count) {
     badge.style.display = count > 0 ? 'inline-block' : 'none'
   }
 }
-

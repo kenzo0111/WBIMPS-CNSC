@@ -173,6 +173,22 @@ header {
   justify-content: center;
 }
 
+.badge-small {
+  display: inline-block;
+  padding: 0.5rem 1.2rem;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 213, 0, 0.3);
+  border-radius: 50px;
+  color: var(--accent-gold);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 1.5rem;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
 /* LANDSCAPE CHANGE: Increased width significantly */
 .access-content {
   width: 100%;

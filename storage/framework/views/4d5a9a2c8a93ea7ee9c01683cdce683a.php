@@ -18,7 +18,7 @@
             <div class="logo">
                 <img src="<?php echo e($imagesPath); ?>/cnscrefine.png" alt="CNSC Logo" />
                 <div class="logo-text">
-                    <h1>Supply and Property Management</h1>
+                    <h1>Supply and Property Management Office</h1>
                     <hr />
                     <p>WEB-BASED SUPPLY AND PROPERTY MANAGEMENT SYSTEM</p>
                 </div>

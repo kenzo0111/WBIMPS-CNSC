@@ -16,6 +16,7 @@ class ActivityController extends Controller
         $pageSize = max(1, (int) $request->query('pageSize', $request->query('limit', 10)));
         $search = $request->query('search', null);
         $actorType = $request->query('actorType', $request->query('actor_type', null));
+        $userId = $request->query('user_id', $request->query('userId', null));
         $dateFrom = $request->query('date_from', $request->query('dateFrom', null));
         $dateTo = $request->query('date_to', $request->query('dateTo', null));
 
@@ -34,6 +35,10 @@ class ActivityController extends Controller
             if ($actorType === 'User')
                 $actorType = 'App\\Models\\User';
             $q->where('causer_type', $actorType);
+        }
+
+        if ($userId) {
+            $q->where('causer_id', $userId);
         }
 
         if ($dateFrom) {

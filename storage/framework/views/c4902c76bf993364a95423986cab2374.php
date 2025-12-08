@@ -7,8 +7,8 @@
   <link rel="shortcut icon" href="<?php echo e(asset('images/UCN1.png')); ?>" type="image/png">
   <link rel="icon" href="<?php echo e(asset('images/UCN1.png')); ?>" type="image/png">
   <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>" />
-  <title>SPMO Access System</title>
-  <?php echo app('Illuminate\Foundation\Vite')('resources/css/AccessSystem.css'); ?>
+  <title>Supply and Property Management System</title>
+  <?php echo app('Illuminate\Foundation\Vite')(['resources/css/index.css', 'resources/css/AccessSystem.css', 'resources/css/access-system-overrides.css']); ?>
   <script>
     window.APP_ROUTES = window.APP_ROUTES || {};
     window.APP_ROUTES.login = "<?php echo e(route('login')); ?>";
@@ -17,245 +17,71 @@
     // Add activity endpoints so Access page can create server-side activity logs
     window.APP_ROUTES.activities = "<?php echo e(url('/api/activities')); ?>";
     window.APP_ROUTES.userLogs = "<?php echo e(url('/api/user-logs')); ?>";
-  // Patterns for client-side route generation
-  window.APP_ROUTES.purchaseOrderView = "<?php echo e(url('/purchase-order/view/{id}')); ?>";
-  window.APP_ROUTES.purchaseRequestView = "<?php echo e(url('/purchase-request/view/{id}')); ?>";
-  window.APP_ROUTES.inventoryCustodianSlipView = "<?php echo e(url('/inventory-custodian-slip/view/{id}')); ?>";
-  window.APP_ROUTES.inspectionAcceptanceReportView = "<?php echo e(url('/inspection-acceptance-report/view/{id}')); ?>";
+    // Patterns for client-side route generation
+    window.APP_ROUTES.purchaseOrderView = "<?php echo e(url('/purchase-order/view/{id}')); ?>";
+    window.APP_ROUTES.purchaseRequestView = "<?php echo e(url('/purchase-request/view/{id}')); ?>";
+    window.APP_ROUTES.inventoryCustodianSlipView = "<?php echo e(url('/inventory-custodian-slip/view/{id}')); ?>";
+    window.APP_ROUTES.inspectionAcceptanceReportView = "<?php echo e(url('/inspection-acceptance-report/view/{id}')); ?>";
   </script>
-  <style>
-    /* Inline styles for dialogs (centered) */
-    dialog.loading-dialog,
-    dialog.success-dialog,
-    dialog.login-dialog {
-      border: none;
-      border-radius: 14px;
-      padding: 32px 40px;
-      box-shadow: 0 10px 40px -5px rgba(0, 0, 0, .25);
-      font-family: system-ui, sans-serif;
-    }
-
-    /* Force centering for all dialogs when open */
-    dialog[open] {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      margin: 0;
-      max-width: 460px;
-      width: calc(100% - 40px);
-    }
-
-    dialog.loading-dialog {
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-      align-items: center;
-      text-align: center;
-    }
-
-    .loading-spinner {
-      width: 58px;
-      height: 58px;
-      border: 5px solid #e5e7eb;
-      border-top-color: #dc2626;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    .loading-text {
-      font-size: 15px;
-      font-weight: 500;
-      color: #374151;
-      letter-spacing: .3px;
-    }
-
-    dialog.success-dialog {
-      text-align: center;
-    }
-
-    .success-icon {
-      width: 70px;
-      height: 70px;
-      border-radius: 50%;
-      background: #16a34a;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 12px;
-      box-shadow: 0 4px 12px rgba(22, 163, 74, .4);
-    }
-
-    .success-icon svg {
-      width: 38px;
-      height: 38px;
-      color: #fff;
-    }
-
-    dialog.success-dialog h3 {
-      margin: 0 0 4px;
-      font-size: 22px;
-      font-weight: 600;
-      color: #111827;
-    }
-
-    dialog.success-dialog p {
-      margin: 0 0 20px;
-      color: #4b5563;
-      font-size: 14px;
-    }
-
-    dialog.success-dialog menu {
-      display: flex;
-      justify-content: center;
-      padding: 0;
-      margin: 0;
-    }
-
-    .primary-btn {
-      background: #dc2626;
-      color: #fff;
-      border: none;
-      padding: 10px 26px;
-      border-radius: 999px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      letter-spacing: .5px;
-      box-shadow: 0 4px 14px -2px rgba(220, 38, 38, .5);
-      transition: background .25s, transform .25s;
-    }
-
-    .primary-btn:hover {
-      background: #b91c1c;
-    }
-
-    .primary-btn:active {
-      transform: translateY(1px);
-    }
-
-    dialog::backdrop {
-      background: rgba(17, 24, 39, .55);
-      -webkit-backdrop-filter: blur(3px);
-      backdrop-filter: blur(3px);
-    }
-
-    /* Enhanced Alert Styles */
-    .ui-alert {
-      padding: 16px 20px;
-      border-radius: 12px;
-      font-family: system-ui, sans-serif;
-      font-size: 14px;
-      line-height: 1.4;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .ui-alert-success {
-      background: linear-gradient(135deg, #10b981, #059669);
-      color: white;
-    }
-
-    .ui-alert-error {
-      background: linear-gradient(135deg, #ef4444, #dc2626);
-      color: white;
-    }
-
-    .ui-alert-warning {
-      background: linear-gradient(135deg, #f59e0b, #d97706);
-      color: white;
-    }
-
-    .ui-alert-info {
-      background: linear-gradient(135deg, #3b82f6, #2563eb);
-      color: white;
-    }
-
-    .ui-alert:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-    }
-
-    .ui-alert button:hover {
-      opacity: 1 !important;
-    }
-
-    @keyframes slideInRight {
-      from {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-
-    @keyframes slideOutRight {
-      from {
-        transform: translateX(0);
-        opacity: 1;
-      }
-      to {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-    }
-
-    @keyframes progress {
-      from {
-        width: 100%;
-      }
-      to {
-        width: 0%;
-      }
-    }
-
-    @media (max-width: 480px) {
-      #ui-alert-container {
-        left: 10px !important;
-        right: 10px !important;
-        max-width: none !important;
-      }
-
-      .ui-alert {
-        padding: 12px 16px;
-        font-size: 13px;
-      }
-    }
-  </style>
 </head>
 
 <body>
+  <!-- Header -->
   <header>
     <div class="header-container">
       <div class="logo">
-  <img src="<?php echo e($imagesPath); ?>/cnscrefine.png" alt="CNSC Logo" />
+        <img src="<?php echo e($imagesPath); ?>/cnscrefine.png" alt="School Logo">
         <div class="logo-text">
-          <h1>Supply and Property Management</h1>
-          <hr />
-          <p>WEB-BASED SUPPLY AND PROPERTY MANAGEMENT SYSTEM</p>
+          <h1>Supply and Property Management Office</h1>
+          <hr>
+          <p>WEB - BASED SUPPLY AND PROPERTY MANAGEMENT SYSTEM</p>
         </div>
       </div>
+      <nav class="nav-menu">
+        <a href="<?php echo e(route('contact.support')); ?>" class="support-btn">
+          <span class="btn-icon">📞</span>
+          Contact Support
+        </a>
+      </nav>
     </div>
   </header>
 
-  <main class="access-main">
-    <div class="access-container">
-      <div class="access-content">
-        <div class="login-badge">
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-overlay"></div>
+    <div class="hero-container">
+      <div class="hero-content">
+        <div class="hero-badge">
           <span>One CNSC, One Goal</span>
         </div>
+        <h2 class="hero-title">
+          <span class="title-line">
+            <span class="red">Supply</span> & <span class="yellow">Property</span>
+          </span>
+          <span class="title-line">Management System</span>
+        </h2>
+        <p class="hero-description">
+          Streamline your institutional operations with our comprehensive supply and property
+          management system designed specifically for Camarines Norte State College.
+        </p>
+        <div class="hero-stats">
+          <div class="stat-item">
+            <span class="stat-number">100%</span>
+            <span class="stat-label">Digital</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number">24/7</span>
+            <span class="stat-label">Available</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number">Secure</span>
+            <span class="stat-label">Platform</span>
+          </div>
+        </div>
+      </div>
 
+      <!-- Login Form -->
+      <div class="login-wrapper">
         <form class="login-card" onsubmit="handleLogin(event)">
           <div class="login-header">
             <h2 id="welcomeHeading">Welcome</h2>
@@ -282,14 +108,79 @@
             <span class="btn-text">Sign In</span>
             <span class="btn-icon">→</span>
           </button>
-
-          <div class="back-to-home">
-            <a href="/admin/home">← Back to Home</a>
-          </div>
         </form>
       </div>
     </div>
-  </main>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2025 Camarines Norte State College. All rights reserved.</p>
+  </footer>
+
+  <!-- Login confirmation dialog -->
+  <dialog id="loginDialog" class="login-dialog modern-dialog">
+    <form method="dialog" class="dialog-form">
+      <div class="dialog-icon-wrapper success">
+        <svg class="dialog-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </div>
+      <h3 class="dialog-title">Confirm Sign In</h3>
+      <p id="dialogText" class="dialog-message">Checking...</p>
+      <menu class="dialog-actions">
+        <button id="cancelBtn" class="dialog-btn dialog-btn-cancel" type="submit" value="cancel">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          Cancel
+        </button>
+        <button id="confirmBtn" class="dialog-btn dialog-btn-confirm" type="submit" value="confirm">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          Continue
+        </button>
+      </menu>
+    </form>
+  </dialog>
+
+  <!-- Simple alert dialog used for validation messages -->
+  <dialog id="alertDialog" class="login-dialog" aria-live="polite">
+    <form method="dialog">
+      <h3>Attention</h3>
+      <p id="alertText">Message</p>
+      <menu>
+        <button id="alertOk" type="submit" value="ok">OK</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <!-- Loading dialog (modal, non-dismissible) -->
+  <dialog id="loadingDialog" class="loading-dialog" aria-live="assertive" aria-label="Authenticating" data-no-close>
+    <div class="loading-spinner" role="status" aria-label="Loading"></div>
+    <div class="loading-text">Authenticating your credentials...</div>
+  </dialog>
+
+  <!-- Success dialog -->
+  <dialog id="successDialog" class="success-dialog" aria-live="polite" aria-label="Login Successful">
+    <form method="dialog">
+      <div class="success-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+          <polyline points="22 4 12 14.01 9 11.01" />
+        </svg>
+      </div>
+      <h3>Signed In</h3>
+      <p id="successText">Welcome back! Redirecting to your dashboard.</p>
+      <menu>
+        <button id="successContinue" class="primary-btn" value="ok" type="submit">Continue</button>
+      </menu>
+    </form>
+  </dialog>
 
   <script>
     // Enhanced showAlert function with icons and animations
@@ -441,72 +332,7 @@
       // Show login confirmation
       showLoginDialog(userEmail, userPassword);
     }
-  </script>
-  <!-- Login confirmation dialog -->
-  <dialog id="loginDialog" class="login-dialog modern-dialog">
-    <form method="dialog" class="dialog-form">
-      <div class="dialog-icon-wrapper success">
-        <svg class="dialog-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-          <circle cx="12" cy="7" r="4"></circle>
-        </svg>
-      </div>
-      <h3 class="dialog-title">Confirm Sign In</h3>
-      <p id="dialogText" class="dialog-message">Checking...</p>
-      <menu class="dialog-actions">
-        <button id="cancelBtn" class="dialog-btn dialog-btn-cancel" type="submit" value="cancel">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-          Cancel
-        </button>
-        <button id="confirmBtn" class="dialog-btn dialog-btn-confirm" type="submit" value="confirm">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-          Continue
-        </button>
-      </menu>
-    </form>
-  </dialog>
 
-  <!-- Simple alert dialog used for validation messages -->
-  <dialog id="alertDialog" class="login-dialog" aria-live="polite">
-    <form method="dialog">
-      <h3>Attention</h3>
-      <p id="alertText">Message</p>
-      <menu>
-        <button id="alertOk" type="submit" value="ok">OK</button>
-      </menu>
-    </form>
-  </dialog>
-
-  <!-- Loading dialog (modal, non-dismissible) -->
-  <dialog id="loadingDialog" class="loading-dialog" aria-live="assertive" aria-label="Authenticating" data-no-close>
-    <div class="loading-spinner" role="status" aria-label="Loading"></div>
-    <div class="loading-text">Authenticating your credentials...</div>
-  </dialog>
-
-  <!-- Success dialog -->
-  <dialog id="successDialog" class="success-dialog" aria-live="polite" aria-label="Login Successful">
-    <form method="dialog">
-      <div class="success-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-          stroke-linejoin="round">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-          <polyline points="22 4 12 14.01 9 11.01" />
-        </svg>
-      </div>
-      <h3>Signed In</h3>
-      <p id="successText">Welcome back! Redirecting to your dashboard.</p>
-      <menu>
-        <button id="successContinue" class="primary-btn" value="ok" type="submit">Continue</button>
-      </menu>
-    </form>
-  </dialog>
-
-  <script>
     // Mask the password for display (show only last 2 digits)
     function maskPassword(password) {
       if (!password) return '';

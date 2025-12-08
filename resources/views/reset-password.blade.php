@@ -218,7 +218,7 @@
       <div class="logo">
         <img src="{{ asset('images/cnscrefine.png') }}" alt="CNSC Logo" />
         <div class="logo-text">
-          <h1>Supply and Property Management</h1>
+          <h1>Supply and Property Management Office</h1>
           <hr />
           <p>WEB-BASED INVENTORY AND PROCUREMENT MANAGEMENT SYSTEM</p>
         </div>

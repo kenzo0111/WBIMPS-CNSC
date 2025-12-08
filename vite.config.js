@@ -11,6 +11,7 @@ export default defineConfig({
         'resources/css/ContactSupport.css',
         'resources/css/dashboard.css',
         'resources/css/index.css',
+        'resources/css/access-system-overrides.css',
         'resources/css/user-request.css',
         'resources/js/app.js',
         'resources/js/dashboard.js',
