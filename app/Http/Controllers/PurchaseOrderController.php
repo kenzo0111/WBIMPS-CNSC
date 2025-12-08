@@ -304,4 +304,95 @@ class PurchaseOrderController extends Controller
 
         return $pdf->download('purchase_order_' . $purchaseOrder->po_number . '.pdf');
     }
+
+    /**
+     * Archive the purchase order to a folder based on department name.
+     */
+    public function archive($id)
+    {
+        $purchaseOrder = \App\Models\PurchaseOrder::find($id);
+
+        if (!$purchaseOrder) {
+            return response()->json(['success' => false, 'message' => 'Purchase Order not found'], 404);
+        }
+
+        // Determine department folder name
+        $department = $purchaseOrder->department ?? 'Unassigned';
+        // Sanitize department name for folder usage (allow spaces, alphanumeric, dashes, underscores)
+        $departmentFolder = preg_replace('/[^A-Za-z0-9 _-]/', '', $department);
+        if (empty(trim($departmentFolder))) {
+            $departmentFolder = 'Unassigned';
+        }
+
+        // Map and normalize items array to match PDF template expectations
+        $items = collect($purchaseOrder->items ?? [])
+            ->map(function ($item) {
+                // Use detailedDescription if description is not present
+                $description = $item['description'] ?? $item['detailedDescription'] ?? '';
+
+                return [
+                    'stock_number' => $item['stockPropertyNumber'] ?? $item['stock_number'] ?? '',
+                    'unit' => $item['unit'] ?? '',
+                    'description' => $description,
+                    'quantity' => (float) ($item['quantity'] ?? 0),
+                    'unit_cost' => (float) ($item['unitCost'] ?? $item['unit_cost'] ?? 0),
+                    'amount' => (float) ($item['amount'] ?? 0),
+                ];
+            })
+            ->all();
+
+        // Convert the model to array and prepare data for PDF
+        $data = [
+            'supplier' => $purchaseOrder->supplier ?? '',
+            'supplier_address' => $purchaseOrder->supplier_address ?? '',
+            'po_number' => $purchaseOrder->po_number ?? '',
+            'date_of_purchase' => $this->formatDateFromModel($purchaseOrder->date_of_purchase),
+            'tin_number' => $purchaseOrder->tin_number ?? '',
+            'mode_of_procurement' => $purchaseOrder->mode_of_procurement ?? '',
+            'place_of_delivery' => $purchaseOrder->place_of_delivery ?? '',
+            'delivery_term' => $purchaseOrder->delivery_term ?? 'FOB Destination',
+            'date_of_delivery' => $this->formatDateFromModel($purchaseOrder->date_of_delivery),
+            'payment_term' => $purchaseOrder->payment_term ?? '30 days',
+            'items' => $items,
+            'notes' => $purchaseOrder->notes ?? '',
+            'fund_cluster' => $purchaseOrder->fund_cluster ?? '05 - Internally Generated Fund',
+            'ors_burs_no' => $purchaseOrder->ors_burs_no ?? '',
+            'funds_available' => $purchaseOrder->funds_available ?? '',
+            'ors_burs_date' => $this->formatDateFromModel($purchaseOrder->ors_burs_date),
+            'ors_burs_amount' => $purchaseOrder->ors_burs_amount ?? '',
+            'accountant_signature' => $purchaseOrder->accountant_signature ?? '',
+            'entity_name' => $purchaseOrder->entity_name ?? 'Camarines Norte State College',
+            'entity_address' => $purchaseOrder->entity_address ?? 'lot 8, F. Pimentel',
+            'grand_total' => $purchaseOrder->grand_total ?? 0,
+        ];
+
+        $pdf = Pdf::loadView('pdf.purchase_order_pdf', $data)->setPaper('a4', 'portrait');
+        $pdfContent = $pdf->output();
+
+        // Define file path
+        $fileName = 'purchase_order_' . $purchaseOrder->po_number . '.pdf';
+        $filePath = "archives/{$departmentFolder}/{$fileName}";
+
+        // Store the file
+        \Illuminate\Support\Facades\Storage::disk('public')->put($filePath, $pdfContent);
+
+        try {
+            activity()
+                ->causedBy(\Illuminate\Support\Facades\Auth::user())
+                ->withProperties([
+                    'po_number' => $purchaseOrder->po_number,
+                    'id' => $id,
+                    'archive_path' => $filePath
+                ])
+                ->log('Archived Purchase Order');
+        } catch (\Throwable $e) {
+            logger()->warning('Failed to record activity for PurchaseOrder archive', ['error' => $e->getMessage()]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Purchase Order archived successfully',
+            'path' => $filePath
+        ]);
+    }
 }

@@ -49,6 +49,7 @@ class RequisitionIssueSlip extends Model
         'responsibility_center_code',
         'office',
         'purpose',
+        'stock_available',
         'items',
         'requested_by_signature',
         'requested_by_name',
@@ -76,6 +77,7 @@ class RequisitionIssueSlip extends Model
         'approved_by_date' => 'date',
         'issued_by_date' => 'date',
         'received_by_date' => 'date',
+        'stock_available' => 'boolean',
     ];
 
     /**

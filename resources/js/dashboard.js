@@ -11440,6 +11440,8 @@ function persistCurrentWizardStep() {
       responsibility_center_code:
         modal.querySelector('#ris_responsibility_center_code')?.value || '',
       purpose: modal.querySelector('#ris_purpose')?.value || '',
+      stock_available:
+        modal.querySelector('#ris_stock_available')?.value === '1',
       requested_by_name:
         modal.querySelector('#ris_requested_by_name')?.value || '',
       requested_by_designation:
@@ -11492,6 +11494,7 @@ function persistCurrentWizardStep() {
     // Save IAR form data
     AppState.purchaseOrderDraft.iarFormData = {
       iar_no: modal.querySelector('#iar_iar_no')?.value || '',
+      iar_date: modal.querySelector('#iar_iar_date')?.value || '',
       entity_name: modal.querySelector('#iar_entity_name')?.value || '',
       fund_cluster: modal.querySelector('#iar_fund_cluster')?.value || '',
       invoice_no: modal.querySelector('#iar_invoice_no')?.value || '',
@@ -12992,7 +12995,7 @@ function autoFillIARForm() {
     updatePOFormDraft('iar', 'inspection_status', 'complete')
   }
   if (!AppState.purchaseOrderDraft.iarFormData.acceptance_status) {
-    updatePOFormDraft('iar', 'acceptance_status', 'accepted')
+    updatePOFormDraft('iar', 'acceptance_status', 'complete')
   }
 
   // Auto-fill signatory labels (keep labels but remove individual name/position fields)
@@ -13455,6 +13458,28 @@ function renderDynamicPOForms() {
                   AppState.purchaseOrderDraft.risFormData.purpose) ||
                 ''
               }" onchange="updatePOFormDraft('ris','purpose', this.value)" placeholder="Purpose of requisition" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="check-circle-2" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Stock Available?
+              </label>
+              <select class="form-select" id="ris_stock_available" onchange="updatePOFormDraft('ris','stock_available', this.value === '1')" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+                <option value="0" ${
+                  !(
+                    AppState.purchaseOrderDraft.risFormData &&
+                    AppState.purchaseOrderDraft.risFormData.stock_available
+                  )
+                    ? 'selected'
+                    : ''
+                }>No</option>
+                <option value="1" ${
+                  AppState.purchaseOrderDraft.risFormData &&
+                  AppState.purchaseOrderDraft.risFormData.stock_available
+                    ? 'selected'
+                    : ''
+                }>Yes</option>
+              </select>
             </div>
           </div>
           
@@ -14142,9 +14167,8 @@ function renderDynamicPOForms() {
                         onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                         onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
                   <option value="">Select status</option>
-                  <option value="accepted">Accepted</option>
-                  <option value="accepted-with-remarks">Accepted with Remarks</option>
-                  <option value="rejected">Rejected</option>
+                  <option value="complete">Complete</option>
+                  <option value="partial">Partial</option>
                 </select>
               </div>
               <!-- moved signature label inputs down into their respective signature blocks (inspection / acceptance)
@@ -16065,8 +16089,54 @@ async function archiveRequest(requestId) {
   )
   if (!ok) return
 
-  showAlert(`Request ${requestId} archived.`, 'success')
-  loadPageContent(AppState.currentPage)
+  try {
+    // Use the databaseId if available, otherwise assume requestId is the ID
+    // In generateCompletedRequestPage, request.id is passed.
+    // In loadPurchaseOrdersFromAPI, id is set to po.po_number || `PO-${po.id}`.
+    // But databaseId is po.id.
+    // Wait, the route expects the ID (primary key) to find the model.
+    // Let's check what ID is passed to archiveRequest.
+    // In generateCompletedRequestPage: onclick="archiveRequest('${request.id}')"
+    // request.id comes from loadPurchaseOrdersFromAPI: id: po.po_number || `PO-${po.id}`
+    // This might be a string like "PO-2023-001".
+    // The controller expects `PurchaseOrder::find($id)`. If $id is a string "PO-...", find() might fail if primary key is integer.
+    // I should probably use the database ID.
+    
+    // Let's look at how loadPurchaseOrdersFromAPI constructs the object.
+    // id: po.po_number || `PO-${po.id}`,
+    // databaseId: po.id,
+    
+    // So request.id is the PO Number.
+    // I should change the onclick to pass databaseId or handle PO Number in backend.
+    // Changing onclick in a template string in a huge file is risky if I miss context.
+    // But I can change the backend to search by po_number if the ID is not numeric or if find fails.
+    // OR, I can look up the request in AppState.completedRequests to get the databaseId.
+    
+    const request = AppState.completedRequests.find(r => r.id === requestId) || 
+                    AppState.newRequests.find(r => r.id === requestId);
+                    
+    const dbId = request ? request.databaseId : requestId; // Fallback to requestId if not found (maybe it is the ID)
+
+    const response = await fetch(`/purchase-order/${dbId}/archive`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+    })
+
+    if (response.ok) {
+      const result = await response.json()
+      showAlert(`Request ${requestId} archived successfully.`, 'success')
+      loadPageContent(AppState.currentPage)
+    } else {
+      const error = await response.json()
+      showAlert(`Failed to archive request: ${error.message || 'Unknown error'}`, 'error')
+    }
+  } catch (error) {
+    console.error('Error archiving request:', error)
+    showAlert('An error occurred while archiving the request.', 'error')
+  }
 }
 
 function openModal(type) {

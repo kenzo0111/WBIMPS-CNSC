@@ -237,6 +237,14 @@ class PurchaseOrderController extends Controller
                 $iarFormData = [];
             }
 
+            // Ensure defaults for status fields if they are empty
+            if (empty($iarFormData['inspection_status'])) {
+                $iarFormData['inspection_status'] = 'Complete';
+            }
+            if (empty($iarFormData['acceptance_status'])) {
+                $iarFormData['acceptance_status'] = 'Complete';
+            }
+
             // If PO already has an associated IAR, try to update it instead of creating a duplicate.
             $existingIar = \App\Models\InspectionAcceptanceReport::where('purchase_order_id', $purchaseOrder->id)->first();
 
@@ -518,6 +526,7 @@ class PurchaseOrderController extends Controller
                 'office' => $formData['office'] ?? null,
                 'responsibility_center_code' => $formData['responsibility_center_code'] ?? null,
                 'purpose' => $formData['purpose'] ?? null,
+                'stock_available' => $formData['stock_available'] ?? false,
                 'items' => $risItems,
                 'grand_total' => $risTotal,
                 'status' => 'Active',
@@ -664,7 +673,7 @@ class PurchaseOrderController extends Controller
                 'entity_name' => $formData['entity_name'] ?? $purchaseOrder->entity_name,
                 'fund_cluster' => $formData['fund_cluster'] ?? $purchaseOrder->fund_cluster,
                 'supplier' => $purchaseOrder->supplier,
-                'iar_date' => now(),
+                'iar_date' => !empty($formData['iar_date']) ? $formData['iar_date'] : now(),
                 'po_no' => $formData['po_no'] ?? $formData['po_number'] ?? $purchaseOrder->po_number,
                 'po_date' => !empty($formData['po_date']) ? $formData['po_date'] : $purchaseOrder->date_of_purchase,
                 'requisitioning_office' => $formData['requisitioning_office'] ?? $purchaseOrder->department,
@@ -674,11 +683,11 @@ class PurchaseOrderController extends Controller
                 'invoice_date' => !empty($formData['invoice_date']) ? $formData['invoice_date'] : null,
                 'date_inspected' => !empty($formData['date_inspected']) ? $formData['date_inspected'] : (!empty($formData['inspected_by_date']) ? $formData['inspected_by_date'] : null),
                 'date_received' => !empty($formData['date_received']) ? $formData['date_received'] : (!empty($formData['inspected_by_date_2']) ? $formData['inspected_by_date_2'] : null),
-                'inspection_status' => $formData['inspection_status'] ?? 'Complete',
+                'inspection_status' => !empty($formData['inspection_status']) ? $formData['inspection_status'] : 'Complete',
                 // Use explicitly provided inspection_officer_label only; we no longer accept separate inspector name/position fields
                 'inspection_officer_label' => $formData['inspection_officer_label'] ?? $formData['inspectionOfficerLabel'] ?? null,
                 'inspection_officer_position' => $formData['inspection_officer_position'] ?? $formData['inspectionOfficerPosition'] ?? null,
-                'acceptance_status' => $formData['acceptance_status'] ?? 'Accepted',
+                'acceptance_status' => !empty($formData['acceptance_status']) ? $formData['acceptance_status'] : 'Complete',
                 // Use explicitly provided custodian_label only; name/position fields removed
                 'custodian_label' => $formData['custodian_label'] ?? $formData['custodianLabel'] ?? null,
                 'custodian_position' => $formData['custodian_position'] ?? $formData['custodianPosition'] ?? null,

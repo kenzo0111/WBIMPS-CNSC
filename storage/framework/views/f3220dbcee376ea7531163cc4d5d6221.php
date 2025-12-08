@@ -147,8 +147,8 @@
                     <td><?php echo e($item['unit'] ?? ''); ?></td>
                     <td><?php echo e($item['description'] ?? ''); ?></td>
                     <td><?php echo e($item['quantity'] ?? ''); ?></td>
-                    <td><?php echo e(($item['stock_available'] ?? '') === 'Yes' ? '✓' : ''); ?></td>
-                    <td><?php echo e(($item['stock_available'] ?? '') === 'No' ? '✓' : ''); ?></td>
+                    <td><span style="font-family: 'DejaVu Sans', sans-serif;"><?php echo $ris->stock_available ? '&#10004;' : ''; ?></span></td>
+                    <td><span style="font-family: 'DejaVu Sans', sans-serif;"><?php echo !$ris->stock_available ? '&#10004;' : ''; ?></span></td>
                     <td><?php echo e($item['issue_quantity'] ?? ''); ?></td>
                     <td><?php echo e($item['remarks'] ?? ''); ?></td>
                 </tr>

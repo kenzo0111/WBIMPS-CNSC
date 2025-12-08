@@ -147,8 +147,8 @@
                     <td>{{ $item['unit'] ?? '' }}</td>
                     <td>{{ $item['description'] ?? '' }}</td>
                     <td>{{ $item['quantity'] ?? '' }}</td>
-                    <td>{{ ($item['stock_available'] ?? '') === 'Yes' ? '✓' : '' }}</td>
-                    <td>{{ ($item['stock_available'] ?? '') === 'No' ? '✓' : '' }}</td>
+                    <td><span style="font-family: 'DejaVu Sans', sans-serif;">{!! $ris->stock_available ? '&#10004;' : '' !!}</span></td>
+                    <td><span style="font-family: 'DejaVu Sans', sans-serif;">{!! !$ris->stock_available ? '&#10004;' : '' !!}</span></td>
                     <td>{{ $item['issue_quantity'] ?? '' }}</td>
                     <td>{{ $item['remarks'] ?? '' }}</td>
                 </tr>
