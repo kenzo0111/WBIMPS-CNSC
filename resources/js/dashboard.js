@@ -17938,12 +17938,14 @@ function generateUserModal(mode = 'view', userData = null) {
                                 : `
                                 <select class="form-select" id="userStatus" style="width: 100%; border: 2px solid #e5e7eb; padding: 14px 16px; font-size: 15px; border-radius: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #fafbfc; font-weight: 400; cursor: pointer;">
                                     <option value="active" ${
-                                      (userData?.status || '').toLowerCase() === 'active'
+                                      (userData?.status || '').toLowerCase() ===
+                                      'active'
                                         ? 'selected'
                                         : ''
                                     }>Active</option>
                                     <option value="inactive" ${
-                                      (userData?.status || '').toLowerCase() === 'inactive'
+                                      (userData?.status || '').toLowerCase() ===
+                                      'inactive'
                                         ? 'selected'
                                         : ''
                                     }>Inactive</option>
@@ -26439,3 +26441,74 @@ Object.assign(window, exposedFunctions)
 // Ensure status persistence helpers are available globally
 window.loadStatusRequests = loadStatusRequests
 window.saveStatusRequests = saveStatusRequests
+
+// ===== Requisition Badges =====
+async function fetchAndCountRequisitions() {
+  try {
+    const resp = await fetch('/api/purchase-requests', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      credentials: 'same-origin',
+    })
+
+    if (resp.ok) {
+      const payload = await resp.json()
+      const rows = payload.data || payload || []
+
+      AppState.statusRequests = rows.map((r) => {
+        const obj = {}
+        obj.id = r.request_id || r.requestId || r.id || ''
+        obj.status = (r.status || 'incoming').toString().toLowerCase()
+        // Keep other fields if needed for other parts of the app
+        // For now, we just need status for counting
+        // But since we are overwriting AppState.statusRequests, we should try to preserve or map all needed fields
+        // Or better, just use the existing mapping logic if possible.
+        // However, to avoid code duplication, I will just map what is needed for badges and let the page specific logic re-fetch or re-map if needed.
+        // Wait, if I overwrite AppState.statusRequests with incomplete data, it might break the Status Management page if it relies on this data without re-fetching.
+        // The Status Management page (renderStatusManagementPage) does its own fetch.
+        // So it should be fine.
+        return r // Store the raw object or mapped object? 
+        // Let's store the raw object but ensure status is normalized for our counting
+      })
+      
+      // Normalize status for counting
+      AppState.statusRequests.forEach(r => {
+          if (r.status) r.status = r.status.toString().toLowerCase()
+      })
+
+      updateRequisitionBadges()
+    }
+  } catch (e) {
+    console.error('Failed to fetch requisitions for badges', e)
+  }
+}
+
+function updateRequisitionBadges() {
+  const requests = AppState.statusRequests || []
+
+  // Count New Requests (status: incoming)
+  const newCount = requests.filter((r) => r.status === 'incoming').length
+
+  // Count Pending Requests (status: pending)
+  const pendingCount = requests.filter((r) => r.status === 'pending' || r.status === 'pending approval').length
+
+  // Count Status Management (Incoming)
+  const incomingCount = requests.filter((r) => r.status === 'incoming').length
+
+  updateBadge('badge-new-request', newCount)
+  updateBadge('badge-pending-approval', pendingCount)
+  updateBadge('badge-status-management', incomingCount)
+}
+
+function updateBadge(id, count) {
+  const badge = document.getElementById(id)
+  if (badge) {
+    badge.textContent = count
+    badge.style.display = count > 0 ? 'inline-block' : 'none'
+  }
+}
+

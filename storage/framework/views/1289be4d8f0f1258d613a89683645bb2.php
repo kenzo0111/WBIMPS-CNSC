@@ -147,11 +147,13 @@
                         <div class="nav-item" data-page="new-request">
                             <button class="nav-button">
                                 <span>New Request</span>
+                                <span class="nav-badge" id="badge-new-request" style="display:none;">0</span>
                             </button>
                         </div>
                         <div class="nav-item" data-page="pending-approval">
                             <button class="nav-button">
                                 <span>Pending Approval</span>
+                                <span class="nav-badge" id="badge-pending-approval" style="display:none;">0</span>
                             </button>
                         </div>
                         <div class="nav-item" data-page="completed-request">
@@ -162,6 +164,7 @@
                         <div class="nav-item" data-page="status-management">
                             <button class="nav-button">
                                 <span>Status Management</span>
+                                <span class="nav-badge" id="badge-status-management" style="display:none;">0</span>
                             </button>
                         </div>
                     </div>
