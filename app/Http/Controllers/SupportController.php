@@ -11,24 +11,39 @@ class SupportController extends Controller
 {
     public function store(Request $request)
     {
-        $data = $request->validate([
+        $rules = [
             'name' => 'required|string|max:191',
             'email' => 'required|email|max:191',
-            'message' => 'required|string',
+            'submission_type' => 'nullable|string|in:inquiry,signed_form',
             'attachments.*' => 'file|max:10240|mimes:jpg,jpeg,png,pdf',
-        ]);
+        ];
+
+        if ($request->input('submission_type') === 'signed_form') {
+            $rules['message'] = 'nullable|string';
+            $rules['attachments'] = 'required|array|min:1';
+        } else {
+            $rules['message'] = 'required|string';
+            $rules['attachments'] = 'nullable|array';
+        }
+
+        $data = $request->validate($rules);
+
+        $message = $data['message'] ?? '';
+        if ($request->input('submission_type') === 'signed_form') {
+            $message = trim("[Signed Form Submission]\n" . $message);
+        }
 
         $ticket = SupportTicket::create([
-            'ticket_id' => 'T'.time().Str::upper(Str::random(4)),
+            'ticket_id' => 'T' . time() . Str::upper(Str::random(4)),
             'name' => $data['name'],
             'email' => $data['email'],
-            'message' => $data['message'],
+            'message' => $message,
             'status' => 'Open',
         ]);
 
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $file) {
-                if (! $file->isValid()) {
+                if (!$file->isValid()) {
                     continue;
                 }
                 $path = $file->store('support_attachments');
@@ -53,11 +68,11 @@ class SupportController extends Controller
     public function attachment($id)
     {
         $att = SupportAttachment::find($id);
-        if (! $att) {
+        if (!$att) {
             abort(404);
         }
         $diskPath = $att->filename;
-        if (! \Illuminate\Support\Facades\Storage::exists($diskPath)) {
+        if (!\Illuminate\Support\Facades\Storage::exists($diskPath)) {
             abort(404);
         }
         $stream = \Illuminate\Support\Facades\Storage::download($diskPath, $att->original_name);

@@ -53,6 +53,21 @@
                     @csrf
                     <div class="form-section">
                         <div class="form-left">
+                            <!-- Submission Type Selection -->
+                            <div class="form-group">
+                                <label class="form-label">Submission Type</label>
+                                <div class="radio-group">
+                                    <label class="radio-label">
+                                        <input type="radio" name="submission_type" value="inquiry" checked onchange="toggleSubmissionType()">
+                                        <span class="radio-text">General Inquiry</span>
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="submission_type" value="signed_form" onchange="toggleSubmissionType()">
+                                        <span class="radio-text">Signed Form Submission</span>
+                                    </label>
+                                </div>
+                            </div>
+
                             <div class="form-group">
                                 <label class="form-label" for="name">Full Name</label>
                                 <input class="form-input" type="text" id="name" placeholder="Enter your full name"
@@ -106,10 +121,10 @@
                                             <span class="upload-primary">Drop files here or click to browse</span>
                                             <span class="upload-secondary">Supports: JPG, PNG, PDF (Max 10MB)</span>
                                         </div>
+                                        <div id="upload-previews" style="margin-top:1rem;display:flex;gap:12px;flex-wrap:wrap;justify-content:center;width:100%;"></div>
                                         <input type="file" id="screenshot" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.pdf"
                                             style="display: none;">
                                     </div>
-                                    <div id="upload-previews" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;"></div>
                                     <div id="upload-error" style="color:#b91c1c;font-size:13px;margin-top:6px;display:none;"></div>
                                 </div>
                         </div>
@@ -299,6 +314,116 @@
         .btn-primary:hover {
             background: #2563eb;
         }
+
+        /* File Preview Styles */
+        .file-preview-item {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 450px;
+            margin: 0 auto 10px;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s ease;
+        }
+
+        .file-preview-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .file-preview-progress {
+            height: 4px;
+            background: #3b82f6;
+            width: 100%;
+            border-radius: 2px 2px 0 0;
+        }
+
+        .file-preview-content {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            gap: 16px;
+        }
+
+        .file-preview-thumb {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: rgba(59, 130, 246, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .file-preview-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .file-preview-icon {
+            font-size: 20px;
+        }
+
+        .file-preview-info {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            text-align: left;
+        }
+
+        .file-name {
+            font-size: 0.95rem;
+            color: #fff;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-meta {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .file-remove {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            padding: 0;
+        }
+
+        .file-remove:hover {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: #ef4444;
+            transform: scale(1.05);
+        }
+        
+        .file-remove svg {
+            width: 18px;
+            height: 18px;
+            stroke-width: 2;
+        }
     </style>
 
     <script>
@@ -391,11 +516,40 @@
             modal.classList.remove('active')
         }
 
+        // Toggle Submission Type
+        function toggleSubmissionType() {
+            const type = document.querySelector('input[name="submission_type"]:checked').value;
+            const messageLabel = document.querySelector('label[for="message"]');
+            const messageInput = document.getElementById('message');
+            const uploadLabel = document.querySelector('label[for="screenshot"]');
+            const uploadArea = document.getElementById('uploadArea');
+            const uploadText = uploadArea.querySelector('.upload-primary');
+            
+            if (type === 'signed_form') {
+                messageLabel.textContent = 'Additional Notes (Optional)';
+                messageInput.placeholder = 'Any additional details about the signed form...';
+                messageInput.required = false;
+                
+                uploadLabel.textContent = 'Upload Signed Form (Required)';
+                uploadText.textContent = 'Drop signed form here or click to browse';
+            } else {
+                messageLabel.textContent = 'Your Message';
+                messageInput.placeholder = 'Please describe your issue or inquiry in detail...';
+                messageInput.required = true;
+                
+                uploadLabel.textContent = 'Screenshots (Optional)';
+                uploadText.textContent = 'Drop files here or click to browse';
+            }
+        }
+
         // File upload functionality
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('screenshot');
+        let selectedFiles = [];
 
-        uploadArea.addEventListener('click', () => {
+        uploadArea.addEventListener('click', (e) => {
+            // Prevent triggering file input if clicking remove button
+            if (e.target.closest('.file-remove')) return;
             fileInput.click();
         });
 
@@ -417,13 +571,86 @@
 
         fileInput.addEventListener('change', (e) => {
             handleFiles(e.target.files);
+            // Reset input so same file can be selected again if needed
+            fileInput.value = '';
         });
 
         function handleFiles(files) {
             if (files.length > 0) {
-                const uploadText = uploadArea.querySelector('.upload-primary');
-                uploadText.textContent = `${files.length} file(s) selected`;
+                // Convert FileList to Array and append to selectedFiles
+                const newFiles = Array.from(files);
+                selectedFiles = [...selectedFiles, ...newFiles];
+                renderPreviews();
             }
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            renderPreviews();
+            // Stop propagation is handled in click listener check
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // show preview thumbnails for selected files
+        const uploadPreviews = document.getElementById('upload-previews')
+        function renderPreviews() {
+            uploadPreviews.innerHTML = ''
+            const uploadText = uploadArea.querySelector('.upload-primary');
+            
+            if (selectedFiles.length === 0) {
+                uploadText.textContent = document.querySelector('input[name="submission_type"]:checked').value === 'signed_form' 
+                    ? 'Drop signed form here or click to browse' 
+                    : 'Drop files here or click to browse';
+                return;
+            }
+
+            uploadText.textContent = `${selectedFiles.length} file(s) selected`;
+
+            selectedFiles.forEach((file, index) => {
+                const name = file.name
+                const ext = name.split('.').pop().toLowerCase()
+                const size = formatFileSize(file.size)
+                
+                const item = document.createElement('div')
+                item.className = 'file-preview-item'
+                item.onclick = (e) => e.stopPropagation();
+
+                let thumbContent = '';
+                if (['png','jpg','jpeg','gif','webp'].includes(ext)) {
+                    const src = URL.createObjectURL(file)
+                    thumbContent = `<img src="${src}" onload="URL.revokeObjectURL(this.src)">`
+                } else {
+                    // Use a generic file icon SVG or just text
+                    thumbContent = `<div class="file-preview-icon">📄</div>`
+                }
+
+                // Trash icon SVG
+                const trashIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+
+                item.innerHTML = `
+                    <div class="file-preview-progress"></div>
+                    <div class="file-preview-content">
+                        <div class="file-preview-thumb">
+                            ${thumbContent}
+                        </div>
+                        <div class="file-preview-info">
+                            <div class="file-name" title="${name}">${name}</div>
+                            <div class="file-meta">.${ext} | ${size}</div>
+                        </div>
+                        <button type="button" class="file-remove" onclick="removeFile(${index})" aria-label="Remove file">
+                            ${trashIcon}
+                        </button>
+                    </div>
+                `
+                uploadPreviews.appendChild(item)
+            })
         }
 
         // Form submission -> persist ticket so it appears in Dashboard Support page
@@ -433,16 +660,32 @@
             const nameEl = document.getElementById('name');
             const emailEl = document.getElementById('email');
             const msgEl = document.getElementById('message');
-            const filesEl = document.getElementById('screenshot');
+            const typeEl = document.querySelector('input[name="submission_type"]:checked');
 
             const name = (nameEl.value || '').trim();
             const email = (emailEl.value || '').trim();
             const message = (msgEl.value || '').trim();
-            if (!name || !email || !message) {
-                // show inline message
+            const type = typeEl ? typeEl.value : 'inquiry';
+
+            // Validation
+            if (!name || !email) {
                 const err = document.getElementById('upload-error')
                 err.style.display = 'block'
-                err.textContent = 'Please fill in all required fields.'
+                err.textContent = 'Please fill in your name and email.'
+                return;
+            }
+
+            if (type === 'inquiry' && !message) {
+                const err = document.getElementById('upload-error')
+                err.style.display = 'block'
+                err.textContent = 'Please enter your message.'
+                return;
+            }
+
+            if (type === 'signed_form' && selectedFiles.length === 0) {
+                const err = document.getElementById('upload-error')
+                err.style.display = 'block'
+                err.textContent = 'Please upload the signed form.'
                 return;
             }
 
@@ -460,11 +703,12 @@
             formData.append('name', name);
             formData.append('email', email);
             formData.append('message', message);
-            if (filesEl && filesEl.files && filesEl.files.length) {
-                for (let i = 0; i < filesEl.files.length; i++) {
-                    formData.append('attachments[]', filesEl.files[i]);
-                }
-            }
+            formData.append('submission_type', type);
+            
+            // Append selected files
+            selectedFiles.forEach(file => {
+                formData.append('attachments[]', file);
+            });
 
             const submitBtn = document.querySelector('.submit-btn');
             const originalText = submitBtn.innerHTML;
@@ -486,8 +730,8 @@
                     submitBtn.disabled = false;
                     submitBtn.removeAttribute('aria-busy')
                     supportForm.reset();
-                    document.querySelector('.upload-primary').textContent = 'Drop files here or click to browse';
-                    document.getElementById('upload-previews').innerHTML = '';
+                    selectedFiles = []; // Clear selected files
+                    renderPreviews(); // Reset previews
                     document.getElementById('upload-error').style.display = 'none';
                 }, 1500);
             } catch (err) {
@@ -504,46 +748,10 @@
             }
         });
 
-        // show preview thumbnails for selected files
-        const uploadPreviews = document.getElementById('upload-previews')
-        function renderPreviews(list) {
-            uploadPreviews.innerHTML = ''
-            Array.from(list).forEach((file) => {
-                const name = file.name
-                const ext = name.split('.').pop().toLowerCase()
-                const item = document.createElement('div')
-                item.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:84px;'
-                if (['png','jpg','jpeg','gif','webp'].includes(ext)) {
-                    const img = document.createElement('img')
-                    img.style.cssText = 'width:72px;height:54px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb;'
-                    img.src = URL.createObjectURL(file)
-                    img.onload = () => URL.revokeObjectURL(img.src)
-                    item.appendChild(img)
-                } else {
-                    const box = document.createElement('div')
-                    box.style.cssText = 'width:72px;height:54px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px solid #e5e7eb;background:#fff;font-size:12px;color:#6b7280;'
-                    box.textContent = ext.toUpperCase()
-                    item.appendChild(box)
-                }
-                const label = document.createElement('div')
-                label.style.cssText = 'font-size:11px;color:#374151;margin-top:6px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:84px;'
-                label.textContent = name
-                item.appendChild(label)
-                uploadPreviews.appendChild(item)
-            })
-        }
-
-        // update previews when files selected
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files && e.target.files.length) {
-                renderPreviews(e.target.files)
-                document.querySelector('.upload-primary').textContent = `${e.target.files.length} file(s) selected`
-            } else {
-                uploadPreviews.innerHTML = ''
-                document.querySelector('.upload-primary').textContent = 'Drop files here or click to browse'
-            }
-        })
-
+        // show preview thumbnails for selected files (REMOVED OLD FUNCTION)
+        
+        // update previews when files selected (REMOVED OLD LISTENER)
+        
         // keyboard activation for upload area
         uploadArea.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -561,6 +769,9 @@
                 if (session.email) document.getElementById('email').value = session.email;
             }
         } catch (_) { }
+
+        // Initialize state
+        toggleSubmissionType();
     </script>
 </body>
 

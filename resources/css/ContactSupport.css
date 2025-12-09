@@ -3,13 +3,13 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: "Arial", sans-serif;
+  font-family: 'Arial', sans-serif;
 }
 
 body {
   min-height: 100vh;
   color: #fff;
-  background: url("/images/cnscbg.jpg") no-repeat center center/cover;
+  background: url('/images/cnscbg.jpg') no-repeat center center/cover;
   position: relative;
   overflow-x: hidden;
 }
@@ -21,7 +21,12 @@ body::before {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(179, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.9) 50%, rgba(255, 213, 0, 0.2) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(179, 0, 0, 0.8) 0%,
+    rgba(0, 0, 0, 0.9) 50%,
+    rgba(255, 213, 0, 0.2) 100%
+  );
   z-index: 0;
 }
 
@@ -197,7 +202,8 @@ header {
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 24px;
   padding: 3rem;
-  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   animation: fadeInUp 0.8s ease-out 0.4s both;
   text-align: left;
 }
@@ -209,7 +215,8 @@ header {
   margin-bottom: 2rem;
 }
 
-.form-left, .form-right {
+.form-left,
+.form-right {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -290,7 +297,8 @@ header {
   animation: fadeInUp 0.8s ease-out 0.8s both;
 }
 
-.contact-card, .social-card {
+.contact-card,
+.social-card {
   flex: 1;
   padding: 1.25rem;
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -301,7 +309,8 @@ header {
   transition: all 0.3s ease;
 }
 
-.contact-card:hover, .social-card:hover {
+.contact-card:hover,
+.social-card:hover {
   border-color: #ffd500;
   background: rgba(255, 255, 255, 0.15);
   transform: translateY(-2px);
@@ -388,7 +397,8 @@ header {
   gap: 1rem;
 }
 
-.upload-area:hover, .upload-area.drag-over {
+.upload-area:hover,
+.upload-area.drag-over {
   border-color: #ffd500;
   background: rgba(255, 213, 0, 0.1);
   transform: translateY(-2px);
@@ -484,48 +494,47 @@ header {
   }
 }
 
-
 /* Responsive Design */
 @media (max-width: 768px) {
   .header-container {
     padding: 0 1rem;
   }
-  
+
   .logo-text h1 {
     font-size: 1rem;
   }
-  
+
   .logo-text p {
     font-size: 0.65rem;
   }
-  
+
   .back-btn {
     padding: 0.6rem 1rem;
     font-size: 0.8rem;
   }
-  
+
   .support-main {
     padding: 1.5rem 1rem;
     padding-top: 5rem;
   }
-  
+
   .support-header h2 {
     font-size: 2rem;
   }
-  
+
   .support-subtitle {
     font-size: 1rem;
   }
-  
+
   .support-form {
     padding: 2rem 1.5rem;
   }
-  
+
   .form-section {
     grid-template-columns: 1fr;
     gap: 2rem;
   }
-  
+
   .contact-info {
     flex-direction: column;
   }
@@ -538,57 +547,85 @@ header {
     text-align: center;
     padding: 0.5rem 1rem;
   }
-  
+
   .logo {
     justify-content: center;
   }
-  
+
   .logo img {
     height: 45px;
     width: 45px;
   }
-  
+
   .logo-text h1 {
     font-size: 0.9rem;
   }
-  
+
   .support-main {
     padding: 1rem;
     padding-top: 8rem; /* More space for stacked header */
   }
-  
+
   .support-badge {
     padding: 0.4rem 1rem;
     font-size: 0.8rem;
   }
-  
+
   .support-header h2 {
     font-size: 1.8rem;
   }
-  
+
   .support-subtitle {
     font-size: 0.95rem;
   }
-  
+
   .support-form {
     padding: 1.5rem 1rem;
   }
-  
-  .form-input, .form-textarea {
+
+  .form-input,
+  .form-textarea {
     padding: 0.9rem 1rem;
   }
-  
+
   .upload-area {
     padding: 1.5rem 1rem;
   }
-  
+
   .submit-btn {
     padding: 1rem 2rem;
     font-size: 1rem;
     min-width: 180px;
   }
-  
-  .contact-card, .social-card {
+
+  .contact-card,
+  .social-card {
     padding: 1rem;
   }
+}
+
+/* Radio Group Styles */
+.radio-group {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #d1d5db;
+}
+
+.radio-label input[type='radio'] {
+  accent-color: #f59e0b;
+  width: 1.2em;
+  height: 1.2em;
+}
+
+.radio-label:hover {
+  color: #fff;
 }
