@@ -77,6 +77,7 @@
                     <div class="nav-submenu">
                         <div class="nav-item" data-page="login-activity">
                             <button class="nav-button">
+                                <i data-lucide="user-check" class="submenu-icon"></i>
                                 <span>User Activities</span>
                             </button>
                         </div>
@@ -95,21 +96,25 @@
                     <div class="nav-submenu">
                         <div class="nav-item" data-page="categories">
                             <button class="nav-button">
+                                <i data-lucide="folder-tree" class="submenu-icon"></i>
                                 <span>Categories</span>
                             </button>
                         </div>
                         <div class="nav-item" data-page="items">
                             <button class="nav-button">
+                                <i data-lucide="boxes" class="submenu-icon"></i>
                                 <span>Items</span>
                             </button>
                         </div>
                         <div class="nav-item" data-page="stock-in">
                             <button class="nav-button">
+                                <i data-lucide="package-plus" class="submenu-icon"></i>
                                 <span>Stock In</span>
                             </button>
                         </div>
                         <div class="nav-item" data-page="stock-out">
                             <button class="nav-button">
+                                <i data-lucide="package-minus" class="submenu-icon"></i>
                                 <span>Stock Out</span>
                             </button>
                         </div>
@@ -128,10 +133,16 @@
                     <div class="nav-submenu">
                         <div class="nav-item" data-page="suppliers">
                             <button class="nav-button">
+                                <i data-lucide="building-2" class="submenu-icon"></i>
                                 <span>Suppliers</span>
                             </button>
                         </div>
                     </div>
+                </div>
+
+                <!-- Section Divider -->
+                <div class="nav-section-divider">
+                    <span class="nav-section-label">Procurement</span>
                 </div>
 
                 <!-- Requisition System -->
@@ -146,25 +157,34 @@
                     <div class="nav-submenu">
                         <div class="nav-item" data-page="new-request">
                             <button class="nav-button">
+                                <i data-lucide="file-plus-2" class="submenu-icon"></i>
                                 <span>New Request</span>
                             </button>
                         </div>
                         <div class="nav-item" data-page="pending-approval">
                             <button class="nav-button">
+                                <i data-lucide="clock" class="submenu-icon"></i>
                                 <span>Pending Approval</span>
                             </button>
                         </div>
                         <div class="nav-item" data-page="completed-request">
                             <button class="nav-button">
+                                <i data-lucide="check-circle-2" class="submenu-icon"></i>
                                 <span>Completed Request</span>
                             </button>
                         </div>
                         <div class="nav-item" data-page="status-management">
                             <button class="nav-button">
+                                <i data-lucide="list-filter" class="submenu-icon"></i>
                                 <span>Status Management</span>
                             </button>
                         </div>
                     </div>
+                </div>
+
+                <!-- Section Divider -->
+                <div class="nav-section-divider">
+                    <span class="nav-section-label">Analytics</span>
                 </div>
 
                 <!-- Reports -->
@@ -179,25 +199,34 @@
                     <div class="nav-submenu">
                         <div class="nav-item" data-page="rcpi-reports">
                             <button class="nav-button">
+                                <i data-lucide="file-spreadsheet" class="submenu-icon"></i>
                                 <span>RCPI</span>
                             </button>
                         </div>
                         <div class="nav-item" data-page="rsmi-reports">
                             <button class="nav-button">
+                                <i data-lucide="file-pie-chart" class="submenu-icon"></i>
                                 <span>RSMI</span>
                             </button>
                         </div>
                         <div class="nav-item" data-page="stock-cards">
                             <button class="nav-button">
+                                <i data-lucide="credit-card" class="submenu-icon"></i>
                                 <span>Stock Cards</span>
                             </button>
                         </div>
                         <div class="nav-item" data-page="consolidate-monitoring">
                             <button class="nav-button">
+                                <i data-lucide="layout-dashboard" class="submenu-icon"></i>
                                 <span>Consolidate Monitoring</span>
                             </button>
                         </div>
                     </div>
+                </div>
+
+                <!-- Section Divider -->
+                <div class="nav-section-divider">
+                    <span class="nav-section-label">Administration</span>
                 </div>
 
                 <!-- User Management -->
@@ -212,11 +241,13 @@
                     <div class="nav-submenu">
                         <div class="nav-item" data-page="users">
                             <button class="nav-button">
+                                <i data-lucide="user" class="submenu-icon"></i>
                                 <span>Users</span>
                             </button>
                         </div>
                         <div class="nav-item" data-page="roles">
                             <button class="nav-button">
+                                <i data-lucide="shield-check" class="submenu-icon"></i>
                                 <span>Roles & Management</span>
                             </button>
                         </div>

@@ -70,8 +70,8 @@
             <span class="stat-label">Digital</span>
           </div>
           <div class="stat-item">
-            <span class="stat-number">24/7</span>
-            <span class="stat-label">Available</span>
+            <span class="stat-number">CNSC</span>
+            <span class="stat-label">Network Only</span>
           </div>
           <div class="stat-item">
             <span class="stat-number">Secure</span>
