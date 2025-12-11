@@ -150,7 +150,7 @@
                     <button class="nav-button nav-header" data-group="requisition">
                         <div class="nav-content">
                             <i data-lucide="file-text" class="icon"></i>
-                            <span>Requisition</span>
+                            <span>Acquisition</span>
                         </div>
                         <i data-lucide="chevron-right" class="chevron"></i>
                     </button>
@@ -158,7 +158,7 @@
                         <div class="nav-item" data-page="new-request">
                             <button class="nav-button">
                                 <i data-lucide="file-plus-2" class="submenu-icon"></i>
-                                <span>New Request</span>
+                                <span>Procurement Panel</span>
                             </button>
                         </div>
                         <div class="nav-item" data-page="pending-approval">

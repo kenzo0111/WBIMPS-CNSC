@@ -81,7 +81,7 @@
         <div class="hero-buttons">
           <a href="{{ route('user.request') }}" class="btn primary-btn">
             <span class="btn-icon">🚀</span>
-            New Request
+            Procurement Panel
           </a>
           <a href="#learn" class="btn secondary-btn">
             <span class="btn-icon">📖</span>

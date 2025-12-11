@@ -3953,7 +3953,7 @@ function generateDashboardPage() {
                                 <i data-lucide="plus" class="icon"></i>
                             </div>
                             <div class="action-content">
-                                <h4>Create New Request</h4>
+                                <h4>Newly delivered goods</h4>
                                 <p>Start a new purchase order</p>
                             </div>
                         </div>
@@ -6424,7 +6424,7 @@ function generateNewRequestPage() {
                 <header>
                     <h1 class="page-title">
                         <i data-lucide="file-plus" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>
-                        New Request
+                        Procurement Panel
                     </h1>
                     <p class="page-subtitle">Create and manage new purchase requests</p>
                 </header>
@@ -6433,7 +6433,7 @@ function generateNewRequestPage() {
                     ? `
                 <button class="btn btn-primary" onclick="openPurchaseOrderModal('create')">
                   <i data-lucide="plus" class="icon"></i>
-                  Create New Request
+                  Newly delivered goods
                 </button>
                 `
                     : ''
@@ -7197,9 +7197,9 @@ function generateRequisitionReportsPage() {
                 <div>
                     <h1 class="page-title">
                         <i data-lucide="file-text" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>
-                        Requisition Reports
+                        Acquisition Reports
                     </h1>
-                    <p class="page-subtitle">Overview of requisitions</p>
+                    <p class="page-subtitle">Overview of acquisitions</p>
                 </div>
                 <div>
                     <button class="btn btn-primary" id="export-requisition-btn">
@@ -7238,7 +7238,7 @@ function generateRequisitionReportsPage() {
                 <div class="card-header-inline">
                     <h3 class="card-title-small">
                         <i data-lucide="trending-up" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;"></i>
-                        Requisition Analytics
+                        Acquisition Analytics
                     </h3>
                 </div>
                 <div class="chart-wrapper">
@@ -7252,7 +7252,7 @@ function generateRequisitionReportsPage() {
                 <div class="card-header-inline">
                     <h3 class="card-title-small">
                         <i data-lucide="clipboard-list" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;"></i>
-                        All Requisitions
+                        All Acquisitions
                     </h3>
                 </div>
                 <div class="table-container">
@@ -9833,7 +9833,12 @@ function openPurchaseOrderModal(mode = 'create', requestId = null) {
 
   // Use wizard wrapper if create mode, otherwise legacy single view for view mode
   if (mode === 'create') {
-    modalContent.innerHTML = generatePurchaseOrderWizardShell(requestData)
+    const title =
+      AppState.currentPage === 'new-request' ? 'Procurement Monitoring' : null
+    modalContent.innerHTML = generatePurchaseOrderWizardShell(
+      requestData,
+      title
+    )
     renderPurchaseOrderWizardStep(requestData)
   } else {
     modalContent.innerHTML = generatePurchaseOrderModal(mode, requestData)
@@ -10737,7 +10742,7 @@ window.openDownloadFormsChooser = openDownloadFormsChooser
 // Purchase Order Wizard  //
 // ---------------------- //
 
-function generatePurchaseOrderWizardShell(requestData) {
+function generatePurchaseOrderWizardShell(requestData, titleOverride = null) {
   return `
         <div class="modal-header" style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; border-bottom: none; padding: 32px 24px;">
             <div style="display: flex; align-items: center; gap: 16px;">
@@ -10745,7 +10750,9 @@ function generatePurchaseOrderWizardShell(requestData) {
                     <i data-lucide="file-plus" style="width: 32px; height: 32px; color: white;"></i>
                 </div>
                 <div style="flex: 1;">
-                    <h2 class="modal-title" style="color: white; font-size: 24px; margin-bottom: 4px;">New Purchase Order</h2>
+                    <h2 class="modal-title" style="color: white; font-size: 24px; margin-bottom: 4px;">${
+                      titleOverride || 'New Purchase Order'
+                    }</h2>
                     <p class="modal-subtitle" style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0;">Step-by-step purchase order creation</p>
                     <p style="font-size: 12px; color: rgba(255,255,255,0.8); margin: 4px 0 0 0;">Camarines Norte State College</p>
                 </div>
@@ -11034,14 +11041,95 @@ function renderPurchaseOrderWizardStep(requestData) {
                         <h4 style="margin: 0 0 16px 0; font-size: 14px; font-weight: 600; color: #374151; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb;">Logistics</h4>
                         <div class="grid-2">
                             <div class="form-group" style="margin-bottom: 16px;">
-                                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                                    <i data-lucide="map-pin" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                                    Place of Delivery
-                                </label>
-                                <input type="text" class="form-input" id="po-place" placeholder="Campus / Building / Room" value="${
-                                  AppState.purchaseOrderDraft.placeOfDelivery ||
-                                  ''
-                                }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                                <i data-lucide="map-pin" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                                Place of Delivery
+                              </label>
+                              <select class="form-select" id="po-place" onchange="(function(el){ if(el.value==='other'){ document.getElementById('po-place-other').style.display='block'; } else { const other = document.getElementById('po-place-other'); if(other){ other.style.display='none'; other.value=''; } } })(this)" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                                <option value="">Select delivery location</option>
+                                <option value="MAIN CAMPUS" ${
+                                  AppState.purchaseOrderDraft.placeOfDelivery &&
+                                  AppState.purchaseOrderDraft.placeOfDelivery.replace(
+                                    /^CNSC\s*-\s*/i,
+                                    ''
+                                  ) === 'MAIN CAMPUS'
+                                    ? 'selected'
+                                    : ''
+                                }>CNSC - MAIN CAMPUS</option>
+                                <option value="ABANO CAMPUS" ${
+                                  AppState.purchaseOrderDraft.placeOfDelivery &&
+                                  AppState.purchaseOrderDraft.placeOfDelivery.replace(
+                                    /^CNSC\s*-\s*/i,
+                                    ''
+                                  ) === 'ABANO CAMPUS'
+                                    ? 'selected'
+                                    : ''
+                                }>CNSC - ABANO CAMPUS</option>
+                                <option value="LABO CAMPUS" ${
+                                  AppState.purchaseOrderDraft.placeOfDelivery &&
+                                  AppState.purchaseOrderDraft.placeOfDelivery.replace(
+                                    /^CNSC\s*-\s*/i,
+                                    ''
+                                  ) === 'LABO CAMPUS'
+                                    ? 'selected'
+                                    : ''
+                                }>CNSC - LABO CAMPUS</option>
+                                <option value="MERCEDES CAMPUS" ${
+                                  AppState.purchaseOrderDraft.placeOfDelivery &&
+                                  AppState.purchaseOrderDraft.placeOfDelivery.replace(
+                                    /^CNSC\s*-\s*/i,
+                                    ''
+                                  ) === 'MERCEDES CAMPUS'
+                                    ? 'selected'
+                                    : ''
+                                }>CNSC - MERCEDES CAMPUS</option>
+                                <option value="ENTIENZA CAMPUS" ${
+                                  AppState.purchaseOrderDraft.placeOfDelivery &&
+                                  AppState.purchaseOrderDraft.placeOfDelivery.replace(
+                                    /^CNSC\s*-\s*/i,
+                                    ''
+                                  ) === 'ENTIENZA CAMPUS'
+                                    ? 'selected'
+                                    : ''
+                                }>CNSC - ENTIENZA CAMPUS</option>
+                                <option value="JOSE PANGANIBAN CAMPUS" ${
+                                  AppState.purchaseOrderDraft.placeOfDelivery &&
+                                  AppState.purchaseOrderDraft.placeOfDelivery.replace(
+                                    /^CNSC\s*-\s*/i,
+                                    ''
+                                  ) === 'JOSE PANGANIBAN CAMPUS'
+                                    ? 'selected'
+                                    : ''
+                                }>CNSC - JOSE PANGANIBAN CAMPUS</option>
+                                <option value="other" ${
+                                  AppState.purchaseOrderDraft.placeOfDelivery &&
+                                  !String(
+                                    AppState.purchaseOrderDraft.placeOfDelivery
+                                  ).match(
+                                    /^CNSC\s*-\s*(?:MAIN|ABANO|LABO|MERCEDES|ENTIENZA|JOSE PANGANIBAN)\s*$/i
+                                  ) &&
+                                  AppState.purchaseOrderDraft.placeOfDelivery
+                                    ? 'selected'
+                                    : ''
+                                }>Other (Specify)</option>
+                              </select>
+                              <input type="text" class="form-input" id="po-place-other" placeholder="Specify custom delivery location" value="${
+                                AppState.purchaseOrderDraft.placeOfDelivery &&
+                                !String(
+                                  AppState.purchaseOrderDraft.placeOfDelivery
+                                ).match(
+                                  /^CNSC\s*-\s*(?:MAIN|ABANO|LABO|MERCEDES|ENTIENZA|JOSE PANGANIBAN)\s*$/i
+                                )
+                                  ? AppState.purchaseOrderDraft.placeOfDelivery
+                                  : ''
+                              }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; margin-top:8px; display: ${
+      AppState.purchaseOrderDraft.placeOfDelivery &&
+      !String(AppState.purchaseOrderDraft.placeOfDelivery).match(
+        /^CNSC\s*-\s*(?:MAIN|ABANO|LABO|MERCEDES|ENTIENZA|JOSE PANGANIBAN)\s*$/i
+      )
+        ? 'block'
+        : 'none'
+    };">
                             </div>
                             <div class="form-group" style="margin-bottom: 16px;">
                                 <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
@@ -11396,8 +11484,13 @@ function persistCurrentWizardStep() {
       modal.querySelector('#po-mode')?.value || ''
     AppState.purchaseOrderDraft.gentlemen =
       modal.querySelector('#po-gentlemen')?.value || ''
-    AppState.purchaseOrderDraft.placeOfDelivery =
-      modal.querySelector('#po-place')?.value || ''
+    const poPlaceSelect = modal.querySelector('#po-place')
+    const poPlaceOther = modal.querySelector('#po-place-other')
+    let poPlaceVal = poPlaceSelect?.value || ''
+    if (poPlaceVal === 'other') {
+      poPlaceVal = poPlaceOther?.value || ''
+    }
+    AppState.purchaseOrderDraft.placeOfDelivery = poPlaceVal || ''
     // Handle delivery date dropdown with "others" option
     const deliveryDateSelect = modal.querySelector('#po-delivery-date')
     const deliveryDateOther = modal.querySelector('#po-delivery-date-other')
@@ -11582,7 +11675,23 @@ async function finalizePurchaseOrderCreation() {
   const purchaseDate = draft.purchaseDate || ''
   const procurementMode = draft.procurementMode || ''
   const gentlemen = draft.gentlemen || ''
-  const placeOfDelivery = draft.placeOfDelivery || ''
+  let placeOfDelivery = draft.placeOfDelivery || ''
+  // Auto-prefix 'CNSC - ' for known campuses if not already prefixed
+  const campusNames = [
+    'MAIN CAMPUS',
+    'ABANO CAMPUS',
+    'LABO CAMPUS',
+    'MERCEDES CAMPUS',
+    'ENTIENZA CAMPUS',
+    'JOSE PANGANIBAN CAMPUS',
+  ]
+  if (
+    placeOfDelivery &&
+    campusNames.includes(String(placeOfDelivery).toUpperCase()) &&
+    !/^\s*CNSC\s*-\s*/i.test(placeOfDelivery)
+  ) {
+    placeOfDelivery = 'CNSC - ' + placeOfDelivery
+  }
   const deliveryDate = draft.deliveryDate || ''
   const deliveryTerm = draft.deliveryTerm || ''
   const paymentTerm = draft.paymentTerm || ''
@@ -11761,7 +11870,9 @@ window.finalizePurchaseOrderCreation = finalizePurchaseOrderCreation
 function generatePurchaseOrderModal(mode, requestData = null) {
   const title =
     mode === 'create'
-      ? 'New Purchase Order'
+      ? AppState.currentPage === 'new-request'
+        ? 'Procurement Monitoring'
+        : 'New Purchase Order'
       : mode === 'edit'
       ? 'Edit Purchase Order'
       : 'Purchase Order Details'
@@ -12000,15 +12111,95 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                 <div class="grid-2">
                     <div class="space-y-4">
                         <div class="form-group" style="margin-bottom: 20px;">
-                            <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                                <i data-lucide="map-pin" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                                Place of Delivery
-                            </label>
-                            <input type="text" class="form-input" id="placeOfDelivery"
-                                   value="${requestData?.placeOfDelivery || ''}"
-                                   placeholder="Enter delivery location" 
-                                   style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                                   ${isReadOnly ? 'readonly' : ''}>
+                          <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                            <i data-lucide="map-pin" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                            Place of Delivery
+                          </label>
+                          <select class="form-select" id="placeOfDelivery" onchange="(function(el){ if(el.value==='other'){ document.getElementById('placeOfDeliveryOther').style.display='block'; } else { const other = document.getElementById('placeOfDeliveryOther'); if(other) { other.style.display='none'; other.value=''; } } })(this)" ${
+                            isReadOnly ? 'disabled' : ''
+                          } style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                            <option value="">Select delivery location</option>
+                            <option value="MAIN CAMPUS" ${
+                              requestData?.placeOfDelivery &&
+                              requestData.placeOfDelivery.replace(
+                                /^CNSC\s*-\s*/i,
+                                ''
+                              ) === 'MAIN CAMPUS'
+                                ? 'selected'
+                                : ''
+                            }>CNSC - MAIN CAMPUS</option>
+                            <option value="ABANO CAMPUS" ${
+                              requestData?.placeOfDelivery &&
+                              requestData.placeOfDelivery.replace(
+                                /^CNSC\s*-\s*/i,
+                                ''
+                              ) === 'ABANO CAMPUS'
+                                ? 'selected'
+                                : ''
+                            }>CNSC - ABANO CAMPUS</option>
+                            <option value="LABO CAMPUS" ${
+                              requestData?.placeOfDelivery &&
+                              requestData.placeOfDelivery.replace(
+                                /^CNSC\s*-\s*/i,
+                                ''
+                              ) === 'LABO CAMPUS'
+                                ? 'selected'
+                                : ''
+                            }>CNSC - LABO CAMPUS</option>
+                            <option value="MERCEDES CAMPUS" ${
+                              requestData?.placeOfDelivery &&
+                              requestData.placeOfDelivery.replace(
+                                /^CNSC\s*-\s*/i,
+                                ''
+                              ) === 'MERCEDES CAMPUS'
+                                ? 'selected'
+                                : ''
+                            }>CNSC - MERCEDES CAMPUS</option>
+                            <option value="ENTIENZA CAMPUS" ${
+                              requestData?.placeOfDelivery &&
+                              requestData.placeOfDelivery.replace(
+                                /^CNSC\s*-\s*/i,
+                                ''
+                              ) === 'ENTIENZA CAMPUS'
+                                ? 'selected'
+                                : ''
+                            }>CNSC - ENTIENZA CAMPUS</option>
+                            <option value="JOSE PANGANIBAN CAMPUS" ${
+                              requestData?.placeOfDelivery &&
+                              requestData.placeOfDelivery.replace(
+                                /^CNSC\s*-\s*/i,
+                                ''
+                              ) === 'JOSE PANGANIBAN CAMPUS'
+                                ? 'selected'
+                                : ''
+                            }>CNSC - JOSE PANGANIBAN CAMPUS</option>
+                            <option value="other" ${
+                              requestData?.placeOfDelivery &&
+                              !String(requestData.placeOfDelivery).match(
+                                /^CNSC\s*-\s*(?:MAIN|ABANO|LABO|MERCEDES|ENTIENZA|JOSE PANGANIBAN)\s*$/i
+                              ) &&
+                              requestData?.placeOfDelivery
+                                ? 'selected'
+                                : ''
+                            }>Other (Specify)</option>
+                          </select>
+                          <input type="text" class="form-input" id="placeOfDeliveryOther" placeholder="Specify custom delivery location" value="${
+                            requestData &&
+                            requestData.placeOfDelivery &&
+                            !String(requestData.placeOfDelivery).match(
+                              /^CNSC\s*-\s*(?:MAIN|ABANO|LABO|MERCEDES|ENTIENZA|JOSE PANGANIBAN)\s*$/i
+                            )
+                              ? requestData.placeOfDelivery
+                              : ''
+                          }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; margin-top:8px; display:${
+    requestData &&
+    requestData.placeOfDelivery &&
+    !String(requestData.placeOfDelivery).match(
+      /^CNSC\s*-\s*(?:MAIN|ABANO|LABO|MERCEDES|ENTIENZA|JOSE PANGANIBAN)\s*$/i
+    )
+      ? 'block'
+      : 'none'
+  };" ${isReadOnly ? 'readonly' : ''} />
                         </div>
                         
                         <div class="form-group" style="margin-bottom: 0;">
@@ -14531,8 +14722,28 @@ function savePurchaseOrder(existingId = null) {
     document.getElementById('procurementMode')?.value || ''
   const department = document.getElementById('departmentSelect')?.value || ''
   const gentlemen = document.getElementById('gentlemen')?.value || ''
-  const placeOfDelivery =
-    document.getElementById('placeOfDelivery')?.value || ''
+  const _placeSelect = document.getElementById('placeOfDelivery')
+  const _placeOther = document.getElementById('placeOfDeliveryOther')
+  let placeOfDelivery = _placeSelect?.value || ''
+  if (placeOfDelivery === 'other') {
+    placeOfDelivery = _placeOther?.value || ''
+  }
+  // Add CNSC - prefix automatically for campus selections
+  const campusNames = [
+    'MAIN CAMPUS',
+    'ABANO CAMPUS',
+    'LABO CAMPUS',
+    'MERCEDES CAMPUS',
+    'ENTIENZA CAMPUS',
+    'JOSE PANGANIBAN CAMPUS',
+  ]
+  if (
+    placeOfDelivery &&
+    campusNames.includes(String(placeOfDelivery).toUpperCase()) &&
+    !/^\s*CNSC\s*-\s*/i.test(placeOfDelivery)
+  ) {
+    placeOfDelivery = 'CNSC - ' + placeOfDelivery
+  }
   // Handle delivery date dropdown with "others" option
   const deliveryDateSelect = document.getElementById('deliveryDate')
   const deliveryDateOther = document.getElementById('deliveryDateOther')

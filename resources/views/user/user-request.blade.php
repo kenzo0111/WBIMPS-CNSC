@@ -63,7 +63,7 @@
 
                     <div class="request-header">
                         <h2>Purchase Request</h2>
-                        <div class="request-subtitle">Submit an item requisition for approval</div>
+                        <div class="request-subtitle">Submit an item acquisition for approval</div>
                     </div>
 
                     <!-- Step 1: Personal Information -->
