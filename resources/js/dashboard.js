@@ -7376,10 +7376,10 @@ function generateStatusReportsPage() {
                 </div>
                 <div class="table-container">
           <table class="table" id="status-report-table">
-            <thead>
+                <thead>
               <tr>
                 <th>Request ID</th>
-                <th>Item</th>
+                <th style="white-space:normal; max-width:240px;">Item</th>
                 <th>Priority</th>
                 <th>Requester</th>
                 <th>Cost</th>
@@ -8428,7 +8428,9 @@ function renderStatusReport() {
             }'); return false;" style="color:#dc2626; text-decoration:underline;">${
         r.id || ''
       }</a></td>
-            <td>${r.item || '-'}</td>
+            <td style="white-space:normal; word-break:break-word; max-width:240px;">${formatRequestItem(
+              r.item
+            )}</td>
             <td><span class="${getBadgeClass(
               r.priority || 'low',
               'priority'
@@ -9296,7 +9298,7 @@ function showStatusDetails(status) {
         </div>
         <div class="modal-body">
             <table class="table">
-                <thead><tr><th>Request ID</th><th>Requester</th><th>Department</th><th>Item</th><th>Priority</th><th>Cost</th><th>Updated</th></tr></thead>
+                <thead><tr><th>Request ID</th><th>Requester</th><th>Department</th><th style="white-space:normal; max-width:360px;">Item</th><th>Priority</th><th>Cost</th><th>Updated</th></tr></thead>
                 <tbody>
                     ${
                       matches.length
@@ -9311,7 +9313,9 @@ function showStatusDetails(status) {
                               }</a></td>
                             <td>${r.requester || '-'}</td>
                             <td>${r.department || '-'}</td>
-                            <td>${r.item || '-'}</td>
+                            <td style="white-space:normal; word-break:break-word; max-width:360px;">${formatRequestItem(
+                              r.item
+                            )}</td>
                             <td><span class="${getBadgeClass(
                               r.priority || 'low',
                               'priority'
@@ -9345,6 +9349,142 @@ function numberWithCommas(x) {
     typeof x === 'number' ? x : Number(String(x).replace(/[^0-9.-]/g, ''))
   if (isNaN(n)) return String(x)
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+}
+
+// Format request item or items for display in tables and modals
+function formatRequestItem(item) {
+  if (item === null || item === undefined || item === '') return '-'
+
+  // If this is a JSON string (e.g. server sent stringified objects/arrays), try to parse
+  if (typeof item === 'string') {
+    const trimmed = item.trim()
+    if (
+      (trimmed.startsWith('{') || trimmed.startsWith('[')) &&
+      trimmed.endsWith('}')
+    ) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        return formatRequestItem(parsed)
+      } catch (e) {
+        // fall through and treat as a regular string
+      }
+    }
+    // If delimiter-based, split for readability
+    if (trimmed.includes('|') || trimmed.includes(';')) {
+      const parts = trimmed
+        .split(/\||;/)
+        .map((p) => p.trim())
+        .filter(Boolean)
+      return parts.map((p) => escapeHtml(p)).join('<br/>')
+    }
+    if (trimmed.includes(',')) {
+      const parts = trimmed
+        .split(',')
+        .map((p) => p.trim())
+        .filter(Boolean)
+      if (parts.length > 1) return parts.map((p) => escapeHtml(p)).join('<br/>')
+    }
+    // Otherwise just escape string
+    return escapeHtml(trimmed)
+  }
+
+  // If an array of items
+  if (Array.isArray(item)) {
+    if (!item.length) return '-'
+    return item
+      .map((it) => formatRequestItem(it))
+      .map((s) => `<div style="margin-bottom:4px;">${s}</div>`) // wrap per line
+      .join('')
+  }
+
+  // If object with common fields
+  if (typeof item === 'object') {
+    const name =
+      item.name ||
+      item.description ||
+      item.item ||
+      item.item_name ||
+      item.title ||
+      ''
+    const qty =
+      item.quantity || item.qty || item.count || item.requested_qty || ''
+    const unit = item.unit || item.unitName || ''
+    const parts = []
+    if (name) parts.push(name)
+    if (qty !== undefined && qty !== '' && qty !== 0) {
+      parts.push(`${qty}${unit ? ' ' + unit : ''}`)
+    }
+    const main = parts.join(' — ')
+    // Also include short description if available
+    const shortDesc =
+      item.detailedDescription ||
+      item.detailed_description ||
+      item.description_short ||
+      ''
+    if (shortDesc)
+      return `${escapeHtml(
+        main || name
+      )}<div style=\"color:#6b7280;font-size:12px;\">${escapeHtml(
+        shortDesc
+      )}</div>`
+    return escapeHtml(main || name || JSON.stringify(item))
+  }
+
+  // fallback
+  return escapeHtml(String(item))
+}
+
+// Human readable plain string for form inputs or textarea
+function formatRequestItemPlain(item) {
+  if (item === null || item === undefined || item === '') return ''
+  if (typeof item === 'string') {
+    const trimmed = item.trim()
+    try {
+      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+        const parsed = JSON.parse(trimmed)
+        return formatRequestItemPlain(parsed)
+      }
+    } catch (e) {}
+    if (trimmed.includes('|') || trimmed.includes(';'))
+      return trimmed
+        .split(/\||;/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join('\n')
+    if (trimmed.includes(','))
+      return trimmed
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join('\n')
+    return trimmed
+  }
+  if (Array.isArray(item))
+    return item.map((it) => formatRequestItemPlain(it)).join('\n')
+  if (typeof item === 'object') {
+    const name =
+      item.name ||
+      item.description ||
+      item.item ||
+      item.item_name ||
+      item.title ||
+      ''
+    const qty =
+      item.quantity || item.qty || item.count || item.requested_qty || ''
+    const unit = item.unit || item.unitName || ''
+    const parts = []
+    if (name) parts.push(name)
+    if (qty !== undefined && qty !== '' && qty !== 0)
+      parts.push(`${qty}${unit ? ' ' + unit : ''}`)
+    const main = parts.join(' — ')
+    const shortDesc =
+      item.detailedDescription ||
+      item.detailed_description ||
+      item.description_short ||
+      ''
+    return [main || name, shortDesc].filter(Boolean).join('\n')
+  }
+  return String(item)
 }
 
 // Legacy chart plugin code removed — charts now use FusionCharts.
@@ -25650,7 +25790,7 @@ async function initStatusManagement(filter = 'all') {
                       <th>Requester</th>
                       <th>Designation</th>
                       <th>Department</th>
-                      <th>Item</th>
+                      <th style="white-space:normal; max-width:240px;">Item</th>
                       <th>Quantity</th>
                       <th>Unit</th>
                       <th>Priority</th>
@@ -26448,7 +26588,9 @@ function viewStatusRequest(id) {
                 <i data-lucide="package" style="width: 14px; height: 14px; color: #6b7280;"></i>
                 Item
             </dt>
-            <dd style="margin: 0; color: #111827;">${rec.item}</dd>
+            <dd style="margin: 0; color: #111827; white-space:normal; word-break:break-word;">${formatRequestItem(
+              rec.item
+            )}</dd>
             
             <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
                 <i data-lucide="user" style="width: 14px; height: 14px; color: #6b7280;"></i>
@@ -26637,9 +26779,9 @@ function viewStatusRequestDetails(requestId) {
                 </div>
                 <div class="form-group">
                     <label class="form-label">Item</label>
-                    <input type="text" class="form-input" value="${
-                      rec.item || ''
-                    }" readonly>
+                    <textarea class="form-textarea" readonly style="min-height:64px; white-space:pre-wrap;">${escapeHtml(
+                      formatRequestItemPlain(rec.item)
+                    )}</textarea>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Priority</label>
