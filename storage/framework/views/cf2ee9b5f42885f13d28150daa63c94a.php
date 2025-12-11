@@ -34,7 +34,7 @@
                                         <img src="<?php echo e($logoSrc); ?>" alt="Supply System" width="48" height="48" style="display:block;border:0;outline:none;text-decoration:none;" onerror="this.style.display='none'">
                                     </td>
                                     <td style="vertical-align:middle;padding-left:12px;">
-                                        <div style="font-size:18px;font-weight:600;line-height:1;color:<?php echo e($brandText ?? '#ffffff'); ?>;">Web-Based Inventory and Procurement Management System</div>
+                                        <div style="font-size:18px;font-weight:600;line-height:1;color:<?php echo e($brandText ?? '#ffffff'); ?>;">Web-Based Supply and Property Management System</div>
                                         <div style="font-size:12px;opacity:0.95;color:<?php echo e($brandText ?? '#ffffff'); ?>;">Purchase Request Notification</div>
                                     </td>
                                     <td style="text-align:right;vertical-align:middle;font-size:12px;color:<?php echo e($brandText ?? '#ffffff'); ?>;">&nbsp;</td>
