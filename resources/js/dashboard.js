@@ -23317,6 +23317,13 @@ async function saveItem(ItemId) {
       showAlert('Unit is required for non-expendable items.', 'error')
       return
     }
+    if (unitCost < 50000) {
+      showAlert(
+        'Unit Cost must be 50,000 or above for non-expendable items.',
+        'error'
+      )
+      return
+    }
   } else if (ItemTypeFromCategory === 'semi-expendable') {
     if (!description || description.length < 5) {
       showAlert(

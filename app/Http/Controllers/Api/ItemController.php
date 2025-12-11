@@ -68,6 +68,7 @@ class ItemController extends Controller
                 $request->validate([
                     'description' => 'required|string|min:10',
                     'unit' => 'required|string|max:50',
+                    'unit_cost' => 'required|numeric|min:50000',
                 ]);
             } elseif (str_contains($categoryName, 'semi-expendable')) {
                 // Semi-expendable items require unit and description
@@ -140,6 +141,7 @@ class ItemController extends Controller
                 $request->validate([
                     'description' => 'required|string|min:10',
                     'unit' => 'required|string|max:50',
+                    'unit_cost' => 'required|numeric|min:50000',
                 ]);
             } elseif (str_contains($categoryName, 'semi-expendable')) {
                 // Semi-expendable items require unit and description
