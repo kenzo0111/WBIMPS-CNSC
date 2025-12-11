@@ -11177,7 +11177,7 @@ function renderPurchaseOrderWizardStep(requestData) {
                             </div>
                         </div>
                     </div>
-                    <div>
+                    <div style="margin-bottom: 24px;">
                         <h4 style="margin: 0 0 16px 0; font-size: 14px; font-weight: 600; color: #374151; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb;">Logistics</h4>
                         <div class="grid-2">
                             <div class="form-group" style="margin-bottom: 16px;">
@@ -11358,6 +11358,71 @@ function renderPurchaseOrderWizardStep(requestData) {
                             </div>
                         </div>
                     </div>
+                    <!-- Funding Section -->
+                    <div style="margin-bottom: 24px;">
+                        <h4 style="margin: 0 0 16px 0; font-size: 14px; font-weight: 600; color: #374151; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; display: flex; align-items: center; gap: 6px;">
+                            <i data-lucide="coins" style="width: 16px; height: 16px; color: #2563eb;"></i>
+                            Funding Information
+                        </h4>
+                        <div class="grid-3">
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                                    <i data-lucide="layers" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                                    Fund Cluster
+                                </label>
+                                <select class="form-select" id="po-fund-cluster" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                                    <option value="">Select fund cluster</option>
+                                    <option value="01 - Regular Agency Fund" ${
+                                      AppState.purchaseOrderDraft
+                                        .fundCluster ===
+                                      '01 - Regular Agency Fund'
+                                        ? 'selected'
+                                        : ''
+                                    }>01 - Regular Agency Fund</option>
+                                    <!-- Removed fund cluster codes 02, 03, 04 per request -->
+                                    <option value="05 - Internally Generated Funds" ${
+                                      AppState.purchaseOrderDraft
+                                        .fundCluster ===
+                                      '05 - Internally Generated Funds'
+                                        ? 'selected'
+                                        : ''
+                                    }>05 - Internally Generated Funds</option>
+                                    <option value="06 - Business Related Funds" ${
+                                      AppState.purchaseOrderDraft
+                                        .fundCluster ===
+                                      '06 - Business Related Funds'
+                                        ? 'selected'
+                                        : ''
+                                    }>06 - Business Related Funds</option>
+                                    <option value="07 - Trust Receipts" ${
+                                      AppState.purchaseOrderDraft
+                                        .fundCluster === '07 - Trust Receipts'
+                                        ? 'selected'
+                                        : ''
+                                    }>07 - Trust Receipts</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                                    <i data-lucide="banknote" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                                    Funds Available (Optional)
+                                </label>
+                                <input type="text" class="form-input" id="po-funds-available" placeholder="e.g. ₱0.00" value="${
+                                  AppState.purchaseOrderDraft.fundsAvailable ||
+                                  ''
+                                }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                                    <i data-lucide="sticky-note" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                                    Notes (Optional)
+                                </label>
+                                <input type="text" class="form-input" id="po-notes" placeholder="Short note" value="${
+                                  AppState.purchaseOrderDraft.notes || ''
+                                }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         `
@@ -11477,71 +11542,7 @@ function renderPurchaseOrderWizardStep(requestData) {
                         </div>
                     </div>
                     
-                    <!-- Funding Section -->
-                    <div style="margin-bottom: 24px;">
-                        <h4 style="margin: 0 0 16px 0; font-size: 14px; font-weight: 600; color: #374151; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; display: flex; align-items: center; gap: 6px;">
-                            <i data-lucide="peso-sign" style="width: 16px; height: 16px; color: #2563eb;"></i>
-                            Funding Information
-                        </h4>
-                        <div class="grid-3">
-                            <div class="form-group" style="margin-bottom: 16px;">
-                                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                                    <i data-lucide="layers" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                                    Fund Cluster
-                                </label>
-                                <select class="form-select" id="po-fund-cluster" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
-                                    <option value="">Select fund cluster</option>
-                                    <option value="01 - Regular Agency Fund" ${
-                                      AppState.purchaseOrderDraft
-                                        .fundCluster ===
-                                      '01 - Regular Agency Fund'
-                                        ? 'selected'
-                                        : ''
-                                    }>01 - Regular Agency Fund</option>
-                                    <!-- Removed fund cluster codes 02, 03, 04 per request -->
-                                    <option value="05 - Internally Generated Funds" ${
-                                      AppState.purchaseOrderDraft
-                                        .fundCluster ===
-                                      '05 - Internally Generated Funds'
-                                        ? 'selected'
-                                        : ''
-                                    }>05 - Internally Generated Funds</option>
-                                    <option value="06 - Business Related Funds" ${
-                                      AppState.purchaseOrderDraft
-                                        .fundCluster ===
-                                      '06 - Business Related Funds'
-                                        ? 'selected'
-                                        : ''
-                                    }>06 - Business Related Funds</option>
-                                    <option value="07 - Trust Receipts" ${
-                                      AppState.purchaseOrderDraft
-                                        .fundCluster === '07 - Trust Receipts'
-                                        ? 'selected'
-                                        : ''
-                                    }>07 - Trust Receipts</option>
-                                </select>
-                            </div>
-                            <div class="form-group" style="margin-bottom: 16px;">
-                                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                                    <i data-lucide="banknote" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                                    Funds Available (Optional)
-                                </label>
-                                <input type="text" class="form-input" id="po-funds-available" placeholder="e.g. ₱0.00" value="${
-                                  AppState.purchaseOrderDraft.fundsAvailable ||
-                                  ''
-                                }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
-                            </div>
-                            <div class="form-group" style="margin-bottom: 16px;">
-                                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                                    <i data-lucide="sticky-note" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                                    Notes (Optional)
-                                </label>
-                                <input type="text" class="form-input" id="po-notes" placeholder="Short note" value="${
-                                  AppState.purchaseOrderDraft.notes || ''
-                                }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
-                            </div>
-                        </div>
-                    </div>
+
                     
                     <!-- ORS/BURS Section -->
                     <div style="margin-bottom: 24px;">
@@ -11643,6 +11644,12 @@ function persistCurrentWizardStep() {
       modal.querySelector('#po-delivery-term')?.value || ''
     AppState.purchaseOrderDraft.paymentTerm =
       modal.querySelector('#po-payment-term')?.value || ''
+    AppState.purchaseOrderDraft.fundCluster =
+      modal.querySelector('#po-fund-cluster')?.value || ''
+    AppState.purchaseOrderDraft.fundsAvailable =
+      modal.querySelector('#po-funds-available')?.value || ''
+    AppState.purchaseOrderDraft.notes =
+      modal.querySelector('#po-notes')?.value || ''
   } else if (step === 3) {
     // Step 3 - Save ICS, RIS, PAR, and IAR form data
     // Save ICS form data
@@ -11785,12 +11792,6 @@ function persistCurrentWizardStep() {
       modal.querySelector('#po-ors-date')?.value || ''
     AppState.purchaseOrderDraft.orsAmount =
       modal.querySelector('#po-ors-amount')?.value || ''
-    AppState.purchaseOrderDraft.fundCluster =
-      modal.querySelector('#po-fund-cluster')?.value || ''
-    AppState.purchaseOrderDraft.fundsAvailable =
-      modal.querySelector('#po-funds-available')?.value || ''
-    AppState.purchaseOrderDraft.notes =
-      modal.querySelector('#po-notes')?.value || ''
   }
   // Persist draft to localStorage so it survives navigation or page reloads
   try {
@@ -13119,7 +13120,7 @@ function autoFillICSForm() {
   }
 
   // Auto-fill fund cluster from PO data
-  const fundCluster = document.getElementById('fundCluster')?.value
+  const fundCluster = AppState.purchaseOrderDraft.fundCluster
   if (fundCluster && !AppState.purchaseOrderDraft.icsFormData.fund_cluster) {
     updatePOFormDraft('ics', 'fund_cluster', fundCluster)
   }
@@ -13168,13 +13169,13 @@ function autoFillRISForm() {
   }
 
   // Auto-fill fund cluster from PO data
-  const fundCluster = document.getElementById('fundCluster')?.value
+  const fundCluster = AppState.purchaseOrderDraft.fundCluster
   if (fundCluster && !AppState.purchaseOrderDraft.risFormData.fund_cluster) {
     updatePOFormDraft('ris', 'fund_cluster', fundCluster)
   }
 
   // Auto-fill department/office from PO data
-  const department = document.getElementById('departmentSelect')?.value
+  const department = AppState.purchaseOrderDraft.department
   if (department) {
     if (!AppState.purchaseOrderDraft.risFormData.division) {
       updatePOFormDraft('ris', 'division', department)
@@ -13254,7 +13255,7 @@ function autoFillPARForm() {
   }
 
   // Auto-fill fund cluster from PO data
-  const fundCluster = document.getElementById('fundCluster')?.value
+  const fundCluster = AppState.purchaseOrderDraft.fundCluster
   if (fundCluster && !AppState.purchaseOrderDraft.parFormData.fund_cluster) {
     updatePOFormDraft('par', 'fund_cluster', fundCluster)
   }
@@ -13303,24 +13304,24 @@ function autoFillIARForm() {
   }
 
   // Auto-fill fund cluster from PO data
-  const fundCluster = document.getElementById('fundCluster')?.value
+  const fundCluster = AppState.purchaseOrderDraft.fundCluster
   if (fundCluster && !AppState.purchaseOrderDraft.iarFormData.fund_cluster) {
     updatePOFormDraft('iar', 'fund_cluster', fundCluster)
   }
 
   // Auto-fill PO details from current PO
-  const poNumber = document.getElementById('poNumber')?.value
+  const poNumber = AppState.purchaseOrderDraft.poNumber
   if (poNumber && !AppState.purchaseOrderDraft.iarFormData.po_no) {
     updatePOFormDraft('iar', 'po_no', poNumber)
   }
 
-  const purchaseDate = document.getElementById('purchaseDate')?.value
+  const purchaseDate = AppState.purchaseOrderDraft.purchaseDate
   if (purchaseDate && !AppState.purchaseOrderDraft.iarFormData.po_date) {
     updatePOFormDraft('iar', 'po_date', purchaseDate)
   }
 
   // Auto-fill requisitioning office from department
-  const department = document.getElementById('departmentSelect')?.value
+  const department = AppState.purchaseOrderDraft.department
   if (
     department &&
     !AppState.purchaseOrderDraft.iarFormData.requisitioning_office

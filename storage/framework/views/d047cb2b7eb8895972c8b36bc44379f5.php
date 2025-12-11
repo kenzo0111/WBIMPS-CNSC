@@ -4,10 +4,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="shortcut icon" href="{{ asset('images/UCN1.png') }}" type="image/png">
-  <link rel="icon" href="{{ asset('images/UCN1.png') }}" type="image/png">
+  <link rel="shortcut icon" href="<?php echo e(asset('images/UCN1.png')); ?>" type="image/png">
+  <link rel="icon" href="<?php echo e(asset('images/UCN1.png')); ?>" type="image/png">
   <title>Supply and Property Management System</title>
-  @vite('resources/css/index.css')
+  <?php echo app('Illuminate\Foundation\Vite')('resources/css/index.css'); ?>
 </head>
 
 <body>
@@ -15,7 +15,7 @@
   <header>
     <div class="header-container">
       <div class="logo">
-  <img src="{{ $imagesPath }}/cnscrefine.png" alt="School Logo">
+  <img src="<?php echo e($imagesPath); ?>/cnscrefine.png" alt="School Logo">
         <div class="logo-text">
           <h1>Supply and Property Management Office</h1>
           <hr>
@@ -23,25 +23,25 @@
         </div>
       </div>
       <nav class="nav-menu">
-        @auth
+        <?php if(auth()->guard()->check()): ?>
         <div style="display: flex; align-items: center; gap: 15px; margin-right: 15px;">
-            <span style="color: white; font-weight: 500; font-size: 0.9rem;">{{ Auth::user()->email }}</span>
-            <form method="POST" action="{{ route('logout') }}" style="margin: 0;">
-                @csrf
+            <span style="color: white; font-weight: 500; font-size: 0.9rem;"><?php echo e(Auth::user()->email); ?></span>
+            <form method="POST" action="<?php echo e(route('logout')); ?>" style="margin: 0;">
+                <?php echo csrf_field(); ?>
                 <button type="submit" class="support-btn" style="background: rgba(255, 255, 255, 0.1); color: white; border: 1px solid rgba(255, 255, 255, 0.3);">
                     Logout
                 </button>
             </form>
         </div>
-        <a href="{{ route('contact.support') }}" class="support-btn">
+        <a href="<?php echo e(route('contact.support')); ?>" class="support-btn">
           <span class="btn-icon">📞</span>
           Contact Support
         </a>
-        @else
-        <a href="{{ route('login') }}" class="support-btn" style="margin-right: 15px;">
+        <?php else: ?>
+        <a href="<?php echo e(route('login')); ?>" class="support-btn" style="margin-right: 15px;">
           Login
         </a>
-        @endauth
+        <?php endif; ?>
       </nav>
     </div>
   </header>
@@ -79,7 +79,7 @@
           </div>
         </div>
         <div class="hero-buttons">
-          <a href="{{ route('user.request') }}" class="btn primary-btn">
+          <a href="<?php echo e(route('user.request')); ?>" class="btn primary-btn">
             <span class="btn-icon">🚀</span>
             New Request
           </a>
@@ -103,28 +103,28 @@
       <div class="feature-grid">
         <article class="feature-card">
           <div class="feature-icon">
-            <img src="{{ $imagesPath }}/inventory.png" alt="Inventory Icon">
+            <img src="<?php echo e($imagesPath); ?>/inventory.png" alt="Inventory Icon">
           </div>
           <h3>Inventory Management</h3>
           <p>Track and manage all institutional assets with real-time monitoring</p>
         </article>
         <article class="feature-card">
           <div class="feature-icon">
-            <img src="{{ $imagesPath }}/management.png" alt="Management Icon">
+            <img src="<?php echo e($imagesPath); ?>/management.png" alt="Management Icon">
           </div>
           <h3>Resource Management</h3>
           <p>Optimize resource allocation and streamline operational workflows</p>
         </article>
         <article class="feature-card">
           <div class="feature-icon">
-            <img src="{{ $imagesPath }}/procurement.png" alt="Procurement Icon">
+            <img src="<?php echo e($imagesPath); ?>/procurement.png" alt="Procurement Icon">
           </div>
           <h3>Property System</h3>
           <p>Manage property records and custodian management processes</p>
         </article>
         <article class="feature-card">
           <div class="feature-icon">
-            <img src="{{ $imagesPath }}/stats.png" alt="Analytics Icon">
+            <img src="<?php echo e($imagesPath); ?>/stats.png" alt="Analytics Icon">
           </div>
           <h3>Analytics & Reports</h3>
           <p>Generate insights with comprehensive reporting and data visualization</p>
@@ -139,4 +139,4 @@
   </footer>
 </body>
 
-</html>
+</html><?php /**PATH C:\xampp\htdocs\SupplySystem\resources\views/user/user-home-page.blade.php ENDPATH**/ ?>
