@@ -3298,9 +3298,7 @@ function loadPageContent(pageId) {
     case 'rsmi-reports':
       mainContent.innerHTML = generateRsmiReportsPage()
       break
-    case 'stock-cards':
-      mainContent.innerHTML = generateStockCardsPage()
-      break
+    // Stock Cards page removed
     case 'consolidate-monitoring':
       mainContent.innerHTML = generateConsolidateMonitoringPage()
       break
@@ -3362,21 +3360,7 @@ function loadPageContent(pageId) {
         .getElementById('rsmi-date-to')
         ?.addEventListener('change', renderRsmiReport)
       break
-    case 'stock-cards':
-      renderStockCardsReport()
-      document
-        .getElementById('export-stock-cards-btn')
-        ?.addEventListener('click', exportStockCardsCSV)
-      document
-        .getElementById('stock-card-item-filter')
-        ?.addEventListener('change', renderStockCardsReport)
-      document
-        .getElementById('stock-card-date-from')
-        ?.addEventListener('change', renderStockCardsReport)
-      document
-        .getElementById('stock-card-date-to')
-        ?.addEventListener('change', renderStockCardsReport)
-      break
+    // Stock Cards page removed (no event listeners)
     case 'consolidate-monitoring':
       renderConsolidateMonitoring()
       document
@@ -6426,7 +6410,7 @@ function generateNewRequestPage() {
                         <i data-lucide="file-plus" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>
                         Procurement Panel
                     </h1>
-                    <p class="page-subtitle">Create and manage new purchase requests</p>
+                    <p class="page-subtitle">Create and manage new delivery requests</p>
                 </header>
                 ${
                   can('create requests')
@@ -7438,17 +7422,7 @@ function generateReportsLandingPage() {
                     </div>
                 </div>
 
-                <div class="metric-card" onclick="navigateToPage('stock-cards')" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3); transition: transform 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
-                    <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <div>
-                            <h3 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Stock Cards</h3>
-                            <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Item-level transaction ledger</p>
-                        </div>
-                        <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-                            <i data-lucide="book-open" style="width: 32px; height: 32px;"></i>
-                        </div>
-                    </div>
-                </div>
+                <!-- Stock Cards report tile removed -->
 
                 <div class="metric-card" onclick="navigateToPage('consolidate-monitoring')" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(249, 115, 22, 0.3); transition: transform 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
                     <div style="display: flex; align-items: center; justify-content: space-between;">
@@ -7673,67 +7647,7 @@ function generateRsmiReportsPage() {
       `
 }
 
-function generateStockCardsPage() {
-  const items = [
-    'All',
-    ...new Set((MockData.Items || []).map((i) => i.name).filter(Boolean)),
-  ]
-  return `
-        <div class="page-header">
-          <div class="page-header-content">
-            <div>
-              <h1 class="page-title"><i data-lucide="book" style="width:28px;height:28px;margin-right:8px;"></i>Stock Cards</h1>
-              <p class="page-subtitle">Stock Transaction History & Analysis</p>
-            </div>
-            <div>
-              <button class="btn btn-primary" id="export-stock-cards-btn"><i data-lucide="download" style="width:16px;height:16px;margin-right:6px"></i>Export Excel</button>
-            </div>
-          </div>
-        </div>
-        <div class="page-content">
-          <div class="enhanced-filter-bar" style="margin-bottom: 24px;">
-            <div class="filter-left">
-              <div class="filter-wrapper">
-                <i data-lucide="box" class="filter-icon"></i>
-                <select id="stock-card-item-filter" class="filter-dropdown">${items
-                  .map((d) => `<option value="${d}">${d}</option>`)
-                  .join('')}</select>
-              </div>
-              <div class="filter-wrapper">
-                <i data-lucide="calendar" class="filter-icon"></i>
-                <input type="date" id="stock-card-date-from" class="filter-dropdown" style="padding-left: 40px;">
-              </div>
-              <div class="filter-wrapper">
-                <i data-lucide="calendar" class="filter-icon"></i>
-                <input type="date" id="stock-card-date-to" class="filter-dropdown" style="padding-left: 40px;">
-              </div>
-            </div>
-          </div>
-          
-          <div id="stock-card-item-details" style="display:none;"></div>
-
-          <div class="card table-card">
-            <div class="card-header-inline"><h3 class="card-title-small">Transaction History</h3></div>
-            <div class="table-container">
-                <table class="table" id="stock-cards-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Reference</th>
-                            <th>Receipt Qty</th>
-                            <th>Issue Qty</th>
-                            <th>Issue Office</th>
-                            <th>Balance</th>
-                            <th>Days to Consume</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-          </div>
-        </div>
-      `
-}
+// Stock Cards page removed: function generateStockCardsPage() deleted
 
 function generateConsolidateMonitoringPage() {
   return `
@@ -7908,7 +7822,7 @@ async function downloadExcel(
 ) {
   try {
     const { downloadExcel: exportExcel } = await import('./exportUtils.js')
-    await exportExcel(rows, filename)
+    await exportExcel(rows, filename, { sheetName, ...options })
   } catch (error) {
     console.error('Error generating Excel file:', error)
     throw error
@@ -8667,171 +8581,17 @@ function exportRsmiCSV() {
       r.amount || 0,
     ])
   )
-  downloadExcel('rsmi-report.xlsx', rows, 'RSMI Report')
+  downloadExcel('rsmi-report.xlsx', rows, 'RSMI Report', {
+    templateUrl: '/templates/rsmi-template.xlsx',
+    sheetName: 'RSMI',
+    headerRow: 1,
+    startRow: 2,
+  })
 }
 
-function renderStockCardsReport() {
-  const tbody = document.querySelector('#stock-cards-table tbody')
-  if (!tbody) return
-  const itemFilter =
-    document.getElementById('stock-card-item-filter')?.value || 'All'
-  const from = document.getElementById('stock-card-date-from')?.value
-  const to = document.getElementById('stock-card-date-to')?.value
+// Stock Cards render function removed: renderStockCardsReport()
 
-  // Merge stockInData and stockOutData with a type
-  const ins = (window.stockInData || []).map((s) => ({ ...s, type: 'IN' }))
-  const outs = (window.stockOutData || []).map((s) => ({ ...s, type: 'OUT' }))
-  let all = [...ins, ...outs].sort(
-    (a, b) =>
-      new Date(a.date || a.transactionDate || 0) -
-      new Date(b.date || b.transactionDate || 0)
-  ) // Sort ascending for running balance
-
-  if (itemFilter && itemFilter !== 'All')
-    all = all.filter(
-      (r) =>
-        (r.ItemName || r.product_name || '').toLowerCase() ===
-        itemFilter.toLowerCase()
-    )
-
-  // Calculate balance per item
-  const itemBalances = {}
-  // We need to calculate balance from the beginning, even if date filter is applied
-  // So we iterate all sorted records, calculate balance, then filter for display
-
-  const rowsWithBalance = all.map((r) => {
-    const item = r.ItemName || r.product_name || ''
-    if (!itemBalances[item]) itemBalances[item] = 0
-    const qty = r.quantity || r.qty || 0
-    if (r.type === 'IN') {
-      itemBalances[item] += qty
-    } else if (r.type === 'OUT') {
-      itemBalances[item] -= qty
-    }
-    return { ...r, balance: itemBalances[item] }
-  })
-
-  let displayRows = rowsWithBalance
-
-  if (from)
-    displayRows = displayRows.filter(
-      (r) => new Date(r.date || r.transactionDate || 0) >= new Date(from)
-    )
-  if (to)
-    displayRows = displayRows.filter(
-      (r) => new Date(r.date || r.transactionDate || 0) <= new Date(to)
-    )
-
-  // Calculate Summary Metrics for the displayed period
-  let totalReceived = 0
-  let totalIssued = 0
-  let currentBalance = 0
-
-  if (itemFilter !== 'All') {
-    // For single item, balance is the last row's balance or the current calculated balance
-    currentBalance = itemBalances[itemFilter] || 0
-  } else {
-    // For all items, sum of all current balances
-    currentBalance = Object.values(itemBalances).reduce((a, b) => a + b, 0)
-  }
-
-  displayRows.forEach((r) => {
-    const qty = Number(r.quantity || r.qty || 0)
-    if (r.type === 'IN') totalReceived += qty
-    if (r.type === 'OUT') totalIssued += qty
-  })
-
-  // Show item details / summary cards
-  const itemDetailsEl = document.getElementById('stock-card-item-details')
-
-  if (itemDetailsEl) {
-    itemDetailsEl.style.display = 'block'
-    itemDetailsEl.innerHTML = `
-        <div class="summary-grid">
-            <div class="summary-item">
-                <div class="summary-icon" style="background-color: #e0f2fe; color: #0284c7;">
-                    <i data-lucide="package" style="width:24px;height:24px;"></i>
-                </div>
-                <div class="summary-content">
-                    <div class="summary-value" id="sc-current-balance">${currentBalance.toLocaleString()}</div>
-                    <div class="summary-label">Current Stock Level</div>
-                </div>
-            </div>
-            <div class="summary-item">
-                <div class="summary-icon" style="background-color: #dcfce7; color: #16a34a;">
-                    <i data-lucide="arrow-down-circle" style="width:24px;height:24px;"></i>
-                </div>
-                <div class="summary-content">
-                    <div class="summary-value" id="sc-total-received">${totalReceived.toLocaleString()}</div>
-                    <div class="summary-label">Total Received (Period)</div>
-                </div>
-            </div>
-            <div class="summary-item">
-                <div class="summary-icon" style="background-color: #fee2e2; color: #dc2626;">
-                    <i data-lucide="arrow-up-circle" style="width:24px;height:24px;"></i>
-                </div>
-                <div class="summary-content">
-                    <div class="summary-value" id="sc-total-issued">${totalIssued.toLocaleString()}</div>
-                    <div class="summary-label">Total Issued (Period)</div>
-                </div>
-            </div>
-        </div>
-      `
-    if (window.lucide) lucide.createIcons()
-  }
-
-  tbody.innerHTML = displayRows
-    .map((r) => {
-      const qty = r.quantity || r.qty || 0
-      const balanceQty = r.balance || 0
-      const date = r.date || r.transactionDate || ''
-      const reference = r.transaction_id || r.id || ''
-      const office = r.department || r.office || '-'
-
-      return `<tr>
-            <td>${date}</td>
-            <td>${reference}</td>
-            <td>${r.type === 'IN' ? qty : '-'}</td>
-            <td>${r.type === 'OUT' ? qty : '-'}</td>
-            <td>${r.type === 'OUT' ? office : '-'}</td>
-            <td>${balanceQty}</td>
-            <td>-</td>
-        </tr>`
-    })
-    .join('')
-  window.__stockCardsRows = displayRows
-}
-
-function exportStockCardsCSV() {
-  const itemFilter =
-    document.getElementById('stock-card-item-filter')?.value || 'All'
-  const rows = [
-    [
-      'Date',
-      'Reference',
-      'Receipt Qty',
-      'Issue Qty',
-      'Issue Office',
-      'Balance Qty',
-      'No. of Days to Consume',
-    ],
-  ]
-  const data = window.__stockCardsRows || []
-  data.forEach((r) => {
-    const qty = r.quantity || r.qty || 0
-    const balanceQty = r.balance || 0
-    const date = r.date || r.transactionDate || ''
-    const reference = r.transaction_id || r.id || ''
-    const office = r.department || r.office || '-'
-
-    if (r.type === 'IN') {
-      rows.push([date, reference, qty, '-', '-', balanceQty, '-'])
-    } else {
-      rows.push([date, reference, '-', qty, office, balanceQty, '-'])
-    }
-  })
-  downloadExcel('stock-cards-report.xlsx', rows, 'Stock Cards')
-}
+// Stock Cards export function removed: exportStockCardsCSV()
 
 function renderConsolidateMonitoring() {
   // Calculate comprehensive metrics
@@ -9887,21 +9647,7 @@ function initializeReportPageEvents(pageId) {
       ?.addEventListener('change', renderRsmiReport)
     renderRsmiReport()
   }
-  if (pageId === 'stock-cards') {
-    document
-      .getElementById('export-stock-cards-btn')
-      ?.addEventListener('click', exportStockCardsCSV)
-    document
-      .getElementById('stock-card-item-filter')
-      ?.addEventListener('change', renderStockCardsReport)
-    document
-      .getElementById('stock-card-date-from')
-      ?.addEventListener('change', renderStockCardsReport)
-    document
-      .getElementById('stock-card-date-to')
-      ?.addEventListener('change', renderStockCardsReport)
-    renderStockCardsReport()
-  }
+  // Stock Cards events removed
   if (pageId === 'consolidate-monitoring') {
     document
       .getElementById('export-consolidate-btn')

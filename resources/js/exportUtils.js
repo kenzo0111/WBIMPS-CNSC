@@ -3,42 +3,111 @@ import ExcelJS from 'exceljs'
 import { jsPDF } from 'jspdf'
 
 // Excel export function
-export async function downloadExcel(data, filename = 'export.xlsx') {
+export async function downloadExcel(
+  data,
+  filename = 'export.xlsx',
+  options = {}
+) {
   try {
     const workbook = new ExcelJS.Workbook()
-    const worksheet = workbook.addWorksheet('Sheet1')
+    let worksheet
 
-    // Add data rows
-    worksheet.addRows(data)
-
-    // Style the header row
-    const headerRow = worksheet.getRow(1)
-    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
-    headerRow.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FF4F81BD' },
+    // If a template URL is provided, try to load it and use the first worksheet or provided name
+    if (options.templateUrl) {
+      try {
+        const res = await fetch(options.templateUrl, { method: 'GET' })
+        if (!res.ok) throw new Error('Failed to fetch template')
+        const buffer = await res.arrayBuffer()
+        await workbook.xlsx.load(buffer)
+        worksheet = options.sheetName
+          ? workbook.getWorksheet(options.sheetName) || workbook.worksheets[0]
+          : workbook.worksheets[0]
+      } catch (e) {
+        console.warn(
+          'Could not load template, falling back to empty workbook',
+          e
+        )
+        worksheet = workbook.addWorksheet(options.sheetName || 'Sheet1')
+      }
+    } else {
+      worksheet = workbook.addWorksheet(options.sheetName || 'Sheet1')
     }
 
-    // Auto-fit columns
-    worksheet.columns.forEach((column) => {
-      let maxLength = 0
-      column.eachCell({ includeEmpty: true }, (cell) => {
-        const columnLength = cell.value ? cell.value.toString().length : 10
-        if (columnLength > maxLength) {
-          maxLength = columnLength
-        }
+    // Determine starting row: if we loaded a template and worksheet is non-empty, start after last row
+    const startRow =
+      options.startRow ||
+      (worksheet.actualRowCount ? worksheet.actualRowCount + 1 : 1)
+    // If data is an array of arrays or array of objects. If objects, use keys as headers (only when no template)
+    if (
+      Array.isArray(data) &&
+      data.length &&
+      data[0] &&
+      typeof data[0] === 'object' &&
+      !Array.isArray(data[0])
+    ) {
+      // convert objects to arrays
+      let headers = Object.keys(data[0])
+      // If template has header and we are using it, don't add headers
+      if (!options.templateUrl) {
+        worksheet.spliceRows(startRow, 0, headers)
+      }
+      data.forEach((rowObj, idx) => {
+        const row = headers.map((h) => rowObj[h] ?? '')
+        worksheet.spliceRows(
+          startRow + (options.templateUrl ? idx : idx + 1),
+          0,
+          row
+        )
       })
-      column.width = Math.min(maxLength + 2, 50) // Cap at 50
-    })
+    } else {
+      // array of arrays (or simple 2D), push rows normally
+      if (startRow > 1) {
+        // append rows so they start at startRow
+        // ExcelJS doesn't have direct insert at index, but spliceRows allows it
+        data.forEach((row, idx) => {
+          worksheet.spliceRows(startRow + idx, 0, row)
+        })
+      } else {
+        worksheet.addRows(data)
+      }
+    }
 
-    // Freeze the header row
-    worksheet.views = [{ state: 'frozen', ySplit: 1 }]
+    // Style the header row if not using a template or override requested
+    const headerRow = worksheet.getRow(options.headerRow || 1)
+    if (!options.templateUrl || options.overrideHeaderStyle) {
+      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+      headerRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF4F81BD' },
+      }
+    }
 
-    // Add filters to header row
-    worksheet.autoFilter = {
-      from: 'A1',
-      to: `${String.fromCharCode(65 + worksheet.columns.length - 1)}1`,
+    // Auto-fit columns (only if not using a template or explicitly requested)
+    if (!options.templateUrl || options.autoFitColumns) {
+      worksheet.columns.forEach((column) => {
+        let maxLength = 0
+        column.eachCell({ includeEmpty: true }, (cell) => {
+          const columnLength = cell.value ? cell.value.toString().length : 10
+          if (columnLength > maxLength) {
+            maxLength = columnLength
+          }
+        })
+        column.width = Math.min(maxLength + 2, 50) // Cap at 50
+      })
+
+      // Freeze the header row (if not using a template and not overridden)
+      if (!options.templateUrl || options.freezeHeader) {
+        worksheet.views = [{ state: 'frozen', ySplit: 1 }]
+      }
+    }
+
+    // Add filters to header row (only if not using a template or explicitly requested)
+    if (!options.templateUrl || options.addFiltersToHeader) {
+      worksheet.autoFilter = {
+        from: 'A1',
+        to: `${String.fromCharCode(65 + worksheet.columns.length - 1)}1`,
+      }
     }
 
     // Generate and download the file

@@ -209,12 +209,7 @@
                                 <span>RSMI</span>
                             </button>
                         </div>
-                        <div class="nav-item" data-page="stock-cards">
-                            <button class="nav-button">
-                                <i data-lucide="credit-card" class="submenu-icon"></i>
-                                <span>Stock Cards</span>
-                            </button>
-                        </div>
+                        <!-- Stock Cards page removed from Reports menu -->
                         <div class="nav-item" data-page="consolidate-monitoring">
                             <button class="nav-button">
                                 <i data-lucide="layout-dashboard" class="submenu-icon"></i>

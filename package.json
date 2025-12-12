@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "generate:templates": "node scripts/generate_rsmi_template.js"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
