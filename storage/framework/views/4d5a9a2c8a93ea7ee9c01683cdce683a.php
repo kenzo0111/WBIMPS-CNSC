@@ -4,19 +4,19 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="csrf-token" content="{{ csrf_token() }}" />
+    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>" />
     <title>Purchase Request • SPMO</title>
-    @vite('resources/css/user-request.css')
-    @vite('resources/js/user-request.js')
-    <link rel="shortcut icon" href="{{ asset('images/UCN1.png') }}" type="image/png">
-    <link rel="icon" href="{{ asset('images/UCN1.png') }}" type="image/png">
+    <?php echo app('Illuminate\Foundation\Vite')('resources/css/user-request.css'); ?>
+    <?php echo app('Illuminate\Foundation\Vite')('resources/js/user-request.js'); ?>
+    <link rel="shortcut icon" href="<?php echo e(asset('images/UCN1.png')); ?>" type="image/png">
+    <link rel="icon" href="<?php echo e(asset('images/UCN1.png')); ?>" type="image/png">
 </head>
 
 <body>
     <header>
         <div class="header-container">
             <div class="logo">
-                <img src="{{ $imagesPath }}/cnscrefine.png" alt="CNSC Logo" />
+                <img src="<?php echo e($imagesPath); ?>/cnscrefine.png" alt="CNSC Logo" />
                 <div class="logo-text">
                     <h1>Supply and Property Management Office</h1>
                     <hr />
@@ -24,9 +24,9 @@
                 </div>
             </div>
             <nav class="nav-menu" style="display: flex; align-items: center; gap: 1rem; margin-left: auto;">
-                <span style="color: white; font-weight: 500; font-size: 0.9rem;">{{ Auth::user()->email }}</span>
-                <form method="POST" action="{{ route('logout') }}" style="margin: 0;">
-                    @csrf
+                <span style="color: white; font-weight: 500; font-size: 0.9rem;"><?php echo e(Auth::user()->email); ?></span>
+                <form method="POST" action="<?php echo e(route('logout')); ?>" style="margin: 0;">
+                    <?php echo csrf_field(); ?>
                     <button type="submit" style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: white; padding: 0.5rem 1rem; border-radius: 20px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">
                         Logout
                     </button>
@@ -418,4 +418,4 @@
 
 </body>
 
-</html>
+</html><?php /**PATH C:\xampp\htdocs\SupplySystem\resources\views/user/user-request.blade.php ENDPATH**/ ?>

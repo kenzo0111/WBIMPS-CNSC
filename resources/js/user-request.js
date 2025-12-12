@@ -43,9 +43,13 @@
     // Include optional PR/pdf-specific fields if available
     obj.entityName = byId('entityName')?.value || ''
     obj.prNo = byId('prNo')?.value || ''
+    obj.dtsNo = byId('dtsNo')?.value || ''
     obj.fundCluster = byId('fundCluster')?.value || ''
     obj.responsibilityCenterCode = byId('responsibilityCenterCode')?.value || ''
     obj.approvedBy = byId('approvedBy')?.value || ''
+    obj.approvedByOther = byId('approvedByOther')?.value || ''
+    if (obj.approvedBy === 'Others' && obj.approvedByOther)
+      obj.approvedBy = obj.approvedByOther
     obj.approverDesignation = byId('approverDesignation')?.value || ''
 
     // Also include a numeric overall total (unformatted) to make it easier for the server
@@ -341,6 +345,16 @@
       byId('itemsTableBody').innerHTML = ''
       addItemRow()
       byId('overallTotalCost').value = ''
+
+      // Hide and clear the 'Other Approver' input if present
+      const approvedByOtherContainer = byId('approvedByOtherContainer')
+      const approvedByOtherInput = byId('approvedByOther')
+      if (approvedByOtherContainer)
+        approvedByOtherContainer.style.display = 'none'
+      if (approvedByOtherInput) {
+        approvedByOtherInput.removeAttribute('required')
+        approvedByOtherInput.value = ''
+      }
     }, 50)
   }
 
@@ -368,6 +382,7 @@
       'priority',
       'entityName',
       'prNo',
+      'dtsNo',
       'fundCluster',
       'responsibilityCenterCode',
       'approvedBy',
@@ -383,6 +398,18 @@
       } else {
         const el = byId(field)
         value = el ? el.value || '-' : '-'
+      }
+
+      // If Approved By is 'Others', use the specified other approver value instead
+      if (field === 'approvedBy') {
+        const sel = byId('approvedBy')
+        const otherInput = byId('approvedByOther')
+        if (sel && sel.value === 'Others') {
+          const s = otherInput && otherInput.value ? otherInput.value : 'Others'
+          value = s
+        } else if (sel) {
+          value = sel.value || '-'
+        }
       }
 
       if (value !== '-') {
@@ -1092,7 +1119,10 @@
     const approvedBySelect = byId('approvedBy')
     const designationInput = byId('approverDesignation')
     if (approvedBySelect && designationInput) {
-      approvedBySelect.addEventListener('change', () => {
+      const approvedByOtherContainer = byId('approvedByOtherContainer')
+      const approvedByOtherInput = byId('approvedByOther')
+
+      const updateDesignationAndOther = () => {
         const val = approvedBySelect.value
         let desig = ''
         if (val === 'ATTY. RYAN L. ESTEVEZ, DPA') desig = 'PRESIDENT'
@@ -1104,7 +1134,25 @@
           desig = 'VICE PRESIDENT FOR RESEARCH AND EXTENSION (VPRE)'
 
         if (desig) designationInput.value = desig
-      })
+
+        // Show/hide 'Other' approver input
+        if (val === 'Others') {
+          if (approvedByOtherContainer)
+            approvedByOtherContainer.style.display = ''
+          if (approvedByOtherInput)
+            approvedByOtherInput.setAttribute('required', 'required')
+          // clear designation if this is a free text entry and user will supply name
+        } else {
+          if (approvedByOtherContainer)
+            approvedByOtherContainer.style.display = 'none'
+          if (approvedByOtherInput)
+            approvedByOtherInput.removeAttribute('required')
+        }
+      }
+
+      approvedBySelect.addEventListener('change', updateDesignationAndOther)
+      // run once on init
+      updateDesignationAndOther()
     }
 
     // form submit, reset
