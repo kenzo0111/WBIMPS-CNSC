@@ -24,6 +24,7 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::apiResource('suppliers', App\Http\Controllers\Api\SupplierController::class);
     Route::apiResource('stock-in', StockInController::class);
     Route::apiResource('stock-out', StockOutController::class);
+    Route::post('/stock-out/batch', [StockOutController::class, 'batchStore']); // Batch submission endpoint
     Route::apiResource('user-logs', UserLogController::class);
     Route::apiResource('users', App\Http\Controllers\Api\UserController::class);
     Route::apiResource('roles', App\Http\Controllers\Api\RoleController::class);

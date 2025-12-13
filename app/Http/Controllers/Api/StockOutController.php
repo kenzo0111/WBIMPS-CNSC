@@ -260,4 +260,101 @@ class StockOutController extends Controller
 
         return response()->json(['message' => 'Stock out record deleted']);
     }
+
+    /**
+     * Submit multiple stock-out items as a batch transaction.
+     * This endpoint accepts an array of items and processes them together,
+     * sharing the same batch ID for correlation.
+     */
+    public function batchStore(Request $request)
+    {
+        $validated = $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.issue_id' => 'required|string|unique:stock_out,issue_id',
+            'items.*.transaction_id' => 'nullable|string',
+            'items.*.sku' => 'required|string|exists:items,sku',
+            'items.*.product_name' => 'required|string',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.unit_cost' => 'nullable|numeric|min:0',
+            'items.*.total_cost' => 'nullable|numeric|min:0',
+            'items.*.department' => 'nullable|string',
+            'items.*.issued_to' => 'nullable|string',
+            'items.*.issued_by' => 'nullable|string',
+            'items.*.purpose' => 'nullable|string',
+            'items.*.date_issued' => 'required|date',
+        ]);
+
+        $results = [
+            'successful' => [],
+            'failed' => [],
+            'batchId' => $request->input('batchId'),
+        ];
+
+        DB::transaction(function () use ($validated, &$results) {
+            foreach ($validated['items'] as $itemData) {
+                try {
+                    // Check stock availability for each item
+                    $item = Item::where('sku', $itemData['sku'])->first();
+                    if (!$item) {
+                        $results['failed'][] = [
+                            'sku' => $itemData['sku'],
+                            'error' => 'Item not found',
+                        ];
+                        continue;
+                    }
+
+                    if ($item->quantity < $itemData['quantity']) {
+                        $results['failed'][] = [
+                            'sku' => $itemData['sku'],
+                            'error' => 'Insufficient stock',
+                        ];
+                        continue;
+                    }
+
+                    $remaining = $item->quantity - $itemData['quantity'];
+                    if ($remaining <= 20) {
+                        $results['failed'][] = [
+                            'sku' => $itemData['sku'],
+                            'error' => "Cannot create stock out: remaining stock would be {$remaining}, which is at or below minimum (20).",
+                        ];
+                        continue;
+                    }
+
+                    // Create stock-out record
+                    $stockOut = StockOut::create($itemData);
+
+                    // Update item inventory
+                    $item->decrement('quantity', $itemData['quantity']);
+
+                    // Log activity
+                    try {
+                        activity()->causedBy(Auth::user())
+                            ->withProperties([
+                                'issueId' => $stockOut->issue_id ?? $stockOut->id ?? null,
+                                'transactionId' => $stockOut->transaction_id ?? null,
+                                'sku' => $stockOut->sku ?? null,
+                                'quantity' => $stockOut->quantity ?? null,
+                                'product_name' => $stockOut->product_name ?? null,
+                            ])
+                            ->log(sprintf('Stock Out (Batch): %s', $stockOut->product_name ?? $stockOut->sku ?? ''));
+                    } catch (\Throwable $e) {
+                    }
+
+                    $results['successful'][] = [
+                        'id' => $stockOut->id,
+                        'sku' => $stockOut->sku,
+                        'quantity' => $stockOut->quantity,
+                    ];
+                } catch (\Throwable $e) {
+                    $results['failed'][] = [
+                        'sku' => $itemData['sku'] ?? 'unknown',
+                        'error' => $e->getMessage(),
+                    ];
+                }
+            }
+        });
+
+        $httpStatus = empty($results['failed']) ? 201 : 207; // 207 Multi-Status for partial success
+        return response()->json($results, $httpStatus);
+    }
 }
