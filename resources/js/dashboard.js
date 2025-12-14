@@ -793,6 +793,33 @@ function updatePOFormDraft(formKey, field, value) {
 
 window.updatePOFormDraft = updatePOFormDraft
 
+function updateRISSignatureDate(dateValue) {
+  // Update the single signature date field
+  updatePOFormDraft('ris', 'signature_date', dateValue)
+
+  // Also update all individual date fields for backward compatibility and API submission
+  updatePOFormDraft('ris', 'requested_by_date', dateValue)
+  updatePOFormDraft('ris', 'approved_by_date', dateValue)
+  updatePOFormDraft('ris', 'issued_by_date', dateValue)
+  updatePOFormDraft('ris', 'received_by_date', dateValue)
+
+  // Update the UI elements if they exist
+  const dateFields = [
+    'ris_requested_by_date',
+    'ris_approved_by_date',
+    'ris_issued_by_date',
+    'ris_received_by_date',
+  ]
+  dateFields.forEach((fieldId) => {
+    const element = document.getElementById(fieldId)
+    if (element) {
+      element.value = dateValue
+    }
+  })
+}
+
+window.updateRISSignatureDate = updateRISSignatureDate
+
 function clearPurchaseOrderDraftFromLocalStorage() {
   try {
     const key = getPODraftKey()
@@ -4550,7 +4577,9 @@ function generateItemsPage() {
             <div class="enhanced-filter-bar">
                 <div class="filter-left">
                     <div class="enhanced-search">
-                        <input type="text" class="form-input" placeholder="Search a Item" id="Item-search">
+                        <input type="text" class="form-input" placeholder="Search a Item" id="Item-search" value="${
+                          AppState.ItemSearchTerm || ''
+                        }">
                         <i data-lucide="search" class="search-icon" aria-label="Search Items"></i>
                     </div>
                 </div>
@@ -4558,26 +4587,89 @@ function generateItemsPage() {
                     <div class="filter-wrapper">
                         <i data-lucide="arrow-up-down" class="filter-icon"></i>
                         <select class="filter-dropdown" id="sort-by">
-                            <option>Sort By</option>
-                            <option>Item Name (A-Z)</option>
-                            <option>Item Name (Z-A)</option>
-                            <option>SKU (A-Z)</option>
-                            <option>SKU (Z-A)</option>
-                            <option>Date (Newest)</option>
-                            <option>Date (Oldest)</option>
-                            <option>Total Value (High to Low)</option>
-                            <option>Total Value (Low to High)</option>
+                            <option ${
+                              AppState.ItemSortBy === 'Sort By'
+                                ? 'selected'
+                                : ''
+                            }>Sort By</option>
+                            <option ${
+                              AppState.ItemSortBy === 'Item Name (A-Z)'
+                                ? 'selected'
+                                : ''
+                            }>Item Name (A-Z)</option>
+                            <option ${
+                              AppState.ItemSortBy === 'Item Name (Z-A)'
+                                ? 'selected'
+                                : ''
+                            }>Item Name (Z-A)</option>
+                            <option ${
+                              AppState.ItemSortBy === 'SKU (A-Z)'
+                                ? 'selected'
+                                : ''
+                            }>SKU (A-Z)</option>
+                            <option ${
+                              AppState.ItemSortBy === 'SKU (Z-A)'
+                                ? 'selected'
+                                : ''
+                            }>SKU (Z-A)</option>
+                            <option ${
+                              AppState.ItemSortBy === 'Date (Newest)'
+                                ? 'selected'
+                                : ''
+                            }>Date (Newest)</option>
+                            <option ${
+                              AppState.ItemSortBy === 'Date (Oldest)'
+                                ? 'selected'
+                                : ''
+                            }>Date (Oldest)</option>
+                            <option ${
+                              AppState.ItemSortBy ===
+                              'Total Value (High to Low)'
+                                ? 'selected'
+                                : ''
+                            }>Total Value (High to Low)</option>
+                            <option ${
+                              AppState.ItemSortBy ===
+                              'Total Value (Low to High)'
+                                ? 'selected'
+                                : ''
+                            }>Total Value (Low to High)</option>
                         </select>
                     </div>
                     <div class="filter-wrapper">
                         <i data-lucide="filter" class="filter-icon"></i>
                         <select class="filter-dropdown" id="filter-by">
-                            <option>Filter By</option>
-                            <option>High Value (>₱5,000)</option>
-                            <option>Medium Value (₱1,000-₱5,000)</option>
-                            <option>Low Value (<₱1,000)</option>
-                            <option>Recent (Last 30 days)</option>
-                            <option>Low Quantity (<20)</option>
+                            <option ${
+                              AppState.ItemFilterBy === 'Filter By'
+                                ? 'selected'
+                                : ''
+                            }>Filter By</option>
+                            <option ${
+                              AppState.ItemFilterBy === 'High Value (>₱5,000)'
+                                ? 'selected'
+                                : ''
+                            }>High Value (>₱5,000)</option>
+                            <option ${
+                              AppState.ItemFilterBy ===
+                              'Medium Value (₱1,000-₱5,000)'
+                                ? 'selected'
+                                : ''
+                            }>Medium Value (₱1,000-₱5,000)</option>
+                            <option ${
+                              AppState.ItemFilterBy === 'Low Value (<₱1,000)'
+                                ? 'selected'
+                                : ''
+                            }>Low Value (<₱1,000)</option>
+                            <option ${
+                              AppState.ItemFilterBy === 'Recent (Last 30 days)'
+                                ? 'selected'
+                                : ''
+                            }>Recent (Last 30 days)</option>
+                            <option ${
+                              AppState.ItemFilterBy === 'Low Quantity (<20)'
+                                ? 'selected'
+                                : ''
+                            }>Low Quantity (<20)</option>
                         </select>
                     </div>
                     <div class="filter-wrapper">
@@ -4609,7 +4701,6 @@ function generateItemsPage() {
                     <thead>
                         <tr>
                             <th>Item ID</th>
-                            <th>SKU</th>
                             <th>Item Name</th>
                             <th>Description</th>
                             <th>Quantity</th>
@@ -4626,11 +4717,8 @@ function generateItemsPage() {
                             ? pageItems
                                 .map((Item, index) => {
                                   return `
-                            <tr>
+                            <tr data-id="${Item.id}">
                                 <td style="font-weight: 500;">${Item.id}</td>
-                                <td style="font-weight: 500;">${
-                                  Item.sku || '-'
-                                }</td>
                                 <td style="font-weight: 500;">${Item.name}</td>
                                 <td style="color: #6b7280; max-width: 300px;">${
                                   Item.description || ''
@@ -4662,7 +4750,7 @@ function generateItemsPage() {
                         `
                                 })
                                 .join('')
-                            : `<tr><td colspan="10" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No Items found</td></tr>`
+                            : `<tr><td colspan="9" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No Items found</td></tr>`
                         }
                     </tbody>
                 </table>
@@ -6268,16 +6356,29 @@ function generateStockInPage() {
     `
 }
 
+function getStockOutTransactions(records) {
+  const grouped = {}
+  records.filter(Boolean).forEach((record) => {
+    const key = record.issueId || record.id
+    if (!grouped[key]) grouped[key] = []
+    grouped[key].push(record)
+  })
+  return Object.values(grouped)
+}
+
 function generateStockOutPage() {
   // Get unique departments from stockOutData
   const uniqueDepartments = [
     ...new Set((stockOutData || []).map((r) => r.department).filter(Boolean)),
   ].sort()
 
+  // Group records into transactions
+  const transactions = getStockOutTransactions(stockOutData || [])
+
   // Pagination calculations for initial render
   const rawPageSize = Number(AppState.stockOutPageSize || 10)
-  const pageSize = rawPageSize === 0 ? stockOutData.length || 1 : rawPageSize
-  const totalItems = (stockOutData || []).length
+  const pageSize = rawPageSize === 0 ? transactions.length || 1 : rawPageSize
+  const totalItems = transactions.length
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
   const currentPage = Math.min(
     Math.max(Number(AppState.currentStockOutPage || 1), 1),
@@ -6285,7 +6386,7 @@ function generateStockOutPage() {
   )
   const startIndex = (currentPage - 1) * pageSize
   const endIndex = Math.min(startIndex + pageSize, totalItems)
-  const pageItems = (stockOutData || []).slice(startIndex, endIndex)
+  const pageTransactions = transactions.slice(startIndex, endIndex)
 
   return `
         <div class="page-header">
@@ -6387,7 +6488,7 @@ function generateStockOutPage() {
                             </tr>
                         </thead>
                         <tbody id="stock-out-table-body">
-                          ${renderStockOutRows(pageItems)}
+                          ${renderStockOutTransactionRows(pageTransactions)}
                         </tbody>
                     </table>
                     
@@ -10967,6 +11068,27 @@ function renderPurchaseOrderWizardStep(requestData) {
     }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                             </div>
                         </div>
+                        <div class="grid-2">
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                                    <i data-lucide="user" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                                    End User Name
+                                </label>
+                                <input type="text" class="form-input" id="po-end-user-name" placeholder="Enter end user name" value="${
+                                  AppState.purchaseOrderDraft.endUserName || ''
+                                }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                                    <i data-lucide="id-card" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                                    Designation
+                                </label>
+                                <input type="text" class="form-input" id="po-end-user-designation" placeholder="Enter designation" value="${
+                                  AppState.purchaseOrderDraft
+                                    .endUserDesignation || ''
+                                }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                            </div>
+                        </div>
                     </div>
                     <div style="margin-bottom: 24px;">
                         <h4 style="margin: 0 0 16px 0; font-size: 14px; font-weight: 600; color: #374151; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb;">Procurement Context</h4>
@@ -11445,6 +11567,10 @@ function persistCurrentWizardStep() {
       modal.querySelector('#po-department')?.value || ''
     AppState.purchaseOrderDraft.purchaseDate =
       modal.querySelector('#po-date')?.value || ''
+    AppState.purchaseOrderDraft.endUserName =
+      modal.querySelector('#po-end-user-name')?.value || ''
+    AppState.purchaseOrderDraft.endUserDesignation =
+      modal.querySelector('#po-end-user-designation')?.value || ''
     AppState.purchaseOrderDraft.procurementMode =
       modal.querySelector('#po-mode')?.value || ''
     AppState.purchaseOrderDraft.gentlemen =
@@ -11513,28 +11639,27 @@ function persistCurrentWizardStep() {
       purpose: modal.querySelector('#ris_purpose')?.value || '',
       stock_available:
         modal.querySelector('#ris_stock_available')?.value === '1',
+      signature_date: modal.querySelector('#ris_signature_date')?.value || '',
       requested_by_name:
         modal.querySelector('#ris_requested_by_name')?.value || '',
       requested_by_designation:
         modal.querySelector('#ris_requested_by_designation')?.value || '',
       requested_by_date:
-        modal.querySelector('#ris_requested_by_date')?.value || '',
+        modal.querySelector('#ris_signature_date')?.value || '', // Use single date
       approved_by_name:
         modal.querySelector('#ris_approved_by_name')?.value || '',
       approved_by_designation:
         modal.querySelector('#ris_approved_by_designation')?.value || '',
-      approved_by_date:
-        modal.querySelector('#ris_approved_by_date')?.value || '',
+      approved_by_date: modal.querySelector('#ris_signature_date')?.value || '', // Use single date
       issued_by_name: modal.querySelector('#ris_issued_by_name')?.value || '',
       issued_by_designation:
         modal.querySelector('#ris_issued_by_designation')?.value || '',
-      issued_by_date: modal.querySelector('#ris_issued_by_date')?.value || '',
+      issued_by_date: modal.querySelector('#ris_signature_date')?.value || '', // Use single date
       received_by_name:
         modal.querySelector('#ris_received_by_name')?.value || '',
       received_by_designation:
         modal.querySelector('#ris_received_by_designation')?.value || '',
-      received_by_date:
-        modal.querySelector('#ris_received_by_date')?.value || '',
+      received_by_date: modal.querySelector('#ris_signature_date')?.value || '', // Use single date
     }
 
     // Save PAR form data
@@ -11638,6 +11763,8 @@ async function finalizePurchaseOrderCreation() {
   const poNumber = draft.poNumber || generateNewPONumber()
   const department = draft.department || ''
   const purchaseDate = draft.purchaseDate || ''
+  const endUserName = draft.endUserName || ''
+  const endUserDesignation = draft.endUserDesignation || ''
   const procurementMode = draft.procurementMode || ''
   const gentlemen = draft.gentlemen || ''
   let placeOfDelivery = draft.placeOfDelivery || ''
@@ -11705,6 +11832,8 @@ async function finalizePurchaseOrderCreation() {
     entity_name: 'Camarines Norte State College',
     entity_address: '',
     department: department,
+    end_user_name: endUserName,
+    end_user_designation: endUserDesignation,
     gentlemen: gentlemen,
     notes: notes,
     status: 'submitted',
@@ -11776,6 +11905,8 @@ async function finalizePurchaseOrderCreation() {
       status: 'submitted',
       requestedBy: 'Current User',
       department,
+      endUserName,
+      endUserDesignation,
       generateICS: AppState.purchaseOrderItems.some((item) => item.generateICS),
       generateRIS: AppState.purchaseOrderItems.some((item) => item.generateRIS),
       generatePAR: AppState.purchaseOrderItems.some((item) => item.generatePAR),
@@ -12050,6 +12181,32 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                           )
                           .join('')}
                     </select>
+                </div>
+                
+                <div class="grid-2">
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                            <i data-lucide="user" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                            End User Name
+                        </label>
+                        <input type="text" class="form-input" id="endUserName"
+                               value="${requestData?.endUserName || ''}"
+                               placeholder="Enter end user name" 
+                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
+                               ${isReadOnly ? 'readonly' : ''}>
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                            <i data-lucide="id-card" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                            Designation
+                        </label>
+                        <input type="text" class="form-input" id="endUserDesignation"
+                               value="${requestData?.endUserDesignation || ''}"
+                               placeholder="Enter designation" 
+                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
+                               ${isReadOnly ? 'readonly' : ''}>
+                    </div>
                 </div>
                 
                 <div class="form-group" style="margin-bottom: 0;">
@@ -12949,12 +13106,17 @@ function autoFillICSForm() {
     updatePOFormDraft('ics', 'fund_cluster', fundCluster)
   }
 
-  // Auto-fill custodian details (default values)
+  // Auto-fill custodian details using end user data
+  const endUserName =
+    AppState.purchaseOrderDraft.endUserName || 'Property Custodian'
+  const endUserDesignation =
+    AppState.purchaseOrderDraft.endUserDesignation || 'Property Custodian'
+
   if (!AppState.purchaseOrderDraft.icsFormData.received_by_name) {
-    updatePOFormDraft('ics', 'received_by_name', 'Property Custodian')
+    updatePOFormDraft('ics', 'received_by_name', endUserName)
   }
   if (!AppState.purchaseOrderDraft.icsFormData.received_by_position) {
-    updatePOFormDraft('ics', 'received_by_position', 'Property Custodian')
+    updatePOFormDraft('ics', 'received_by_position', endUserDesignation)
   }
 
   // Auto-fill issuer details (default values)
@@ -13019,12 +13181,17 @@ function autoFillRISForm() {
     updatePOFormDraft('ris', 'purpose', 'For office use and consumption')
   }
 
-  // Auto-fill signature fields (default values)
+  // Auto-fill signature fields using end user data
+  const endUserName =
+    AppState.purchaseOrderDraft.endUserName || 'Department Head'
+  const endUserDesignation =
+    AppState.purchaseOrderDraft.endUserDesignation || 'Department Head'
+
   if (!AppState.purchaseOrderDraft.risFormData.requested_by_name) {
-    updatePOFormDraft('ris', 'requested_by_name', 'Department Head')
+    updatePOFormDraft('ris', 'requested_by_name', endUserName)
   }
   if (!AppState.purchaseOrderDraft.risFormData.requested_by_designation) {
-    updatePOFormDraft('ris', 'requested_by_designation', 'Department Head')
+    updatePOFormDraft('ris', 'requested_by_designation', endUserDesignation)
   }
   // Set approved by to the supply officer (Arsenio) by default so printed RIS has the proper approver
   if (!AppState.purchaseOrderDraft.risFormData.approved_by_name) {
@@ -13044,25 +13211,16 @@ function autoFillRISForm() {
     updatePOFormDraft('ris', 'issued_by_designation', 'Supply Officer')
   }
   if (!AppState.purchaseOrderDraft.risFormData.received_by_name) {
-    updatePOFormDraft('ris', 'received_by_name', 'End User')
+    updatePOFormDraft('ris', 'received_by_name', endUserName)
   }
   if (!AppState.purchaseOrderDraft.risFormData.received_by_designation) {
-    updatePOFormDraft('ris', 'received_by_designation', 'End User')
+    updatePOFormDraft('ris', 'received_by_designation', endUserDesignation)
   }
 
   // Auto-fill dates with current date if not set
   const currentDate = new Date().toISOString().split('T')[0]
-  if (!AppState.purchaseOrderDraft.risFormData.requested_by_date) {
-    updatePOFormDraft('ris', 'requested_by_date', currentDate)
-  }
-  if (!AppState.purchaseOrderDraft.risFormData.approved_by_date) {
-    updatePOFormDraft('ris', 'approved_by_date', currentDate)
-  }
-  if (!AppState.purchaseOrderDraft.risFormData.issued_by_date) {
-    updatePOFormDraft('ris', 'issued_by_date', currentDate)
-  }
-  if (!AppState.purchaseOrderDraft.risFormData.received_by_date) {
-    updatePOFormDraft('ris', 'received_by_date', currentDate)
+  if (!AppState.purchaseOrderDraft.risFormData.signature_date) {
+    updatePOFormDraft('ris', 'signature_date', currentDate)
   }
 }
 
@@ -13084,12 +13242,17 @@ function autoFillPARForm() {
     updatePOFormDraft('par', 'fund_cluster', fundCluster)
   }
 
-  // Auto-fill custodian details (default values)
+  // Auto-fill custodian details using end user data
+  const endUserName =
+    AppState.purchaseOrderDraft.endUserName || 'Property Custodian'
+  const endUserDesignation =
+    AppState.purchaseOrderDraft.endUserDesignation || 'Property Custodian'
+
   if (!AppState.purchaseOrderDraft.parFormData.received_by_name) {
-    updatePOFormDraft('par', 'received_by_name', 'Property Custodian')
+    updatePOFormDraft('par', 'received_by_name', endUserName)
   }
   if (!AppState.purchaseOrderDraft.parFormData.received_by_position) {
-    updatePOFormDraft('par', 'received_by_position', 'Property Custodian')
+    updatePOFormDraft('par', 'received_by_position', endUserDesignation)
   }
 
   // Auto-fill issuer details (default values)
@@ -13652,13 +13815,28 @@ function renderDynamicPOForms() {
             </div>
           </div>
           
+          <!-- Single Date Field for all signatures -->
+          <div style="margin: 24px 0 16px 0; padding: 16px; background: #f8fafc; border-radius: 8px; border: 2px solid #e2e8f0;">
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
+                <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
+                Date (applies to all signatures below)
+              </label>
+              <input type="date" class="form-input" id="ris_signature_date" value="${
+                (AppState.purchaseOrderDraft.risFormData &&
+                  AppState.purchaseOrderDraft.risFormData.signature_date) ||
+                ''
+              }" onchange="updateRISSignatureDate(this.value)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+            </div>
+          </div>
+          
           <div style="margin: 24px 0 16px 0; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;">
             <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 6px;">
               <i data-lucide="user" style="width: 16px; height: 16px; color: #15803d;"></i>
               Requested By
             </h6>
           </div>
-          <div class="grid-3" style="gap: 16px; margin-bottom: 24px;">
+          <div class="grid-2" style="gap: 16px; margin-bottom: 24px;">
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
@@ -13682,17 +13860,6 @@ function renderDynamicPOForms() {
                 ''
               }" onchange="updatePOFormDraft('ris','requested_by_designation', this.value)" placeholder="Position/title" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
-            <div class="form-group">
-              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
-                <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
-                Date
-              </label>
-              <input type="date" class="form-input" id="ris_requested_by_date" value="${
-                (AppState.purchaseOrderDraft.risFormData &&
-                  AppState.purchaseOrderDraft.risFormData.requested_by_date) ||
-                ''
-              }" onchange="updatePOFormDraft('ris','requested_by_date', this.value)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
-            </div>
           </div>
           
           <div style="margin: 24px 0 16px 0; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;">
@@ -13701,7 +13868,7 @@ function renderDynamicPOForms() {
               Approved By
             </h6>
           </div>
-          <div class="grid-3" style="gap: 16px; margin-bottom: 24px;">
+          <div class="grid-2" style="gap: 16px; margin-bottom: 24px;">
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
@@ -13725,17 +13892,6 @@ function renderDynamicPOForms() {
                 'SUPPLY OFFICER III/ADMIN OFFICER V'
               }" placeholder="Position/title" title="Approved by designation (static)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s; background: #f8fafc; color: #0f172a; cursor: default;">
             </div>
-            <div class="form-group">
-              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
-                <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
-                Date
-              </label>
-              <input type="date" class="form-input" id="ris_approved_by_date" value="${
-                (AppState.purchaseOrderDraft.risFormData &&
-                  AppState.purchaseOrderDraft.risFormData.approved_by_date) ||
-                ''
-              }" onchange="updatePOFormDraft('ris','approved_by_date', this.value)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
-            </div>
           </div>
           
           <div style="margin: 24px 0 16px 0; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;">
@@ -13744,7 +13900,7 @@ function renderDynamicPOForms() {
               Issued By
             </h6>
           </div>
-          <div class="grid-3" style="gap: 16px; margin-bottom: 24px;">
+          <div class="grid-2" style="gap: 16px; margin-bottom: 24px;">
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
@@ -13768,17 +13924,6 @@ function renderDynamicPOForms() {
                 ''
               }" onchange="updatePOFormDraft('ris','issued_by_designation', this.value)" placeholder="Position/title" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
-            <div class="form-group">
-              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
-                <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
-                Date
-              </label>
-              <input type="date" class="form-input" id="ris_issued_by_date" value="${
-                (AppState.purchaseOrderDraft.risFormData &&
-                  AppState.purchaseOrderDraft.risFormData.issued_by_date) ||
-                ''
-              }" onchange="updatePOFormDraft('ris','issued_by_date', this.value)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
-            </div>
           </div>
           
           <div style="margin: 24px 0 16px 0; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;">
@@ -13787,7 +13932,7 @@ function renderDynamicPOForms() {
               Received By
             </h6>
           </div>
-          <div class="grid-3" style="gap: 16px;">
+          <div class="grid-2" style="gap: 16px;">
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
                 <i data-lucide="user" style="width: 14px; height: 14px; color: #64748b;"></i>
@@ -13810,17 +13955,6 @@ function renderDynamicPOForms() {
                     .received_by_designation) ||
                 ''
               }" onchange="updatePOFormDraft('ris','received_by_designation', this.value)" placeholder="Position/title" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
-            </div>
-            <div class="form-group">
-              <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
-                <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
-                Date
-              </label>
-              <input type="date" class="form-input" id="ris_received_by_date" value="${
-                (AppState.purchaseOrderDraft.risFormData &&
-                  AppState.purchaseOrderDraft.risFormData.received_by_date) ||
-                ''
-              }" onchange="updatePOFormDraft('ris','received_by_date', this.value)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
           </div>
         </div>
@@ -14282,27 +14416,14 @@ function renderDynamicPOForms() {
               <div class="form-group">
                 <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
                   <i data-lucide="calendar" style="width: 14px; height: 14px; color: #be185d;"></i>
-                  Date Inspected
+                  Date Inspected / Received
                 </label>
-                <input type="date" class="form-input" id="iar_date_inspected" value="${
+                <input type="date" class="form-input" id="iar_date_inspected_received" value="${
                   (AppState.purchaseOrderDraft.iarFormData &&
-                    AppState.purchaseOrderDraft.iarFormData.date_inspected) ||
+                    (AppState.purchaseOrderDraft.iarFormData.date_inspected ||
+                      AppState.purchaseOrderDraft.iarFormData.date_received)) ||
                   ''
-                }" onchange="updatePOFormDraft('iar','date_inspected', this.value)" 
-                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
-                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
-                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
-              </div>
-              <div class="form-group">
-                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
-                  <i data-lucide="calendar" style="width: 14px; height: 14px; color: #be185d;"></i>
-                  Date Received
-                </label>
-                <input type="date" class="form-input" id="iar_date_received" value="${
-                  (AppState.purchaseOrderDraft.iarFormData &&
-                    AppState.purchaseOrderDraft.iarFormData.date_received) ||
-                  ''
-                }" onchange="updatePOFormDraft('iar','date_received', this.value)" 
+                }" onchange="updatePOFormDraft('iar','date_inspected', this.value); updatePOFormDraft('iar','date_received', this.value);" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -14310,40 +14431,41 @@ function renderDynamicPOForms() {
               <div class="form-group">
                 <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
                   <i data-lucide="check-circle" style="width: 14px; height: 14px; color: #be185d;"></i>
-                  Inspection Status
+                  Inspection / Acceptance Status
                 </label>
-                <select class="form-select" id="iar_inspection_status" value="${
-                  (AppState.purchaseOrderDraft.iarFormData &&
-                    AppState.purchaseOrderDraft.iarFormData
-                      .inspection_status) ||
-                  ''
-                }" onchange="updatePOFormDraft('iar','inspection_status', this.value)" 
+                <select class="form-select" id="iar_inspection_acceptance_status" onchange="updatePOFormDraft('iar','inspection_status', this.value); updatePOFormDraft('iar','acceptance_status', this.value);" 
                         style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                         onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                         onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
                   <option value="">Select status</option>
-                  <option value="complete">Complete</option>
-                  <option value="partial">Partial</option>
-                  <option value="incomplete">Incomplete</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
-                  <i data-lucide="check-circle" style="width: 14px; height: 14px; color: #be185d;"></i>
-                  Acceptance Status
-                </label>
-                <select class="form-select" id="iar_acceptance_status" value="${
-                  (AppState.purchaseOrderDraft.iarFormData &&
-                    AppState.purchaseOrderDraft.iarFormData
-                      .acceptance_status) ||
-                  ''
-                }" onchange="updatePOFormDraft('iar','acceptance_status', this.value)" 
-                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
-                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
-                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
-                  <option value="">Select status</option>
-                  <option value="complete">Complete</option>
-                  <option value="partial">Partial</option>
+                  <option value="complete" ${
+                    (AppState.purchaseOrderDraft.iarFormData &&
+                      (AppState.purchaseOrderDraft.iarFormData
+                        .inspection_status === 'complete' ||
+                        AppState.purchaseOrderDraft.iarFormData
+                          .acceptance_status === 'complete')) ||
+                    ''
+                      ? 'selected'
+                      : ''
+                  }>Complete</option>
+                  <option value="partial" ${
+                    (AppState.purchaseOrderDraft.iarFormData &&
+                      (AppState.purchaseOrderDraft.iarFormData
+                        .inspection_status === 'partial' ||
+                        AppState.purchaseOrderDraft.iarFormData
+                          .acceptance_status === 'partial')) ||
+                    ''
+                      ? 'selected'
+                      : ''
+                  }>Partial</option>
+                  <option value="incomplete" ${
+                    (AppState.purchaseOrderDraft.iarFormData &&
+                      AppState.purchaseOrderDraft.iarFormData
+                        .inspection_status === 'incomplete') ||
+                    ''
+                      ? 'selected'
+                      : ''
+                  }>Incomplete</option>
                 </select>
               </div>
               <!-- moved signature label inputs down into their respective signature blocks (inspection / acceptance)
@@ -14357,28 +14479,11 @@ function renderDynamicPOForms() {
               <i data-lucide="user-check" style="width: 18px; height: 18px; color: #be185d;"></i>
               <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #be185d; text-transform: uppercase; letter-spacing: 0.5px;">Inspection — Inspector / Committee</h6>
             </div>
-            <div class="grid-3" style="gap: 16px;">
-              <!-- Name and Position fields for inspector removed per request -->
-              <div class="form-group">
-                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
-                  <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
-                  Date
-                </label>
-                <input type="date" class="form-input" id="iar_inspected_by_date" value="${
-                  (AppState.purchaseOrderDraft.iarFormData &&
-                    AppState.purchaseOrderDraft.iarFormData
-                      .inspected_by_date) ||
-                  ''
-                }" onchange="updatePOFormDraft('iar','inspected_by_date', this.value)" 
-                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
-                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
-                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
-              </div>
-              <!-- Inspection signature label (printed under signature in PDF) -->
-                <div class="form-group" style="margin-top:8px;">
+            <div style="display: flex; gap: 16px;">
+              <div class="form-group" style="flex: 1;">
                 <label class="form-label" style="display:flex; align-items:center; gap:6px; margin-bottom:8px; font-weight:500; color:#374151; font-size:13px;">
                   <i data-lucide="user-check" style="width:14px; height:14px; color:#64748b;"></i>
-                  Inspection label (prints under signature)
+                  Inspection Officer
                 </label>
                 <select class="form-select" id="iar_inspection_officer_label" onchange="(function(el){ const val = el.value || ''; const staticPos = 'INSPECTION OFFICER / INSPECTION COMMITTEE'; updatePOFormDraft('iar','inspection_officer_label', val); updatePOFormDraft('iar','inspection_officer_position', staticPos); const posEl = document.querySelector('#iar_inspection_officer_position'); if(posEl) posEl.textContent = staticPos; })(this)" style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;" onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'" onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
                   <option value="">Select inspection officer</option>
@@ -14444,12 +14549,13 @@ function renderDynamicPOForms() {
                       : ''
                   }>MS. EMYRUTH B. CHAVEZ</option>
                 </select>
-                <div class="small muted" style="margin-top:6px; font-size:12px; color:#6b7280;">Used as the printed label under the inspection signatory on the PDF</div>
-                <!-- NEW: Position field for inspection signatory -->
-                <div style="margin-top:10px;">
-                  <div id="iar_inspection_officer_position" style="padding: 8px 12px; border: 2px solid #f3e6ee; border-radius: 6px; background:#fff; font-size:13px; width:100%; color:#0f172a;">INSPECTION OFFICER / INSPECTION COMMITTEE</div>
-                  <div class="small muted" style="margin-top:6px; font-size:12px; color:#6b7280;">Optional: printed under the inspection name on the IAR PDF</div>
-                </div>
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label" style="display:flex; align-items:center; gap:6px; margin-bottom:8px; font-weight:500; color:#374151; font-size:13px;">
+                  <i data-lucide="briefcase" style="width:14px; height:14px; color:#64748b;"></i>
+                  Position
+                </label>
+                <div id="iar_inspection_officer_position" style="padding: 10px 14px; border: 2px solid #f3e6ee; border-radius: 8px; background:#fff; font-size:14px; width:100%; color:#0f172a;">INSPECTION OFFICER / INSPECTION COMMITTEE</div>
               </div>
             </div>
           </div>
@@ -14460,40 +14566,23 @@ function renderDynamicPOForms() {
               <i data-lucide="user-check" style="width: 18px; height: 18px; color: #be185d;"></i>
               <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #be185d; text-transform: uppercase; letter-spacing: 0.5px;">Acceptance — Supply / Property Custodian</h6>
             </div>
-            <div class="grid-3" style="gap: 16px;">
-              <!-- Acceptance Name and Position fields removed per request -->
-              <div class="form-group">
-                <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
-                  <i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i>
-                  Date
-                </label>
-                <input type="date" class="form-input" id="iar_inspected_by_date_2" value="${
-                  (AppState.purchaseOrderDraft.iarFormData &&
-                    AppState.purchaseOrderDraft.iarFormData
-                      .inspected_by_date_2) ||
-                  ''
-                }" onchange="updatePOFormDraft('iar','inspected_by_date_2', this.value)" 
-                       style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
-                       onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
-                       onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
-              </div>
-              <!-- Acceptance signature label (prints under custodian signature on PDF) -->
-                <div class="form-group" style="margin-top:8px;">
+            <div style="display: flex; gap: 16px;">
+              <div class="form-group" style="flex: 1;">
                 <label class="form-label" style="display:flex; align-items:center; gap:6px; margin-bottom:8px; font-weight:500; color:#374151; font-size:13px;">
                   <i data-lucide="user" style="width:14px; height:14px; color:#64748b;"></i>
-                  Acceptance label (prints under signature)
+                  Custodian Name
                 </label>
-                <!-- Acceptance custodian/name is static (not editable) -->
                 <div id="iar_custodian_label" style="padding: 10px 14px; border: 2px solid #fbcfe8; border-radius: 8px; background: #fff; font-size: 14px; color: #0f172a;">
                   ARSENIO GEM A. GARCILLANSO
                 </div>
-                <div class="small muted" style="margin-top:6px; font-size:12px; color:#6b7280;">Used as the printed label under the acceptance signatory on the PDF</div>
-                <!-- NEW: Position field for acceptance signatory -->
-                <div style="margin-top:10px;">
-                  <div id="iar_custodian_position" style="padding: 8px 12px; border: 2px solid #f3e6ee; border-radius: 6px; background: #fff; font-size: 13px; color: #0f172a;">
-                    SUPPLY OFFICER III/ADMIN OFFICER V
-                  </div>
-                  <div class="small muted" style="margin-top:6px; font-size:12px; color:#6b7280;">Optional: printed under the acceptance name on the IAR PDF</div>
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label" style="display:flex; align-items:center; gap:6px; margin-bottom:8px; font-weight:500; color:#374151; font-size:13px;">
+                  <i data-lucide="briefcase" style="width:14px; height:14px; color:#64748b;"></i>
+                  Position
+                </label>
+                <div id="iar_custodian_position" style="padding: 10px 14px; border: 2px solid #f3e6ee; border-radius: 8px; background: #fff; font-size: 14px; color: #0f172a;">
+                  SUPPLY OFFICER III/ADMIN OFFICER V
                 </div>
               </div>
             </div>
@@ -14686,6 +14775,9 @@ function savePurchaseOrder(existingId = null) {
   const procurementMode =
     document.getElementById('procurementMode')?.value || ''
   const department = document.getElementById('departmentSelect')?.value || ''
+  const endUserName = document.getElementById('endUserName')?.value || ''
+  const endUserDesignation =
+    document.getElementById('endUserDesignation')?.value || ''
   const gentlemen = document.getElementById('gentlemen')?.value || ''
   const _placeSelect = document.getElementById('placeOfDelivery')
   const _placeOther = document.getElementById('placeOfDeliveryOther')
@@ -14757,6 +14849,8 @@ function savePurchaseOrder(existingId = null) {
         purchaseDate,
         procurementMode,
         department,
+        endUserName,
+        endUserDesignation,
         gentlemen,
         placeOfDelivery,
         deliveryDate,
@@ -14791,6 +14885,8 @@ function savePurchaseOrder(existingId = null) {
       procurementMode,
       requestDate: new Date().toISOString().split('T')[0],
       department,
+      endUserName,
+      endUserDesignation,
       gentlemen,
       placeOfDelivery,
       deliveryDate,
@@ -15079,9 +15175,8 @@ function updateItemsTable() {
       ? pageItems
           .map((Item, index) => {
             return `
-            <tr>
+            <tr data-id="${Item.id}">
                 <td style="font-weight: 500;">${Item.id}</td>
-                <td style="font-weight: 500;">${Item.sku || '-'}</td>
                 <td style="font-weight: 500;">${Item.name}</td>
                 <td style="color: #6b7280; max-width: 300px;">${
                   Item.description || ''
@@ -15111,7 +15206,7 @@ function updateItemsTable() {
         `
           })
           .join('')
-      : `<tr><td colspan="10" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No Items found</td></tr>`
+      : `<tr><td colspan="9" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No Items found</td></tr>`
 
     // Update pagination count
     const paginationLeft = document.querySelector('.pagination-left')
@@ -15538,36 +15633,47 @@ function updateStockOutTable() {
     })
   }
 
-  // Apply sorting
+  // Group into transactions
+  let transactions = getStockOutTransactions(filteredRecords)
+
+  // Apply sorting on transactions
   if (AppState.stockOutSortBy) {
     const sortKey = AppState.stockOutSortBy
     const direction = AppState.stockOutSortDirection === 'asc' ? 1 : -1
 
-    filteredRecords.sort((a, b) => {
+    transactions.sort((a, b) => {
+      const firstA = a[0]
+      const firstB = b[0]
       let valA, valB
 
       switch (sortKey) {
         case 'issue_id':
-          valA = a.issueId || ''
-          valB = b.issueId || ''
+          valA = firstA.issueId || ''
+          valB = firstB.issueId || ''
           return direction * valA.localeCompare(valB)
         case 'date':
-          valA = a.date ? new Date(a.date) : new Date(0)
-          valB = b.date ? new Date(b.date) : new Date(0)
+          valA = firstA.date ? new Date(firstA.date) : new Date(0)
+          valB = firstB.date ? new Date(firstB.date) : new Date(0)
           return direction * (valA - valB)
         case 'Item_name':
-          valA = a.ItemName || ''
-          valB = b.ItemName || ''
+          valA = a.map((r) => r.ItemName).join(', ')
+          valB = b.map((r) => r.ItemName).join(', ')
           return direction * valA.localeCompare(valB)
         case 'quantity':
-          return direction * ((a.quantity || 0) - (b.quantity || 0))
+          valA = a.reduce((sum, r) => sum + (r.quantity || 0), 0)
+          valB = b.reduce((sum, r) => sum + (r.quantity || 0), 0)
+          return direction * (valA - valB)
         case 'unit_cost':
-          return direction * ((a.unitCost || 0) - (b.unitCost || 0))
+          valA = a.reduce((sum, r) => sum + (r.unitCost || 0), 0) / a.length
+          valB = b.reduce((sum, r) => sum + (r.unitCost || 0), 0) / b.length
+          return direction * (valA - valB)
         case 'total_cost':
-          return direction * ((a.totalCost || 0) - (b.totalCost || 0))
+          valA = a.reduce((sum, r) => sum + (r.totalCost || 0), 0)
+          valB = b.reduce((sum, r) => sum + (r.totalCost || 0), 0)
+          return direction * (valA - valB)
         case 'department':
-          valA = a.department || ''
-          valB = b.department || ''
+          valA = firstA.department || ''
+          valB = firstB.department || ''
           return direction * valA.localeCompare(valB)
         default:
           return 0
@@ -15580,9 +15686,8 @@ function updateStockOutTable() {
   if (tbody) {
     // Pagination for stock out
     const rawPageSize = Number(AppState.stockOutPageSize || 10)
-    const pageSize =
-      rawPageSize === 0 ? filteredRecords.length || 1 : rawPageSize
-    const totalItems = filteredRecords.length
+    const pageSize = rawPageSize === 0 ? transactions.length || 1 : rawPageSize
+    const totalItems = transactions.length
     const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
     const currentPage = Math.min(
       Math.max(Number(AppState.currentStockOutPage || 1), 1),
@@ -15590,11 +15695,11 @@ function updateStockOutTable() {
     )
     const startIndex = (currentPage - 1) * pageSize
     const endIndex = Math.min(startIndex + pageSize, totalItems)
-    const pageItems = filteredRecords.slice(startIndex, endIndex)
+    const pageTransactions = transactions.slice(startIndex, endIndex)
 
     tbody.innerHTML =
-      pageItems.length > 0
-        ? renderStockOutRows(pageItems)
+      pageTransactions.length > 0
+        ? renderStockOutTransactionRows(pageTransactions)
         : '<tr><td colspan="11" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No records found</td></tr>'
 
     // Update pagination count
@@ -22959,26 +23064,37 @@ function openItemModal(mode = 'create', ItemId = null) {
       return 'expendable'
     }
 
-    function generateSkuForType(type) {
-      const prefix =
-        { expendable: 'E', 'semi-expendable': 'SE', 'non-expendable': 'N' }[
-          type
-        ] || 'E'
-      const existingSkus = (MockData.Items || [])
+    function generateSkuForCategory(catId) {
+      const category = (MockData.categories || []).find(
+        (c) => String(c.id) === String(catId)
+      )
+      if (!category) return 'E-001'
+      let prefix = category.code || 'E'
+      // For semi-expendable, check for low/high sub-types
+      const name = String(category.name || '').toLowerCase()
+      if (name.includes('semi')) {
+        if (name.includes('low')) prefix = 'SL'
+        else if (name.includes('high')) prefix = 'SH'
+        else prefix = 'SE'
+      }
+      // Per-category numbering: find the highest number for this prefix
+      const existingNumbers = (MockData.Items || [])
         .map((p) => p.id || p.sku)
-        .filter((s) => s && typeof s === 'string' && s.startsWith(prefix))
-        .map((s) => parseInt(s.replace(prefix, '')) || 0)
+        .filter((s) => s && typeof s === 'string' && s.startsWith(prefix + '-'))
+        .map((s) => {
+          const match = s.match(/-(\d+)$/)
+          return match ? parseInt(match[1]) : 0
+        })
         .sort((a, b) => b - a)
-      const nextNumber = existingSkus.length > 0 ? existingSkus[0] + 1 : 1
-      return `${prefix}${String(nextNumber).padStart(3, '0')}`
+      const nextNumber = existingNumbers.length > 0 ? existingNumbers[0] + 1 : 1
+      return `${prefix}-${String(nextNumber).padStart(3, '0')}`
     }
 
     if (categorySelect) {
       categorySelect.addEventListener('change', () => {
         const selectedId = categorySelect.value
-        const derivedType = deriveItemTypeFromCategoryId(selectedId)
         // If there is already an SKU assigned and user is editing, allow regeneration
-        const newSku = generateSkuForType(derivedType)
+        const newSku = generateSkuForCategory(selectedId)
         if (skuHidden) skuHidden.value = newSku
         if (skuPreview) skuPreview.textContent = newSku
       })
@@ -23176,22 +23292,32 @@ async function saveItem(ItemId) {
 
   if (!ItemId) {
     // Create new item: generate SKU based on derived Item type
-    const categoryPrefix =
-      {
-        expendable: 'E',
-        'semi-expendable': 'SE',
-        'non-expendable': 'N',
-      }[ItemTypeFromCategory] || 'E'
+    let categoryPrefix = 'E' // default
+    if (ItemTypeFromCategory === 'semi-expendable') {
+      const name = String(selectedCategory.name || '').toLowerCase()
+      if (name.includes('low')) categoryPrefix = 'SL'
+      else if (name.includes('high')) categoryPrefix = 'SH'
+      else categoryPrefix = 'SE'
+    } else if (ItemTypeFromCategory === 'non-expendable') {
+      categoryPrefix = 'N'
+    } else {
+      categoryPrefix = 'E'
+    }
 
-    // Find the next available number for this category prefix
-    const existingSkus = (MockData.Items || [])
+    // Per-category numbering: find the next available number for this prefix
+    const existingNumbers = (MockData.Items || [])
       .map((p) => p.id || p.sku)
-      .filter((s) => s && typeof s === 'string' && s.startsWith(categoryPrefix))
-      .map((s) => parseInt(s.replace(categoryPrefix, '')) || 0)
+      .filter(
+        (s) => s && typeof s === 'string' && s.startsWith(categoryPrefix + '-')
+      )
+      .map((s) => {
+        const match = s.match(/-(\d+)$/)
+        return match ? parseInt(match[1]) : 0
+      })
       .sort((a, b) => b - a)
 
-    const nextNumber = existingSkus.length > 0 ? existingSkus[0] + 1 : 1
-    sku = `${categoryPrefix}${String(nextNumber).padStart(3, '0')}`
+    const nextNumber = existingNumbers.length > 0 ? existingNumbers[0] + 1 : 1
+    sku = `${categoryPrefix}-${String(nextNumber).padStart(3, '0')}`
   } else {
     // Edit existing item: ItemId is the SKU, find the database ID
     const existingItem = (MockData.Items || []).find(
@@ -23689,11 +23815,35 @@ function openCategoryModal(mode = 'create', categoryId = null) {
   modal.classList.add('active')
 
   lucide.createIcons()
+
+  // Add event listener for auto-generating code in create mode
+  if (mode === 'create') {
+    const nameInput = modal.querySelector('#categoryName')
+    const codeInput = modal.querySelector('#categoryCode')
+    if (nameInput && codeInput) {
+      nameInput.addEventListener('input', () => {
+        codeInput.value = generateCategoryCode(nameInput.value)
+      })
+    }
+  }
 }
 
 function closeCategoryModal() {
   const modal = document.getElementById('category-modal')
   modal.classList.remove('active')
+}
+
+// Generate category code from name
+function generateCategoryCode(name) {
+  if (!name || !name.trim()) return ''
+  const words = name.trim().split(/\s+/)
+  if (words.length === 1) {
+    return words[0].charAt(0).toUpperCase()
+  } else {
+    return (
+      words[0].charAt(0) + words[words.length - 1].charAt(0)
+    ).toUpperCase()
+  }
 }
 
 // Open the Category Modal
@@ -23761,7 +23911,27 @@ function generateCategoryModal(mode = 'create', categoryData = null) {
                            ${isReadOnly ? 'readonly' : ''}>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 0;">
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                        <i data-lucide="hash" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                        Category Code
+                    </label>
+                    <input type="text" class="form-input" id="categoryCode"
+                           value="${
+                             mode === 'create'
+                               ? generateCategoryCode(categoryData?.name || '')
+                               : categoryData?.code || ''
+                           }"
+                           placeholder="Auto-generated code"
+                           style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; background: #f9fafb;"
+                           readonly>
+                    <p style="margin: 6px 0 0 0; font-size: 12px; color: #6b7280; display: flex; align-items: center; gap: 4px;">
+                        <i data-lucide="info" style="width: 12px; height: 12px;"></i>
+                        Code is auto-generated from the category name
+                    </p>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
                     <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
                         <i data-lucide="file-text" style="width: 14px; height: 14px; color: #6b7280;"></i>
                         Description
@@ -23848,7 +24018,13 @@ function saveCategory(categoryId) {
 
   ;(async () => {
     try {
-      const payload = { name: name.trim(), description: description.trim() }
+      const trimmedName = name.trim()
+      const trimmedDescription = description.trim()
+      const payload = { name: trimmedName, description: trimmedDescription }
+      if (!categoryId) {
+        // Generate code for new categories
+        payload.code = generateCategoryCode(trimmedName)
+      }
       let resp
       if (!categoryId) {
         // Create on server
@@ -24974,18 +25150,18 @@ function generateStockOutModal(mode = 'create', headerData = {}) {
   const issueId = AppState.currentStockOutIssueId
 
   return `
-    <div class="modal-header" style="background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); color: white; padding: 24px;">
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-            <div style="display: flex; align-items: center; gap: 16px;">
+    <div class="modal-header" style="background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); color: white; padding: 24px; position: relative;">
+        <div style="display: flex; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 16px; flex: 1;">
                 <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
                     <i data-lucide="arrow-up-circle" style="width: 32px; height: 32px; color: white;"></i>
                 </div>
-                <div>
+                <div style="flex: 1; text-align: center;">
                     <h2 class="modal-title" style="color: white; font-size: 22px; margin: 0;">${title}</h2>
                     <p style="margin: 4px 0 0 0; opacity: 0.9; font-size: 13px;">Transaction ID: <strong>${issueId}</strong></p>
                 </div>
             </div>
-            <button class="modal-close" onclick="closeStockOutModal()" style="color: white; background: rgba(255,255,255,0.1); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border:none; cursor:pointer;">
+            <button class="modal-close" onclick="closeStockOutModal()" style="color: white; background: rgba(255,255,255,0.1); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border:none; cursor:pointer; position: absolute; top: 12px; right: 12px;">
                 <i data-lucide="x" style="width: 20px; height: 20px;"></i>
             </button>
         </div>
@@ -25142,42 +25318,96 @@ async function saveStockOut() {
   showLoadingModal('Processing stock out...')
 
   try {
-    // 1. Handle Deletions (if editing)
-    for (const delId of AppState.stockOutItemsToDelete) {
-      await deleteStockOutFromAPI(delId) // Assumes this API exists
+    const isEdit =
+      AppState.currentModal && AppState.currentModal.mode === 'edit'
+
+    if (!isEdit) {
+      // Create mode: use batch endpoint
+      const items = AppState.stockOutItems.map((item) => ({
+        issue_id: issueId,
+        sku: item.sku,
+        product_name: item.ItemName,
+        quantity: item.quantity,
+        unit_cost: item.unitCost,
+        total_cost: item.totalCost,
+        department: department,
+        issued_to: issuedTo,
+        issued_by: issuedBy,
+        date_issued: date,
+      }))
+
+      const response = await fetch('/api/stock-out/batch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': getCsrfToken(),
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ items }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.failed && data.failed.length > 0) {
+          showAlert(
+            'Some items failed to save: ' +
+              data.failed.map((f) => f.error).join('; '),
+            'error'
+          )
+          return
+        }
+        // Add successful items to stockOutData
+        data.successful.forEach((created) => {
+          const normalized = {
+            id: created.id,
+            issueId: created.issue_id,
+            transactionId: created.transaction_id,
+            sku: created.sku,
+            ItemName: created.product_name,
+            quantity: created.quantity,
+            unitCost: created.unit_cost,
+            totalCost: created.total_cost,
+            department: created.department,
+            issuedTo: created.issued_to,
+            issuedBy: created.issued_by,
+            date: formatDate(created.date_issued),
+            dateIssued: created.date_issued,
+          }
+          stockOutData.push(normalized)
+        })
+      } else {
+        const errorData = await response.json()
+        throw new Error(
+          errorData.message || errorData.error || 'Failed to save stock out'
+        )
+      }
+    } else {
+      // Edit mode: handle deletions and updates
+      for (const delId of AppState.stockOutItemsToDelete) {
+        await deleteStockOutFromAPI(delId)
+      }
+
+      const promises = AppState.stockOutItems.map((item) =>
+        saveStockOutToAPI(item)
+      )
+      await Promise.all(promises)
     }
 
-    // 2. Save/Update Items
-    const promises = AppState.stockOutItems.map((item) => {
-      // Construct payload for each item
-      const payload = {
-        id: item.id, // If null, API creates new
-        issueId: issueId, // Grouping ID
-        date: date,
-        dateIssued: date,
-        department: department,
-        issuedTo: issuedTo,
-        issuedBy: issuedBy,
-        sku: item.sku,
-        ItemName: item.ItemName,
-        quantity: item.quantity,
-        unitCost: item.unitCost,
-        totalCost: item.totalCost,
-      }
-      return saveStockOutToAPI(payload)
-    })
-
-    await Promise.all(promises)
-
     hideLoadingModal()
-    showAlert('Stock Out transaction saved successfully!', 'success')
+    showAlert(
+      isEdit
+        ? 'Stock Out transaction updated successfully!'
+        : 'Stock Out transaction saved successfully!',
+      'success'
+    )
     closeStockOutModal()
-    loadPageContent('stock-out') // Refresh main table
-    refreshItemsViewIfOpen() // Update inventory counts
+    loadPageContent('stock-out')
+    refreshItemsViewIfOpen()
   } catch (error) {
     hideLoadingModal()
-    console.error('Stock out save error', error)
-    showAlert(`Failed to save: ${error.message || 'Unknown error'}`, 'error')
+    console.error('Stock out transaction error', error)
+    showAlert(`Failed to save: ${error.message}`, 'error')
   }
 }
 
@@ -25192,10 +25422,85 @@ if (!Array.isArray(stockOutData) || stockOutData.length === 0) {
 function renderStockOutRows(records = stockOutData) {
   if (!records || records.length === 0)
     return '<tr><td colspan="11" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No records found</td></tr>'
-  return records
-    .filter(Boolean)
-    .map((s, i) => renderStockOutRow(s, i))
+
+  // Group by issueId
+  const grouped = {}
+  records.filter(Boolean).forEach((record) => {
+    const key = record.issueId || record.id
+    if (!grouped[key]) grouped[key] = []
+    grouped[key].push(record)
+  })
+
+  return Object.values(grouped)
+    .map((group) => renderStockOutTransactionRow(group))
     .join('')
+}
+
+function renderStockOutTransactionRows(transactions) {
+  return transactions
+    .map((group) => renderStockOutTransactionRow(group))
+    .join('')
+}
+
+function renderStockOutTransactionRow(group) {
+  const first = group[0]
+  const issueId = first.issueId || first.id
+  const date = first.date || ''
+  const department = first.department || ''
+  const departmentLabel = getDepartmentLabel(department)
+  const issuedTo = first.issuedTo || ''
+  const issuedBy = first.issuedBy || ''
+
+  // Aggregate items
+  const itemNames = group.map((r) => r.ItemName).join(', ')
+  const skus = group.map((r) => r.sku).join(', ')
+  const totalQuantity = group.reduce((sum, r) => sum + (r.quantity || 0), 0)
+  const totalCost = group.reduce((sum, r) => sum + (r.totalCost || 0), 0)
+  // For unit cost, show 'Various' if different, else the common value
+  const unitCosts = [...new Set(group.map((r) => r.unitCost))]
+  const unitCostDisplay =
+    unitCosts.length === 1 ? formatCurrency(unitCosts[0]) : 'Various'
+
+  return `
+        <tr data-id="${first.id}">
+            <td class="font-semibold">${issueId}</td>
+            <td>${date}</td>
+            <td>${itemNames}</td>
+            <td class="text-sm text-gray-600">${skus}</td>
+            <td>${totalQuantity}</td>
+            <td>${unitCostDisplay}</td>
+            <td class="font-semibold">${formatCurrency(totalCost)}</td>
+            <td><span class="badge">${departmentLabel}</span></td>
+            <td>${issuedTo}</td>
+            <td>${issuedBy}</td>
+            <td>
+                <div class="table-actions">
+                    <button class="icon-action-btn" title="View" onclick="viewStockOutDetails('${
+                      first.id
+                    }')">
+                        <i data-lucide="eye"></i>
+                    </button>
+                    <button class="icon-action-btn" title="Download Receipt" onclick="window.open('/stock-out/${
+                      first.id
+                    }/pdf', '_blank')">
+                        <i data-lucide="download"></i>
+                    </button>
+                    ${
+                      can('manage stock out')
+                        ? `
+                    <button class="icon-action-btn icon-action-warning" title="Edit" onclick="editStockOut('${first.id}')">
+                      <i data-lucide="edit"></i>
+                    </button>
+                    <button class="icon-action-btn icon-action-danger" title="Delete" onclick="deleteStockOut('${first.id}')">
+                      <i data-lucide="trash-2"></i>
+                    </button>
+                    `
+                        : ''
+                    }
+                </div>
+            </td>
+        </tr>
+    `
 }
 
 function renderStockOutRow(s) {

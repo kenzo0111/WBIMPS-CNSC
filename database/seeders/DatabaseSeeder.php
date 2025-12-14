@@ -19,6 +19,9 @@ class DatabaseSeeder extends Seeder
         // Ensure permissions and roles are created before any user-role assignment
         $this->call([
             \Database\Seeders\PermissionSeeder::class,
+            \Database\Seeders\CategorySeeder::class,
+            \Database\Seeders\ItemSeeder::class,
+            \Database\Seeders\SupplierSeeder::class,
         ]);
 
         // Ensure there is an admin account that matches the README test credentials
@@ -56,8 +59,6 @@ class DatabaseSeeder extends Seeder
 
         // Ensure permission roles exist before creating seeded users so they can be attached
         $this->call([
-            \Database\Seeders\PermissionSeeder::class,
-            ItemSeeder::class,
             // ActivitySeeder::class,
             \Database\Seeders\SiteContentSeeder::class,
         ]);

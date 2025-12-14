@@ -48,7 +48,7 @@ class StockOutController extends Controller
             $request->merge(['product_name' => $request->input('ItemName')]);
         }
         $validated = $request->validate([
-            'issue_id' => 'required|string|unique:stock_out,issue_id',
+            'issue_id' => 'nullable|string',
             'transaction_id' => 'nullable|string|unique:stock_out',
             'sku' => 'required|string|exists:items,sku',
             'product_name' => 'required|string',
@@ -61,6 +61,27 @@ class StockOutController extends Controller
             'purpose' => 'nullable|string',
             'date_issued' => 'required|date',
         ]);
+
+        // Generate or adjust issue_id
+        if (!empty($validated['issue_id'])) {
+            if (StockOut::where('issue_id', $validated['issue_id'])->exists()) {
+                // Issue ID already exists, generate a new one
+                $year = date('Y');
+                $lastIssue = StockOut::where('issue_id', 'like', "SO-{$year}-%")
+                    ->orderByRaw('CAST(SUBSTRING_INDEX(issue_id, "-", -1) AS UNSIGNED) DESC')
+                    ->first();
+                $nextNumber = $lastIssue ? (intval(substr($lastIssue->issue_id, -3)) + 1) : 1;
+                $validated['issue_id'] = sprintf('SO-%s-%03d', $year, $nextNumber);
+            }
+        } else {
+            // Generate issue_id if not provided
+            $year = date('Y');
+            $lastIssue = StockOut::where('issue_id', 'like', "SO-{$year}-%")
+                ->orderByRaw('CAST(SUBSTRING_INDEX(issue_id, "-", -1) AS UNSIGNED) DESC')
+                ->first();
+            $nextNumber = $lastIssue ? (intval(substr($lastIssue->issue_id, -3)) + 1) : 1;
+            $validated['issue_id'] = sprintf('SO-%s-%03d', $year, $nextNumber);
+        }
 
         // Check if sufficient stock is available
         $item = Item::where('sku', $validated['sku'])->first();
@@ -135,7 +156,7 @@ class StockOutController extends Controller
             $request->merge(['product_name' => $request->input('ItemName')]);
         }
         $validated = $request->validate([
-            'issue_id' => 'required|string|unique:stock_out,issue_id,' . $stockOut->getKey(),
+            'issue_id' => 'required|string',
             'transaction_id' => 'nullable|string|unique:stock_out,transaction_id,' . $stockOut->getKey(),
             'sku' => 'required|string|exists:items,sku',
             'product_name' => 'required|string',
@@ -270,7 +291,7 @@ class StockOutController extends Controller
     {
         $validated = $request->validate([
             'items' => 'required|array|min:1',
-            'items.*.issue_id' => 'required|string|unique:stock_out,issue_id',
+            'items.*.issue_id' => 'nullable|string',
             'items.*.transaction_id' => 'nullable|string',
             'items.*.sku' => 'required|string|exists:items,sku',
             'items.*.product_name' => 'required|string',
@@ -283,6 +304,19 @@ class StockOutController extends Controller
             'items.*.purpose' => 'nullable|string',
             'items.*.date_issued' => 'required|date',
         ]);
+
+        // Generate a new unique issue_id for the batch
+        $year = date('Y');
+        $lastIssue = StockOut::where('issue_id', 'like', "SO-{$year}-%")
+            ->orderByRaw('CAST(SUBSTRING_INDEX(issue_id, "-", -1) AS UNSIGNED) DESC')
+            ->first();
+        $nextNumber = $lastIssue ? (intval(substr($lastIssue->issue_id, -3)) + 1) : 1;
+        $issueId = sprintf('SO-%s-%03d', $year, $nextNumber);
+
+        // Assign the same issue_id to all items
+        foreach ($validated['items'] as &$itemData) {
+            $itemData['issue_id'] = $issueId;
+        }
 
         $results = [
             'successful' => [],
