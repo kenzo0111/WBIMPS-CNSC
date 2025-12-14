@@ -52,6 +52,15 @@ function applyTheme(theme) {
 window.toggleTheme = toggleTheme
 window.initTheme = initTheme
 
+// Make Stock Out functions globally available for onclick handlers
+window.openStockOutModal = openStockOutModal
+window.closeStockOutModal = closeStockOutModal
+window.addStockOutItem = addStockOutItem
+window.removeStockOutItem = removeStockOutItem
+window.renderStockOutItemsList = renderStockOutItemsList
+window.updateStockOutTotal = updateStockOutTotal
+window.saveStockOut = saveStockOut
+
 // Safety fallbacks: if some edits were reverted or partial bundles loaded,
 // define minimal fallbacks to prevent ReferenceErrors at runtime.
 // Use safe checks against the window object to avoid referencing
@@ -199,6 +208,10 @@ const AppState = {
   currentItemsPage: 1,
   itemsPageSize: 10,
   lowStockThreshold: 20,
+  // Stock Out multi-item handling
+  stockOutItems: [],
+  stockOutItemsToDelete: [],
+  currentStockOutIssueId: null,
   purchaseOrderItems: [
     {
       id: '1',
@@ -524,10 +537,57 @@ function generateCategoryOptionsHTML(currentCategoryId = '') {
     .join('')
 }
 
+function generateAllSkusByCategory(selectedSku = '') {
+  // Group all items by category
+  const groupedByCategory = {}
+
+  ;(MockData.Items || []).forEach((item) => {
+    const categoryName =
+      item.category && item.category.name ? item.category.name : 'Uncategorized'
+    if (!groupedByCategory[categoryName]) {
+      groupedByCategory[categoryName] = []
+    }
+    groupedByCategory[categoryName].push(item)
+  })
+
+  // Sort categories alphabetically
+  const sortedCategories = Object.keys(groupedByCategory).sort()
+
+  // Build optgroups with SKUs
+  const optgroups = sortedCategories
+    .map((categoryName) => {
+      const skuOptions = groupedByCategory[categoryName]
+        .map(
+          (item) =>
+            `<option value="${escapeHtml(
+              item.id || ''
+            )}" data-unitcost="${escapeHtml(
+              String(item.unitCost || item.unit_cost || 0)
+            )}" data-qty="${escapeHtml(String(item.quantity || 0))}" ${
+              String(selectedSku || '') === String(item.id || '')
+                ? 'selected'
+                : ''
+            }>${escapeHtml(item.id || '')} - ${escapeHtml(
+              item.name || ''
+            )}</option>`
+        )
+        .join('')
+
+      return `<optgroup label="${escapeHtml(
+        categoryName
+      )}">${skuOptions}</optgroup>`
+    })
+    .join('')
+
+  return `<option value="">Select SKU</option>${optgroups}<option value="__other__">Other (enter manually)</option>`
+}
+
 function generateSkuOptionsForCategoryHTML(categoryId, selectedSku = '') {
-  const Items = (MockData.Items || []).filter(
-    (it) => String(it.category_id || '') === String(categoryId || '')
-  )
+  const Items = (MockData.Items || []).filter((it) => {
+    // Check both category_id field and category object's id
+    const itemCategoryId = it.category_id || (it.category && it.category.id)
+    return String(itemCategoryId || '') === String(categoryId || '')
+  })
   // When no category is selected, don't show all items (prevents clutter)
   // instead show a friendly placeholder so user picks a category first.
   if (!categoryId) {
@@ -24588,657 +24648,515 @@ function openStockOutModal(mode = 'create', stockId = null) {
   const modal = document.getElementById('stockout-modal')
   const modalContent = modal.querySelector('.modal-content')
 
-  let stockData = null
-  if (stockId) {
-    // support passing either an id or the full record
-    stockData =
-      stockOutData.find((r) => r.id === stockId) ||
-      (typeof stockId === 'object' ? stockId : null)
+  // Reset State
+  AppState.stockOutItems = []
+  AppState.stockOutItemsToDelete = []
+
+  let headerData = {}
+
+  if (mode === 'edit' && stockId) {
+    // Find the specific record triggered
+    const record = stockOutData.find((r) => r.id == stockId)
+    if (record) {
+      AppState.currentStockOutIssueId = record.issueId
+      // Find all loaded items belonging to this Issue ID to allow editing the whole batch
+      // Note: This relies on currently loaded data. Ideally, fetch by Issue ID from server.
+      const relatedItems = stockOutData.filter(
+        (r) => r.issueId === record.issueId
+      )
+      AppState.stockOutItems = relatedItems.map((item) => ({ ...item })) // Clone to avoid direct mutation
+
+      // Pre-fill header data from the first record
+      headerData = {
+        date: record.date,
+        department: record.department,
+        issuedTo: record.issuedTo,
+        issuedBy: record.issuedBy,
+      }
+    }
+  } else {
+    // Create Mode: Generate new Issue ID
+    AppState.currentStockOutIssueId = generateStockOutIssueId()
+    headerData = {
+      date: new Date().toISOString().split('T')[0],
+      department: '',
+      issuedTo: '',
+      issuedBy: '',
+    }
   }
 
-  modalContent.innerHTML = generateStockOutModal(mode, stockData)
+  AppState.currentModal = { mode, stockId }
+  modalContent.innerHTML = generateStockOutModal(mode, headerData)
   modal.classList.add('active')
   lucide.createIcons()
 
-  // Ensure items are loaded before modal interaction
+  // Render the initial list of items
+  renderStockOutItemsList(mode === 'view')
+
+  // Load items for the dropdown if not yet loaded
   if (!MockData.Items || MockData.Items.length === 0) {
-    loadItemsFromAPI().catch((e) =>
-      console.warn('Failed to load items for modal:', e)
-    )
+    loadItemsFromAPI()
   }
 
-  const isReadOnly = mode === 'view'
-  if (!isReadOnly) {
-    const qty = modal.querySelector('#so-qty')
-    const uc = modal.querySelector('#so-uc')
-    const total = modal.querySelector('#so-total')
-    const skuInput = modal.querySelector('#so-sku')
-    const categorySelect = modal.querySelector('#so-category')
-    const ItemInput = modal.querySelector('#so-Item')
+  // initialize SKU dropdown behavior with category filter
+  const skuSelect = document.getElementById('so-sku')
+  const categorySelect = document.getElementById('so-category')
 
-    // Auto-detect low-stock items when opening the modal (if SKU not pre-filled)
-    try {
-      const Items = window.MockData?.Items || []
-      const lowItems = Items.filter((p) => Number(p.quantity || 0) <= 20)
-      if (
-        (!skuInput || !skuInput.value || skuInput.value.trim() === '') &&
-        lowItems.length
-      ) {
-        const preview = lowItems
-          .slice(0, 5)
-          .map((p) => `${p.id}${p.name ? ` (${p.name})` : ''}: ${p.quantity}`)
-          .join('; ')
-        showAlert(
-          `Low stock detected for ${lowItems.length} item${
-            lowItems.length === 1 ? '' : 's'
-          }: ${preview}${lowItems.length > 5 ? '; ...' : ''}`,
-          'warning'
-        )
+  if (categorySelect && skuSelect) {
+    categorySelect.addEventListener('change', (e) => {
+      const cid = e.target.value
+      if (cid) {
+        // Filter SKUs by selected category
+        skuSelect.innerHTML = generateSkuOptionsForCategoryHTML(cid)
+      } else {
+        // Show all SKUs grouped by category
+        skuSelect.innerHTML = generateAllSkusByCategory()
       }
-    } catch (e) {}
+      document.getElementById('so-Item').value = ''
+      document.getElementById('so-uc').value = ''
+      document.getElementById('so-qty').value = ''
+      updateStockOutTotal()
+    })
 
-    // Add a current stock badge under Item input
-    const badgeId = 'so-current-stock-badge'
-    if (ItemInput && !document.getElementById(badgeId)) {
-      const badge = document.createElement('div')
-      badge.id = badgeId
-      badge.style.cssText =
-        'margin-top:6px;font-size:12px;color:#6b7280;font-weight:500;display:flex;align-items:center;gap:6px;'
-      ItemInput.parentElement.appendChild(badge)
-    }
-    const stockBadge = document.getElementById(badgeId)
-
-    function updateTotal() {
-      const q = parseFloat(qty.value) || 0
-      const u = parseFormattedNumber(uc.value)
-      total.value = formatCurrency(q * u)
-    }
-
-    // Format unit cost input with thousand separators as user types
-    function formatSoUcInput() {
-      const cursorPos = uc.selectionStart
-      const oldValue = uc.value
-      const oldLength = oldValue.length
-
-      // Remove non-numeric characters except decimal point
-      let cleanValue = oldValue.replace(/[^0-9.]/g, '')
-      // Ensure only one decimal point
-      const parts = cleanValue.split('.')
-      if (parts.length > 2) {
-        cleanValue = parts[0] + '.' + parts.slice(1).join('')
-      }
-      // Limit decimal places to 2
-      if (parts.length === 2 && parts[1].length > 2) {
-        cleanValue = parts[0] + '.' + parts[1].substring(0, 2)
-      }
-
-      const numValue = parseFloat(cleanValue)
-      if (!isNaN(numValue) && cleanValue !== '') {
-        // Only format if not currently typing decimals
-        if (
-          !cleanValue.endsWith('.') &&
-          !(parts.length === 2 && parts[1].length < 2)
-        ) {
-          uc.value = formatNumberWithSeparators(numValue)
-        } else {
-          // Keep the clean value while typing decimals
-          const intPart = parts[0]
-            ? parseInt(parts[0]).toLocaleString('en-PH')
-            : '0'
-          uc.value =
-            parts.length === 2 ? intPart + '.' + parts[1] : intPart + '.'
-        }
-      } else if (cleanValue === '' || cleanValue === '.') {
-        uc.value = ''
-      }
-
-      // Adjust cursor position
-      const newLength = uc.value.length
-      const diff = newLength - oldLength
-      uc.setSelectionRange(cursorPos + diff, cursorPos + diff)
-    }
-
-    if (qty && uc && total) {
-      qty.addEventListener('input', updateTotal)
-      uc.addEventListener('input', () => {
-        formatSoUcInput()
-        updateTotal()
-      })
-      uc.addEventListener('blur', () => {
-        // Ensure proper formatting on blur
-        const numValue = parseFormattedNumber(uc.value)
-        if (numValue > 0) {
-          uc.value = formatNumberWithSeparators(numValue)
-        }
-      })
-      updateTotal()
-    }
-
-    function autoFillFromSku() {
-      if (!skuInput) return
-      const raw = skuInput.value.trim()
-      if (!raw) {
-        // Clear value & badge when no SKU
-        if (stockBadge) stockBadge.textContent = ''
-        return
-      }
-      const prod = (MockData.Items || []).find(
-        (p) =>
-          String(p.id || '').toLowerCase() === String(raw || '').toLowerCase()
+    skuSelect.addEventListener('change', (e) => {
+      const sku = e.target.value
+      const item = (MockData.Items || []).find(
+        (i) => String(i.id) === String(sku)
       )
-      if (prod) {
-        if (ItemInput) {
-          ItemInput.value = prod.name
-        }
-        if (uc) {
-          if (typeof prod.unitCost === 'number')
-            uc.value = formatNumberWithSeparators(prod.unitCost)
-        }
-        if (stockBadge) {
-          stockBadge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;background:#eef2ff;padding:4px 8px;border-radius:12px;">Available: <strong>${prod.quantity}</strong></span>`
-        }
-        // Inline banner + alert when Item stock is low (threshold: 20)
-        try {
-          const banner = document.getElementById('so-lowstock-banner')
-          if (typeof prod.quantity === 'number' && prod.quantity <= 20) {
-            // show transient alert
-            showAlert(
-              `Low stock: only ${prod.quantity} unit${
-                prod.quantity === 1 ? '' : 's'
-              } available for ${prod.name}.`,
-              'warning'
-            )
-            // show inline banner with details
-            if (banner) {
-              banner.textContent = `Requested item low in stock — only ${prod.quantity} available.`
-              banner.style.display = 'block'
-            }
-          } else if (banner) {
-            banner.style.display = 'none'
-          }
-        } catch (e) {}
-        // Prevent entering quantity greater than available; auto-adjust on input
-        if (qty) {
-          qty.setAttribute('max', prod.quantity)
-          // If current value exceeds available, clamp now and show banner
-          if (parseInt(qty.value) > prod.quantity) {
-            qty.value = prod.quantity
-            const banner = document.getElementById('so-lowstock-banner')
-            if (banner) {
-              banner.textContent = `Requested quantity exceeded available stock — adjusted to ${prod.quantity}.`
-              banner.style.display = 'block'
-            }
-          }
-          // Add input listener to auto-clamp if user types higher than available
-          qty.removeEventListener('input', qtyInputClampHandler)
-          qty.addEventListener('input', qtyInputClampHandler)
-        }
-        updateTotal()
-      } else {
-        // Show SKU-not-found state
-        if (stockBadge) stockBadge.textContent = 'SKU not found in Items list'
-        if (qty) qty.removeAttribute('max')
-      }
-    }
-    if (skuInput) {
-      if (skuInput.tagName && skuInput.tagName.toLowerCase() === 'select') {
-        skuInput.addEventListener('change', autoFillFromSku)
-      } else {
-        skuInput.addEventListener('blur', autoFillFromSku)
-        skuInput.addEventListener('input', () => {
-          if (skuInput.value.trim().length >= 2) autoFillFromSku()
-        })
-        skuInput.addEventListener('change', autoFillFromSku)
-      }
-      autoFillFromSku()
-    }
-    // When category changes, re-populate SKU options (supports both select & input fallback)
-    if (categorySelect) {
-      categorySelect.addEventListener('change', (e) => {
-        const cid = String(e.target.value || '')
-        // If SKU field is a SELECT, re-populate options using category filter
-        if (
-          skuInput &&
-          skuInput.tagName &&
-          skuInput.tagName.toLowerCase() === 'select'
-        ) {
-          skuInput.innerHTML = generateSkuOptionsForCategoryHTML(cid)
-          skuInput.disabled = !cid
-          if (!cid) skuInput.value = ''
-          // If new select has selected value (e.g., edit), trigger change
-          if (cid && skuInput.value) skuInput.dispatchEvent(new Event('change'))
-        } else if (
-          skuInput &&
-          skuInput.tagName &&
-          skuInput.tagName.toLowerCase() === 'input'
-        ) {
-          // Fallback for plain input: clear it
-          skuInput.value = ''
-        }
-        if (ItemInput) ItemInput.value = ''
-        if (uc) uc.value = ''
-        // Clear stock badge
-        if (stockBadge) stockBadge.textContent = ''
-      })
-      // ensure initial populate when modal opens if category present
-      if (categorySelect.value)
-        categorySelect.dispatchEvent(new Event('change'))
-    }
-    // quantity clamp handler: defined here to access modal scope
-    function qtyInputClampHandler(e) {
-      const val = parseInt(e.target.value) || 0
-      const max = parseInt(e.target.getAttribute('max')) || Infinity
-      const banner = document.getElementById('so-lowstock-banner')
-      if (val > max) {
-        e.target.value = max
-        if (banner) {
-          banner.textContent = `Requested quantity exceeded available stock — adjusted to ${max}.`
-          banner.style.display = 'block'
-        }
-      } else {
-        // hide banner when quantity within limits
-        if (banner) banner.style.display = 'none'
-      }
-      updateTotal()
-    }
+      const nameInput = document.getElementById('so-Item')
+      const ucInput = document.getElementById('so-uc')
+      const badge = document.getElementById('so-stock-badge')
 
-    // Hide inline banner when modal closes or when SKU changes to a different Item
-    // Ensure banner is hidden initially if no low stock
-    try {
-      const banner = document.getElementById('so-lowstock-banner')
-      if (banner && banner.textContent.trim() === 'Low stock')
-        banner.style.display = 'none'
-      // hide banner when modal close (listen on modal close button)
-      const closeBtn = modal.querySelector('.modal-close')
-      if (closeBtn)
-        closeBtn.addEventListener(
-          'click',
-          () => banner && (banner.style.display = 'none')
-        )
-      // hide banner when SKU input changes to empty or different SKU
-      skuInput.addEventListener('input', () => {
-        const b = document.getElementById('so-lowstock-banner')
-        if (b) b.style.display = 'none'
-      })
-    } catch (e) {}
-    // Prevent backdating: ensure so-date min is today and value is not before today
-    try {
-      const today = new Date().toISOString().split('T')[0]
-      const soDate = modal.querySelector('#so-date')
-      if (soDate) {
-        soDate.min = today
-        if (!soDate.value || soDate.value < today) soDate.value = today
+      if (item) {
+        if (nameInput) nameInput.value = item.name
+        if (ucInput)
+          ucInput.value = formatNumberWithSeparators(item.unitCost || 0)
+
+        if (badge) {
+          badge.innerHTML = `Available: <strong>${item.quantity}</strong> ${
+            item.unit || ''
+          }`
+          badge.style.color = item.quantity < 20 ? '#ea580c' : '#16a34a'
+        }
+        // Set max quantity to available stock
+        const qtyInput = document.getElementById('so-qty')
+        if (qtyInput) {
+          qtyInput.max = item.quantity
+          qtyInput.value = '' // Reset quantity on item change
+        }
+      } else {
+        if (nameInput) nameInput.value = ''
+        if (ucInput) ucInput.value = ''
+        if (badge) badge.textContent = ''
       }
-    } catch (e) {}
+      updateStockOutTotal()
+    })
   }
 }
 
 function closeStockOutModal() {
   const modal = document.getElementById('stockout-modal')
-  modal.classList.remove('active')
+  if (modal) modal.classList.remove('active')
+  AppState.currentModal = null
+  AppState.stockOutItems = []
+  AppState.stockOutItemsToDelete = []
 }
 
-// Enhanced Stock Out Modal with modern design
-function generateStockOutModal(mode = 'create', stockData = null) {
-  const title =
-    mode === 'create'
-      ? 'Stock Out Entry'
-      : mode === 'edit'
-      ? 'Edit Stock Out'
-      : 'Stock Out Details'
-  const subtitle =
-    mode === 'create'
-      ? 'Record outgoing inventory'
-      : mode === 'edit'
-      ? 'Update stock out transaction'
-      : 'View stock out details'
-  const isReadOnly = mode === 'view'
-  // infer initial category for selected SKU (for edit mode)
-  let initialSoCategoryId = ''
-  const sku = stockData?.sku || ''
-  if (sku) {
-    const f = (MockData.Items || []).find((it) => String(it.id) === String(sku))
-    if (f) initialSoCategoryId = f.category_id || ''
-  }
+// ---------------------------------------------------------
+// Helper: Add Item to the Temporary List (Client-Side)
+// ---------------------------------------------------------
+function addStockOutItem() {
+  const sku = document.getElementById('so-sku')?.value
+  const name = document.getElementById('so-Item')?.value
+  const qty = parseInt(document.getElementById('so-qty')?.value) || 0
+  const unitCost = parseFormattedNumber(document.getElementById('so-uc')?.value)
 
-  return `
-        <div class="modal-header" style="background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); color: white; border-bottom: none; padding: 32px 24px;">
-            <div style="display: flex; align-items: center; gap: 16px;">
-                <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
-                    <i data-lucide="arrow-up-circle" style="width: 32px; height: 32px; color: white;"></i>
-                </div>
-                <div style="flex: 1;">
-                    <h2 class="modal-title" style="color: white; font-size: 24px; margin-bottom: 4px;">${title}</h2>
-                    <p class="modal-subtitle" style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0;">${subtitle}</p>
-                </div>
-            </div>
-            <button class="modal-close" onclick="closeStockOutModal()" style="color: white; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
-                <i data-lucide="x" style="width: 20px; height: 20px;"></i>
-            </button>
-        </div>
-
-        <div class="modal-body" style="padding: 32px 24px; background: #f9fafb;">
-            <!-- Transaction Information -->
-            <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 8px;">
-                    <i data-lucide="clipboard-list" style="width: 18px; height: 18px; color: #ea580c;"></i>
-                    Transaction Details
-                </h3>
-                
-                    <div class="grid-2">
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                            <i data-lucide="calendar" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                            Date
-                        </label>
-                        <input id="so-date" type="date" class="form-input"
-                               value="${
-                                 stockData?.date ||
-                                 new Date().toISOString().split('T')[0]
-                               }"
-                               min="${new Date().toISOString().split('T')[0]}"
-                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                               ${isReadOnly ? 'readonly' : ''}>
-                    </div>
-                    
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                            <i data-lucide="grid" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                            Category
-                          </label>
-                          <select id="so-category" class="form-select" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" ${
-                            isReadOnly ? 'disabled' : ''
-                          }>
-                            ${generateCategoryOptionsHTML(initialSoCategoryId)}
-                          </select>
-                    </div>
-                </div>
-
-                      <div class="grid-2" style="margin-top:8px;">
-                        <div class="form-group" style="margin-bottom: 20px;">
-                          <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                            <i data-lucide="barcode" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                            SKU
-                          </label>
-                          <select id="so-sku" class="form-select" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" ${
-                            isReadOnly
-                              ? 'disabled'
-                              : initialSoCategoryId
-                              ? ''
-                              : 'disabled'
-                          }>
-                            ${generateSkuOptionsForCategoryHTML(
-                              initialSoCategoryId,
-                              sku
-                            )}
-                          </select>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 20px;">
-                          <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                            <i data-lucide="package" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                            Item Name
-                          </label>
-                            <input id="so-Item" type="text" class="form-input"
-                              value="${stockData?.ItemName || ''}"
-                              placeholder="Enter Item name"
-                              style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
-                    <!-- Inline low-stock banner (hidden by default). Visible until modal close or SKU change -->
-                    <div id="so-lowstock-banner" style="display:none;margin-top:8px;padding:8px 12px;border-radius:8px;background:#fff7ed;color:#92400e;font-weight:600;font-size:13px;">Low stock</div>
-                        </div>
-                      </div>
-
-                
-            </div>
-
-            <!-- Quantity & Pricing -->
-            <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 8px;">
-                    <i data-lucide="calculator" style="width: 18px; height: 18px; color: #ea580c;"></i>
-                    Quantity & Pricing
-                </h3>
-                
-                <div class="grid-2">
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                            <i data-lucide="hash" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                            Quantity
-                        </label>
-                        <input id="so-qty" type="number" class="form-input"
-                               min="1"
-                               value="${stockData?.quantity || ''}"
-                               placeholder="1"
-                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                               ${isReadOnly ? 'readonly' : ''}>
-                    </div>
-                    
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                            <i data-lucide="tag" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                            Unit Cost
-                        </label>
-                        <input id="so-uc" type="text" class="form-input"
-                               value="${
-                                 stockData?.unitCost
-                                   ? formatNumberWithSeparators(
-                                       stockData.unitCost
-                                     )
-                                   : ''
-                               }"
-                               placeholder="0.00"
-                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                               ${isReadOnly ? 'readonly' : ''}>
-                    </div>
-                </div>
-
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                        <i data-lucide="peso-sign" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                        Total Cost
-                    </label>
-                    <input id="so-total" type="text" class="form-input"
-                           value="${
-                             stockData
-                               ? formatCurrency(stockData.totalCost || 0)
-                               : '₱0.00'
-                           }"
-                           style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; background: #fff7ed; font-weight: 600; color: #ea580c;"
-                           readonly>
-                </div>
-            </div>
-
-            <!-- Department & Personnel -->
-            <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 8px;">
-                    <i data-lucide="building" style="width: 18px; height: 18px; color: #ea580c;"></i>
-                    Department & Personnel
-                </h3>
-                
-                <div class="form-group" style="margin-bottom: 20px;">
-                    <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                        <i data-lucide="building-2" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                        Department
-                    </label>
-                    <select id="so-dept" class="form-select" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" ${
-                      isReadOnly ? 'disabled' : ''
-                    }>
-                      <option value="">Select Department</option>
-                      ${generateDepartmentOptionsHTML(
-                        stockData?.department || ''
-                      )}
-                    </select>
-                </div>
-
-                <div class="grid-2">
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                            <i data-lucide="user" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                            Issued To
-                        </label>
-                        <input id="so-issued-to" type="text" class="form-input"
-                               value="${stockData?.issuedTo || ''}"
-                               placeholder="Employee / Person"
-                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                               ${isReadOnly ? 'readonly' : ''}>
-                    </div>
-                    
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                            <i data-lucide="user-check" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                            Issued By
-                        </label>
-                        <input id="so-issued-by" type="text" class="form-input"
-                               value="${stockData?.issuedBy || ''}"
-                               placeholder="Staff / Officer"
-                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                               ${isReadOnly ? 'readonly' : ''}>
-                    </div>
-                </div>
-
-                <!-- Status field removed from Stock Out modal -->
-            </div>
-        </div>
-
-
-        </div>
-
-        <div class="modal-footer" style="background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 20px 24px; display: flex; gap: 12px; justify-content: flex-end;">
-            <button class="btn btn-secondary" onclick="closeStockOutModal()" style="padding: 10px 24px; font-weight: 500; border: 2px solid #d1d5db; transition: all 0.2s;">
-                <i data-lucide="${
-                  isReadOnly ? 'x' : 'arrow-left'
-                }" style="width: 16px; height: 16px; margin-right: 6px;"></i>
-                ${isReadOnly ? 'Close' : 'Cancel'}
-            </button>
-            ${
-              !isReadOnly
-                ? `
-                <button class="btn btn-primary" onclick="saveStockOut()" style="padding: 10px 24px; font-weight: 500; background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); box-shadow: 0 4px 6px rgba(234, 88, 12, 0.25); transition: all 0.2s;">
-                    <i data-lucide="save" style="width: 16px; height: 16px; margin-right: 6px;"></i>
-                    Save Stock Out
-                </button>
-            `
-                : ''
-            }
-        </div>
-    `
-}
-
-async function saveStockOut(stockId) {
-  const date = document.getElementById('so-date')
-    ? document.getElementById('so-date').value
-    : document.querySelector('#stockout-modal input[type="date"]')?.value || ''
-  const sku = document.getElementById('so-sku')
-    ? document.getElementById('so-sku').value
-    : document.querySelector('#stockout-modal input[placeholder="E002"]')
-        ?.value || ''
-  const ItemName = document.getElementById('so-Item')
-    ? document.getElementById('so-Item').value
-    : document.querySelector(
-        '#stockout-modal input[placeholder="Enter Item name"]'
-      )?.value || ''
-  let quantity = parseInt(document.getElementById('so-qty').value) || 0
-  const unitCost = parseFormattedNumber(document.getElementById('so-uc').value)
-  const totalCost = quantity * unitCost
-  const department = document.getElementById('so-dept').value || ''
-  const issuedTo = document.getElementById('so-issued-to').value || ''
-  const issuedBy = document.getElementById('so-issued-by').value || ''
-
-  const isEdit = stockId && stockId !== ''
-
-  // Prevent backdating: clamp date to today
-  const clampedSoDate = clampDateToToday(date)
-
-  // Validate available stock: find Item by SKU (case-insensitive)
-  try {
-    const prod = (window.MockData?.Items || []).find(
-      (p) => (p.id || '').toLowerCase() === (sku || '').toLowerCase()
-    )
-    if (prod) {
-      const available = Number(prod.quantity || 0)
-      if (!isEdit && available <= 20) {
-        // Block creating a stock out when available stock is <= 20
-        showAlert(
-          `Cannot proceed: available stock for ${
-            prod.name || sku
-          } is ${available}, which is at or below the minimum allowed (20). Please restock before issuing.`,
-          'error'
-        )
-        return
-      }
-      // If editing, allow but still clamp quantity to available
-      if (isEdit && quantity > available) {
-        showAlert(
-          `Adjusted quantity to available stock (${available}).`,
-          'warning'
-        )
-        // override record quantity
-        quantity = available
-      }
-    }
-  } catch (e) {}
-
-  const record = Object.assign(
-    {},
-    // only include id when editing so saveStockOutToAPI chooses PUT for edits
-    isEdit ? { id: stockId } : {},
-    {
-      issueId: isEdit
-        ? stockOutData.find((s) => s && s.id == stockId)?.issueId ||
-          generateStockOutIssueId()
-        : generateStockOutIssueId(),
-      date: clampedSoDate,
-      // include both aliases so server accepts 'date_issued'
-      dateIssued: clampedSoDate,
-      date_issued: clampedSoDate,
-      ItemName,
-      sku,
-      quantity,
-      unitCost,
-      totalCost,
-      department,
-      issuedTo,
-      issuedBy,
-    }
-  )
-
-  let saved = null
-  try {
-    saved = await saveStockOutToAPI(record)
-    showAlert(
-      `Stock Out record ${stockId ? 'updated' : 'added'} & inventory updated`,
-      'success'
-    )
-  } catch (error) {
-    // If server returned 422 on create, show a specific friendly toast message
-    if (!stockId && error && error.status === 422) {
-      showAlert('Failed to add stock out because of the stocks', 'error')
-    } else {
-      showAlert(
-        `Failed to ${stockId ? 'update' : 'save'} stock out: ${error.message}`,
-        'error'
-      )
-    }
+  if (!sku || !name) {
+    showAlert('Please select an item.', 'error')
     return
   }
 
-  // Update DOM if Stock Out table is present to avoid full page reload
-  const tbody = document.getElementById('stock-out-table-body')
-  if (tbody) {
-    const existingRow = tbody.querySelector(`tr[data-id="${saved.id}"]`)
-    if (existingRow) {
-      // replace existing row with authoritative server response
-      existingRow.outerHTML = renderStockOutRow(saved)
-    } else {
-      // append new row
-      tbody.insertAdjacentHTML('beforeend', renderStockOutRow(saved))
-    }
-    // re-render icons in new content
-    if (window.lucide) lucide.createIcons()
-  } else {
-    // If tbody not present (different view), reload the Stock Out page to reflect changes
-    loadPageContent('stock-out')
+  if (qty <= 0) {
+    showAlert('Quantity must be greater than 0.', 'error')
+    return
   }
-  closeStockOutModal()
-  refreshItemsViewIfOpen()
+
+  // Validate against available stock
+  const inventoryItem = (MockData.Items || []).find(
+    (i) => String(i.id) === String(sku)
+  )
+  if (inventoryItem && qty > inventoryItem.quantity) {
+    showAlert(
+      `Insufficient stock. Only ${inventoryItem.quantity} available.`,
+      'error'
+    )
+    return
+  }
+
+  // Check if item already exists in the list (merge quantities)
+  const existingIndex = AppState.stockOutItems.findIndex(
+    (i) => String(i.sku) === String(sku)
+  )
+
+  if (existingIndex > -1) {
+    // Update existing entry
+    const existing = AppState.stockOutItems[existingIndex]
+    const newQty = existing.quantity + qty
+
+    // Re-validate total quantity against stock
+    if (inventoryItem && newQty > inventoryItem.quantity) {
+      showAlert(
+        `Cannot add. Total quantity (${newQty}) exceeds available stock (${inventoryItem.quantity}).`,
+        'error'
+      )
+      return
+    }
+
+    existing.quantity = newQty
+    existing.totalCost = newQty * unitCost
+    AppState.stockOutItems[existingIndex] = existing
+    showAlert('Item quantity updated.', 'info')
+  } else {
+    // Add new entry
+    AppState.stockOutItems.push({
+      id: null, // New item has no DB ID yet
+      sku: sku,
+      ItemName: name,
+      quantity: qty,
+      unitCost: unitCost,
+      totalCost: qty * unitCost,
+    })
+  }
+
+  // Clear Inputs
+  document.getElementById('so-qty').value = ''
+  // Optional: Keep category/SKU selected for faster entry or clear them:
+  // document.getElementById('so-sku').value = '';
+  // document.getElementById('so-Item').value = '';
+
+  renderStockOutItemsList()
+}
+
+function removeStockOutItem(index) {
+  const item = AppState.stockOutItems[index]
+
+  // If item has a database ID (it was loaded from existing record), mark for deletion
+  if (item.id) {
+    AppState.stockOutItemsToDelete.push(item.id)
+  }
+
+  AppState.stockOutItems.splice(index, 1)
+  renderStockOutItemsList()
+}
+
+function renderStockOutItemsList(isViewMode = false) {
+  const tbody = document.getElementById('so-items-tbody')
+  const grandTotalEl = document.getElementById('so-grand-total')
+
+  if (!tbody) return
+
+  if (AppState.stockOutItems.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#6b7280;">No items added yet.</td></tr>`
+    if (grandTotalEl) grandTotalEl.textContent = '₱0.00'
+    return
+  }
+
+  let grandTotal = 0
+
+  // Group items by category
+  const groupedItems = {}
+  AppState.stockOutItems.forEach((item, index) => {
+    // Get the category name from the item's SKU by finding it in MockData
+    const inventoryItem = (MockData.Items || []).find(
+      (i) => String(i.id) === String(item.sku)
+    )
+    const categoryName =
+      inventoryItem && inventoryItem.category
+        ? inventoryItem.category.name
+        : item.category || 'Uncategorized'
+
+    if (!groupedItems[categoryName]) {
+      groupedItems[categoryName] = []
+    }
+    groupedItems[categoryName].push({ ...item, index })
+  })
+
+  // Sort categories alphabetically
+  const sortedCategories = Object.keys(groupedItems).sort()
+
+  // Build HTML with grouped items
+  let htmlContent = ''
+  sortedCategories.forEach((categoryName) => {
+    htmlContent += `
+      <tr style="background: #f3f4f6; font-weight: 600; color: #374151;">
+        <td colspan="${
+          isViewMode ? '5' : '6'
+        }" style="padding: 12px 16px; border-top: 1px solid #e5e7eb;">
+          <i data-lucide="folder" style="width:16px;height:16px;vertical-align:middle;margin-right:8px;"></i> ${escapeHtml(
+            categoryName
+          )}
+        </td>
+      </tr>
+    `
+
+    groupedItems[categoryName].forEach((item) => {
+      grandTotal += item.totalCost || 0
+      htmlContent += `
+        <tr>
+          <td style="font-weight:500; padding-left: 32px;">${escapeHtml(
+            item.sku
+          )}</td>
+          <td>${escapeHtml(item.ItemName)}</td>
+          <td>${item.quantity}</td>
+          <td>${formatCurrency(item.unitCost)}</td>
+          <td style="font-weight:600;">${formatCurrency(item.totalCost)}</td>
+          ${
+            !isViewMode
+              ? `
+          <td style="text-align:center;">
+            <button type="button" onclick="removeStockOutItem(${item.index})" class="icon-action-btn icon-action-danger" title="Remove">
+              <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
+            </button>
+          </td>`
+              : ''
+          }
+        </tr>
+      `
+    })
+  })
+
+  tbody.innerHTML = htmlContent
+
+  if (grandTotalEl) grandTotalEl.textContent = formatCurrency(grandTotal)
+  if (window.lucide) lucide.createIcons()
+}
+
+function updateStockOutTotal() {
+  const qty = parseInt(document.getElementById('so-qty')?.value) || 0
+  const uc = parseFormattedNumber(document.getElementById('so-uc')?.value)
+  const totalEl = document.getElementById('so-add-total')
+  if (totalEl) totalEl.textContent = formatCurrency(qty * uc)
+}
+
+// ---------------------------------------------------------
+// UI Generation: Enhanced Modal Structure
+// ---------------------------------------------------------
+function generateStockOutModal(mode = 'create', headerData = {}) {
+  const title =
+    mode === 'create'
+      ? 'New Stock Out'
+      : mode === 'edit'
+      ? 'Edit Stock Out'
+      : 'View Stock Out'
+  const isReadOnly = mode === 'view'
+  const issueId = AppState.currentStockOutIssueId
+
+  return `
+    <div class="modal-header" style="background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); color: white; padding: 24px;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <i data-lucide="arrow-up-circle" style="width: 32px; height: 32px; color: white;"></i>
+                </div>
+                <div>
+                    <h2 class="modal-title" style="color: white; font-size: 22px; margin: 0;">${title}</h2>
+                    <p style="margin: 4px 0 0 0; opacity: 0.9; font-size: 13px;">Transaction ID: <strong>${issueId}</strong></p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="closeStockOutModal()" style="color: white; background: rgba(255,255,255,0.1); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border:none; cursor:pointer;">
+                <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="modal-body" style="padding: 24px; background: #f9fafb;">
+        <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 20px;">
+            <h3 style="margin: 0 0 16px 0; font-size: 15px; font-weight: 600; color: #374151; display:flex; align-items:center; gap:8px;">
+                <i data-lucide="clipboard" style="width:16px;height:16px;"></i> Transaction Details
+            </h3>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label class="form-label">Date Issued</label>
+                    <input type="date" id="so-date" class="form-input" value="${
+                      headerData.date || ''
+                    }" ${isReadOnly ? 'readonly' : ''}>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Department</label>
+                    <select id="so-dept" class="form-select" ${
+                      isReadOnly ? 'disabled' : ''
+                    }>
+                        <option value="">Select Department</option>
+                        ${generateDepartmentOptionsHTML(
+                          headerData.department || ''
+                        )}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Issued To</label>
+                    <input type="text" id="so-issued-to" class="form-input" placeholder="Recipient Name" value="${
+                      headerData.issuedTo || ''
+                    }" ${isReadOnly ? 'readonly' : ''}>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Issued By</label>
+                    <input type="text" id="so-issued-by" class="form-input" placeholder="Issuer Name" value="${
+                      headerData.issuedBy || ''
+                    }" ${isReadOnly ? 'readonly' : ''}>
+                </div>
+            </div>
+        </div>
+
+        ${
+          !isReadOnly
+            ? `
+        <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid #e5e7eb;">
+            <h3 style="margin: 0 0 16px 0; font-size: 15px; font-weight: 600; color: #ea580c; display:flex; align-items:center; gap:8px;">
+                <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> Add Items
+            </h3>
+            <div style="display: grid; grid-template-columns: 2fr 3fr 3fr 1fr 1fr 1fr; gap: 12px; align-items: end;">
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label" style="font-size:12px;">Category</label>
+                    <select id="so-category" class="form-select" style="font-size:13px; padding:8px;">
+                        ${generateCategoryOptionsHTML()}
+                    </select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label" style="font-size:12px;">SKU (By Category)</label>
+                    <select id="so-sku" class="form-select" style="font-size:13px; padding:8px;">
+                        ${generateAllSkusByCategory()}
+                    </select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label" style="font-size:12px;">Item Name</label>
+                    <input type="text" id="so-Item" class="form-input" readonly style="background:#f9fafb; font-size:13px; padding:8px;">
+                    <div id="so-stock-badge" style="font-size:11px; margin-top:4px;"></div>
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label" style="font-size:12px;">Cost</label>
+                    <input type="text" id="so-uc" class="form-input" readonly style="background:#f9fafb; font-size:13px; padding:8px;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label" style="font-size:12px;">Qty</label>
+                    <input type="number" id="so-qty" class="form-input" min="1" placeholder="0" style="font-size:13px; padding:8px;" oninput="updateStockOutTotal()">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <button type="button" onclick="addStockOutItem()" class="btn btn-primary" style="width:100%; padding:9px; justify-content:center; background: #ea580c;">Add</button>
+                </div>
+            </div>
+            <div style="text-align:right; margin-top:8px; font-size:13px; color:#6b7280;">
+                Subtotal: <span id="so-add-total" style="font-weight:600; color:#111827;">₱0.00</span>
+            </div>
+        </div>
+        `
+            : ''
+        }
+
+        <div class="table-container" style="max-height: 300px; overflow-y: auto;">
+            <table class="table">
+                <thead style="position:sticky; top:0; z-index:10;">
+                    <tr>
+                        <th style="width:15%">SKU</th>
+                        <th style="width:35%">Item Name</th>
+                        <th style="width:10%">Qty</th>
+                        <th style="width:15%">Unit Cost</th>
+                        <th style="width:15%">Total</th>
+                        ${
+                          !isReadOnly
+                            ? '<th style="width:10%; text-align:center;">Action</th>'
+                            : ''
+                        }
+                    </tr>
+                </thead>
+                <tbody id="so-items-tbody">
+                    </tbody>
+                <tfoot>
+                    <tr style="background:#f8fafc; font-weight:bold;">
+                        <td colspan="4" style="text-align:right;">Grand Total:</td>
+                        <td colspan="2" style="color:#ea580c;" id="so-grand-total">₱0.00</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal-footer" style="padding: 20px 24px; background: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; justify-content: flex-end;">
+        <button class="btn btn-secondary" onclick="closeStockOutModal()">Cancel</button>
+        ${
+          !isReadOnly
+            ? `
+        <button class="btn btn-primary" onclick="saveStockOut()" style="background: #ea580c; border-color: #ea580c;">
+            <i data-lucide="save" style="width:16px;height:16px;margin-right:6px;"></i> Save Transaction
+        </button>`
+            : ''
+        }
+    </div>
+  `
+}
+
+// ---------------------------------------------------------
+// Logic: Save All Items
+// ---------------------------------------------------------
+async function saveStockOut() {
+  const issueId = AppState.currentStockOutIssueId
+  const date = document.getElementById('so-date').value
+  const department = document.getElementById('so-dept').value
+  const issuedTo = document.getElementById('so-issued-to').value
+  const issuedBy = document.getElementById('so-issued-by').value
+
+  if (!date || !department) {
+    showAlert('Please fill in Date and Department.', 'error')
+    return
+  }
+
+  if (
+    AppState.stockOutItems.length === 0 &&
+    AppState.stockOutItemsToDelete.length === 0
+  ) {
+    showAlert('No items to save.', 'warning')
+    return
+  }
+
+  showLoadingModal('Processing stock out...')
+
+  try {
+    // 1. Handle Deletions (if editing)
+    for (const delId of AppState.stockOutItemsToDelete) {
+      await deleteStockOutFromAPI(delId) // Assumes this API exists
+    }
+
+    // 2. Save/Update Items
+    const promises = AppState.stockOutItems.map((item) => {
+      // Construct payload for each item
+      const payload = {
+        id: item.id, // If null, API creates new
+        issueId: issueId, // Grouping ID
+        date: date,
+        dateIssued: date,
+        department: department,
+        issuedTo: issuedTo,
+        issuedBy: issuedBy,
+        sku: item.sku,
+        ItemName: item.ItemName,
+        quantity: item.quantity,
+        unitCost: item.unitCost,
+        totalCost: item.totalCost,
+      }
+      return saveStockOutToAPI(payload)
+    })
+
+    await Promise.all(promises)
+
+    hideLoadingModal()
+    showAlert('Stock Out transaction saved successfully!', 'success')
+    closeStockOutModal()
+    loadPageContent('stock-out') // Refresh main table
+    refreshItemsViewIfOpen() // Update inventory counts
+  } catch (error) {
+    hideLoadingModal()
+    console.error('Stock out save error', error)
+    showAlert(`Failed to save: ${error.message || 'Unknown error'}`, 'error')
+  }
 }
 
 // In-memory stock-out records (initialize from MockData if available)
