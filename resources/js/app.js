@@ -1,4 +1,8 @@
 import './bootstrap'
+import { createIcons, icons } from 'lucide'
+
+// Make lucide available globally
+window.lucide = { createIcons, icons }
 
 // Global Alert System
 function showAlert(message, type = 'info', duration = 4000) {
@@ -55,9 +59,7 @@ function showAlert(message, type = 'info', duration = 4000) {
     container.appendChild(alertEl)
 
     // Initialize Lucide icons for the new alert
-    if (window.lucide) {
-      setTimeout(() => lucide.createIcons(), 10)
-    }
+    setTimeout(() => createIcons({ icons }), 10)
 
     // Trigger entrance animation
     setTimeout(() => alertEl.classList.add('ui-alert-show'), 10)

@@ -191,7 +191,7 @@
           const lucideScript = document.createElement('script');
           lucideScript.src = 'https://unpkg.com/lucide@latest/dist/umd/lucide.js';
           document.head.appendChild(lucideScript);
-          lucideScript.onload = () => lucide.createIcons();
+          lucideScript.onload = () => lucide.createIcons({ icons: lucide.icons });
         }
 
         let container = document.getElementById('ui-alert-container');
@@ -252,7 +252,7 @@
 
         // Trigger icon creation if Lucide is loaded
         if (window.lucide) {
-          lucide.createIcons();
+          lucide.createIcons({ icons: lucide.icons });
         }
 
         // Auto remove after duration

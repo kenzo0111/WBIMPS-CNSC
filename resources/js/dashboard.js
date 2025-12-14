@@ -4,7 +4,7 @@
 import FusionCharts from 'fusioncharts'
 import Charts from 'fusioncharts/fusioncharts.charts'
 import FusionTheme from 'fusioncharts/themes/fusioncharts.theme.fusion'
-import * as lucide from 'lucide'
+import { createIcons, icons } from 'lucide'
 
 // initialize additional modules
 Charts(FusionCharts)
@@ -44,9 +44,7 @@ function applyTheme(theme) {
   }
 
   // Reinitialize icons after theme change
-  if (window.lucide) {
-    lucide.createIcons()
-  }
+  createIcons({ icons })
 }
 
 // Make theme functions globally available
@@ -127,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize theme first
   initTheme()
 
-  lucide.createIcons()
+  createIcons({ icons })
   // Load session/logs/users from in-memory state (persistence disabled)
   loadUserSession()
   loadUserLogs()
@@ -685,6 +683,31 @@ function normalizeDateForServer(value) {
   } catch (e) {
     return null
   }
+}
+
+// ===== Fund Cluster helpers =====
+function generateFundClusterOptionsHTML(currentFundCluster = '') {
+  const fundClusters = [
+    { value: '01 - Regular Agency Fund', label: '01 - Regular Agency Fund' },
+    {
+      value: '05 - Internally Generated Funds',
+      label: '05 - Internally Generated Funds',
+    },
+    {
+      value: '06 - Business Related Funds',
+      label: '06 - Business Related Funds',
+    },
+    { value: '07 - Trust Receipts', label: '07 - Trust Receipts' },
+  ]
+
+  return fundClusters
+    .map(
+      (fc) =>
+        `<option value="${fc.value}" ${
+          currentFundCluster === fc.value ? 'selected' : ''
+        }>${fc.label}</option>`
+    )
+    .join('')
 }
 
 // Pagination defaults (extendable) for Login Activity Logs
@@ -1366,9 +1389,7 @@ async function loadLowStockItems(threshold = 20) {
         }
 
         // Reinitialize icons
-        if (typeof lucide !== 'undefined') {
-          lucide.createIcons()
-        }
+        createIcons({ icons })
       }
 
       if (badge) {
@@ -1392,9 +1413,7 @@ async function loadLowStockItems(threshold = 20) {
           </td>
         </tr>
       `
-      if (typeof lucide !== 'undefined') {
-        lucide.createIcons()
-      }
+      createIcons({ icons })
     }
   }
   return []
@@ -2296,9 +2315,7 @@ function updateUserDisplay() {
 
   // Reinitialize Lucide icons after updating display
   setTimeout(() => {
-    if (window.lucide) {
-      lucide.createIcons()
-    }
+    createIcons({ icons })
   }, 100)
 }
 
@@ -2482,9 +2499,7 @@ function showConfirm(message, title = 'Confirm Action') {
 
     // Re-initialize Lucide icons
     setTimeout(() => {
-      if (window.lucide) {
-        lucide.createIcons()
-      }
+      createIcons({ icons })
       // Auto-focus on confirm button for better UX
       if (okBtn) {
         cancelBtn.focus() // Focus cancel for safety (prevents accidental confirms)
@@ -2586,7 +2601,7 @@ function renderNotifications(filter = 'all') {
                 <p style="margin: 8px 0 0 0; font-size: 12px; opacity: 0.7;">Try adjusting your filter</p>
             </div>
         `
-    lucide.createIcons()
+    createIcons({ icons })
     return
   }
 
@@ -2876,7 +2891,7 @@ function renderNotifications(filter = 'all') {
   })
 
   // Reinitialize Lucide icons
-  lucide.createIcons()
+  createIcons({ icons })
 }
 
 function updateFilterButtons(activeFilter) {
@@ -3099,7 +3114,7 @@ function toggleSidebar() {
 
   // Reinitialize Lucide icons for the toggle button
   setTimeout(() => {
-    lucide.createIcons()
+    createIcons({ icons })
   }, 100)
 }
 
@@ -3276,21 +3291,21 @@ function loadPageContent(pageId) {
       // Reload purchase orders before displaying
       loadPurchaseOrdersFromAPI().then(() => {
         mainContent.innerHTML = generateNewRequestPage()
-        lucide.createIcons()
+        createIcons({ icons })
       })
       break
     case 'pending-approval':
       // Reload purchase orders before displaying
       loadPurchaseOrdersFromAPI().then(() => {
         mainContent.innerHTML = generatePendingApprovalPage()
-        lucide.createIcons()
+        createIcons({ icons })
       })
       break
     case 'completed-request':
       // Reload purchase orders before displaying
       loadPurchaseOrdersFromAPI().then(() => {
         mainContent.innerHTML = generateCompletedRequestPage()
-        lucide.createIcons()
+        createIcons({ icons })
       })
       break
     // Reports landing and specific new report pages
@@ -3380,7 +3395,7 @@ function loadPageContent(pageId) {
   }
 
   // Reinitialize icons after content update
-  lucide.createIcons()
+  createIcons({ icons })
 
   // Initialize page-specific event listeners
   initializePageEvents(pageId)
@@ -4126,7 +4141,7 @@ function renderActivityList(activities) {
         <p class="activity-empty-subtitle">Activity will appear here as you use the system</p>
       </div>
     `
-    if (window.lucide) setTimeout(() => lucide.createIcons(), 10)
+    if (window.lucide) setTimeout(() => createIcons({ icons }), 10)
     return
   }
 
@@ -4222,7 +4237,7 @@ function renderActivityList(activities) {
     })
     .join('')
 
-  if (window.lucide) setTimeout(() => lucide.createIcons(), 10)
+  if (window.lucide) setTimeout(() => createIcons({ icons }), 10)
 }
 
 function escapeHtml(str) {
@@ -4247,7 +4262,7 @@ loadPageContent = function (pageId) {
     ;(async () => {
       await loadStockInFromAPI()
       _origLoadPageContent(pageId)
-      if (window.lucide) setTimeout(() => lucide.createIcons(), 10)
+      if (window.lucide) setTimeout(() => createIcons({ icons }), 10)
     })()
     return
   }
@@ -4256,7 +4271,7 @@ loadPageContent = function (pageId) {
     ;(async () => {
       await loadStockOutFromAPI()
       _origLoadPageContent(pageId)
-      if (window.lucide) setTimeout(() => lucide.createIcons(), 10)
+      if (window.lucide) setTimeout(() => createIcons({ icons }), 10)
     })()
     return
   }
@@ -4276,7 +4291,7 @@ loadPageContent = function (pageId) {
       await loadUserLogsFromAPI(200).catch(() => {})
       // proceed to render page via original loader
       _origLoadPageContent(pageId)
-      if (window.lucide) setTimeout(() => lucide.createIcons(), 10)
+      if (window.lucide) setTimeout(() => createIcons({ icons }), 10)
     })()
     return
   }
@@ -4839,7 +4854,7 @@ function openSupplierModal(mode = 'create', index = null) {
   // Render using the Item modal style
   modalContent.innerHTML = generateSupplierModal(mode, supplier, index)
   overlay.classList.add('active')
-  if (window.lucide) setTimeout(() => lucide.createIcons(), 10)
+  if (window.lucide) setTimeout(() => createIcons({ icons }), 10)
 
   // Attach listeners for modal interactions (overlay click, ESC, save, cancel)
   // Store handlers on the overlay so we can remove them when closing
@@ -8404,7 +8419,7 @@ function showSupplierDetailPopup(
   `
 
   document.body.appendChild(popup)
-  lucide.createIcons()
+  createIcons({ icons })
 
   // Add click outside to close
   setTimeout(() => {
@@ -9095,7 +9110,7 @@ function renderActivityTimeline() {
     .join('')
 
   container.innerHTML = activityHtml
-  lucide.createIcons()
+  createIcons({ icons })
 }
 
 function exportConsolidationCSV() {
@@ -9191,7 +9206,7 @@ function showStatusDetails(status) {
     `
 
   modal.classList.add('active')
-  lucide.createIcons()
+  createIcons({ icons })
 }
 
 window.showStatusDetails = showStatusDetails
@@ -9630,7 +9645,7 @@ function showItemDetailPopup(ItemName, stockLevel, isLowStock, threshold) {
   `
 
   document.body.appendChild(popup)
-  lucide.createIcons()
+  createIcons({ icons })
 
   // Add click outside to close
   setTimeout(() => {
@@ -9897,7 +9912,7 @@ function showStatusDetailPopup(status, count, index, allData) {
   `
 
   document.body.appendChild(popup)
-  lucide.createIcons()
+  createIcons({ icons })
 
   // Add click outside to close
   setTimeout(() => {
@@ -10064,7 +10079,7 @@ function openPurchaseOrderModal(mode = 'create', requestId = null) {
   }
   modal.classList.add('active')
 
-  lucide.createIcons()
+  createIcons({ icons })
   if (mode === 'view') {
     initializePurchaseOrderModal(requestData)
   }
@@ -10189,7 +10204,7 @@ function openRequestViewForms(requestId) {
   `
 
   // Re-render icons and compute grand total
-  lucide.createIcons()
+  createIcons({ icons })
   computeViewformsGrandTotal()
   modal.classList.add('active')
 }
@@ -10725,8 +10740,8 @@ function openDownloadFormsChooser(triggerEl, requestId) {
   document.body.appendChild(container)
 
   // Re-render lucide icons
-  if (typeof lucide !== 'undefined' && lucide.createIcons) {
-    lucide.createIcons()
+  if (typeof lucide !== 'undefined') {
+    createIcons({ icons })
   }
 
   // Positioning logic (same as openViewForms)
@@ -11579,7 +11594,7 @@ function renderPurchaseOrderWizardStep(requestData) {
       AppState.purchaseOrderItems.length > 0,
       'Next'
     )
-    lucide.createIcons()
+    createIcons({ icons })
   } else if (step === 4) {
     const totalAmount = AppState.purchaseOrderItems.reduce(
       (s, i) => s + i.amount,
@@ -11666,7 +11681,7 @@ function nextPurchaseOrderStep() {
   if (AppState.purchaseOrderWizardStep < 4) {
     AppState.purchaseOrderWizardStep++
     renderPurchaseOrderWizardStep()
-    lucide.createIcons()
+    createIcons({ icons })
   }
 }
 
@@ -11675,7 +11690,7 @@ function prevPurchaseOrderStep() {
   if (AppState.purchaseOrderWizardStep > 1) {
     AppState.purchaseOrderWizardStep--
     renderPurchaseOrderWizardStep()
-    lucide.createIcons()
+    createIcons({ icons })
   }
 }
 
@@ -12971,7 +12986,7 @@ function updatePOItem(id, field, value) {
 
   // Re-initialize icons after render
   setTimeout(() => {
-    if (window.lucide) lucide.createIcons()
+    if (window.lucide) createIcons({ icons })
   }, 50)
 
   // persist item edits
@@ -13215,7 +13230,7 @@ function renderPOItems() {
   }
 
   // Reinitialize icons
-  lucide.createIcons()
+  createIcons({ icons })
 }
 
 // Auto-fill ICS Form
@@ -13521,7 +13536,7 @@ function renderDynamicPOForms() {
         </div>
       </div>
     `
-    lucide.createIcons()
+    createIcons({ icons })
     return
   }
 
@@ -14725,7 +14740,7 @@ function renderDynamicPOForms() {
   formsHTML += `</div>`
 
   container.innerHTML = formsHTML
-  lucide.createIcons()
+  createIcons({ icons })
 }
 
 // Toggle form section collapse/expand
@@ -15369,7 +15384,7 @@ function updateItemsTable() {
       rowsPerPageControl.value = String(AppState.itemsPageSize || 10)
 
     // Reinitialize icons
-    lucide.createIcons()
+    createIcons({ icons })
   }
 }
 
@@ -15647,7 +15662,7 @@ function updateStockInTable() {
     }
 
     // Reinitialize icons
-    lucide.createIcons()
+    createIcons({ icons })
   }
 }
 
@@ -15863,7 +15878,7 @@ function updateStockOutTable() {
       rowsPerPageControl.value = String(AppState.stockOutPageSize || 10)
 
     // Reinitialize icons
-    lucide.createIcons()
+    createIcons({ icons })
   }
 }
 
@@ -16163,7 +16178,7 @@ function updateNewRequestsTable() {
       rowsPerPageControl.value = String(AppState.newRequestsPageSize || 10)
 
     // Reinitialize icons
-    lucide.createIcons()
+    createIcons({ icons })
   }
 }
 
@@ -16311,7 +16326,7 @@ function updateCompletedRequestsTable() {
     }
 
     // Reinitialize icons
-    lucide.createIcons()
+    createIcons({ icons })
   }
 }
 
@@ -16706,7 +16721,7 @@ function openSettingsModal() {
 
   // Initialize Lucide icons
   setTimeout(() => {
-    if (window.lucide) lucide.createIcons()
+    if (window.lucide) createIcons({ icons })
   }, 10)
 }
 
@@ -16872,7 +16887,7 @@ function toggleUserMenu(event) {
       } else {
         console.log('Chevron icon not found for opening!')
       }
-    }, 60) // After Lucide.createIcons() completes
+    }, 60) // After createIcons() completes
   } else {
     // Hide menu with smooth animation
     menu.style.opacity = '0'
@@ -16894,14 +16909,14 @@ function toggleUserMenu(event) {
       } else {
         console.log('Chevron icon not found for closing!')
       }
-    }, 60) // After Lucide.createIcons() completes
+    }, 60) // After createIcons() completes
   }
 
   // Reinitialize Lucide icons when menu is opened
   if (!isVisible) {
     setTimeout(() => {
       if (window.lucide) {
-        lucide.createIcons()
+        createIcons({ icons })
       }
     }, 50)
   }
@@ -17066,7 +17081,7 @@ document.addEventListener('DOMContentLoaded', function () {
   loadUserRequests()
 
   // Initialize icons
-  lucide.createIcons()
+  createIcons({ icons })
 })
 
 // -----------------------------
@@ -17149,7 +17164,7 @@ function showSuccessModal({
   }
   // Recreate icons inside modal
   setTimeout(() => {
-    if (window.lucide) lucide.createIcons()
+    if (window.lucide) createIcons({ icons })
   }, 10)
 
   if (redirect) {
@@ -17550,7 +17565,7 @@ function renderRolesManagementPage(users, roles) {
     `
 
   setTimeout(() => {
-    if (window.lucide) lucide.createIcons()
+    if (window.lucide) createIcons({ icons })
   }, 0)
 
   return html
@@ -17941,7 +17956,7 @@ function refreshRolesTable() {
 
     // Ensure icons are re-rendered
     setTimeout(() => {
-      if (window.lucide) lucide.createIcons()
+      if (window.lucide) createIcons({ icons })
     }, 0)
   }
 }
@@ -17963,7 +17978,7 @@ function openUserModal(mode = 'view', userId = null) {
   modalContent.innerHTML = generateUserModal(mode, userData)
   modal.classList.add('active')
 
-  if (window.lucide) lucide.createIcons()
+  if (window.lucide) createIcons({ icons })
 }
 
 function closeUserModal() {
@@ -19102,7 +19117,7 @@ async function loadAndRenderUserActions() {
                 <p>Failed to load user actions</p>
             </div>
         `
-    if (window.lucide) lucide.createIcons()
+    if (window.lucide) createIcons({ icons })
   }
 }
 
@@ -19117,7 +19132,7 @@ function renderUserActionsTable(actions) {
                 <p>No user actions recorded yet</p>
             </div>
         `
-    if (window.lucide) lucide.createIcons()
+    if (window.lucide) createIcons({ icons })
     return
   }
 
@@ -19188,7 +19203,7 @@ function renderUserActionsTable(actions) {
             </table>
         </div>
     `
-  if (window.lucide) lucide.createIcons()
+  if (window.lucide) createIcons({ icons })
 }
 
 async function loadActivitiesFromAPI(opts = {}) {
@@ -20208,7 +20223,7 @@ async function previewTicket(id) {
       }
     } catch (e) {}
     try {
-      lucide.createIcons()
+      createIcons({ icons })
     } catch (e) {}
   } catch (e) {
     content.innerHTML = '<p>Unable to load ticket.</p>'
@@ -20823,7 +20838,7 @@ function editAboutUs() {
     `
 
   try {
-    lucide.createIcons()
+    createIcons({ icons })
   } catch (e) {}
 
   // Setup focus and accessibility behaviors, dirty-state tracking and keyboard handlers
@@ -21457,7 +21472,7 @@ function addGalleryItem(imageDataUrl = '', caption = '') {
 
   // Reinitialize icons
   try {
-    lucide.createIcons()
+    createIcons({ icons })
   } catch (e) {}
 
   // mark modal dirty if edit modal is open
@@ -21991,7 +22006,7 @@ function viewGalleryImage(url, caption) {
 
   // Reinitialize icons
   try {
-    lucide.createIcons()
+    createIcons({ icons })
   } catch (e) {}
 }
 
@@ -22172,7 +22187,7 @@ async function loadUserActivities() {
         </div>
     `
     // Re-initialize icons for the new content
-    if (window.lucide) lucide.createIcons()
+    if (window.lucide) createIcons({ icons })
   } catch (error) {
     console.error('Error loading user activities:', error)
     container.innerHTML =
@@ -22769,7 +22784,7 @@ function markNotificationAsRead(notificationId) {
           try {
             const body = document.getElementById('main-content')
             if (body) body.innerHTML = generateActivityPage()
-            lucide.createIcons()
+            createIcons({ icons })
             initializePageEvents('activity')
           } catch (e) {}
         }
@@ -22794,7 +22809,7 @@ function dismissActivity(activityId) {
       if (AppState.currentPage === 'activity') {
         const body = document.getElementById('main-content')
         if (body) body.innerHTML = generateActivityPage()
-        lucide.createIcons()
+        createIcons({ icons })
         initializePageEvents('activity')
       }
     }
@@ -22971,7 +22986,7 @@ function refreshActivities() {
     const body = document.getElementById('main-content')
     if (body) {
       body.innerHTML = generateActivityPage()
-      lucide.createIcons()
+      createIcons({ icons })
       initializePageEvents('activity')
     }
   }
@@ -23163,7 +23178,7 @@ function openItemModal(mode = 'create', ItemId = null) {
   modalContent.innerHTML = generateItemModal(mode, ItemData)
   modal.classList.add('active')
 
-  lucide.createIcons()
+  createIcons({ icons })
   // Ensure Item Date cannot be backdated: set min and clamp to today if necessary
   try {
     const today = new Date().toISOString().split('T')[0]
@@ -23508,7 +23523,7 @@ async function saveItem(ItemId) {
         const rowHtml = renderItemRow ? renderItemRow(prod) : null
         if (existing && rowHtml) existing.outerHTML = rowHtml
         else if (rowHtml) tbody.insertAdjacentHTML('beforeend', rowHtml)
-        if (window.lucide) lucide.createIcons()
+        if (window.lucide) createIcons({ icons })
         return
       }
     }
@@ -23543,7 +23558,7 @@ async function deleteItem(ItemId) {
     if (tbody) {
       const row = tbody.querySelector(`tr[data-id="${ItemId}"]`)
       if (row) row.remove()
-      if (window.lucide) lucide.createIcons()
+      createIcons({ icons })
       return
     }
   } catch (e) {}
@@ -23947,7 +23962,7 @@ function openCategoryModal(mode = 'create', categoryId = null) {
   modalContent.innerHTML = generateCategoryModal(mode, categoryData)
   modal.classList.add('active')
 
-  lucide.createIcons()
+  createIcons({ icons })
 
   // Add event listener for auto-generating code in create mode
   if (mode === 'create') {
@@ -24239,7 +24254,7 @@ function saveCategory(categoryId) {
             tbody.innerHTML = (MockData.categories || [])
               .map((c) => renderCategoryRow(c))
               .join('')
-            if (window.lucide) lucide.createIcons()
+            if (window.lucide) createIcons({ icons })
             return
           }
         }
@@ -24287,7 +24302,7 @@ async function deleteCategory(categoryId) {
       row.style.opacity = '0'
       setTimeout(() => {
         row.remove()
-        if (window.lucide) lucide.createIcons()
+        if (window.lucide) createIcons({ icons })
       }, 300)
     }
 
@@ -24318,7 +24333,7 @@ function openStockInModal(mode = 'create', stockId = null) {
 
   modalContent.innerHTML = generateStockInModal(mode, stockData)
   modal.classList.add('active')
-  lucide.createIcons()
+  createIcons({ icons })
   // Prevent backdating: ensure date input min is today and value is not before today
   try {
     const today = new Date().toISOString().split('T')[0]
@@ -24537,6 +24552,9 @@ function generateStockInModal(mode = 'create', stockData = null) {
     supplier: _sd.supplier || '',
     receivedBy: _sd.receivedBy || _sd.received_by || '',
     date: formatDate(_sd.date || _sd.date_received || _sd.created_at || ''),
+    fundCluster: _sd.fundCluster || _sd.fund_cluster || '',
+    responsibilityCenterCode:
+      _sd.responsibilityCenterCode || _sd.responsibility_center_code || '',
   }
 
   const dateValue =
@@ -24552,6 +24570,8 @@ function generateStockInModal(mode = 'create', stockData = null) {
   const supplierValue = normalizedStock.supplier
   const receivedByValue = normalizedStock.receivedBy
   const stockIdValue = normalizedStock.id || ''
+  const fundClusterValue = normalizedStock.fundCluster
+  const responsibilityCenterCodeValue = normalizedStock.responsibilityCenterCode
   // try to infer category from existing SKU if present
   let initialCategoryId = ''
   if (skuValue) {
@@ -24726,6 +24746,41 @@ function generateStockInModal(mode = 'create', stockData = null) {
                            ${isReadOnly ? 'readonly' : ''}>
                 </div>
             </div>
+
+            <!-- Fund Cluster & Responsibility Center -->
+            <div style="background: white; border-radius: 12px; padding: 24px; margin-top: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="building-2" style="width: 18px; height: 18px; color: #16a34a;"></i>
+                    Fund & Responsibility Center
+                </h3>
+                
+                <div class="grid-2">
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                            <i data-lucide="wallet" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                            Fund Cluster
+                        </label>
+          <select class="form-select" id="fund-cluster-input" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" ${
+            isReadOnly ? 'disabled' : ''
+          }>
+            <option value="">Select fund cluster</option>
+            ${generateFundClusterOptionsHTML(fundClusterValue)}
+          </select>
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
+                            <i data-lucide="map-pin" style="width: 14px; height: 14px; color: #6b7280;"></i>
+                            Responsibility Center Code
+                        </label>
+          <input type="text" class="form-input" id="responsibility-center-input"
+            value="${responsibilityCenterCodeValue || ''}"
+                           placeholder="Enter responsibility center code"
+                           style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
+                           ${isReadOnly ? 'readonly' : ''}>
+                    </div>
+                </div>
+            </div>
     </div>
 
     <!-- Recent stock-in records (mini table inside modal) -->
@@ -24794,6 +24849,10 @@ async function saveStockIn(stockId) {
   const totalCost = quantity * unitCost
   const supplier = document.getElementById('supplier-input').value
   const receivedBy = document.getElementById('receivedby-input').value
+  const fundCluster = document.getElementById('fund-cluster-input').value
+  const responsibilityCenterCode = document.getElementById(
+    'responsibility-center-input'
+  ).value
 
   const isEdit = stockId && stockId !== ''
 
@@ -24823,6 +24882,8 @@ async function saveStockIn(stockId) {
     totalCost,
     supplier,
     receivedBy,
+    fundCluster,
+    responsibilityCenterCode,
   }
 
   try {
@@ -24856,7 +24917,7 @@ async function saveStockIn(stockId) {
         const rowHtml = renderStockInRow(rec)
         if (existing) existing.outerHTML = rowHtml
         else tbody.insertAdjacentHTML('beforeend', rowHtml)
-        if (window.lucide) lucide.createIcons()
+        if (window.lucide) createIcons({ icons })
         refreshItemsViewIfOpen()
         return
       }
@@ -24895,7 +24956,7 @@ async function deleteStockIn(id) {
     if (tbody) {
       const row = tbody.querySelector(`tr[data-id="${id}"]`)
       if (row) row.remove()
-      if (window.lucide) lucide.createIcons()
+      if (window.lucide) createIcons({ icons })
       refreshItemsViewIfOpen()
       return
     }
@@ -25003,6 +25064,11 @@ function openStockOutModal(mode = 'create', stockId = null) {
         department: record.department,
         issuedTo: record.issuedTo,
         issuedBy: record.issuedBy,
+        fundCluster: record.fundCluster || record.fund_cluster || '',
+        responsibilityCenterCode:
+          record.responsibilityCenterCode ||
+          record.responsibility_center_code ||
+          '',
       }
     }
   } else {
@@ -25013,13 +25079,15 @@ function openStockOutModal(mode = 'create', stockId = null) {
       department: '',
       issuedTo: '',
       issuedBy: '',
+      fundCluster: '',
+      responsibilityCenterCode: '',
     }
   }
 
   AppState.currentModal = { mode, stockId }
   modalContent.innerHTML = generateStockOutModal(mode, headerData)
   modal.classList.add('active')
-  lucide.createIcons()
+  createIcons({ icons })
 
   // Render the initial list of items
   renderStockOutItemsList(mode === 'view')
@@ -25259,7 +25327,7 @@ function renderStockOutItemsList(isViewMode = false) {
   tbody.innerHTML = htmlContent
 
   if (grandTotalEl) grandTotalEl.textContent = formatCurrency(grandTotal)
-  if (window.lucide) lucide.createIcons()
+  if (window.lucide) createIcons({ icons })
 }
 
 function updateStockOutTotal() {
@@ -25333,6 +25401,21 @@ function generateStockOutModal(mode = 'create', headerData = {}) {
                     <label class="form-label">Issued By</label>
                     <input type="text" id="so-issued-by" class="form-input" placeholder="Issuer Name" value="${
                       headerData.issuedBy || ''
+                    }" ${isReadOnly ? 'readonly' : ''}>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Fund Cluster</label>
+                    <select id="so-fund-cluster" class="form-select" ${
+                      isReadOnly ? 'disabled' : ''
+                    }>
+                        <option value="">Select fund cluster</option>
+                        ${generateFundClusterOptionsHTML(headerData.fundCluster || '')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Responsibility Center Code</label>
+                    <input type="text" id="so-responsibility-center" class="form-input" placeholder="Responsibility Center Code" value="${
+                      headerData.responsibilityCenterCode || ''
                     }" ${isReadOnly ? 'readonly' : ''}>
                 </div>
             </div>
@@ -25434,6 +25517,10 @@ async function saveStockOut() {
   const department = document.getElementById('so-dept').value
   const issuedTo = document.getElementById('so-issued-to').value
   const issuedBy = document.getElementById('so-issued-by').value
+  const fundCluster = document.getElementById('so-fund-cluster').value
+  const responsibilityCenterCode = document.getElementById(
+    'so-responsibility-center'
+  ).value
 
   if (!date || !department) {
     showAlert('Please fill in Date and Department.', 'error')
@@ -25467,6 +25554,8 @@ async function saveStockOut() {
         issued_to: issuedTo,
         issued_by: issuedBy,
         date_issued: date,
+        fund_cluster: fundCluster,
+        responsibility_center_code: responsibilityCenterCode,
       }))
 
       const response = await fetch('/api/stock-out/batch', {
@@ -25506,6 +25595,8 @@ async function saveStockOut() {
             issuedBy: created.issued_by,
             date: formatDate(created.date_issued),
             dateIssued: created.date_issued,
+            fundCluster: created.fund_cluster,
+            responsibilityCenterCode: created.responsibility_center_code,
           }
           stockOutData.push(normalized)
         })
@@ -25716,7 +25807,7 @@ async function deleteStockOut(id) {
     if (tbody) {
       const row = tbody.querySelector(`tr[data-id="${id}"]`)
       if (row) row.remove()
-      if (window.lucide) lucide.createIcons()
+      if (window.lucide) createIcons({ icons })
       refreshItemsViewIfOpen()
       return
     }
@@ -26048,7 +26139,7 @@ async function initStatusManagement(filter = 'all') {
       // Populate department dropdown dynamically based on data
       populateDepartmentFilter()
 
-      lucide.createIcons()
+      createIcons({ icons })
     } catch (e) {
       // ignore UI update errors
     }
@@ -26273,7 +26364,7 @@ function renderStatusRows(status) {
   // Defer icon init until injected into DOM (caller will set innerHTML, then we init here with a microtask)
   queueMicrotask(() => {
     try {
-      lucide.createIcons()
+      createIcons({ icons })
     } catch (e) {}
   })
   return html
@@ -26575,7 +26666,7 @@ function showReturnModal(requestId) {
 
   // Initialize icons
   try {
-    lucide.createIcons()
+    createIcons({ icons })
   } catch (e) {}
   // Ensure the checkbox uses a proper listener (avoid depending on inline/global handlers)
   // Use a microtask so the injected HTML is parsed and elements are available
@@ -26665,7 +26756,7 @@ function confirmReturn(requestId) {
   if (body)
     body.innerHTML = renderStatusRows(AppState.currentStatusFilter || 'all')
   try {
-    lucide.createIcons()
+    createIcons({ icons })
   } catch (e) {}
 }
 // Lightweight viewer for status management entries
@@ -26885,7 +26976,7 @@ function viewStatusRequest(id) {
   }
   // Icon refresh
   try {
-    lucide.createIcons()
+    createIcons({ icons })
   } catch (e) {}
   overlay.querySelector('#status-view-close').onclick = closeStatusView
   overlay.querySelector('#status-view-dismiss').onclick = closeStatusView
@@ -26991,7 +27082,7 @@ function viewStatusRequestDetails(requestId) {
     `
 
   modal.classList.add('active')
-  setTimeout(() => lucide.createIcons(), 100)
+  setTimeout(() => createIcons({ icons }), 100)
 }
 
 // Make functions globally accessible
