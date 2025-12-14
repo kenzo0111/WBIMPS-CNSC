@@ -200,7 +200,7 @@ const AppState = {
     status: 'Active',
     created: new Date().toISOString().split('T')[0],
   },
-  currentItemTab: 'expendable',
+  currentItemTab: 'All',
   ItemSearchTerm: '',
   ItemSortBy: 'Sort By',
   ItemFilterBy: 'Filter By',
@@ -4466,20 +4466,22 @@ function renderPageButtons(
 }
 
 function generateItemsPage() {
-  const currentTab = AppState.currentItemTab || 'expendable'
-  // Filter Items according to current tab. Prefer explicit `Item.type` when present;
-  // otherwise derive type from SKU prefix as a safe fallback (SE -> semi-expendable, N -> non-expendable, else expendable).
-  const allItems = MockData.Items || []
-  const deriveType = (Item) => {
-    if (!Item) return 'expendable'
-    if (Item.type) return Item.type
-    const sku = (Item.id || '').toString().toUpperCase()
-    if (sku.startsWith('SE')) return 'semi-expendable'
-    if (sku.startsWith('N')) return 'non-expendable'
-    return 'expendable'
-  }
+  const categories = MockData.categories || []
+  const currentTab = AppState.currentItemTab || 'All'
 
-  const filteredItems = allItems.filter((p) => deriveType(p) === currentTab)
+  // Filter Items according to current tab
+  const allItems = MockData.Items || []
+  let filteredItems = allItems
+
+  if (currentTab !== 'All') {
+    filteredItems = allItems.filter((item) => {
+      const categoryName =
+        item.category && item.category.name
+          ? item.category.name
+          : 'Uncategorized'
+      return categoryName === currentTab
+    })
+  }
 
   // Pagination calculations
   const rawPageSize = Number(AppState.itemsPageSize || 10)
@@ -4494,6 +4496,21 @@ function generateItemsPage() {
   const startIndex = (currentPage - 1) * pageSize
   const endIndex = Math.min(startIndex + pageSize, totalItems)
   const pageItems = filteredItems.slice(startIndex, endIndex)
+
+  // Generate tabs dynamically from categories
+  const tabsHTML = categories
+    .map(
+      (category) => `
+    <button class="item-tab ${
+      currentTab === category.name ? 'active' : ''
+    }" data-category="${
+        category.name
+      }" onclick="switchItemTab(this.getAttribute('data-category'))">
+        ${category.name}
+    </button>
+  `
+    )
+    .join('')
 
   return `
         <div class="page-header">
@@ -4522,20 +4539,11 @@ function generateItemsPage() {
             <!-- Item Tabs -->
             <div class="item-tabs">
                 <button class="item-tab ${
-                  currentTab === 'expendable' ? 'active' : ''
-                }" onclick="switchItemTab('expendable')">
-                    Expendable
+                  currentTab === 'All' ? 'active' : ''
+                }" onclick="switchItemTab('All')">
+                    All
                 </button>
-                <button class="item-tab ${
-                  currentTab === 'semi-expendable' ? 'active' : ''
-                }" onclick="switchItemTab('semi-expendable')">
-                    Semi-Expendable
-                </button>
-                <button class="item-tab ${
-                  currentTab === 'non-expendable' ? 'active' : ''
-                }" onclick="switchItemTab('non-expendable')">
-                    Non-Expendable
-                </button>
+                ${tabsHTML}
             </div>
 
             <!-- Enhanced Filter Bar -->
@@ -4553,6 +4561,8 @@ function generateItemsPage() {
                             <option>Sort By</option>
                             <option>Item Name (A-Z)</option>
                             <option>Item Name (Z-A)</option>
+                            <option>SKU (A-Z)</option>
+                            <option>SKU (Z-A)</option>
                             <option>Date (Newest)</option>
                             <option>Date (Oldest)</option>
                             <option>Total Value (High to Low)</option>
@@ -4599,6 +4609,7 @@ function generateItemsPage() {
                     <thead>
                         <tr>
                             <th>Item ID</th>
+                            <th>SKU</th>
                             <th>Item Name</th>
                             <th>Description</th>
                             <th>Quantity</th>
@@ -4617,6 +4628,9 @@ function generateItemsPage() {
                                   return `
                             <tr>
                                 <td style="font-weight: 500;">${Item.id}</td>
+                                <td style="font-weight: 500;">${
+                                  Item.sku || '-'
+                                }</td>
                                 <td style="font-weight: 500;">${Item.name}</td>
                                 <td style="color: #6b7280; max-width: 300px;">${
                                   Item.description || ''
@@ -4648,7 +4662,7 @@ function generateItemsPage() {
                         `
                                 })
                                 .join('')
-                            : `<tr><td colspan="9" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No Items found</td></tr>`
+                            : `<tr><td colspan="10" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No Items found</td></tr>`
                         }
                     </tbody>
                 </table>
@@ -14944,21 +14958,20 @@ function initializeItemsPageEvents() {
 }
 
 function updateItemsTable() {
-  const currentTab = AppState.currentItemTab || 'expendable'
+  const currentTab = AppState.currentItemTab || 'All'
   const allItems = MockData.Items || []
 
-  // Helper to derive Item type
-  const deriveType = (Item) => {
-    if (!Item) return 'expendable'
-    if (Item.type) return Item.type
-    const sku = (Item.id || '').toString().toUpperCase()
-    if (sku.startsWith('SE')) return 'semi-expendable'
-    if (sku.startsWith('N')) return 'non-expendable'
-    return 'expendable'
-  }
-
   // Filter by current tab
-  let filteredItems = allItems.filter((p) => deriveType(p) === currentTab)
+  let filteredItems = allItems
+  if (currentTab !== 'All') {
+    filteredItems = allItems.filter((item) => {
+      const categoryName =
+        item.category && item.category.name
+          ? item.category.name
+          : 'Uncategorized'
+      return categoryName === currentTab
+    })
+  }
 
   // Apply search filter
   if (AppState.ItemSearchTerm) {
@@ -14967,6 +14980,7 @@ function updateItemsTable() {
       (Item) =>
         (Item.name || '').toLowerCase().includes(searchTerm) ||
         (Item.description || '').toLowerCase().includes(searchTerm) ||
+        (Item.sku || '').toLowerCase().includes(searchTerm) ||
         (Item.id || '').toString().toLowerCase().includes(searchTerm)
     )
   }
@@ -15016,6 +15030,12 @@ function updateItemsTable() {
       case 'Item Name (Z-A)':
         filteredItems.sort((a, b) => (b.name || '').localeCompare(a.name || ''))
         break
+      case 'SKU (A-Z)':
+        filteredItems.sort((a, b) => (a.sku || '').localeCompare(b.sku || ''))
+        break
+      case 'SKU (Z-A)':
+        filteredItems.sort((a, b) => (b.sku || '').localeCompare(a.sku || ''))
+        break
       case 'Date (Newest)':
         filteredItems.sort((a, b) => {
           const dateA = a.date ? new Date(a.date) : new Date(0)
@@ -15061,6 +15081,7 @@ function updateItemsTable() {
             return `
             <tr>
                 <td style="font-weight: 500;">${Item.id}</td>
+                <td style="font-weight: 500;">${Item.sku || '-'}</td>
                 <td style="font-weight: 500;">${Item.name}</td>
                 <td style="color: #6b7280; max-width: 300px;">${
                   Item.description || ''
@@ -15090,7 +15111,7 @@ function updateItemsTable() {
         `
           })
           .join('')
-      : `<tr><td colspan="9" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No Items found</td></tr>`
+      : `<tr><td colspan="10" style="text-align:center; padding:32px 12px; color:#6b7280; font-size:14px; font-style:italic;">No Items found</td></tr>`
 
     // Update pagination count
     const paginationLeft = document.querySelector('.pagination-left')
@@ -19126,7 +19147,7 @@ function generateAboutPage() {
       <div style="max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:32px;">
         
         <!-- Hero Section -->
-        <section aria-labelledby="hero-title" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius:16px; padding:48px 40px; box-shadow: 0 10px 40px rgba(102, 126, 234, 0.2);">
+        <section aria-labelledby="hero-title" style="background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%); border-radius:16px; padding:48px 40px; box-shadow: 0 10px 40px rgba(59, 130, 246, 0.2);">
           <div style="display:grid;grid-template-columns:auto 1fr;gap:32px;align-items:center;">
             <figure style="margin:0;width:120px;height:120px;border-radius:16px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:42px;box-shadow:0 8px 32px rgba(0,0,0,0.1);">
               ${(aboutContent.heroTitle || 'SPMO')
@@ -19151,7 +19172,7 @@ function generateAboutPage() {
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(450px,1fr));gap:24px;">
             <article style="background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
               <header style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
-                <div style="width:56px;height:56px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
+                <div style="width:56px;height:56px;background:linear-gradient(135deg,#3b82f6 0%,#60a5fa 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
                   <i data-lucide="target" style="width:28px;height:28px;color:white;"></i>
                 </div>
                 <h3 style="margin:0;font-size:22px;color:#111827;font-weight:700;">Our Mission</h3>
@@ -19163,7 +19184,7 @@ function generateAboutPage() {
 
             <article style="background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
               <header style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
-                <div style="width:56px;height:56px;background:linear-gradient(135deg,#764ba2 0%,#667eea 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
+                <div style="width:56px;height:56px;background:linear-gradient(135deg,#60a5fa 0%,#3b82f6 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
                   <i data-lucide="eye" style="width:28px;height:28px;color:white;"></i>
                 </div>
                 <h3 style="margin:0;font-size:22px;color:#111827;font-weight:700;">Our Vision</h3>
@@ -19184,7 +19205,7 @@ function generateAboutPage() {
           
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;">
             <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:24px;border-radius:12px;">
-              <div style="width:72px;height:72px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 0 20px 0;" aria-hidden="true">
+              <div style="width:72px;height:72px;background:linear-gradient(135deg,#3b82f6 0%,#60a5fa 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 0 20px 0;" aria-hidden="true">
                 <i data-lucide="package" style="width:36px;height:36px;color:white;"></i>
               </div>
               <h3 style="margin:0 0 12px 0;color:#111827;font-size:18px;font-weight:600;">Inventory Management</h3>
@@ -19192,7 +19213,7 @@ function generateAboutPage() {
             </article>
 
             <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:24px;border-radius:12px;">
-              <div style="width:72px;height:72px;background:linear-gradient(135deg,#764ba2 0%,#667eea 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 0 20px 0;" aria-hidden="true">
+              <div style="width:72px;height:72px;background:linear-gradient(135deg,#60a5fa 0%,#3b82f6 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 0 20px 0;" aria-hidden="true">
                 <i data-lucide="shopping-cart" style="width:36px;height:36px;color:white;"></i>
               </div>
               <h3 style="margin:0 0 12px 0;color:#111827;font-size:18px;font-weight:600;">Procurement Page</h3>
@@ -19200,7 +19221,7 @@ function generateAboutPage() {
             </article>
 
             <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:24px;border-radius:12px;">
-              <div style="width:72px;height:72px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 0 20px 0;" aria-hidden="true">
+              <div style="width:72px;height:72px;background:linear-gradient(135deg,#3b82f6 0%,#60a5fa 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 0 20px 0;" aria-hidden="true">
                 <i data-lucide="bar-chart-3" style="width:36px;height:36px;color:white;"></i>
               </div>
               <h3 style="margin:0 0 12px 0;color:#111827;font-size:18px;font-weight:600;">Analytics & Reporting</h3>
@@ -19208,7 +19229,7 @@ function generateAboutPage() {
             </article>
 
             <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:24px;border-radius:12px;">
-              <div style="width:72px;height:72px;background:linear-gradient(135deg,#764ba2 0%,#667eea 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 0 20px 0;" aria-hidden="true">
+              <div style="width:72px;height:72px;background:linear-gradient(135deg,#60a5fa 0%,#3b82f6 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 0 20px 0;" aria-hidden="true">
                 <i data-lucide="users" style="width:36px;height:36px;color:white;"></i>
               </div>
               <h3 style="margin:0 0 12px 0;color:#111827;font-size:18px;font-weight:600;">Multi-User Access</h3>
@@ -19301,10 +19322,10 @@ function generateAboutPage() {
                           idx === 0 ? '32px' : '12px'
                         };height:12px;border-radius:6px;background:${
                     idx === 0
-                      ? 'linear-gradient(135deg,#667eea,#764ba2)'
+                      ? 'linear-gradient(135deg,#3b82f6,#60a5fa)'
                       : '#d1d5db'
                   };border:none;cursor:pointer;transition:all 0.3s ease;box-shadow:${
-                    idx === 0 ? '0 2px 8px rgba(102,126,234,0.4)' : 'none'
+                    idx === 0 ? '0 2px 8px rgba(59,130,246,0.4)' : 'none'
                   };"
                         onmouseover="if(this.style.width==='12px')this.style.background='#9ca3af';"
                         onmouseout="if(this.style.width==='12px')this.style.background='#d1d5db';"
@@ -19358,9 +19379,9 @@ function generateAboutPage() {
                         : initials
                       return `
               <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:28px;border-radius:12px;text-align:center;">
-                <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(102,126,234,0.3);" aria-label="${name}">${avatarHtml}</figure>
+                <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#3b82f6 0%,#60a5fa 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(59,130,246,0.3);" aria-label="${name}">${avatarHtml}</figure>
               <h3 style="margin:0 0 6px 0;color:#111827;font-size:18px;font-weight:600;">${name}</h3>
-              <p style="margin:0 0 12px 0;color:#667eea;font-weight:600;font-size:14px;">${title}</p>
+              <p style="margin:0 0 12px 0;color:#3b82f6;font-weight:600;font-size:14px;">${title}</p>
               <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">${desc}</p>
             </article>
           `
@@ -19368,21 +19389,21 @@ function generateAboutPage() {
                     .join('')
                 : `
             <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:28px;border-radius:12px;text-align:center;">
-              <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(102,126,234,0.3);" aria-label="CQ">CQ</figure>
+              <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#3b82f6 0%,#60a5fa 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(59,130,246,0.3);" aria-label="CQ">CQ</figure>
               <h3 style="margin:0 0 6px 0;color:#111827;font-size:18px;font-weight:600;">Cherry Ann Quila</h3>
-              <p style="margin:0 0 12px 0;color:#667eea;font-weight:600;font-size:14px;">QA & Papers</p>
+              <p style="margin:0 0 12px 0;color:#3b82f6;font-weight:600;font-size:14px;">QA & Papers</p>
               <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">Leading QA initiatives to maintain excellence and alignment in all project and paper outputs.</p>
             </article>
             <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:28px;border-radius:12px;text-align:center;">
-              <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#764ba2 0%,#667eea 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(118,75,162,0.3);" aria-label="VB">VB</figure>
+              <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#60a5fa 0%,#3b82f6 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(96,165,250,0.3);" aria-label="VB">VB</figure>
               <h3 style="margin:0 0 6px 0;color:#111827;font-size:18px;font-weight:600;">Vince Balce</h3>
-              <p style="margin:0 0 12px 0;color:#764ba2;font-weight:600;font-size:14px;">Project Lead/Lead Developer</p>
+              <p style="margin:0 0 12px 0;color:#60a5fa;font-weight:600;font-size:14px;">Project Lead/Lead Developer</p>
               <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">Leading strategic direction and architecting robust system features for project success.</p>
             </article>
             <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:28px;border-radius:12px;text-align:center;">
-              <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(102,126,234,0.3);" aria-label="ML">ML</figure>
+              <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#3b82f6 0%,#60a5fa 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(59,130,246,0.3);" aria-label="ML">ML</figure>
               <h3 style="margin:0 0 6px 0;color:#111827;font-size:18px;font-weight:600;">Marinel Ledesma</h3>
-              <p style="margin:0 0 12px 0;color:#667eea;font-weight:600;font-size:14px;">Co Developer & Documentation</p>
+              <p style="margin:0 0 12px 0;color:#3b82f6;font-weight:600;font-size:14px;">Co Developer & Documentation</p>
               <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">Ensuring quality standards with comprehensive support and clear project documentation.</p>
             </article>
           `
@@ -19453,11 +19474,11 @@ function generateAboutPage() {
 
                   return `
                     <article style="background:#f9fafb;border:1px solid #e5e7eb;padding:28px;border-radius:12px;text-align:center;">
-                      <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(102,126,234,0.3);" aria-label="${name}">${avatarHtml}</figure>
+                      <figure style="margin:0 auto 20px;width:96px;height:96px;background:linear-gradient(135deg,#3b82f6 0%,#60a5fa 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(59,130,246,0.3);" aria-label="${name}">${avatarHtml}</figure>
                       <h3 style="margin:0 0 6px 0;color:#111827;font-size:18px;font-weight:600;">${name}</h3>
                       ${
                         role
-                          ? `<p style="margin:0 0 8px 0;color:#667eea;font-weight:600;font-size:14px;">${role}</p>`
+                          ? `<p style="margin:0 0 8px 0;color:#3b82f6;font-weight:600;font-size:14px;">${role}</p>`
                           : ''
                       }
                       ${
@@ -19506,7 +19527,7 @@ function generateAboutPage() {
         <!-- Contact Section -->
         <section aria-labelledby="contact-heading" style="background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:40px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
           <div style="text-align:center;max-width:700px;margin:0 auto;">
-            <div style="width:72px;height:72px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;box-shadow:0 4px 12px rgba(102,126,234,0.25);" aria-hidden="true">
+            <div style="width:72px;height:72px;background:linear-gradient(135deg,#3b82f6 0%,#60a5fa 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;box-shadow:0 4px 12px rgba(59,130,246,0.25);" aria-hidden="true">
               <i data-lucide="mail" style="width:36px;height:36px;color:white;"></i>
             </div>
             <header style="margin-bottom:32px;">
@@ -19516,7 +19537,7 @@ function generateAboutPage() {
             
             <address style="font-style:normal;display:grid;gap:16px;text-align:left;">
               <div style="background:#f9fafb;border:1px solid #e5e7eb;padding:20px;border-radius:10px;display:flex;align-items:center;gap:16px;">
-                <div style="width:48px;height:48px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
+                <div style="width:48px;height:48px;background:linear-gradient(135deg,#3b82f6 0%,#60a5fa 100%);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
                   <i data-lucide="building-2" style="width:24px;height:24px;color:white;"></i>
                 </div>
                 <div style="min-width:0;">
@@ -19528,21 +19549,21 @@ function generateAboutPage() {
               </div>
 
               <div style="background:#f9fafb;border:1px solid #e5e7eb;padding:20px;border-radius:10px;display:flex;align-items:center;gap:16px;">
-                <div style="width:48px;height:48px;background:linear-gradient(135deg,#764ba2 0%,#667eea 100%);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
+                <div style="width:48px;height:48px;background:linear-gradient(135deg,#60a5fa 0%,#3b82f6 100%);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
                   <i data-lucide="mail" style="width:24px;height:24px;color:white;"></i>
                 </div>
                 <div style="min-width:0;">
                   <p style="margin:0 0 4px 0;font-weight:600;color:#111827;font-size:15px;">Institutional Email</p>
                   <a href="mailto:${
                     aboutContent.email
-                  }" id="email-text" style="margin:0;color:#667eea;font-size:14px;word-break:break-word;text-decoration:none;">${
+                  }" id="email-text" style="margin:0;color:#3b82f6;font-size:14px;word-break:break-word;text-decoration:none;">${
     aboutContent.email
   }</a>
                 </div>
               </div>
 
               <div style="background:#f9fafb;border:1px solid #e5e7eb;padding:20px;border-radius:10px;display:flex;align-items:center;gap:16px;">
-                <div style="width:48px;height:48px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
+                <div style="width:48px;height:48px;background:linear-gradient(135deg,#3b82f6 0%,#60a5fa 100%);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
                   <i data-lucide="phone" style="width:24px;height:24px;color:white;"></i>
                 </div>
                 <div style="min-width:0;">
@@ -19550,7 +19571,7 @@ function generateAboutPage() {
                   <a href="tel:${aboutContent.phone.replace(
                     /[^0-9+]/g,
                     ''
-                  )}" id="phone-text" style="margin:0;color:#667eea;font-size:14px;word-break:break-word;text-decoration:none;">${
+                  )}" id="phone-text" style="margin:0;color:#3b82f6;font-size:14px;word-break:break-word;text-decoration:none;">${
     aboutContent.phone
   }</a>
                 </div>
@@ -23915,6 +23936,7 @@ function saveCategory(categoryId) {
         }
       } catch (e) {}
       loadPageContent('categories') // refresh table/page
+      refreshItemsViewIfOpen() // refresh items page to update tabs
     }
   })()
 }

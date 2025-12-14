@@ -4935,7 +4935,7 @@ body.modal-open {
   justify-content: center;
   gap: 16px;
   border: none;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
 }
 
 .about-hero-container {
@@ -4983,7 +4983,7 @@ body.modal-open {
 
 /* Mission & Vision Cards */
 .mission-vision-card {
-  border-left: 3px solid #667eea;
+  border-left: 3px solid #3b82f6;
   padding: 16px;
   margin-bottom: 16px;
   background: #f8f9fa;
@@ -5095,7 +5095,7 @@ body.modal-open {
   color: white;
   margin: 0 auto 8px auto;
   font-size: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
 }
 
 .committee-name {
