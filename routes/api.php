@@ -17,6 +17,9 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::get('/activities', [ActivityController::class, 'index']);
     Route::get('/activities/{id}', [ActivityController::class, 'show']);
     Route::post('/activities', [ActivityController::class, 'store']);
+    Route::get('/activities', [ActivityController::class, 'index']);
+    Route::get('/activities/{id}', [ActivityController::class, 'show']);
+    Route::post('/activities', [ActivityController::class, 'store']);
 
     Route::apiResource('categories', CategoryController::class);
     Route::get('/items/low-stock', [ItemController::class, 'lowStock']);
@@ -48,4 +51,11 @@ Route::middleware('throttle:60,1')->group(function () {
     // Site content (About Us, etc.)
     Route::get('/site-contents/{key}', [SiteContentController::class, 'show']);
     Route::put('/site-contents/{key}', [SiteContentController::class, 'update']);
+});
+
+// Authenticated API routes
+Route::middleware(['auth', 'throttle:60,1'])->group(function () {
+    Route::get('/purchase-requests', [PurchaseRequestController::class, 'index']);
+    Route::post('/purchase-requests', [PurchaseRequestController::class, 'store']);
+    Route::post('/status-requests/{id}/status', [PurchaseRequestController::class, 'updateStatus']);
 });

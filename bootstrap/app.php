@@ -23,6 +23,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'forgot-password',
             'reset-password',
             'account/setup',
+            'purchase-request/generate',
+            'purchase-order/generate',
+            'inspection-acceptance-report/generate',
+            'inventory-custodian-slip/generate',
+            'requisition-issue-slip/generate',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

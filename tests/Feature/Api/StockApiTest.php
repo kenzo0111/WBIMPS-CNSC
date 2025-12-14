@@ -14,6 +14,10 @@ beforeEach(function () {
         'status' => 'active',
     ]);
     $this->actingAs($this->user, 'web');
+
+    // Create some items and suppliers for stock operations
+    \App\Models\Item::factory()->count(5)->create();
+    \App\Models\Supplier::factory()->count(3)->create();
 });
 
 // Stock In Tests

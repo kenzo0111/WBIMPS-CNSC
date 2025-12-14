@@ -106,9 +106,7 @@ Route::post('/contact-support', [App\Http\Controllers\SupportController::class, 
 
 Route::middleware('auth')->group(function () {
     // Protected API routes
-    Route::get('/api/purchase-requests', [ApiPurchaseRequestController::class, 'index']);
-    Route::post('/api/purchase-requests', [ApiPurchaseRequestController::class, 'store']);
-    Route::post('/api/status-requests/{id}/status', [ApiPurchaseRequestController::class, 'updateStatus']);
+    // Purchase request routes moved to api.php
 
     Route::get('/support/attachment/{id}', [App\Http\Controllers\SupportController::class, 'attachment'])->name('support.attachment');
     Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
@@ -130,8 +128,4 @@ Route::middleware('auth')->group(function () {
 
 // API-style route for recent activities (uses web middleware so it shows in route:list)
 // This provides a simple endpoint consumed by the dashboard client at /api/activities
-use App\Http\Controllers\Api\ActivityController;
-
-Route::get('/api/activities', [ActivityController::class, 'index']);
-Route::post('/api/activities', [ActivityController::class, 'store']);
-Route::get('/api/activities/{id}', [ActivityController::class, 'show']);
+// Moved to api.php
