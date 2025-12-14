@@ -1132,6 +1132,16 @@
           desig = 'VICE PRESIDENT FOR ADMINISTRATION AND FINANCE (VPAF)'
         else if (val === 'DR. ROSALIE A. ALMADRONES')
           desig = 'VICE PRESIDENT FOR RESEARCH AND EXTENSION (VPRE)'
+        else if (val === 'DANIEL E. MALIGAT JR., DIT') desig = 'DEAN'
+        else if (val === 'ENGR. AIREEN M. BABAGAY, M.ENG.') desig = 'DEAN'
+        else if (val === 'JOCELYN E. TRINIDAD, PH.D.') desig = 'DEAN'
+        else if (val === 'GEHANA D. LAMUG, DBA') desig = 'DEAN'
+        else if (val === 'EDUARDO M. ABAD, PH.D.') desig = 'DEAN'
+        else if (val === 'JUDELIN S. ALVAREZ') desig = 'DEAN'
+        else if (val === 'JOFHILINE DYGICO, PH.D.') desig = 'DEAN'
+        else if (val === 'LOVEWISERLYN O. DELA CRUZ') desig = 'DEAN'
+        else if (val === 'ANNE MARIE CARREON-AREVALO, M.SC.') desig = 'DEAN'
+        else if (val === 'FERNANDO H. CORATCHEA, PH.D.') desig = 'DEAN'
 
         if (desig) designationInput.value = desig
 

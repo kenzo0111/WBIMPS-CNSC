@@ -214,7 +214,7 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label" for="responsibilityCenterCode">Responsibility Center Code</label>
-                                <input class="form-input" id="responsibilityCenterCode" name="responsibilityCenterCode" type="text" placeholder="e.g., 1234" />
+                                <input class="form-input" id="responsibilityCenterCode" name="responsibilityCenterCode" type="text" placeholder="e.g., CNSC-COENG" />
                             </div>
                             <div class="form-group">
                                 <label class="form-label" for="approvedBy">Approved By</label>
@@ -224,6 +224,16 @@
                                     <option value="DR. DOLORES C. VOLANTE">DR. DOLORES C. VOLANTE</option>
                                     <option value="DR. MARIA CRISTINA C. AZUELO">DR. MARIA CRISTINA C. AZUELO</option>
                                     <option value="DR. ROSALIE A. ALMADRONES">DR. ROSALIE A. ALMADRONES</option>
+                                    <option value="DANIEL E. MALIGAT JR., DIT">DANIEL E. MALIGAT JR., DIT</option>
+                                    <option value="ENGR. AIREEN M. BABAGAY, M.ENG.">ENGR. AIREEN M. BABAGAY, M.ENG.</option>
+                                    <option value="JOCELYN E. TRINIDAD, PH.D.">JOCELYN E. TRINIDAD, PH.D.</option>
+                                    <option value="GEHANA D. LAMUG, DBA">GEHANA D. LAMUG, DBA</option>
+                                    <option value="EDUARDO M. ABAD, PH.D.">EDUARDO M. ABAD, PH.D.</option>
+                                    <option value="JUDELIN S. ALVAREZ">JUDELIN S. ALVAREZ</option>
+                                    <option value="JOFHILINE DYGICO, PH.D.">JOFHILINE DYGICO, PH.D.</option>
+                                    <option value="LOVEWISERLYN O. DELA CRUZ">LOVEWISERLYN O. DELA CRUZ</option>
+                                    <option value="ANNE MARIE CARREON-AREVALO, M.SC.">ANNE MARIE CARREON-AREVALO, M.SC.</option>
+                                    <option value="FERNANDO H. CORATCHEA, PH.D.">FERNANDO H. CORATCHEA, PH.D.</option>
                                     <option value="Others">Others</option>
                                 </select>
                             </div>

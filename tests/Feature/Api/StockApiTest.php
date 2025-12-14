@@ -233,7 +233,7 @@ test('validates required fields when creating stock out', function () {
     $response = $this->postJson('/api/stock-out', []);
 
     $response->assertStatus(422)
-        ->assertJsonValidationErrors(['issue_id', 'sku', 'product_name', 'quantity']);
+        ->assertJsonValidationErrors(['sku', 'product_name', 'quantity', 'date_issued']);
 });
 
 test('calculates total cost for stock out transaction', function () {

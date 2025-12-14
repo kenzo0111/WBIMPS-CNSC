@@ -98,6 +98,10 @@ Route::get('/pdf/preview/appendix71', [PropertyAcknowledgementReceiptController:
 Route::get('/contact-support', function () {
     return view('contact-support');
 })->name('contact.support');
+
+// Reports routes
+Route::get('/reports/rcpi/export', [App\Http\Controllers\ReportsController::class, 'exportRcpi'])->name('reports.rcpi.export');
+Route::get('/reports/rsmi/export', [App\Http\Controllers\ReportsController::class, 'exportRsmi'])->name('reports.rsmi.export');
 Route::post('/contact-support', [App\Http\Controllers\SupportController::class, 'store'])->name('support.submit');
 
 Route::middleware('auth')->group(function () {

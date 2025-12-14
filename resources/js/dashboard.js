@@ -3425,7 +3425,7 @@ function loadPageContent(pageId) {
       renderRcpiReport()
       document
         .getElementById('export-rcpi-btn')
-        ?.addEventListener('click', exportRcpiCSV)
+        ?.addEventListener('click', exportRcpiExcel)
       document
         .getElementById('rcpi-supplier-filter')
         ?.addEventListener('change', renderRcpiReport)
@@ -7623,7 +7623,11 @@ function generateRcpiReportsPage() {
   // Using MockData.Items as source for Inventory Report
   const categories = [
     'All',
-    ...new Set((MockData.Items || []).map((i) => i.category).filter(Boolean)),
+    ...new Set(
+      (MockData.Items || [])
+        .map((i) => (i.category ? i.category.name : i.category))
+        .filter(Boolean)
+    ),
   ]
 
   return `
@@ -8558,7 +8562,9 @@ function renderRcpiReport() {
   let all = [...(MockData.Items || [])]
 
   if (categoryFilter && categoryFilter !== 'All')
-    all = all.filter((i) => i.category === categoryFilter)
+    all = all.filter(
+      (i) => (i.category ? i.category.name : i.category) === categoryFilter
+    )
 
   // Calculate Summary Metrics
   const totalItems = all.length
@@ -8569,8 +8575,9 @@ function renderRcpiReport() {
       typeof item.unit_cost === 'number' ? item.unit_cost : item.unitPrice || 0
     return sum + qty * unitCost
   }, 0)
-  const totalCategories = new Set(all.map((i) => i.category).filter(Boolean))
-    .size
+  const totalCategories = new Set(
+    all.map((i) => (i.category ? i.category.name : i.category)).filter(Boolean)
+  ).size
 
   // Update Summary Cards
   const totalItemsEl = document.getElementById('rpci-total-items')
@@ -8600,7 +8607,7 @@ function renderRcpiReport() {
 
       return `
       <tr>
-        <td>${item.category || 'Supplies'}</td>
+        <td>${item.category ? item.category.name : 'Supplies'}</td>
         <td>${item.name || '-'}</td>
         <td>${item.id || item.stockNumber || '-'}</td>
         <td>${unit}</td>
@@ -8616,41 +8623,9 @@ function renderRcpiReport() {
   window.__rcpiFilteredRows = all
 }
 
-function exportRcpiCSV() {
-  const rows = [
-    [
-      'Article',
-      'Description',
-      'Stock Number',
-      'Unit of Measure',
-      'Unit Value',
-      'Balance Per Card',
-      'On Hand Per Count',
-      'Shortage/Overage Qty',
-      'Shortage/Overage Value',
-      'Remarks',
-    ],
-  ]
-  const rowsToExport = (window.__rcpiFilteredRows || []).map((item) => {
-    const qty =
-      typeof item.quantity === 'number' ? item.quantity : item.currentStock || 0
-    const unitCost =
-      typeof item.unit_cost === 'number' ? item.unit_cost : item.unitPrice || 0
-    return [
-      item.category || 'Supplies',
-      item.name || '',
-      item.id || item.stockNumber || '',
-      item.unit || item.unitMeasure || '',
-      unitCost,
-      qty,
-      qty,
-      0,
-      0,
-      '',
-    ]
-  })
-  rowsToExport.forEach((r) => rows.push(r))
-  downloadExcel('rcpi-report.xlsx', rows, 'RPCI Report')
+function exportRcpiExcel() {
+  // Redirect to backend export endpoint
+  window.location.href = '/reports/rcpi/export'
 }
 
 function renderRsmiReport() {
@@ -8735,37 +8710,28 @@ function renderRsmiReport() {
 }
 
 function exportRsmiCSV() {
-  const rows = [
-    [
-      'RIS No.',
-      'Responsibility Center Code',
-      'Stock Property No.',
-      'Item Description',
-      'Unit',
-      'Quantity Issued',
-      'Unit Cost',
-      'Amount',
-    ],
-  ]
-  const data = window.__rsmiFilteredRows || []
-  data.forEach((r) =>
-    rows.push([
-      r.risNo || '',
-      r.centerCode || '',
-      r.stockNo || '',
-      r.description || '',
-      r.unit || '',
-      r.qty || 0,
-      r.unitCost || 0,
-      r.amount || 0,
-    ])
-  )
-  downloadExcel('rsmi-report.xlsx', rows, 'RSMI Report', {
-    templateUrl: '/templates/rsmi-template.xlsx',
-    sheetName: 'RSMI',
-    headerRow: 1,
-    startRow: 2,
-  })
+  // Get filter values
+  const department =
+    document.getElementById('rsmi-department-filter')?.value || ''
+  const dateFrom = document.getElementById('rsmi-date-from')?.value || ''
+  const dateTo = document.getElementById('rsmi-date-to')?.value || ''
+
+  // Build query parameters
+  const params = new URLSearchParams()
+  if (department) params.append('department', department)
+  if (dateFrom) params.append('date_from', dateFrom)
+  if (dateTo) params.append('date_to', dateTo)
+
+  // Call backend export
+  const url = `/reports/rsmi/export?${params.toString()}`
+
+  // Create a temporary link to trigger download
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'rsmi-report.xlsx'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 
 // Stock Cards render function removed: renderStockCardsReport()
@@ -9793,7 +9759,7 @@ function initializeReportPageEvents(pageId) {
   if (pageId === 'rcpi-reports') {
     document
       .getElementById('export-rcpi-btn')
-      ?.addEventListener('click', exportRcpiCSV)
+      ?.addEventListener('click', exportRcpiExcel)
     document
       .getElementById('rcpi-supplier-filter')
       ?.addEventListener('change', renderRcpiReport)
