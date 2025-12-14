@@ -817,6 +817,28 @@ function updatePOFormDraft(formKey, field, value) {
 
 window.updatePOFormDraft = updatePOFormDraft
 
+function updateRISDivision(divisionValue) {
+  updatePOFormDraft('ris', 'division', divisionValue)
+  // Set office to the same
+  updatePOFormDraft('ris', 'office', divisionValue)
+  // Extract acronym for responsibility center code
+  const match = divisionValue.match(/\(([^)]+)\)$/)
+  const acronym = match ? match[1] : divisionValue
+  updatePOFormDraft('ris', 'responsibility_center_code', acronym)
+}
+
+window.updateRISDivision = updateRISDivision
+
+function updateIARRequisitioningOffice(officeValue) {
+  updatePOFormDraft('iar', 'requisitioning_office', officeValue)
+  // Extract acronym for responsibility center code
+  const match = officeValue.match(/\(([^)]+)\)$/)
+  const acronym = match ? match[1] : officeValue
+  updatePOFormDraft('iar', 'responsibility_center_code', acronym)
+}
+
+window.updateIARRequisitioningOffice = updateIARRequisitioningOffice
+
 function updateRISSignatureDate(dateValue) {
   // Update the single signature date field
   updatePOFormDraft('ris', 'signature_date', dateValue)
@@ -1037,6 +1059,9 @@ async function saveStockOutToAPI(stockOutRecord) {
         issued_by: stockOutRecord.issuedBy || stockOutRecord.issued_by || null,
         purpose: stockOutRecord.purpose,
         date_issued: stockOutRecord.dateIssued,
+        fund_cluster: stockOutRecord.fundCluster || null,
+        responsibility_center_code:
+          stockOutRecord.responsibilityCenterCode || null,
       }),
     })
 
@@ -1293,6 +1318,9 @@ async function loadStockOutFromAPI() {
         rec.department = rec.department || ''
         rec.issuedTo = rec.issued_to || rec.issuedTo || ''
         rec.issuedBy = rec.issued_by || rec.issuedBy || ''
+        rec.fundCluster = rec.fund_cluster || ''
+        rec.responsibilityCenterCode = rec.responsibility_center_code || ''
+        rec.purpose = rec.purpose || ''
         return rec
       })
       return stockOutData
@@ -13308,16 +13336,31 @@ function autoFillRISForm() {
   // Auto-fill department/office from PO data
   const department = AppState.purchaseOrderDraft.department
   if (department) {
+    const officeLabel = getDepartmentLabel(department) || department
     if (!AppState.purchaseOrderDraft.risFormData.division) {
-      updatePOFormDraft('ris', 'division', department)
+      updatePOFormDraft('ris', 'division', officeLabel)
     }
-    if (!AppState.purchaseOrderDraft.risFormData.office) {
-      // Only auto-fill the RIS office if it matches one of the allowed RIS offices
-      const officeLabel = getDepartmentLabel(department) || department
-      const allowedLabels = RIS_OFFICE_LIST.map((o) => o.label)
-      if (allowedLabels.includes(officeLabel)) {
-        updatePOFormDraft('ris', 'office', officeLabel)
-      }
+    // Always update office
+    updatePOFormDraft('ris', 'office', officeLabel)
+    // Set responsibility center code to acronym
+    const match = officeLabel.match(/\(([^)]+)\)$/)
+    const acronym = match ? match[1] : department
+    if (!AppState.purchaseOrderDraft.risFormData.responsibility_center_code) {
+      updatePOFormDraft('ris', 'responsibility_center_code', acronym)
+    }
+  }
+
+  // Auto-fill for IAR
+  if (department) {
+    const officeLabelIAR = getDepartmentLabel(department) || department
+    if (!AppState.purchaseOrderDraft.iarFormData.requisitioning_office) {
+      updatePOFormDraft('iar', 'requisitioning_office', officeLabelIAR)
+    }
+    // Set responsibility center code to acronym
+    const matchIAR = officeLabelIAR.match(/\(([^)]+)\)$/)
+    const acronymIAR = matchIAR ? matchIAR[1] : department
+    if (!AppState.purchaseOrderDraft.iarFormData.responsibility_center_code) {
+      updatePOFormDraft('iar', 'responsibility_center_code', acronymIAR)
     }
   }
 
@@ -13896,7 +13939,7 @@ function renderDynamicPOForms() {
                 (AppState.purchaseOrderDraft.risFormData &&
                   AppState.purchaseOrderDraft.risFormData.division) ||
                 ''
-              }" onchange="updatePOFormDraft('ris','division', this.value)" placeholder="Division name" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+              }" onchange="updateRISDivision(this.value)" placeholder="Division name" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;" onfocus="this.style.borderColor='#15803d'; this.style.boxShadow='0 0 0 3px rgba(21, 128, 61, 0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             <div class="form-group">
               <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #334155; font-size: 13px;">
@@ -13905,12 +13948,11 @@ function renderDynamicPOForms() {
               </label>
               <select class="form-select" id="ris_office" onchange="updatePOFormDraft('ris','office', this.value)" style="border: 2px solid #e2e8f0; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                 <option value="">Select office</option>
-                ${generateRISOfficeOptionsHTML(
+                ${generateDepartmentOptionsHTMLWithLabels(
                   (AppState.purchaseOrderDraft.risFormData &&
                     AppState.purchaseOrderDraft.risFormData.office) ||
                     ''
                 )}
-                <option value="__other__">Other (enter manually)</option>
               </select>
             </div>
             <div class="form-group">
@@ -14475,7 +14517,7 @@ function renderDynamicPOForms() {
                     AppState.purchaseOrderDraft.iarFormData
                       .requisitioning_office) ||
                   ''
-                }" onchange="updatePOFormDraft('iar','requisitioning_office', this.value)" placeholder="Office requesting items" 
+                }" onchange="updateIARRequisitioningOffice(this.value)" placeholder="Office requesting items" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -14517,19 +14559,19 @@ function renderDynamicPOForms() {
           <div style="margin-bottom: 24px;">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #fbcfe8;">
               <i data-lucide="receipt" style="width: 18px; height: 18px; color: #be185d;"></i>
-              <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #be185d; text-transform: uppercase; letter-spacing: 0.5px;">Invoice Information</h6>
+              <h6 style="margin: 0; font-size: 14px; font-weight: 600; color: #be185d; text-transform: uppercase; letter-spacing: 0.5px;">Proof of Delivery Information</h6>
             </div>
             <div class="grid-2" style="gap: 16px;">
               <div class="form-group">
                 <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
                   <i data-lucide="file-text" style="width: 14px; height: 14px; color: #be185d;"></i>
-                  Invoice Number
+                  Proof of Delivery
                 </label>
                 <input type="text" class="form-input" id="iar_invoice_no" value="${
                   (AppState.purchaseOrderDraft.iarFormData &&
                     AppState.purchaseOrderDraft.iarFormData.invoice_no) ||
                   ''
-                }" onchange="updatePOFormDraft('iar','invoice_no', this.value)" placeholder="Invoice number from supplier" 
+                }" onchange="updatePOFormDraft('iar','invoice_no', this.value)" placeholder="Proof of delivery number" 
                        style="border: 2px solid #fbcfe8; padding: 10px 14px; font-size: 14px; border-radius: 8px; transition: all 0.2s ease;"
                        onfocus="this.style.borderColor='#be185d'; this.style.boxShadow='0 0 0 3px rgba(190, 24, 93, 0.1)'"
                        onblur="this.style.borderColor='#fbcfe8'; this.style.boxShadow='none'">
@@ -14537,7 +14579,7 @@ function renderDynamicPOForms() {
               <div class="form-group">
                 <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151; font-size: 13px;">
                   <i data-lucide="calendar" style="width: 14px; height: 14px; color: #be185d;"></i>
-                  Invoice Date
+                  Date of Delivery
                 </label>
                 <input type="date" class="form-input" id="iar_invoice_date" value="${
                   (AppState.purchaseOrderDraft.iarFormData &&
@@ -24553,8 +24595,6 @@ function generateStockInModal(mode = 'create', stockData = null) {
     receivedBy: _sd.receivedBy || _sd.received_by || '',
     date: formatDate(_sd.date || _sd.date_received || _sd.created_at || ''),
     fundCluster: _sd.fundCluster || _sd.fund_cluster || '',
-    responsibilityCenterCode:
-      _sd.responsibilityCenterCode || _sd.responsibility_center_code || '',
   }
 
   const dateValue =
@@ -24571,7 +24611,6 @@ function generateStockInModal(mode = 'create', stockData = null) {
   const receivedByValue = normalizedStock.receivedBy
   const stockIdValue = normalizedStock.id || ''
   const fundClusterValue = normalizedStock.fundCluster
-  const responsibilityCenterCodeValue = normalizedStock.responsibilityCenterCode
   // try to infer category from existing SKU if present
   let initialCategoryId = ''
   if (skuValue) {
@@ -24751,10 +24790,10 @@ function generateStockInModal(mode = 'create', stockData = null) {
             <div style="background: white; border-radius: 12px; padding: 24px; margin-top: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                 <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 8px;">
                     <i data-lucide="building-2" style="width: 18px; height: 18px; color: #16a34a;"></i>
-                    Fund & Responsibility Center
+                    Fund Cluster
                 </h3>
                 
-                <div class="grid-2">
+                <div>
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
                             <i data-lucide="wallet" style="width: 14px; height: 14px; color: #6b7280;"></i>
@@ -24766,18 +24805,6 @@ function generateStockInModal(mode = 'create', stockData = null) {
             <option value="">Select fund cluster</option>
             ${generateFundClusterOptionsHTML(fundClusterValue)}
           </select>
-                    </div>
-                    
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
-                            <i data-lucide="map-pin" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                            Responsibility Center Code
-                        </label>
-          <input type="text" class="form-input" id="responsibility-center-input"
-            value="${responsibilityCenterCodeValue || ''}"
-                           placeholder="Enter responsibility center code"
-                           style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;"
-                           ${isReadOnly ? 'readonly' : ''}>
                     </div>
                 </div>
             </div>
@@ -24850,9 +24877,6 @@ async function saveStockIn(stockId) {
   const supplier = document.getElementById('supplier-input').value
   const receivedBy = document.getElementById('receivedby-input').value
   const fundCluster = document.getElementById('fund-cluster-input').value
-  const responsibilityCenterCode = document.getElementById(
-    'responsibility-center-input'
-  ).value
 
   const isEdit = stockId && stockId !== ''
 
@@ -24883,7 +24907,6 @@ async function saveStockIn(stockId) {
     supplier,
     receivedBy,
     fundCluster,
-    responsibilityCenterCode,
   }
 
   try {
@@ -25046,7 +25069,7 @@ function openStockOutModal(mode = 'create', stockId = null) {
 
   let headerData = {}
 
-  if (mode === 'edit' && stockId) {
+  if ((mode === 'edit' || mode === 'view') && stockId) {
     // Find the specific record triggered
     const record = stockOutData.find((r) => r.id == stockId)
     if (record) {
@@ -25069,6 +25092,7 @@ function openStockOutModal(mode = 'create', stockId = null) {
           record.responsibilityCenterCode ||
           record.responsibility_center_code ||
           '',
+        purpose: record.purpose || '',
       }
     }
   } else {
@@ -25081,6 +25105,7 @@ function openStockOutModal(mode = 'create', stockId = null) {
       issuedBy: '',
       fundCluster: '',
       responsibilityCenterCode: '',
+      purpose: '',
     }
   }
 
@@ -25419,6 +25444,12 @@ function generateStockOutModal(mode = 'create', headerData = {}) {
                     }" ${isReadOnly ? 'readonly' : ''}>
                 </div>
             </div>
+            <div class="form-group">
+                <label class="form-label">Purpose</label>
+                <input type="text" id="so-purpose" class="form-input" placeholder="Purpose of stock out" value="${
+                  headerData.purpose || ''
+                }" ${isReadOnly ? 'readonly' : ''}>
+            </div>
         </div>
 
         ${
@@ -25521,6 +25552,7 @@ async function saveStockOut() {
   const responsibilityCenterCode = document.getElementById(
     'so-responsibility-center'
   ).value
+  const purpose = document.getElementById('so-purpose').value
 
   if (!date || !department) {
     showAlert('Please fill in Date and Department.', 'error')
@@ -25556,6 +25588,7 @@ async function saveStockOut() {
         date_issued: date,
         fund_cluster: fundCluster,
         responsibility_center_code: responsibilityCenterCode,
+        purpose: purpose,
       }))
 
       const response = await fetch('/api/stock-out/batch', {
@@ -25597,6 +25630,7 @@ async function saveStockOut() {
             dateIssued: created.date_issued,
             fundCluster: created.fund_cluster,
             responsibilityCenterCode: created.responsibility_center_code,
+            purpose: created.purpose,
           }
           stockOutData.push(normalized)
         })
@@ -25822,7 +25856,7 @@ function viewStockOutDetails(id) {
     showAlert('Record not found', 'error')
     return
   }
-  openStockOutModal('view', rec)
+  openStockOutModal('view', id)
 }
 
 function editStockOut(id) {
@@ -25831,21 +25865,22 @@ function editStockOut(id) {
     showAlert('Record not found', 'error')
     return
   }
-  openStockOutModal('edit', rec)
+  openStockOutModal('edit', id)
 }
 
 function generateStockOutIssueId() {
   const year = new Date().getFullYear()
+  const month = String(new Date().getMonth() + 1).padStart(2, '0')
   const existing = stockOutData
     .filter(
       (r) =>
         r.issueId &&
         typeof r.issueId === 'string' &&
-        r.issueId.startsWith(`SO-${year}-`)
+        r.issueId.startsWith(`${year}-${month}-`)
     )
     .map((r) => parseInt(r.issueId.split('-')[2]) || 0)
   const next = Math.max(...existing, 0) + 1
-  return `SO-${year}-${String(next).padStart(3, '0')}`
+  return `${year}-${month}-${String(next).padStart(4, '0')}`
 }
 
 // ===== STATUS MANAGEMENT =====

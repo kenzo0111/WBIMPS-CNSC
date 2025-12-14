@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             \Database\Seeders\CategorySeeder::class,
             \Database\Seeders\ItemSeeder::class,
             \Database\Seeders\SupplierSeeder::class,
+            \Database\Seeders\StockInSeeder::class,
         ]);
 
         // Ensure there is an admin account that matches the README test credentials

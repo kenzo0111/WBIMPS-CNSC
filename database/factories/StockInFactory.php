@@ -19,15 +19,22 @@ class StockInFactory extends Factory
      */
     public function definition(): array
     {
+        $items = \App\Models\Item::all();
+        $suppliers = \App\Models\Supplier::all();
+
+        $item = $items->random();
+        $supplier = $suppliers->random();
+
         return [
-            'transaction_id' => 'SI-'.date('Y').'-'.fake()->unique()->numberBetween(1000, 9999),
-            'sku' => 'SKU-'.fake()->unique()->numberBetween(10000, 99999),
-            'product_name' => fake()->words(3, true),
-            'quantity' => fake()->numberBetween(10, 100),
-            'unit_cost' => fake()->randomFloat(2, 50, 5000),
-            'supplier' => fake()->company(),
-            'date_received' => fake()->date(),
+            'transaction_id' => 'SI-' . date('Y') . '-' . fake()->unique()->numberBetween(1000, 9999),
+            'sku' => $item->sku,
+            'product_name' => $item->name,
+            'quantity' => fake()->numberBetween(1, 50),
+            'unit_cost' => $item->unit_cost,
+            'supplier' => $supplier->name,
+            'date_received' => fake()->dateTimeBetween('2025-01-01', '2025-12-31')->format('Y-m-d'),
             'received_by' => fake()->name(),
+            'fund_cluster' => fake()->randomElement(['101', '102', '201', '202']),
         ];
     }
 }

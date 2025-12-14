@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $supplier
  * @property string $date_received
  * @property string|null $received_by
+ * @property string|null $fund_cluster
  */
 class StockIn extends Model
 {
@@ -31,6 +32,7 @@ class StockIn extends Model
         'supplier',
         'date_received',
         'received_by',
+        'fund_cluster',
     ];
 
     protected $casts = [
@@ -38,5 +40,6 @@ class StockIn extends Model
         'unit_cost' => 'decimal:2',
         'date_received' => 'date',
         'received_by' => 'string',
+        'fund_cluster' => 'string',
     ];
 }

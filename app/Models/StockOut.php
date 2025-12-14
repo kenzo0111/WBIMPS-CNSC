@@ -18,6 +18,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $issued_to
  * @property string|null $issued_by
  * @property string|null $purpose
+ * @property string|null $fund_cluster
+ * @property string|null $responsibility_center_code
  * @property string $date_issued
  */
 class StockOut extends Model
@@ -39,6 +41,8 @@ class StockOut extends Model
         'department',
         'issued_to',
         'issued_by',
+        'fund_cluster',
+        'responsibility_center_code',
     ];
 
     protected $casts = [

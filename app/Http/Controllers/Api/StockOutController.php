@@ -59,6 +59,8 @@ class StockOutController extends Controller
             'issued_to' => 'nullable|string',
             'issued_by' => 'nullable|string',
             'purpose' => 'nullable|string',
+            'fund_cluster' => 'nullable|string',
+            'responsibility_center_code' => 'nullable|string',
             'date_issued' => 'required|date',
         ]);
 
@@ -67,20 +69,22 @@ class StockOutController extends Controller
             if (StockOut::where('issue_id', $validated['issue_id'])->exists()) {
                 // Issue ID already exists, generate a new one
                 $year = date('Y');
-                $lastIssue = StockOut::where('issue_id', 'like', "SO-{$year}-%")
+                $month = date('m');
+                $lastIssue = StockOut::where('issue_id', 'like', "{$year}-{$month}-%")
                     ->orderByRaw('CAST(SUBSTRING_INDEX(issue_id, "-", -1) AS UNSIGNED) DESC')
                     ->first();
-                $nextNumber = $lastIssue ? (intval(substr($lastIssue->issue_id, -3)) + 1) : 1;
-                $validated['issue_id'] = sprintf('SO-%s-%03d', $year, $nextNumber);
+                $nextNumber = $lastIssue ? (intval(substr($lastIssue->issue_id, -4)) + 1) : 1;
+                $validated['issue_id'] = sprintf('%s-%s-%04d', $year, $month, $nextNumber);
             }
         } else {
             // Generate issue_id if not provided
             $year = date('Y');
-            $lastIssue = StockOut::where('issue_id', 'like', "SO-{$year}-%")
+            $month = date('m');
+            $lastIssue = StockOut::where('issue_id', 'like', "{$year}-{$month}-%")
                 ->orderByRaw('CAST(SUBSTRING_INDEX(issue_id, "-", -1) AS UNSIGNED) DESC')
                 ->first();
-            $nextNumber = $lastIssue ? (intval(substr($lastIssue->issue_id, -3)) + 1) : 1;
-            $validated['issue_id'] = sprintf('SO-%s-%03d', $year, $nextNumber);
+            $nextNumber = $lastIssue ? (intval(substr($lastIssue->issue_id, -4)) + 1) : 1;
+            $validated['issue_id'] = sprintf('%s-%s-%04d', $year, $month, $nextNumber);
         }
 
         // Check if sufficient stock is available
@@ -302,16 +306,19 @@ class StockOutController extends Controller
             'items.*.issued_to' => 'nullable|string',
             'items.*.issued_by' => 'nullable|string',
             'items.*.purpose' => 'nullable|string',
+            'items.*.fund_cluster' => 'nullable|string',
+            'items.*.responsibility_center_code' => 'nullable|string',
             'items.*.date_issued' => 'required|date',
         ]);
 
         // Generate a new unique issue_id for the batch
         $year = date('Y');
-        $lastIssue = StockOut::where('issue_id', 'like', "SO-{$year}-%")
+        $month = date('m');
+        $lastIssue = StockOut::where('issue_id', 'like', "{$year}-{$month}-%")
             ->orderByRaw('CAST(SUBSTRING_INDEX(issue_id, "-", -1) AS UNSIGNED) DESC')
             ->first();
-        $nextNumber = $lastIssue ? (intval(substr($lastIssue->issue_id, -3)) + 1) : 1;
-        $issueId = sprintf('SO-%s-%03d', $year, $nextNumber);
+        $nextNumber = $lastIssue ? (intval(substr($lastIssue->issue_id, -4)) + 1) : 1;
+        $issueId = sprintf('%s-%s-%04d', $year, $month, $nextNumber);
 
         // Assign the same issue_id to all items
         foreach ($validated['items'] as &$itemData) {

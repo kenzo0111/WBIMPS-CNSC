@@ -23,10 +23,10 @@ class StockOutController extends Controller
         $risData = (object) [
             'ris_no' => $stockOut->issue_id,
             'entity_name' => 'Camarines Norte State College',
-            'fund_cluster' => '',
+            'fund_cluster' => $stockOut->fund_cluster ?? '',
             'division' => $stockOut->department ?? '',
             'office' => '',
-            'responsibility_center_code' => '',
+            'responsibility_center_code' => $stockOut->responsibility_center_code ?? '',
             'purpose' => $stockOut->purpose ?? '',
             'stock_available' => true,
             'items' => $stockOutRecords->map(function ($record) {

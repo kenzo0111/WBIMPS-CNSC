@@ -47,6 +47,9 @@ class StockInController extends Controller
         if (!$request->has('product_name') && $request->has('ItemName')) {
             $request->merge(['product_name' => $request->input('ItemName')]);
         }
+        if (!$request->has('fund_cluster') && $request->has('fundCluster')) {
+            $request->merge(['fund_cluster' => $request->input('fundCluster')]);
+        }
         $validated = $request->validate([
             'transaction_id' => 'required|string|unique:stock_in',
             'sku' => 'required|string|exists:items,sku',
@@ -56,6 +59,7 @@ class StockInController extends Controller
             'supplier' => 'nullable|string',
             'date_received' => 'required|date',
             'received_by' => 'nullable|string',
+            'fund_cluster' => 'nullable|string',
         ]);
 
         $created = null;
@@ -110,6 +114,9 @@ class StockInController extends Controller
         if (!$request->has('product_name') && $request->has('ItemName')) {
             $request->merge(['product_name' => $request->input('ItemName')]);
         }
+        if (!$request->has('fund_cluster') && $request->has('fundCluster')) {
+            $request->merge(['fund_cluster' => $request->input('fundCluster')]);
+        }
         $validated = $request->validate([
             'transaction_id' => 'required|string|unique:stock_in,transaction_id,' . $stockIn->getKey(),
             'sku' => 'required|string|exists:items,sku',
@@ -119,6 +126,7 @@ class StockInController extends Controller
             'supplier' => 'nullable|string',
             'date_received' => 'required|date',
             'received_by' => 'nullable|string',
+            'fund_cluster' => 'nullable|string',
         ]);
 
         DB::transaction(function () use ($validated, $stockIn) {

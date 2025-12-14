@@ -112,7 +112,7 @@ class RequisitionIssueSlipController extends Controller
             logger()->warning('Failed to record activity for RIS PDF', ['error' => $e->getMessage()]);
         }
 
-        return $pdf->download('requisition_issue_slip.pdf');
+        return $pdf->stream('requisition_issue_slip.pdf');
     }
 
     /**
