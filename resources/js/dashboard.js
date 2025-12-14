@@ -4,6 +4,7 @@
 import FusionCharts from 'fusioncharts'
 import Charts from 'fusioncharts/fusioncharts.charts'
 import FusionTheme from 'fusioncharts/themes/fusioncharts.theme.fusion'
+import * as lucide from 'lucide'
 
 // initialize additional modules
 Charts(FusionCharts)
@@ -829,13 +830,6 @@ function clearPurchaseOrderDraftFromLocalStorage() {
   }
 }
 
-function persistItems() {
-  // Save Items to database via API
-  // This function is called when inventory changes, but since we use API for CRUD,
-  // individual Item saves are handled in the modal functions
-  // Here we can optionally sync all Items if needed
-}
-
 async function saveItemToAPI(Item) {
   // Minimal safe implementation: attempt to POST/PUT to /api/items if available,
   // otherwise return the Item object. This avoids build/runtime errors
@@ -905,12 +899,6 @@ async function deleteItemFromAPI(ItemId) {
     console.error('Error deleting item:', error)
     throw error
   }
-}
-function persistStockIn() {
-  // no-op (persistence disabled)
-}
-function persistStockOut() {
-  // no-op (persistence disabled)
 }
 
 async function saveStockInToAPI(stockInRecord) {
@@ -1344,14 +1332,14 @@ async function loadLowStockItems(threshold = 20) {
                 item.quantity === 0
                   ? 'red'
                   : item.quantity <= 10
-                  ? 'red'
-                  : 'yellow'
+                    ? 'red'
+                    : 'yellow'
               const statusText =
                 item.quantity === 0
                   ? 'Out of Stock'
                   : item.quantity <= 10
-                  ? 'Critical'
-                  : 'Low'
+                    ? 'Critical'
+                    : 'Low'
 
               return `
               <tr>
@@ -1362,8 +1350,8 @@ async function loadLowStockItems(threshold = 20) {
                   item.quantity === 0
                     ? '#ef4444'
                     : item.quantity <= 10
-                    ? '#f97316'
-                    : '#eab308'
+                      ? '#f97316'
+                      : '#eab308'
                 };">
                   ${item.quantity}
                 </td>
@@ -2027,80 +2015,6 @@ function getStatusColor(status) {
 
 // UI Alert / Toast helper
 // Note: showAlert function moved to global app.js for app-wide availability
-
-function logUserLogin(email, name, status = 'Success') {
-  try {
-    if (!window.MockData) window.MockData = {}
-    if (!window.MockData.userLogs) window.MockData.userLogs = []
-
-    // Update user status to Active on successful login
-    if (status === 'Success') {
-      updateUserStatus(email, 'active')
-    }
-
-    // Generate unique log ID
-    const logId =
-      'LOG' + String(window.MockData.userLogs.length + 1).padStart(3, '0')
-
-    // Get current timestamp
-    const now = new Date()
-    const timestamp = now.toISOString().replace('T', ' ').substring(0, 19)
-
-    // Detect device info (basic detection)
-    const userAgent = navigator.userAgent
-    let device = 'Unknown Device'
-    if (userAgent.indexOf('Windows') !== -1) device = 'Windows PC'
-    else if (userAgent.indexOf('Mac') !== -1) device = 'MacBook'
-    else if (userAgent.indexOf('Linux') !== -1) device = 'Linux PC'
-    else if (userAgent.indexOf('Android') !== -1) device = 'Android Device'
-    else if (
-      userAgent.indexOf('iPhone') !== -1 ||
-      userAgent.indexOf('iPad') !== -1
-    )
-      device = 'iOS Device'
-
-    // Create log entry
-    const logEntry = {
-      id: logId,
-      email: email || 'unknown@cnsc.edu.ph',
-      name: name || 'Unknown User',
-      action: 'Login',
-      timestamp: timestamp,
-      ipAddress: 'N/A', // In Itemion, this would come from server
-      device: device,
-      status: status,
-    }
-
-    // Add to beginning of logs array (newest first)
-    window.MockData.userLogs.unshift(logEntry)
-
-    // Keep only last 100 logs to prevent memory issues
-    if (window.MockData.userLogs.length > 100) {
-      window.MockData.userLogs = window.MockData.userLogs.slice(0, 100)
-    }
-
-    // Try to persist to server (best-effort). Post and ignore failures.
-    try {
-      postUserLog({
-        email: logEntry.email,
-        name: logEntry.name,
-        action: logEntry.action,
-        timestamp: new Date().toISOString(),
-        ip_address: logEntry.ipAddress || null,
-        device: logEntry.device,
-        status: logEntry.status,
-      }).catch((err) => console.warn('postUserLog failed', err))
-    } catch (e) {
-      console.warn('Failed to enqueue postUserLog', e)
-    }
-
-    console.log('User login logged:', logEntry)
-    return logEntry
-  } catch (error) {
-    console.error('Error logging user login:', error)
-    return null
-  }
-}
 
 // Update user status in MockData.users
 function updateUserStatus(email, status) {
@@ -2811,8 +2725,8 @@ function renderNotifications(filter = 'all') {
                   width: 40px;
                   height: 40px;
                   background: linear-gradient(135deg, ${config.bg} 0%, ${
-        config.bg
-      } 100%);
+                    config.bg
+                  } 100%);
                   border: 2px solid ${config.borderColor}30;
                   border-radius: 10px;
                   display: flex;
@@ -2898,8 +2812,8 @@ function renderNotifications(filter = 'all') {
                     <button class="notification-action-btn" onclick="event.stopPropagation(); toggleNotificationRead('${
                       n.id
                     }');" title="${
-        isUnread ? 'Mark as read' : 'Mark as unread'
-      }" style="
+                      isUnread ? 'Mark as read' : 'Mark as unread'
+                    }" style="
                       width: 28px;
                       height: 28px;
                       border: none;
@@ -4279,8 +4193,8 @@ function renderActivityList(activities) {
         a.actor && (a.actor.name || a.actor.email)
           ? a.actor.name || a.actor.email
           : a.meta && a.meta.email
-          ? a.meta.email
-          : 'System'
+            ? a.meta.email
+            : 'System'
 
       return `
         <div class="action-item" style="cursor: default;">
@@ -4531,8 +4445,8 @@ function generateItemsPage() {
     <button class="item-tab ${
       currentTab === category.name ? 'active' : ''
     }" data-category="${
-        category.name
-      }" onclick="switchItemTab(this.getAttribute('data-category'))">
+      category.name
+    }" onclick="switchItemTab(this.getAttribute('data-category'))">
         ${category.name}
     </button>
   `
@@ -5333,14 +5247,14 @@ function generateSupplierModal(mode = 'create', supplier = {}, index = null) {
     mode === 'create'
       ? 'Add Supplier'
       : mode === 'edit'
-      ? 'Edit Supplier'
-      : 'Supplier Details'
+        ? 'Edit Supplier'
+        : 'Supplier Details'
   const subtitle =
     mode === 'create'
       ? 'Add a new supplier'
       : mode === 'edit'
-      ? 'Update supplier information'
-      : 'View supplier details'
+        ? 'Update supplier information'
+        : 'View supplier details'
   const isReadOnly = mode === 'view'
   // For edit mode some fields can be configured as read-only (supplier modal)
   // Use the same structure as Item modal for visual parity
@@ -5380,8 +5294,8 @@ function generateSupplierModal(mode = 'create', supplier = {}, index = null) {
                         <input type="text" id="supplier-name-input" class="form-input" value="${escapeHtml(
                           supplier.name || ''
                         )}" placeholder="e.g., ABC Office Supplies" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;" ${
-    isReadOnly ? 'readonly' : ''
-  }>
+                          isReadOnly ? 'readonly' : ''
+                        }>
                     </div>
 
                     <div class="form-group" style="margin-bottom: 20px;">
@@ -5392,8 +5306,8 @@ function generateSupplierModal(mode = 'create', supplier = {}, index = null) {
                         <input type="text" id="supplier-address-input" class="form-input" value="${escapeHtml(
                           supplier.address || ''
                         )}" placeholder="Street, City, Postal Code" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;" ${
-    isReadOnly ? 'readonly' : ''
-  }>
+                          isReadOnly ? 'readonly' : ''
+                        }>
                     </div>
                 </div>
 
@@ -5406,8 +5320,8 @@ function generateSupplierModal(mode = 'create', supplier = {}, index = null) {
                         <input type="text" id="supplier-tin-input" class="form-input" value="${escapeHtml(
                           supplier.tin || ''
                         )}" placeholder="e.g. 123-456-789 or 123-456-789-000" inputmode="numeric" pattern="^(\\d{3}-\\d{3}-\\d{3}-\\d{3}|\\d{3}-\\d{3}-\\d{3}|\\d{9}|\\d{12})$" title="9 or 12 digits (hyphens allowed). Examples: 123-456-789 or 123-456-789-000" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;" ${
-    isReadOnly ? 'readonly' : ''
-  }>
+                          isReadOnly ? 'readonly' : ''
+                        }>
                         <small style="display:block;margin-top:6px;color:#6b7280;font-size:12px;">PH TIN: accept 9 or 12 digits (hyphens allowed, e.g., 123-456-789 or 123-456-789-000)</small>
                     </div>
 
@@ -5419,8 +5333,8 @@ function generateSupplierModal(mode = 'create', supplier = {}, index = null) {
                         <input type="text" id="supplier-contact-input" class="form-input" value="${escapeHtml(
                           supplier.contact || ''
                         )}" placeholder="e.g. +63 912-345-6789 or 0912-345-6789" inputmode="tel" pattern="^[0-9+\s\-()]{7,30}$" title="Phone may include digits, +, spaces, - or parentheses. Will be normalized to digits on save." style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;" ${
-    isReadOnly ? 'readonly' : ''
-  }>
+                          isReadOnly ? 'readonly' : ''
+                        }>
                     </div>
                 </div>
 
@@ -5432,8 +5346,8 @@ function generateSupplierModal(mode = 'create', supplier = {}, index = null) {
                     <input type="email" id="supplier-email-input" class="form-input" value="${escapeHtml(
                       supplier.email || ''
                     )}" placeholder="contact@example.com" inputmode="email" pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$" title="Enter a valid email address" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px;" ${
-    isReadOnly ? 'readonly' : ''
-  }>
+                      isReadOnly ? 'readonly' : ''
+                    }>
                 </div>
             </div>
             
@@ -5492,8 +5406,8 @@ function generateSupplierModal(mode = 'create', supplier = {}, index = null) {
               !isReadOnly
                 ? `
                 <button class="btn btn-primary" data-action="supplier-save" data-mode="${mode}" data-index="${
-                    index === null ? '' : index
-                  }" style="padding: 10px 24px; font-weight: 500; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); box-shadow: 0 4px 6px rgba(220, 38, 38, 0.25); transition: all 0.2s; display:inline-flex; align-items:center; gap:8px;">
+                  index === null ? '' : index
+                }" style="padding: 10px 24px; font-weight: 500; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); box-shadow: 0 4px 6px rgba(220, 38, 38, 0.25); transition: all 0.2s; display:inline-flex; align-items:center; gap:8px;">
                     <i data-lucide="${
                       mode === 'create' ? 'plus-circle' : 'save'
                     }" style="width:16px;height:16px;margin-right:6px;"></i>
@@ -8066,31 +7980,66 @@ function exportRequisitionCSV() {
 }
 
 function exportStatusCSV() {
-  const rows = [['Status', 'Count', 'Total Cost']]
-  const rowsToExport =
-    window.__statusSummary && Object.keys(window.__statusSummary).length
-      ? window.__statusSummary
-      : (function () {
-          const all = [...(AppState.statusRequests || [])]
-          return all.reduce((acc, r) => {
-            acc[r.status || 'unknown'] = (acc[r.status || 'unknown'] || 0) + 1
-            return acc
-          }, {})
-        })()
-
-  // Calculate total cost per status from statusRequests
-  const costByStatus = (AppState.statusRequests || []).reduce((acc, r) => {
-    const status = r.status || 'unknown'
-    acc[status] = (acc[status] || 0) + (r.cost || 0)
-    return acc
-  }, {})
-
-  Object.keys(rowsToExport).forEach((k) =>
-    rows.push([k, rowsToExport[k], costByStatus[k] || 0])
+  // Get visible rows from the table (respecting all current filters)
+  const visibleRows = Array.from(
+    document.querySelectorAll('#status-table-body tr')
+  ).filter(
+    (row) => row.style.display !== 'none' && !row.querySelector('td[colspan]')
   )
-  downloadExcel('status-report.xlsx', rows, 'Status Report', {
-    includeMetadata: true,
+
+  if (visibleRows.length === 0) {
+    showAlert('No data to export', 'warning')
+    return
+  }
+
+  // Headers matching the table columns
+  const headers = [
+    'Request ID',
+    'Requester',
+    'Designation',
+    'Department',
+    'Item',
+    'Quantity',
+    'Unit',
+    'Priority',
+    'Date Updated',
+    'Status',
+    'Cost',
+    'Remarks',
+  ]
+
+  const rows = [headers]
+
+  // Extract data from visible table rows
+  visibleRows.forEach((row) => {
+    const cells = row.querySelectorAll('td')
+    if (cells.length >= 12) {
+      const rowData = [
+        cells[0].textContent.trim().replace(/\s+/g, ' '), // Request ID (remove extra whitespace)
+        cells[1].textContent.trim(), // Requester
+        cells[2].textContent.trim() || '-', // Designation
+        cells[3].textContent.trim(), // Department
+        cells[4].textContent.trim(), // Item
+        cells[5].textContent.trim() || '0', // Quantity
+        cells[6].textContent.trim() || '-', // Unit
+        cells[7].textContent.trim(), // Priority
+        cells[8].textContent.trim(), // Date Updated
+        cells[9].textContent.trim(), // Status/Details column
+        cells[10].textContent.trim().replace(/[^\d.-]/g, '') || '0', // Cost (extract numbers only)
+        cells[11].textContent.trim() || '-', // Remarks
+      ]
+      rows.push(rowData)
+    }
   })
+
+  downloadExcel(
+    'status-management-report.xlsx',
+    rows,
+    'Status Management Report',
+    {
+      includeMetadata: true,
+    }
+  )
 }
 
 // Render helpers + Chart wiring
@@ -8279,8 +8228,8 @@ function renderRequisitionReport() {
             <td>${r.supplier || '-'}</td>
             <td>${formatCurrency(r.totalAmount || 0)}</td>
             <td><span class="${getBadgeClass(r.status || 'draft')}">${
-        r.status || 'Draft'
-      }</span></td>
+              r.status || 'Draft'
+            }</span></td>
         </tr>
     `
     )
@@ -8523,8 +8472,8 @@ function renderStatusReport() {
             <td><a href="#" onclick="viewStatusRequestDetails('${
               r.id
             }'); return false;" style="color:#dc2626; text-decoration:underline;">${
-        r.id || ''
-      }</a></td>
+              r.id || ''
+            }</a></td>
             <td style="white-space:normal; word-break:break-word; max-width:240px;">${formatRequestItem(
               r.item
             )}</td>
@@ -8532,8 +8481,8 @@ function renderStatusReport() {
               r.priority || 'low',
               'priority'
             )}" style="padding:2px 8px; border-radius:6px; font-size:12px;">${capitalize(
-        r.priority || 'low'
-      )}</span></td>
+              r.priority || 'low'
+            )}</span></td>
             <td>${r.requester || '-'}</td>
             <td>${r.cost ? formatCurrency(r.cost) : '-'}</td>
             <td style="text-transform: capitalize; font-weight: 500;">${
@@ -9214,8 +9163,8 @@ function showStatusDetails(status) {
                             <td><a href="#" onclick="viewStatusRequestDetails('${
                               r.id
                             }'); return false;" style="color:#dc2626; text-decoration:underline;">${
-                                r.id
-                              }</a></td>
+                              r.id
+                            }</a></td>
                             <td>${r.requester || '-'}</td>
                             <td>${r.department || '-'}</td>
                             <td style="white-space:normal; word-break:break-word; max-width:360px;">${formatRequestItem(
@@ -9390,6 +9339,213 @@ function formatRequestItemPlain(item) {
     return [main || name, shortDesc].filter(Boolean).join('\n')
   }
   return String(item)
+}
+
+// Format items as a table for the view details modal
+function formatRequestItemAsTable(item) {
+  if (item === null || item === undefined || item === '') return '-'
+
+  // If this is a JSON string (e.g. server sent stringified objects/arrays), try to parse
+  if (typeof item === 'string') {
+    const trimmed = item.trim()
+    if (
+      (trimmed.startsWith('{') || trimmed.startsWith('[')) &&
+      (trimmed.endsWith('}') || trimmed.endsWith(']'))
+    ) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        return formatRequestItemAsTable(parsed)
+      } catch (e) {
+        // fall through and treat as a regular string
+      }
+    }
+    // If delimiter-based, split for readability
+    if (trimmed.includes('|') || trimmed.includes(';')) {
+      const parts = trimmed
+        .split(/\||;/)
+        .map((p) => p.trim())
+        .filter(Boolean)
+      if (parts.length > 1) {
+        // Create a simple table for multiple items
+        return `<table style="width:100%; border-collapse:collapse; font-size:14px;">
+          <thead>
+            <tr style="background:#f3f4f6;">
+              <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Item</th>
+              <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Quantity</th>
+              <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Unit</th>
+              <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Unit Cost</th>
+              <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Total Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${parts
+              .map(
+                (part, index) => `<tr>
+              <td style="border:1px solid #e5e7eb; padding:8px;">${escapeHtml(
+                part
+              )}</td>
+              <td style="border:1px solid #e5e7eb; padding:8px;">-</td>
+              <td style="border:1px solid #e5e7eb; padding:8px;">-</td>
+              <td style="border:1px solid #e5e7eb; padding:8px;">-</td>
+              <td style="border:1px solid #e5e7eb; padding:8px;">-</td>
+            </tr>`
+              )
+              .join('')}
+          </tbody>
+        </table>`
+      }
+    }
+    // Single item
+    return `<table style="width:100%; border-collapse:collapse; font-size:14px;">
+      <thead>
+        <tr style="background:#f3f4f6;">
+          <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Item</th>
+          <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Quantity</th>
+          <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Unit</th>
+          <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Unit Cost</th>
+          <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Total Cost</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="border:1px solid #e5e7eb; padding:8px;">${escapeHtml(
+            trimmed
+          )}</td>
+          <td style="border:1px solid #e5e7eb; padding:8px;">-</td>
+          <td style="border:1px solid #e5e7eb; padding:8px;">-</td>
+          <td style="border:1px solid #e5e7eb; padding:8px;">-</td>
+          <td style="border:1px solid #e5e7eb; padding:8px;">-</td>
+        </tr>
+      </tbody>
+    </table>`
+  }
+
+  // If an array of items
+  if (Array.isArray(item)) {
+    if (!item.length) return '-'
+    return `<table style="width:100%; border-collapse:collapse; font-size:14px;">
+      <thead>
+        <tr style="background:#f3f4f6;">
+          <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Item</th>
+          <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Quantity</th>
+          <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Unit</th>
+          <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Unit Cost</th>
+          <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Total Cost</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${item
+          .map((it) => {
+            if (typeof it === 'object') {
+              const name =
+                it.item_description ||
+                it.name ||
+                it.description ||
+                it.item ||
+                it.item_name ||
+                it.title ||
+                'Unknown Item'
+              const qty =
+                it.quantity || it.qty || it.count || it.requested_qty || '-'
+              const unit = it.unit || it.unitName || '-'
+              const unitCost = it.unit_cost || it.unitCost || '-'
+              const totalCost = it.total_cost || it.totalCost || '-'
+              return `<tr>
+              <td style="border:1px solid #e5e7eb; padding:8px;">${escapeHtml(
+                name
+              )}</td>
+              <td style="border:1px solid #e5e7eb; padding:8px;">${qty}</td>
+              <td style="border:1px solid #e5e7eb; padding:8px;">${unit}</td>
+              <td style="border:1px solid #e5e7eb; padding:8px;">${
+                unitCost !== '-' ? formatCurrency(unitCost) : '-'
+              }</td>
+              <td style="border:1px solid #e5e7eb; padding:8px;">${
+                totalCost !== '-' ? formatCurrency(totalCost) : '-'
+              }</td>
+            </tr>`
+            } else {
+              return `<tr>
+              <td style="border:1px solid #e5e7eb; padding:8px;">${escapeHtml(
+                String(it)
+              )}</td>
+              <td style="border:1px solid #e5e7eb; padding:8px;">-</td>
+              <td style="border:1px solid #e5e7eb; padding:8px;">-</td>
+              <td style="border:1px solid #e5e7eb; padding:8px;">-</td>
+              <td style="border:1px solid #e5e7eb; padding:8px;">-</td>
+            </tr>`
+            }
+          })
+          .join('')}
+      </tbody>
+    </table>`
+  }
+
+  // If object with common fields
+  if (typeof item === 'object') {
+    const name =
+      item.item_description ||
+      item.name ||
+      item.description ||
+      item.item ||
+      item.item_name ||
+      item.title ||
+      'Unknown Item'
+    const qty =
+      item.quantity || item.qty || item.count || item.requested_qty || '-'
+    const unit = item.unit || item.unitName || '-'
+    const unitCost = item.unit_cost || item.unitCost || '-'
+    const totalCost = item.total_cost || item.totalCost || '-'
+    return `<table style="width:100%; border-collapse:collapse; font-size:14px;">
+      <thead>
+        <tr style="background:#f3f4f6;">
+          <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Item</th>
+          <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Quantity</th>
+          <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Unit</th>
+          <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Unit Cost</th>
+          <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Total Cost</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="border:1px solid #e5e7eb; padding:8px;">${escapeHtml(
+            name
+          )}</td>
+          <td style="border:1px solid #e5e7eb; padding:8px;">${qty}</td>
+          <td style="border:1px solid #e5e7eb; padding:8px;">${unit}</td>
+          <td style="border:1px solid #e5e7eb; padding:8px;">${
+            unitCost !== '-' ? formatCurrency(unitCost) : '-'
+          }</td>
+          <td style="border:1px solid #e5e7eb; padding:8px;">${
+            totalCost !== '-' ? formatCurrency(totalCost) : '-'
+          }</td>
+        </tr>
+      </tbody>
+    </table>`
+  }
+
+  // fallback
+  return `<table style="width:100%; border-collapse:collapse; font-size:14px;">
+    <thead>
+      <tr style="background:#f3f4f6;">
+        <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Item</th>
+        <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Quantity</th>
+        <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Unit</th>
+        <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Unit Cost</th>
+        <th style="border:1px solid #e5e7eb; padding:8px; text-align:left;">Total Cost</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="border:1px solid #e5e7eb; padding:8px;">${escapeHtml(
+          String(item)
+        )}</td>
+        <td style="border:1px solid #e5e7eb; padding:8px;">-</td>
+        <td style="border:1px solid #e5e7eb; padding:8px;">-</td>
+        <td style="border:1px solid #e5e7eb; padding:8px;">-</td>
+        <td style="border:1px solid #e5e7eb; padding:8px;">-</td>
+      </tr>
+    </tbody>
+  </table>`
 }
 
 // Legacy chart plugin code removed — charts now use FusionCharts.
@@ -9730,8 +9886,8 @@ function showStatusDetailPopup(status, count, index, allData) {
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <span style="font-size: 14px; color: #111827;">Rank among statuses:</span>
         <span style="font-size: 14px; font-weight: 600; color: ${statusColor};">#${
-    index + 1
-  } of ${allData.length}</span>
+          index + 1
+        } of ${allData.length}</span>
       </div>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
         <span style="font-size: 14px; color: #111827;">Click to view details</span>
@@ -10815,20 +10971,20 @@ function renderPurchaseOrderWizardStep(requestData) {
       const cls = isCompleted
         ? 'po-step completed'
         : isActive
-        ? 'po-step active'
-        : 'po-step'
+          ? 'po-step active'
+          : 'po-step'
       const stepColor = isCompleted
         ? '#16a34a'
         : isActive
-        ? '#2563eb'
-        : '#9ca3af'
+          ? '#2563eb'
+          : '#9ca3af'
       parts.push(`
                 <div class="po-step-wrap">
                     <div class="${cls}" style="background: ${
-        isCompleted ? '#16a34a' : isActive ? '#2563eb' : '#e5e7eb'
-      }; color: ${isCompleted || isActive ? 'white' : '#6b7280'}; box-shadow: ${
-        isActive ? '0 4px 6px rgba(37, 99, 235, 0.3)' : 'none'
-      };">
+                      isCompleted ? '#16a34a' : isActive ? '#2563eb' : '#e5e7eb'
+                    }; color: ${isCompleted || isActive ? 'white' : '#6b7280'}; box-shadow: ${
+                      isActive ? '0 4px 6px rgba(37, 99, 235, 0.3)' : 'none'
+                    };">
                         ${
                           isCompleted
                             ? '<i data-lucide="check" style="width: 16px; height: 16px;"></i>'
@@ -10836,8 +10992,8 @@ function renderPurchaseOrderWizardStep(requestData) {
                         }
                     </div>
                     <div class="po-step-label" style="color: ${stepColor}; font-weight: ${
-        isActive ? '600' : '500'
-      };">${stepLabels[i - 1]}</div>
+                      isActive ? '600' : '500'
+                    };">${stepLabels[i - 1]}</div>
                 </div>
             `)
     }
@@ -11030,8 +11186,8 @@ function renderPurchaseOrderWizardStep(requestData) {
                                 <input type="date" class="form-input" id="po-date" value="${
                                   AppState.purchaseOrderDraft.purchaseDate || ''
                                 }" min="${
-      new Date().toISOString().split('T')[0]
-    }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
+                                  new Date().toISOString().split('T')[0]
+                                }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s;">
                             </div>
                         </div>
                         <div class="grid-2">
@@ -11175,13 +11331,15 @@ function renderPurchaseOrderWizardStep(requestData) {
                                   ? AppState.purchaseOrderDraft.placeOfDelivery
                                   : ''
                               }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; margin-top:8px; display: ${
-      AppState.purchaseOrderDraft.placeOfDelivery &&
-      !String(AppState.purchaseOrderDraft.placeOfDelivery).match(
-        /^CNSC\s*-\s*(?:MAIN|ABANO|LABO|MERCEDES|ENTIENZA|JOSE PANGANIBAN)\s*$/i
-      )
-        ? 'block'
-        : 'none'
-    };">
+                                AppState.purchaseOrderDraft.placeOfDelivery &&
+                                !String(
+                                  AppState.purchaseOrderDraft.placeOfDelivery
+                                ).match(
+                                  /^CNSC\s*-\s*(?:MAIN|ABANO|LABO|MERCEDES|ENTIENZA|JOSE PANGANIBAN)\s*$/i
+                                )
+                                  ? 'block'
+                                  : 'none'
+                              };">
                             </div>
                             <div class="form-group" style="margin-bottom: 16px;">
                                 <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
@@ -11243,12 +11401,19 @@ function renderPurchaseOrderWizardStep(requestData) {
                                     ? AppState.purchaseOrderDraft.deliveryDate
                                     : ''
                                 }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; margin-top: 8px; display: ${
-      !['', '15 days', '30 days', '45 days', '60 days'].includes(
-        AppState.purchaseOrderDraft.deliveryDate || ''
-      )
-        ? 'block'
-        : 'none'
-    };">
+                                  ![
+                                    '',
+                                    '15 days',
+                                    '30 days',
+                                    '45 days',
+                                    '60 days',
+                                  ].includes(
+                                    AppState.purchaseOrderDraft.deliveryDate ||
+                                      ''
+                                  )
+                                    ? 'block'
+                                    : 'none'
+                                };">
                             </div>
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 500; color: #374151;">
@@ -11936,14 +12101,14 @@ function generatePurchaseOrderModal(mode, requestData = null) {
         ? 'Procurement Monitoring'
         : 'New Purchase Order'
       : mode === 'edit'
-      ? 'Edit Purchase Order'
-      : 'Purchase Order Details'
+        ? 'Edit Purchase Order'
+        : 'Purchase Order Details'
   const subtitle =
     mode === 'create'
       ? 'Create a new purchase order request'
       : mode === 'edit'
-      ? 'Update purchase order information'
-      : 'View purchase order details'
+        ? 'Update purchase order information'
+        : 'View purchase order details'
   const isReadOnly = mode === 'view'
 
   // Department List using user's suggested values
@@ -12041,8 +12206,8 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                                       placeholder="Enter supplier address" 
                                       style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; min-height: 80px; transition: all 0.2s;"
                                       ${isReadOnly ? 'readonly' : ''}>${
-    requestData?.supplierAddress || ''
-  }</textarea>
+                                        requestData?.supplierAddress || ''
+                                      }</textarea>
                         </div>
                         
                         <div class="form-group" style="margin-bottom: 0;">
@@ -12097,8 +12262,8 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                             <select class="form-select" id="procurementMode" ${
                               isReadOnly ? 'disabled' : ''
                             } style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; ${
-    isReadOnly ? 'background: #f9fafb;' : ''
-  }">
+                              isReadOnly ? 'background: #f9fafb;' : ''
+                            }">
                                 <option value="">Select procurement mode</option>
                                 ${PROCUREMENT_MODES.map(
                                   (m) => `
@@ -12130,8 +12295,8 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                     <select class="form-select" name="department" id="departmentSelect" ${
                       isReadOnly ? 'disabled' : ''
                     } style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; ${
-    isReadOnly ? 'background: #f9fafb;' : ''
-  }">
+                      isReadOnly ? 'background: #f9fafb;' : ''
+                    }">
                         <option value="">Select Department</option>
                         ${departments
                           .map(
@@ -12184,8 +12349,8 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                               placeholder="Please furnish this Office the following articles subject to the terms and conditions contained herein"
                               style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; min-height: 80px; transition: all 0.2s;"
                               ${isReadOnly ? 'readonly' : ''}>${
-    requestData?.gentlemen || ''
-  }</textarea>
+                                requestData?.gentlemen || ''
+                              }</textarea>
                 </div>
             </div>
 
@@ -12280,14 +12445,14 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                               ? requestData.placeOfDelivery
                               : ''
                           }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; margin-top:8px; display:${
-    requestData &&
-    requestData.placeOfDelivery &&
-    !String(requestData.placeOfDelivery).match(
-      /^CNSC\s*-\s*(?:MAIN|ABANO|LABO|MERCEDES|ENTIENZA|JOSE PANGANIBAN)\s*$/i
-    )
-      ? 'block'
-      : 'none'
-  };" ${isReadOnly ? 'readonly' : ''} />
+                            requestData &&
+                            requestData.placeOfDelivery &&
+                            !String(requestData.placeOfDelivery).match(
+                              /^CNSC\s*-\s*(?:MAIN|ABANO|LABO|MERCEDES|ENTIENZA|JOSE PANGANIBAN)\s*$/i
+                            )
+                              ? 'block'
+                              : 'none'
+                          };" ${isReadOnly ? 'readonly' : ''} />
                         </div>
                         
                         <div class="form-group" style="margin-bottom: 0;">
@@ -12354,18 +12519,17 @@ function generatePurchaseOrderModal(mode, requestData = null) {
                                     ? requestData.deliveryDate
                                     : ''
                                 }" style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; margin-top: 8px; display: ${
-                                    ![
-                                      '',
-                                      '15 days',
-                                      '30 days',
-                                      '45 days',
-                                      '60 days',
-                                    ].includes(
-                                      requestData?.deliveryDate || ''
-                                    ) && requestData?.deliveryDate
-                                      ? 'block'
-                                      : 'none'
-                                  };">
+                                  ![
+                                    '',
+                                    '15 days',
+                                    '30 days',
+                                    '45 days',
+                                    '60 days',
+                                  ].includes(requestData?.deliveryDate || '') &&
+                                  requestData?.deliveryDate
+                                    ? 'block'
+                                    : 'none'
+                                };">
                             `
                             }
                         </div>
@@ -12884,8 +13048,8 @@ function renderPOItems() {
                           onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)'"
                           onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'"
                           ${isReadOnly ? 'readonly' : ''}>${
-        item.detailedDescription
-      }</textarea>
+                            item.detailedDescription
+                          }</textarea>
             </td>
           <td style="padding: 12px;">
           <input type="number" 
@@ -12934,8 +13098,8 @@ function renderPOItems() {
                             <input type="checkbox" ${
                               item.generateICS ? 'checked' : ''
                             } onchange="updatePOItemForm('${
-                        item.id
-                      }', 'generateICS', this.checked)" style="width: 16px; height: 16px; cursor: pointer; accent-color: #0369a1;">
+                              item.id
+                            }', 'generateICS', this.checked)" style="width: 16px; height: 16px; cursor: pointer; accent-color: #0369a1;">
                             <span style="font-weight: 600; color: #0369a1;">ICS</span>
                         </label>
                         <label style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 2px solid #bbf7d0; border-radius: 6px; cursor: pointer; font-size: 11px; white-space: nowrap; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" 
@@ -12945,8 +13109,8 @@ function renderPOItems() {
                             <input type="checkbox" ${
                               item.generateRIS ? 'checked' : ''
                             } onchange="updatePOItemForm('${
-                        item.id
-                      }', 'generateRIS', this.checked)" style="width: 16px; height: 16px; cursor: pointer; accent-color: #15803d;">
+                              item.id
+                            }', 'generateRIS', this.checked)" style="width: 16px; height: 16px; cursor: pointer; accent-color: #15803d;">
                             <span style="font-weight: 600; color: #15803d;">RIS</span>
                         </label>
                         <label style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%); border: 2px solid #fde68a; border-radius: 6px; cursor: pointer; font-size: 11px; white-space: nowrap; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" 
@@ -12956,8 +13120,8 @@ function renderPOItems() {
                             <input type="checkbox" ${
                               item.generatePAR ? 'checked' : ''
                             } onchange="updatePOItemForm('${
-                        item.id
-                      }', 'generatePAR', this.checked)" style="width: 16px; height: 16px; cursor: pointer; accent-color: #a16207;">
+                              item.id
+                            }', 'generatePAR', this.checked)" style="width: 16px; height: 16px; cursor: pointer; accent-color: #a16207;">
                             <span style="font-weight: 600; color: #a16207;">PAR</span>
                         </label>
                         <label style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%); border: 2px solid #fbcfe8; border-radius: 6px; cursor: pointer; font-size: 11px; white-space: nowrap; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" 
@@ -12967,8 +13131,8 @@ function renderPOItems() {
                             <input type="checkbox" ${
                               item.generateIAR ? 'checked' : ''
                             } onchange="updatePOItemForm('${
-                        item.id
-                      }', 'generateIAR', this.checked)" style="width: 16px; height: 16px; cursor: pointer; accent-color: #be185d;">
+                              item.id
+                            }', 'generateIAR', this.checked)" style="width: 16px; height: 16px; cursor: pointer; accent-color: #be185d;">
                             <span style="font-weight: 600; color: #be185d;">IAR</span>
                         </label>
                     </div>
@@ -17028,8 +17192,8 @@ function generateRolesManagementPage() {
           user.status === 'pending_activation'
             ? 'Pending'
             : user.status === 'active'
-            ? 'Active'
-            : 'Inactive',
+              ? 'Active'
+              : 'Inactive',
         created: user.created_at
           ? new Date(user.created_at).toISOString().split('T')[0]
           : new Date().toISOString().split('T')[0],
@@ -17813,15 +17977,15 @@ function generateUserModal(mode = 'view', userData = null) {
     mode === 'create'
       ? 'Add New User'
       : mode === 'edit'
-      ? 'Edit User Profile'
-      : 'User Profile'
+        ? 'Edit User Profile'
+        : 'User Profile'
 
   const subtitle =
     mode === 'create'
       ? 'Create a new user account'
       : mode === 'edit'
-      ? 'Update user information'
-      : 'View user details'
+        ? 'Update user information'
+        : 'View user details'
 
   const isReadOnly = mode === 'view'
 
@@ -18094,8 +18258,8 @@ function generateUserModal(mode = 'view', userData = null) {
                                   userData?.role === 'Leader'
                                     ? 'crown'
                                     : userData?.role === 'Supply Coordinator'
-                                    ? 'briefcase'
-                                    : 'shield-check'
+                                      ? 'briefcase'
+                                      : 'shield-check'
                                 }" style="width: 18px; height: 18px; color: #7c3aed;"></i>
                                 ${userData?.role || ''}
                               </div>
@@ -18186,14 +18350,14 @@ function generateUserModal(mode = 'view', userData = null) {
                                     ? '#10b981'
                                     : '#ef4444'
                                 }; padding: 14px 16px; font-size: 15px; border-radius: 10px; background: ${
-                                    userData?.status === 'Active'
-                                      ? '#f0fdf4'
-                                      : '#fef2f2'
-                                  }; color: ${
-                                    userData?.status === 'Active'
-                                      ? '#047857'
-                                      : '#dc2626'
-                                  }; font-weight: 600; display: flex; align-items: center; gap: 12px;">
+                                  userData?.status === 'Active'
+                                    ? '#f0fdf4'
+                                    : '#fef2f2'
+                                }; color: ${
+                                  userData?.status === 'Active'
+                                    ? '#047857'
+                                    : '#dc2626'
+                                }; font-weight: 600; display: flex; align-items: center; gap: 12px;">
                                     <i data-lucide="${
                                       userData?.status === 'Active'
                                         ? 'check-circle'
@@ -18478,8 +18642,10 @@ function generateUsersManagementPage() {
                                         ? '#ede9fe'
                                         : '#e0f2fe'
                                     }; color: ${
-                              user.role === 'Leader' ? '#7c3aed' : '#0284c7'
-                            }; border-radius: 20px; font-size: 13px; font-weight: 500;">
+                                      user.role === 'Leader'
+                                        ? '#7c3aed'
+                                        : '#0284c7'
+                                    }; border-radius: 20px; font-size: 13px; font-weight: 500;">
                                         <i data-lucide="${
                                           user.role === 'Leader'
                                             ? 'crown'
@@ -18734,11 +18900,11 @@ function generateLoginActivityPage() {
                                 )
                                   ? 'monitor'
                                   : log.device.includes('Mac')
-                                  ? 'laptop'
-                                  : log.device.includes('Android') ||
-                                    log.device.includes('iOS')
-                                  ? 'smartphone'
-                                  : 'monitor'
+                                    ? 'laptop'
+                                    : log.device.includes('Android') ||
+                                        log.device.includes('iOS')
+                                      ? 'smartphone'
+                                      : 'monitor'
 
                                 return `
                                 <tr style="transition: all 0.2s; ${
@@ -18828,10 +18994,10 @@ function generateLoginActivityPage() {
                                         <span class="badge ${
                                           isSuccess ? 'green' : 'red'
                                         }" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600; padding: 6px 14px; box-shadow: 0 1px 3px ${
-                                  isSuccess
-                                    ? 'rgba(16, 185, 129, 0.2)'
-                                    : 'rgba(239, 68, 68, 0.2)'
-                                };">
+                                          isSuccess
+                                            ? 'rgba(16, 185, 129, 0.2)'
+                                            : 'rgba(239, 68, 68, 0.2)'
+                                        };">
                                             <i data-lucide="${
                                               isSuccess
                                                 ? 'check-circle'
@@ -18858,8 +19024,8 @@ function generateLoginActivityPage() {
                         <button class="pagination-btn" ${
                           currentPage === 1 ? 'disabled' : ''
                         } onclick="setLoginActivityPage(${
-                    currentPage - 1
-                  })">Previous</button>
+                          currentPage - 1
+                        })">Previous</button>
                         ${(() => {
                           const buttons = []
                           const maxButtons = 5
@@ -18884,8 +19050,8 @@ function generateLoginActivityPage() {
                         <button class="pagination-btn" ${
                           currentPage === totalPages ? 'disabled' : ''
                         } onclick="setLoginActivityPage(${
-                    currentPage + 1
-                  })">Next</button>
+                          currentPage + 1
+                        })">Next</button>
                     </div>
                 </nav>
             `
@@ -19392,12 +19558,12 @@ function generateAboutPage() {
                         style="width:${
                           idx === 0 ? '32px' : '12px'
                         };height:12px;border-radius:6px;background:${
-                    idx === 0
-                      ? 'linear-gradient(135deg,#3b82f6,#60a5fa)'
-                      : '#d1d5db'
-                  };border:none;cursor:pointer;transition:all 0.3s ease;box-shadow:${
-                    idx === 0 ? '0 2px 8px rgba(59,130,246,0.4)' : 'none'
-                  };"
+                          idx === 0
+                            ? 'linear-gradient(135deg,#3b82f6,#60a5fa)'
+                            : '#d1d5db'
+                        };border:none;cursor:pointer;transition:all 0.3s ease;box-shadow:${
+                          idx === 0 ? '0 2px 8px rgba(59,130,246,0.4)' : 'none'
+                        };"
                         onmouseover="if(this.style.width==='12px')this.style.background='#9ca3af';"
                         onmouseout="if(this.style.width==='12px')this.style.background='#d1d5db';"
                         aria-label="Go to slide ${idx + 1}">
@@ -19628,8 +19794,8 @@ function generateAboutPage() {
                   <a href="mailto:${
                     aboutContent.email
                   }" id="email-text" style="margin:0;color:#3b82f6;font-size:14px;word-break:break-word;text-decoration:none;">${
-    aboutContent.email
-  }</a>
+                    aboutContent.email
+                  }</a>
                 </div>
               </div>
 
@@ -19643,8 +19809,8 @@ function generateAboutPage() {
                     /[^0-9+]/g,
                     ''
                   )}" id="phone-text" style="margin:0;color:#3b82f6;font-size:14px;word-break:break-word;text-decoration:none;">${
-    aboutContent.phone
-  }</a>
+                    aboutContent.phone
+                  }</a>
                 </div>
               </div>
             </address>
@@ -19754,8 +19920,8 @@ async function refreshSupportTickets() {
           <td style="font-weight:600;color:#111827;">${escapeHtml(t.name)}</td>
           <td>${escapeHtml(t.email)}</td>
           <td>${escapeHtml(msg)}${
-          (t.message || '').length > 100 ? '…' : ''
-        }</td>
+            (t.message || '').length > 100 ? '…' : ''
+          }</td>
           <td>${statusBadge}</td>
           <td style="font-size:12px;color:#6b7280;">${created}<div style="margin-top:6px;">${attachmentsBtn}</div></td>
         </tr>`
@@ -21800,8 +21966,8 @@ function viewGalleryImage(url, caption) {
       
       <div style="flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 24px; background: #111827;">
         <img src="${escapeHtml(url)}" alt="${escapeHtml(
-    caption || 'Gallery Image'
-  )}" 
+          caption || 'Gallery Image'
+        )}" 
              style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);"
              onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27600%27%3E%3Crect fill=%27%23374151%27 width=%27800%27 height=%27600%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 font-family=%27sans-serif%27 font-size=%2724%27 fill=%27%239ca3af%27%3EImage could not be loaded%3C/text%3E%3C/svg%3E';" />
       </div>
@@ -22791,9 +22957,8 @@ function updateBulkActionsVisibility() {
   if (bulkActions) {
     if (selectedCount > 0) {
       bulkActions.classList.remove('hidden')
-      bulkActions.querySelector(
-        'span'
-      ).textContent = `${selectedCount} selected`
+      bulkActions.querySelector('span').textContent =
+        `${selectedCount} selected`
     } else {
       bulkActions.classList.add('hidden')
     }
@@ -23391,14 +23556,14 @@ function generateItemModal(mode = 'create', ItemData = null) {
     mode === 'create'
       ? 'Add New Item'
       : mode === 'edit'
-      ? 'Edit Item'
-      : 'Item Details'
+        ? 'Edit Item'
+        : 'Item Details'
   const subtitle =
     mode === 'create'
       ? 'Add a new Item to inventory'
       : mode === 'edit'
-      ? 'Update Item information'
-      : 'View Item details'
+        ? 'Update Item information'
+        : 'View Item details'
   const isReadOnly = mode === 'view'
 
   // Item icon based on type
@@ -23444,8 +23609,8 @@ function generateItemModal(mode = 'create', ItemData = null) {
                         <select class="form-select" id="ItemCategory" ${
                           isReadOnly ? 'disabled' : ''
                         } style="border: 2px solid #e5e7eb; padding: 10px 14px; font-size: 14px; transition: all 0.2s; ${
-    isReadOnly ? 'background: #f9fafb;' : ''
-  }">
+                          isReadOnly ? 'background: #f9fafb;' : ''
+                        }">
                             <option value="">Select category</option>
                             ${(MockData.categories || [])
                               .map((c) => {
@@ -23494,8 +23659,8 @@ function generateItemModal(mode = 'create', ItemData = null) {
                                 isReadOnly ? 'background: #f9fafb;' : ''
                               }"
                               ${isReadOnly ? 'readonly' : ''}>${
-    ItemData?.description || ''
-  }</textarea>
+                                ItemData?.description || ''
+                              }</textarea>
                 </div>
             </div>
 
@@ -23556,10 +23721,10 @@ function generateItemModal(mode = 'create', ItemData = null) {
                             <select class="form-select" id="ItemUnit" ${
                               isReadOnly ? 'disabled' : ''
                             } style="width: 100%; border: 2px solid #e5e7eb; padding: 12px 36px 12px 14px; font-size: 14px; transition: all 0.2s; border-radius: 10px; appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 12px center; background-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); ${
-    isReadOnly
-      ? 'background-color: #f9fafb;'
-      : 'background-color: #fff; cursor: pointer;'
-  }" onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)'" onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.02)'">
+                              isReadOnly
+                                ? 'background-color: #f9fafb;'
+                                : 'background-color: #fff; cursor: pointer;'
+                            }" onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)'" onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.02)'">
                                 <option value="">Select Unit...</option>
                                 <optgroup label="Common">
                                     <option value="pc" ${
@@ -23726,8 +23891,10 @@ function generateItemModal(mode = 'create', ItemData = null) {
                                   ItemData.type ||
                                   'Uncategorized'
                                 }</strong> and is currently ${
-                    ItemData.quantity > 0 ? 'in stock' : 'out of stock'
-                  }.
+                                  ItemData.quantity > 0
+                                    ? 'in stock'
+                                    : 'out of stock'
+                                }.
                             </p>
                         </div>
                     </div>
@@ -23819,14 +23986,14 @@ function generateCategoryModal(mode = 'create', categoryData = null) {
     mode === 'create'
       ? 'Add New Category'
       : mode === 'edit'
-      ? 'Edit Category'
-      : 'Category Details'
+        ? 'Edit Category'
+        : 'Category Details'
   const subtitle =
     mode === 'create'
       ? 'Create a new inventory category'
       : mode === 'edit'
-      ? 'Update category information'
-      : 'View category details'
+        ? 'Update category information'
+        : 'View category details'
   const isReadOnly = mode === 'view'
 
   // Category icon based on category name
@@ -23908,8 +24075,8 @@ function generateCategoryModal(mode = 'create', categoryData = null) {
                                 isReadOnly ? 'background: #f9fafb;' : ''
                               }"
                               ${isReadOnly ? 'readonly' : ''}>${
-    categoryData?.description || ''
-  }</textarea>
+                                categoryData?.description || ''
+                              }</textarea>
                     <p style="margin: 6px 0 0 0; font-size: 12px; color: #6b7280; display: flex; align-items: center; gap: 4px;">
                         <i data-lucide="info" style="width: 12px; height: 12px;"></i>
                         Provide clear guidelines for items that belong to this category
@@ -24343,14 +24510,14 @@ function generateStockInModal(mode = 'create', stockData = null) {
     mode === 'create'
       ? 'Stock In Entry'
       : mode === 'edit'
-      ? 'Edit Stock In'
-      : 'Stock In Details'
+        ? 'Edit Stock In'
+        : 'Stock In Details'
   const subtitle =
     mode === 'create'
       ? 'Record incoming inventory'
       : mode === 'edit'
-      ? 'Update stock in transaction'
-      : 'View stock in details'
+        ? 'Update stock in transaction'
+        : 'View stock in details'
   const isReadOnly = mode === 'view'
 
   // Normalize incoming stockData (accept snake_case from API or camelCase used in UI)
@@ -25110,8 +25277,8 @@ function generateStockOutModal(mode = 'create', headerData = {}) {
     mode === 'create'
       ? 'New Stock Out'
       : mode === 'edit'
-      ? 'Edit Stock Out'
-      : 'View Stock Out'
+        ? 'Edit Stock Out'
+        : 'View Stock Out'
   const isReadOnly = mode === 'view'
   const issueId = AppState.currentStockOutIssueId
 
@@ -25991,6 +26158,41 @@ function formatItemDisplay(itemStr) {
   return itemStr
 }
 
+// Helper function to check if request has multiple items
+function hasMultipleItems(itemStr) {
+  if (!itemStr || typeof itemStr !== 'string') return false
+
+  const trimmed = itemStr.trim()
+
+  // Check for JSON array/object format
+  if (
+    (trimmed.startsWith('{') || trimmed.startsWith('[')) &&
+    (trimmed.endsWith('}') || trimmed.endsWith(']'))
+  ) {
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (Array.isArray(parsed)) {
+        return parsed.length > 1
+      }
+      return false // single object
+    } catch (e) {
+      // fall through
+    }
+  }
+
+  // Check for delimiter-based multiple items
+  if (trimmed.includes(';') || trimmed.includes('|')) {
+    const delimiter = trimmed.includes(';') ? ';' : '|'
+    const parts = trimmed
+      .split(delimiter)
+      .map((p) => p.trim())
+      .filter(Boolean)
+    return parts.length > 1
+  }
+
+  return false
+}
+
 // ===== Dummy Rows =====
 function renderStatusRows(status) {
   const list = (AppState.statusRequests || []).filter((r) =>
@@ -26004,8 +26206,8 @@ function renderStatusRows(status) {
         r.priority === 'high'
           ? 'red'
           : r.priority === 'medium'
-          ? 'orange'
-          : 'green'
+            ? 'orange'
+            : 'green'
       const showActions = r.status === 'incoming' || r.status === 'received'
       const actionsHtml = showActions
         ? `
@@ -26049,16 +26251,18 @@ function renderStatusRows(status) {
                 <td>${r.department}</td>
                 <td>${formatItemDisplay(r.item)}</td>
                 <td>${
-                  typeof r.quantity !== 'undefined'
-                    ? r.quantity || r.quantity === 0
-                      ? r.quantity
+                  hasMultipleItems(r.item)
+                    ? 'various'
+                    : typeof r.quantity !== 'undefined'
+                      ? r.quantity || r.quantity === 0
+                        ? r.quantity
+                        : '-'
                       : '-'
-                    : '-'
                 }</td>
-                <td>${r.unit || '-'}</td>
+                <td>${hasMultipleItems(r.item) ? 'various' : r.unit || '-'}</td>
                 <td><span style="color:${priorityColor};font-weight:bold;">${
-        r.priority.charAt(0).toUpperCase() + r.priority.slice(1)
-      }</span></td>
+                  r.priority.charAt(0).toUpperCase() + r.priority.slice(1)
+                }</span></td>
                 <td>${r.updatedAt}</td>
                 <td>${actionsHtml}</td>
                 <td>${formatCurrency(r.cost || 0)}</td>
@@ -26477,7 +26681,7 @@ function viewStatusRequest(id) {
     overlay.id = 'status-view-modal'
     overlay.className = 'modal-overlay active'
     overlay.innerHTML = `
-            <div class="modal-content compact" role="dialog" aria-modal="true" aria-labelledby="status-view-title">
+            <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;" role="dialog" aria-modal="true" aria-labelledby="status-view-title">
                 <div class="modal-header" style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; border-bottom: none; padding: 32px 24px;">
                     <div style="display: flex; align-items: center; gap: 16px;">
                         <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
@@ -26494,7 +26698,7 @@ function viewStatusRequest(id) {
                         <i data-lucide="x" style="width: 20px; height: 20px;"></i>
                     </button>
                 </div>
-                <div class="modal-body" style="padding: 32px 24px; background: #f9fafb;">
+                <div class="modal-body" style="padding: 32px 24px; background: #f9fafb; max-height: 70vh; overflow-y: auto;">
                     <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                         <h3 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 8px;">
                             <i data-lucide="info" style="width: 18px; height: 18px; color: #2563eb;"></i>
@@ -26563,7 +26767,7 @@ function viewStatusRequest(id) {
                 <i data-lucide="package" style="width: 14px; height: 14px; color: #6b7280;"></i>
                 Item
             </dt>
-            <dd style="margin: 0; color: #111827; white-space:normal; word-break:break-word;">${formatRequestItem(
+            <dd style="margin: 0; color: #111827; white-space:normal; word-break:break-word;">${formatRequestItemAsTable(
               rec.item
             )}</dd>
             
@@ -26615,8 +26819,8 @@ function viewStatusRequest(id) {
               .slice(
                 -1
               )} inline" style="padding: 4px 12px; border-radius: 6px; font-size: 13px; font-weight: 500;">${
-      rec.priority
-    }</span></dd>
+              rec.priority
+            }</span></dd>
             
             <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
                 <i data-lucide="activity" style="width: 14px; height: 14px; color: #6b7280;"></i>
@@ -26625,8 +26829,8 @@ function viewStatusRequest(id) {
             <dd style="margin: 0;"><span class="${getBadgeClass(
               rec.status
             )} inline" style="padding: 4px 12px; border-radius: 6px; font-size: 13px; font-weight: 500;">${
-      rec.status
-    }</span></dd>
+              rec.status
+            }</span></dd>
             
             ${
               rec.neededDate
@@ -26731,8 +26935,8 @@ function viewStatusRequestDetails(requestId) {
                     <span class="${getBadgeClass(
                       rec.status
                     )}" style="display: inline-block; margin-top: 8px;">${capitalize(
-    rec.status
-  )}</span>
+                      rec.status
+                    )}</span>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Requester</label>
@@ -26764,8 +26968,8 @@ function viewStatusRequestDetails(requestId) {
                       rec.priority || 'low',
                       'priority'
                     )}" style="display: inline-block; margin-top: 8px;">${capitalize(
-    rec.priority || 'low'
-  )}</span>
+                      rec.priority || 'low'
+                    )}</span>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Cost</label>

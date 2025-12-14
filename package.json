@@ -8,17 +8,26 @@
     "generate:templates": "node scripts/generate_rsmi_template.js"
   },
   "devDependencies": {
+    "@eslint/css": "^0.14.1",
+    "@eslint/js": "^9.39.2",
+    "@eslint/json": "^0.14.0",
+    "@eslint/markdown": "^7.5.1",
     "@tailwindcss/vite": "^4.0.0",
     "axios": "^1.11.0",
     "concurrently": "^9.0.1",
+    "eslint": "^9.39.2",
+    "globals": "^16.5.0",
     "laravel-vite-plugin": "^2.0.0",
+    "prettier": "^3.7.4",
     "tailwindcss": "^4.0.0",
     "vite": "^7.0.7"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
-    "html2canvas": "^1.4.1",
     "fusioncharts": "^3.18.0",
-    "jspdf": "^3.0.3"
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.3",
+    "lucide": "^0.561.0",
+    "lucide-react": "^0.561.0"
   }
 }
