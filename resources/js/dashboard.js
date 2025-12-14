@@ -14573,7 +14573,7 @@ function renderDynamicPOForms() {
                   Custodian Name
                 </label>
                 <div id="iar_custodian_label" style="padding: 10px 14px; border: 2px solid #fbcfe8; border-radius: 8px; background: #fff; font-size: 14px; color: #0f172a;">
-                  ARSENIO GEM A. GARCILLANSO
+                  ARSENIO GEM A. GARCILLANOSA
                 </div>
               </div>
               <div class="form-group" style="flex: 1;">

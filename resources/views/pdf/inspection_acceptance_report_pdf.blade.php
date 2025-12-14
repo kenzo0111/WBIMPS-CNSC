@@ -208,7 +208,7 @@
                         </div>
                         <div class="signature-block">
                             {{-- acceptance signatory (use provided values when available) --}}
-                            <div class="signature-line">{{ $acceptanceOfficerName ?? 'ARSENIO GEM A. GARCILLANSO' }}</div>
+                            <div class="signature-line">{{ $acceptanceOfficerName ?? 'ARSENIO GEM A. GARCILLANOSA' }}</div>
                             @if(!empty($acceptanceOfficerPosition))
                                 <div class="position-line">{{ $acceptanceOfficerPosition }}</div>
                             @elseif(!empty($custodianPosition))
