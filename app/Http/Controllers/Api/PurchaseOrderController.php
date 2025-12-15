@@ -491,10 +491,10 @@ class PurchaseOrderController extends Controller
     protected function createRequisitionIssueSlip($purchaseOrder, $formData)
     {
         try {
-            // Filter items that are marked for RIS generation
+            // Filter items that are marked for RIS generation or have quantity > 0
             $risItems = collect($purchaseOrder->items)
                 ->filter(function ($item) {
-                    return isset($item['generateRIS']) && $item['generateRIS'] === true;
+                    return (isset($item['generateRIS']) && $item['generateRIS'] === true) || ($item['quantity'] ?? 0) > 0;
                 })
                 ->map(function ($item) {
                     return [
@@ -516,10 +516,21 @@ class PurchaseOrderController extends Controller
             // Calculate grand total for RIS items
             $risTotal = collect($risItems)->sum('amount');
 
+            // Generate RIS No if not provided
+            $risNo = $formData['ris_no'] ?? null;
+            if (!$risNo) {
+                $year = date('Y');
+                $lastRis = \App\Models\RequisitionIssueSlip::where('ris_no', 'like', "RIS-{$year}-%")
+                    ->orderBy('id', 'desc')
+                    ->first();
+                $nextNumber = $lastRis ? (intval(substr($lastRis->ris_no, -3)) + 1) : 1;
+                $risNo = sprintf("RIS-%s-%03d", $year, $nextNumber);
+            }
+
             // Create RIS record (ensure it's linked to the Purchase Order)
             $ris = \App\Models\RequisitionIssueSlip::create([
                 'purchase_order_id' => $purchaseOrder->id,
-                'ris_no' => $formData['ris_no'],
+                'ris_no' => $risNo,
                 'entity_name' => $formData['entity_name'] ?? $purchaseOrder->entity_name,
                 'fund_cluster' => $formData['fund_cluster'] ?? $purchaseOrder->fund_cluster,
                 'division' => $formData['division'] ?? null,

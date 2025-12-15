@@ -17,5 +17,6 @@ class VerifyCsrfToken extends BaseVerifier
         'inspection-acceptance-report/generate',
         'inventory-custodian-slip/generate',
         'requisition-issue-slip/generate',
+        'reports/rsmi/export',
     ];
 }

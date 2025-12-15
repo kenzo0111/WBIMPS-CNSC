@@ -231,7 +231,12 @@ const AppState = {
   // Wizard step for multi-step PO creation (1-4)
   purchaseOrderWizardStep: 1,
   // Temp storage for multi-step PO wizard field values so they persist between steps
-  purchaseOrderDraft: {},
+  purchaseOrderDraft: {
+    iarFormData: {},
+    risFormData: {},
+    icsFormData: {},
+    parFormData: {},
+  },
 
   // ✅ add these for real data
   newRequests: [],
@@ -8691,109 +8696,152 @@ function renderRsmiReport() {
   const from = document.getElementById('rsmi-date-from')?.value
   const to = document.getElementById('rsmi-date-to')?.value
 
-  let allRequests = [
-    ...(AppState.newRequests || []),
-    ...(AppState.pendingRequests || []),
-    ...(AppState.completedRequests || []),
-  ]
+  // Fetch RSMI data from API
+  fetch('/api/requisition-issue-slips')
+    .then((response) => response.json())
+    .then((data) => {
+      if (!data.success) {
+        tbody.innerHTML =
+          '<tr><td colspan="8">Failed to load RSMI data</td></tr>'
+        return
+      }
 
-  // Filter for requests that have items issued (generateRIS or completed)
-  allRequests = allRequests.filter(
-    (r) =>
-      r.generateRIS || ['approved', 'delivered', 'completed'].includes(r.status)
-  )
+      let riss = data.data || []
 
-  // Filter requests first
-  if (from)
-    allRequests = allRequests.filter((r) =>
-      r.requestDate ? new Date(r.requestDate) >= new Date(from) : true
-    )
-  if (to)
-    allRequests = allRequests.filter((r) =>
-      r.requestDate ? new Date(r.requestDate) <= new Date(to) : true
-    )
-  if (dept && dept !== 'All')
-    allRequests = allRequests.filter(
-      (r) => (r.department || '').toLowerCase() === dept.toLowerCase()
-    )
+      // Update department filter options
+      const deptFilter = document.getElementById('rsmi-department-filter')
+      if (deptFilter) {
+        const uniqueDepts = [
+          'All',
+          ...new Set(
+            riss.map((r) => r.responsibility_center_code).filter(Boolean)
+          ),
+        ]
+        deptFilter.innerHTML = uniqueDepts
+          .map((d) => `<option value="${d}">${d}</option>`)
+          .join('')
+        // Keep current selection if possible
+        if (dept && uniqueDepts.includes(dept)) {
+          deptFilter.value = dept
+        }
+      }
 
-  // Flatten to items
-  let itemsIssued = []
-  allRequests.forEach((r) => {
-    if (r.items && Array.isArray(r.items)) {
-      r.items.forEach((item) => {
-        itemsIssued.push({
-          risNo: r.id,
-          centerCode: r.department || '',
-          stockNo: item.stock_no || item.id || item.stockNumber || '',
-          description:
-            item.item_description || item.name || item.description || '',
-          unit: item.unit || item.unitMeasure || '',
-          qty: item.quantity || 0,
-          unitCost: item.unitCost || item.unitPrice || 0,
-          amount: (item.quantity || 0) * (item.unitCost || item.unitPrice || 0),
-          date: r.requestDate || r.date,
-        })
+      // Filter by department
+      if (dept && dept !== 'All') {
+        riss = riss.filter(
+          (r) =>
+            (r.responsibility_center_code || '').toLowerCase() ===
+            dept.toLowerCase()
+        )
+      }
+
+      // Filter by date
+      if (from) {
+        riss = riss.filter((r) =>
+          r.created_at ? new Date(r.created_at) >= new Date(from) : true
+        )
+      }
+      if (to) {
+        riss = riss.filter((r) =>
+          r.created_at ? new Date(r.created_at) <= new Date(to) : true
+        )
+      }
+
+      // Flatten to items
+      let itemsIssued = []
+      riss.forEach((r) => {
+        if (r.items && Array.isArray(r.items)) {
+          r.items.forEach((item) => {
+            itemsIssued.push({
+              risNo: r.ris_no || r.id,
+              centerCode: r.responsibility_center_code || '',
+              stockNo: item.stock_no || item.stockNumber || '',
+              description:
+                item.item_description || item.description || item.name || '',
+              unit: item.unit || item.unitMeasure || '',
+              qty: item.quantity || item.qty || 0,
+              unitCost: item.unit_cost || item.unitCost || item.unitPrice || 0,
+              amount:
+                (item.quantity || item.qty || 0) *
+                (item.unit_cost || item.unitCost || item.unitPrice || 0),
+              date: r.created_at,
+            })
+          })
+        }
       })
-    }
-  })
 
-  // Calculate Summary Metrics
-  const totalItems = itemsIssued.length
-  const totalValue = itemsIssued.reduce((sum, item) => sum + item.amount, 0)
-  const totalRequests = allRequests.length
+      // Calculate Summary Metrics
+      const totalItems = itemsIssued.length
+      const totalValue = itemsIssued.reduce((sum, item) => sum + item.amount, 0)
+      const totalRequests = riss.length
 
-  // Update Summary Cards
-  const totalItemsEl = document.getElementById('rsmi-total-items')
-  if (totalItemsEl) totalItemsEl.textContent = totalItems.toLocaleString()
+      // Update Summary Cards
+      const totalItemsEl = document.getElementById('rsmi-total-items')
+      if (totalItemsEl) totalItemsEl.textContent = totalItems.toLocaleString()
 
-  const totalValueEl = document.getElementById('rsmi-total-value')
-  if (totalValueEl) totalValueEl.textContent = formatCurrency(totalValue)
+      const totalValueEl = document.getElementById('rsmi-total-value')
+      if (totalValueEl) totalValueEl.textContent = formatCurrency(totalValue)
 
-  const totalReqEl = document.getElementById('rsmi-total-requests')
-  if (totalReqEl) totalReqEl.textContent = totalRequests.toLocaleString()
+      const totalReqEl = document.getElementById('rsmi-total-requests')
+      if (totalReqEl) totalReqEl.textContent = totalRequests.toLocaleString()
 
-  tbody.innerHTML = itemsIssued
-    .map(
-      (item) =>
-        `<tr>
-            <td>${item.risNo || '-'}</td>
-            <td>${item.centerCode || '-'}</td>
-            <td>${item.stockNo || '-'}</td>
-            <td>${item.description || '-'}</td>
-            <td>${item.unit || '-'}</td>
-            <td>${item.qty}</td>
-            <td>${formatCurrency(item.unitCost)}</td>
-            <td>${formatCurrency(item.amount)}</td>
-        </tr>`
-    )
-    .join('')
-  window.__rsmiFilteredRows = itemsIssued
+      tbody.innerHTML = itemsIssued
+        .map(
+          (item) =>
+            `<tr>
+                <td>${item.risNo || '-'}</td>
+                <td>${item.centerCode || '-'}</td>
+                <td>${item.stockNo || '-'}</td>
+                <td>${item.description || '-'}</td>
+                <td>${item.unit || '-'}</td>
+                <td>${item.qty}</td>
+                <td>${formatCurrency(item.unitCost)}</td>
+                <td>${formatCurrency(item.amount)}</td>
+            </tr>`
+        )
+        .join('')
+      window.__rsmiFilteredRows = itemsIssued
+    })
+    .catch((error) => {
+      console.error('Error fetching RSMI data:', error)
+      tbody.innerHTML = '<tr><td colspan="8">Error loading RSMI data</td></tr>'
+    })
 }
 
 function exportRsmiCSV() {
-  // Get filter values
-  const department =
-    document.getElementById('rsmi-department-filter')?.value || ''
-  const dateFrom = document.getElementById('rsmi-date-from')?.value || ''
-  const dateTo = document.getElementById('rsmi-date-to')?.value || ''
+  // Get the filtered data from the table
+  const items = window.__rsmiFilteredRows || []
+  console.log('Exporting RSMI data:', items)
 
-  // Build query parameters
-  const params = new URLSearchParams()
-  if (department) params.append('department', department)
-  if (dateFrom) params.append('date_from', dateFrom)
-  if (dateTo) params.append('date_to', dateTo)
+  // Create a form to submit the data
+  const form = document.createElement('form')
+  form.method = 'POST'
+  form.action = '/reports/rsmi/export'
+  form.style.display = 'none'
 
-  // Call backend export
-  const url = `/reports/rsmi/export?${params.toString()}`
+  // Add CSRF token
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+  const csrfInput = document.createElement('input')
+  csrfInput.type = 'hidden'
+  csrfInput.name = '_token'
+  csrfInput.value = csrfToken
+  form.appendChild(csrfInput)
 
-  // Create a temporary link to trigger download
-  const link = document.createElement('a')
-  link.href = url
-  link.download = 'rsmi-report.xlsx'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
+  // Add items data as JSON
+  const itemsInput = document.createElement('input')
+  itemsInput.type = 'hidden'
+  itemsInput.name = 'items'
+  itemsInput.value = JSON.stringify(items)
+  form.appendChild(itemsInput)
+
+  console.log('Submitting form with data:', JSON.stringify(items))
+
+  // Add to body and submit
+  document.body.appendChild(form)
+  form.submit()
+
+  // Don't remove the form immediately to allow the submission to complete
+  // The form will be cleaned up by the browser
 }
 
 // Stock Cards render function removed: renderStockCardsReport()
@@ -13549,13 +13597,13 @@ function autoFillRISForm() {
   // Auto-fill for IAR
   if (department) {
     const officeLabelIAR = getDepartmentLabel(department) || department
-    if (!AppState.purchaseOrderDraft.iarFormData.requisitioning_office) {
+    if (!AppState.purchaseOrderDraft?.iarFormData?.requisitioning_office) {
       updatePOFormDraft('iar', 'requisitioning_office', officeLabelIAR)
     }
     // Set responsibility center code to acronym
     const matchIAR = officeLabelIAR.match(/\(([^)]+)\)$/)
     const acronymIAR = matchIAR ? matchIAR[1] : department
-    if (!AppState.purchaseOrderDraft.iarFormData.responsibility_center_code) {
+    if (!AppState.purchaseOrderDraft?.iarFormData?.responsibility_center_code) {
       updatePOFormDraft('iar', 'responsibility_center_code', acronymIAR)
     }
   }

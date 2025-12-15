@@ -57,35 +57,60 @@ class ReportsController extends Controller
 
     public function exportRsmi(Request $request)
     {
-        // Load the template
-        $templatePath = storage_path('app/templates/rsmi_template.xlsx');
-        if (!file_exists($templatePath)) {
-            return response()->json(['error' => 'RSMI template not found. Please ensure rsmi_template.xlsx exists in storage/app/templates/'], 404);
+        try {
+            // Load the template
+            $templatePath = storage_path('app/templates/rsmi_template.xlsx');
+            if (!file_exists($templatePath)) {
+                return response()->json(['error' => 'RSMI template not found. Please ensure rsmi_template.xlsx exists in storage/app/templates/'], 404);
+            }
+
+            $spreadsheet = IOFactory::load($templatePath);
+            $sheet = $spreadsheet->getActiveSheet();
+
+        // Check if items data is provided in request
+        if ($request->has('items')) {
+            $itemsJson = $request->input('items');
+            $itemsIssued = json_decode($itemsJson, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $itemsIssued = [];
+            }
+        } else {
+            // Fallback to querying database
+            $query = \App\Models\RequisitionIssueSlip::query();
+
+            if ($request->filled('department')) {
+                $query->where('responsibility_center_code', $request->department);
+            }
+
+            if ($request->filled('date_from')) {
+                $query->whereDate('created_at', '>=', $request->date_from);
+            }
+
+            if ($request->filled('date_to')) {
+                $query->whereDate('created_at', '<=', $request->date_to);
+            }
+
+            $rsmiRecords = $query->get();
+
+            // Flatten items
+            $itemsIssued = [];
+            foreach ($rsmiRecords as $r) {
+                if ($r->items && is_array($r->items)) {
+                    foreach ($r->items as $item) {
+                        $itemsIssued[] = [
+                            'risNo' => $r->ris_no ?? $r->id ?? '',
+                            'centerCode' => $r->responsibility_center_code ?? '',
+                            'stockNo' => $item['stock_no'] ?? $item['stockNumber'] ?? '',
+                            'description' => $item['item_description'] ?? $item['description'] ?? $item['name'] ?? '',
+                            'unit' => $item['unit'] ?? $item['unitMeasure'] ?? '',
+                            'qty' => $item['quantity'] ?? $item['qty'] ?? 0,
+                            'unitCost' => $item['unit_cost'] ?? $item['unitCost'] ?? $item['unitPrice'] ?? 0,
+                            'amount' => ($item['quantity'] ?? $item['qty'] ?? 0) * ($item['unit_cost'] ?? $item['unitCost'] ?? $item['unitPrice'] ?? 0),
+                        ];
+                    }
+                }
+            }
         }
-
-        $spreadsheet = IOFactory::load($templatePath);
-        $sheet = $spreadsheet->getActiveSheet();
-
-        // Get RSMI data - filter by date range and department if provided
-        // Use Purchase Orders (match frontend logic)
-        $query = \App\Models\PurchaseOrder::query();
-
-        // Include purchase orders that would show in RSMI report (match frontend statuses)
-        $query->whereIn('status', ['draft', 'submitted', 'pending', 'approved', 'delivered', 'completed']);
-
-        if ($request->filled('department')) {
-            $query->where('department', $request->department);
-        }
-
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
-
-        $rsmiRecords = $query->get();
 
         // Fill header information
         $sheet->setCellValue('A6', 'Entity Name: Camarines Norte State College');
@@ -97,29 +122,19 @@ class ReportsController extends Controller
         // Fill items data starting from row 11 (after column headers)
         $row = 11;
 
-        foreach ($rsmiRecords as $po) {
-            if ($po->items && is_array($po->items)) {
-                foreach ($po->items as $item) {
-                    if ($row > 30)
-                        break; // Don't overflow into recapitulation section
+        foreach ($itemsIssued as $item) {
+            if ($row > 30) break; // Don't overflow into recapitulation section
 
-                    $issueQty = $item['quantity'] ?? $item['issue_quantity'] ?? 0;
-                    $unitCost = $item['unit_cost'] ?? $item['unitPrice'] ?? $item['price'] ?? 0;
-                    $amount = $issueQty * $unitCost;
+            $sheet->setCellValue('A' . $row, $item['risNo'] ?? $item['ris_no'] ?? '');
+            $sheet->setCellValue('B' . $row, $item['centerCode'] ?? $item['responsibility_center_code'] ?? '');
+            $sheet->setCellValue('C' . $row, $item['stockNo'] ?? $item['stock_no'] ?? '');
+            $sheet->setCellValue('D' . $row, $item['description'] ?? $item['item_description'] ?? '');
+            $sheet->setCellValue('E' . $row, $item['unit'] ?? '');
+            $sheet->setCellValue('F' . $row, $item['qty'] ?? $item['quantity'] ?? 0);
+            $sheet->setCellValue('G' . $row, $item['unitCost'] ?? $item['unit_cost'] ?? 0);
+            $sheet->setCellValue('H' . $row, $item['amount'] ?? 0);
 
-                    // Use PO ID as RIS No and department as Responsibility Center Code
-                    $sheet->setCellValue('A' . $row, $po->id ?? '');
-                    $sheet->setCellValue('B' . $row, $po->department ?? '');
-                    $sheet->setCellValue('C' . $row, $item['stock_no'] ?? $item['stockNumber'] ?? '');
-                    $sheet->setCellValue('D' . $row, $item['item_description'] ?? $item['description'] ?? $item['name'] ?? '');
-                    $sheet->setCellValue('E' . $row, $item['unit'] ?? $item['unitMeasure'] ?? '');
-                    $sheet->setCellValue('F' . $row, $issueQty);
-                    $sheet->setCellValue('G' . $row, $unitCost);
-                    $sheet->setCellValue('H' . $row, $amount);
-
-                    $row++;
-                }
-            }
+            $row++;
         }
 
         // Fill recapitulation section (starting at row 33)
@@ -127,25 +142,21 @@ class ReportsController extends Controller
         $stockSummary = [];
 
         // Group items by stock number for recapitulation
-        foreach ($rsmiRecords as $po) {
-            if ($po->items && is_array($po->items)) {
-                foreach ($po->items as $item) {
-                    $stockNo = $item['stock_no'] ?? 'N/A';
-                    $issueQty = $item['issue_quantity'] ?? $item['quantity'] ?? 0;
-                    $unitCost = $item['unit_cost'] ?? $item['price'] ?? 0;
+        foreach ($itemsIssued as $item) {
+            $stockNo = $item['stockNo'] ?? $item['stock_no'] ?? 'N/A';
+            $issueQty = $item['qty'] ?? $item['quantity'] ?? 0;
+            $unitCost = $item['unitCost'] ?? $item['unit_cost'] ?? 0;
 
-                    if (!isset($stockSummary[$stockNo])) {
-                        $stockSummary[$stockNo] = [
-                            'quantity' => 0,
-                            'unit_cost' => $unitCost,
-                            'total_cost' => 0
-                        ];
-                    }
-
-                    $stockSummary[$stockNo]['quantity'] += $issueQty;
-                    $stockSummary[$stockNo]['total_cost'] += ($issueQty * $unitCost);
-                }
+            if (!isset($stockSummary[$stockNo])) {
+                $stockSummary[$stockNo] = [
+                    'quantity' => 0,
+                    'unit_cost' => $unitCost,
+                    'total_cost' => 0
+                ];
             }
+
+            $stockSummary[$stockNo]['quantity'] += $issueQty;
+            $stockSummary[$stockNo]['total_cost'] += ($issueQty * $unitCost);
         }
 
         // Fill recapitulation data
@@ -170,5 +181,8 @@ class ReportsController extends Controller
         }, $fileName, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Export failed: ' . $e->getMessage()], 500);
+        }
     }
 }
