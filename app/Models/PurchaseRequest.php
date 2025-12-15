@@ -39,6 +39,7 @@ class PurchaseRequest extends Model
         'approved_position',
         'department',
         'items',
+        'item_description',
         'purpose',
         'unit',
         'needed_date',

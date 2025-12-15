@@ -111,6 +111,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware([])->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class)->group(function () {
         Route::get('/api/purchase-requests', [ApiPurchaseRequestController::class, 'index']);
         Route::post('/api/purchase-requests', [ApiPurchaseRequestController::class, 'store']);
+        // Batch creation endpoint for multiple purchase request items
+        Route::post('/api/purchase-requests/batch', [ApiPurchaseRequestController::class, 'batchStore']);
         Route::post('/api/status-requests/{id}/status', [ApiPurchaseRequestController::class, 'updateStatus']);
     });
 

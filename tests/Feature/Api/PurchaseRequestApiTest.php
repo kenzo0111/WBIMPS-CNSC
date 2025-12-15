@@ -210,3 +210,30 @@ test('calculates total cost for each purchase request', function () {
     $totalCost = $response->json('0.total_cost');
     expect($totalCost)->toBe(502.5);
 });
+
+test('can create purchase requests in a batch', function () {
+    $items = [
+        ['item_description' => 'Notebook', 'quantity' => 2, 'unit' => 'pcs', 'unit_cost' => 50],
+        ['item_description' => 'Pens', 'quantity' => 10, 'unit' => 'pcs', 'unit_cost' => 5],
+    ];
+
+    $response = $this->postJson('/api/purchase-requests/batch', [
+        'email' => 'batch@example.com',
+        'requester' => 'Batch User',
+        'department' => 'Admin',
+        'items' => $items,
+        'purpose' => 'Batch create test',
+    ]);
+
+    $response->assertStatus(201)
+        ->assertJsonStructure(['request_id', 'batch_items', 'email_sent']);
+
+    $json = $response->json();
+    expect(is_array($json['batch_items']))->toBeTrue();
+    expect(count($json['batch_items']))->toBe(2);
+
+    // Ensure multiple rows were created for this batch, one per item
+    $this->assertDatabaseHas('purchase_requests', ['email' => 'batch@example.com', 'requester' => 'Batch User', 'item_description' => 'Notebook']);
+    $this->assertDatabaseHas('purchase_requests', ['email' => 'batch@example.com', 'requester' => 'Batch User', 'item_description' => 'Pens']);
+    $this->assertEquals(2, \App\Models\PurchaseRequest::where('email', 'batch@example.com')->count());
+});

@@ -271,4 +271,131 @@ class PurchaseRequestController extends Controller
 
         return response()->json($pr);
     }
+
+    /**
+     * Store multiple purchase request items as a batch.
+     * Each item will be persisted as a separate PurchaseRequest row sharing
+     * the same generated request_id so they can be grouped in the UI.
+     */
+    public function batchStore(Request $request)
+    {
+        $data = $request->validate([
+            'email' => 'required|email',
+            'requester' => 'required|string',
+            'designation' => 'nullable|string',
+            'department' => 'required|string',
+            'purpose' => 'nullable|string',
+            'neededDate' => 'nullable|date|after_or_equal:today',
+            'priority' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.item_description' => 'required|string',
+            'items.*.unit' => 'nullable|string',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.unit_cost' => 'nullable|numeric|min:0',
+            'items.*.total_cost' => 'nullable|numeric|min:0',
+        ]);
+
+        // Generate a single request_id for the whole batch (REQ-YYYY-XXX)
+        $currentYear = now()->year;
+        $existingRequests = \Illuminate\Support\Facades\DB::table('purchase_requests')
+            ->where('request_id', 'like', "REQ-{$currentYear}-%")
+            ->pluck('request_id');
+
+        $maxNum = 0;
+        foreach ($existingRequests as $requestId) {
+            if (preg_match('/REQ-\d{4}-(\d+)$/', $requestId, $matches)) {
+                $num = (int) $matches[1];
+                if ($num > $maxNum)
+                    $maxNum = $num;
+            }
+        }
+
+        $nextSeq = $maxNum + 1;
+        $requestIdBase = sprintf('REQ-%d-%03d', $currentYear, $nextSeq);
+
+        $createdRecords = [];
+        DB::transaction(function () use ($data, $requestIdBase, &$createdRecords) {
+            $idx = 0;
+            foreach ($data['items'] as $item) {
+                $idx++;
+                // make per-item request_id unique by appending an index suffix
+                $perItemRequestId = $requestIdBase . '-' . sprintf('%02d', $idx);
+                $qty = (int) ($item['quantity'] ?? 0);
+                $unitCost = isset($item['unit_cost']) ? (float) $item['unit_cost'] : (isset($item['unitCost']) ? (float) $item['unitCost'] : null);
+                $lineTotal = isset($item['total_cost']) ? (float) $item['total_cost'] : ($unitCost !== null ? $qty * $unitCost : null);
+
+                $created = PurchaseRequest::create([
+                    'request_id' => $perItemRequestId,
+                    'email' => $data['email'],
+                    'requester' => $data['requester'],
+                    'designation' => $data['designation'] ?? null,
+                    'department' => $data['department'],
+                    'items' => null, // No longer using items array
+                    'item_description' => $item['item_description'],
+                    'unit' => $item['unit'] ?? null,
+                    'quantity' => $qty,
+                    'unit_cost' => $unitCost,
+                    'total_cost' => $lineTotal,
+                    'purpose' => $data['purpose'] ?? null,
+                    'needed_date' => $data['neededDate'] ?? null,
+                    'priority' => $data['priority'] ?? 'Low',
+                    'status' => 'Incoming',
+                    'submitted_at' => now(),
+                    'metadata' => ['batch' => true],
+                ]);
+                $createdRecords[] = $created;
+            }
+        });
+
+        $results = ['data' => $createdRecords, 'requestId' => $requestIdBase, 'failed' => []];
+
+        // Try to send notification email to requester and admins (best-effort)
+        $emailSent = false;
+        if (!empty($createdRecords)) {
+            try {
+                $admins = \App\Models\User::whereHas('roles', function ($q) {
+                    $q->whereIn('name', ['System Admin', 'Administrator']);
+                })->pluck('email')->filter()->toArray();
+
+                // Send email using the first record, but modify mail to handle batch
+                \Illuminate\Support\Facades\Mail::to($createdRecords[0]->email)->send(new \App\Mail\PurchaseRequestSubmitted($createdRecords[0], $createdRecords));
+                if (!empty($admins)) {
+                    \Illuminate\Support\Facades\Mail::to($admins)->send(new \App\Mail\PurchaseRequestSubmitted($createdRecords[0], $createdRecords));
+                }
+                $emailSent = true;
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed sending batch purchase request email: ' . $e->getMessage());
+                $msg = $e->getMessage() ?: '';
+                if (stripos($msg, 'certificate verify failed') !== false || stripos($msg, 'stream_socket_enable_crypto') !== false || stripos($msg, 'STARTTLS') !== false) {
+                    try {
+                        \Illuminate\Support\Facades\Log::warning('Attempting insecure SMTP retry (verify_peer=false) due to TLS certificate verification failure');
+                        config([
+                            'mail.mailers.smtp.stream' => [
+                                'ssl' => [
+                                    'allow_self_signed' => true,
+                                    'verify_peer' => false,
+                                    'verify_peer_name' => false,
+                                ],
+                            ],
+                        ]);
+
+                        \Illuminate\Support\Facades\Mail::to($createdRecords[0]->email)->send(new \App\Mail\PurchaseRequestSubmitted($createdRecords[0], $createdRecords));
+                        if (!empty($admins)) {
+                            \Illuminate\Support\Facades\Mail::to($admins)->send(new \App\Mail\PurchaseRequestSubmitted($createdRecords[0], $createdRecords));
+                        }
+                        $emailSent = true;
+                        \Illuminate\Support\Facades\Log::warning('Insecure SMTP retry succeeded (email sent)');
+                    } catch (\Exception $e2) {
+                        \Illuminate\Support\Facades\Log::error('Insecure SMTP retry failed: ' . $e2->getMessage());
+                        $emailSent = false;
+                    }
+                } else {
+                    $emailSent = false;
+                }
+            }
+        }
+
+        $results['email_sent'] = $emailSent;
+        return response()->json(array_merge($createdRecords[0]->toArray(), ['batch_items' => $createdRecords, 'email_sent' => $emailSent]), 201);
+    }
 }

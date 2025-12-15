@@ -14,12 +14,16 @@ class PurchaseRequestSubmitted extends Mailable
     /** @var PurchaseRequest */
     public $pr;
 
+    /** @var \Illuminate\Database\Eloquent\Collection|null */
+    public $batchItems;
+
     /**
      * Create a new message instance.
      */
-    public function __construct(PurchaseRequest $pr)
+    public function __construct(PurchaseRequest $pr, $batchItems = null)
     {
         $this->pr = $pr;
+        $this->batchItems = $batchItems;
     }
 
     /**
@@ -48,6 +52,7 @@ class PurchaseRequestSubmitted extends Mailable
             ->with([
                 'pr' => $this->pr,
                 'logoCid' => $logoCid,
+                'batchItems' => $this->batchItems,
                 // keep logoUrl available as a fallback for clients that block inline images
                 'logoUrl' => asset('images/UCN1.png'),
             ]);

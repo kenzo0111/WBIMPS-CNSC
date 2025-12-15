@@ -75,52 +75,70 @@
     window.location.href = '/user/home'
   }
 
-  // --- Toast UI ---
-  function createToastContainer() {
-    let c = byId('ui-alert-container')
-    if (!c) {
-      c = document.createElement('div')
-      c.id = 'ui-alert-container'
-      c.className = 'ui-alert-container'
-      c.setAttribute('aria-live', 'polite')
-      document.body.appendChild(c)
-    }
-    return c
-  }
-
-  function showToast({ message = '', type = 'info', duration = 3500 } = {}) {
+  // Use global alert helper (defined in `resources/js/app.js`) for UI alerts
+  // Alias for backward compatibility within this module. Provide a local
+  // fallback toast implementation so messages appear even when the global
+  // helper isn't available (e.g., on minimal pages or tests).
+  function showAlertMessage(message = '', type = 'info', duration = 3500) {
     try {
-      const container = createToastContainer()
+      if (typeof window.showAlert === 'function') {
+        window.showAlert(message, type, duration)
+        return
+      }
+
+      // Local fallback toast implementation
+      let container = document.getElementById('ui-alert-container')
+      if (!container) {
+        container = document.createElement('div')
+        container.id = 'ui-alert-container'
+        container.className = 'ui-alert-container'
+        container.setAttribute('aria-live', 'polite')
+        document.body.appendChild(container)
+      }
+
       const toast = document.createElement('div')
-      toast.className = `ui-toast ui-toast-${type}`
+      toast.className = `ui-alert ui-alert-${type}`
       toast.setAttribute('role', 'status')
       toast.setAttribute('aria-atomic', 'true')
 
-      const inner = document.createElement('div')
-      inner.className = 'ui-toast-inner'
-      const text = document.createElement('div')
-      text.className = 'ui-toast-text'
-      text.textContent = message
-      const close = document.createElement('button')
-      close.className = 'ui-toast-close'
-      close.setAttribute('aria-label', 'Dismiss notification')
-      close.innerHTML = '&times;'
-      const progress = document.createElement('div')
-      progress.className = 'ui-toast-progress'
+      const iconMap = {
+        info: 'ℹ️',
+        success: '✅',
+        warning: '⚠️',
+        error: '❌',
+      }
 
-      close.addEventListener('click', () => removeToast(toast))
-      inner.appendChild(text)
-      inner.appendChild(close)
-      toast.appendChild(inner)
+      const icon = document.createElement('div')
+      icon.className = 'ui-alert-icon'
+      icon.textContent = iconMap[type] || '•'
+
+      const text = document.createElement('div')
+      text.className = 'ui-alert-text'
+      text.textContent = message
+
+      const close = document.createElement('button')
+      close.className = 'ui-alert-close'
+      close.setAttribute('aria-label', 'Dismiss notification')
+      close.innerHTML = '✕'
+      close.addEventListener('click', () => remove())
+
+      const progress = document.createElement('div')
+      progress.className = 'ui-alert-progress'
+
+      toast.appendChild(icon)
+      toast.appendChild(text)
+      toast.appendChild(close)
       toast.appendChild(progress)
       container.appendChild(toast)
 
-      requestAnimationFrame(() => toast.classList.add('ui-toast-in'))
+      // entrance
+      requestAnimationFrame(() => toast.classList.add('ui-alert-show'))
 
       let start = Date.now()
       let elapsed = 0
       let rafId = null
       let paused = false
+
       function tick() {
         if (paused) {
           rafId = requestAnimationFrame(tick)
@@ -129,20 +147,16 @@
         elapsed = Date.now() - start
         const pct = Math.min(1, elapsed / duration)
         progress.style.transform = `scaleX(${1 - pct})`
-        if (elapsed >= duration) removeToast(toast)
+        if (elapsed >= duration) remove()
         else rafId = requestAnimationFrame(tick)
       }
 
-      toast.addEventListener('mouseenter', () => {
-        paused = true
-      })
+      toast.addEventListener('mouseenter', () => (paused = true))
       toast.addEventListener('mouseleave', () => {
         paused = false
         start = Date.now() - elapsed
       })
-      toast.addEventListener('focusin', () => {
-        paused = true
-      })
+      toast.addEventListener('focusin', () => (paused = true))
       toast.addEventListener('focusout', () => {
         paused = false
         start = Date.now() - elapsed
@@ -150,25 +164,25 @@
 
       rafId = requestAnimationFrame(tick)
 
-      function removeToast(node) {
-        if (!node) return
-        node.classList.remove('ui-toast-in')
-        node.classList.add('ui-toast-out')
-        setTimeout(() => node.remove(), 320)
+      function remove() {
+        toast.classList.remove('ui-alert-show')
+        toast.classList.add('ui-alert-hide')
+        setTimeout(() => toast.remove(), 320)
         if (rafId) cancelAnimationFrame(rafId)
       }
 
-      toast.removeToast = () => removeToast(toast)
+      // return the toast element in case caller wants to dismiss it
+      toast.removeToast = remove
       return toast
-    } catch (err) {
-      // fallback
-      console.log(message)
+    } catch (e) {
+      // final fallback
+      console.log(type.toUpperCase() + ':', message)
     }
   }
 
   // alias kept for backward-compat
   function toast(msg) {
-    showToast({ message: msg, type: 'info' })
+    showAlertMessage(msg, 'info')
   }
 
   // friendly currency formatting
@@ -467,11 +481,7 @@
       // Validate items table
       const rows = document.querySelectorAll('#itemsTableBody tr')
       if (rows.length === 0) {
-        showToast({
-          message: 'Please add at least one item',
-          type: 'error',
-          duration: 3000,
-        })
+        showAlertMessage('Please add at least one item', 'error', 3000)
         ok = false
       } else {
         rows.forEach((row) => {
@@ -488,11 +498,7 @@
           })
         })
         if (!ok)
-          showToast({
-            message: 'Please fill in all item details',
-            type: 'error',
-            duration: 3000,
-          })
+          showAlertMessage('Please fill in all item details', 'error', 3000)
       }
     }
 
@@ -519,11 +525,7 @@
     })
 
     if (!ok && currentStep !== 2)
-      showToast({
-        message: 'Please fill in all required fields',
-        type: 'error',
-        duration: 3000,
-      })
+      showAlertMessage('Please fill in all required fields', 'error', 3000)
     return ok
   }
 
@@ -531,11 +533,7 @@
     if (currentStep < totalSteps && validateCurrentStep()) {
       currentStep++
       updateProgress()
-      showToast({
-        message: `Step ${currentStep} of ${totalSteps}`,
-        type: 'info',
-        duration: 1500,
-      })
+      showAlertMessage(`Step ${currentStep} of ${totalSteps}`, 'info', 1500)
     }
   }
 
@@ -543,11 +541,7 @@
     if (currentStep > 1) {
       currentStep--
       updateProgress()
-      showToast({
-        message: `Step ${currentStep} of ${totalSteps}`,
-        type: 'info',
-        duration: 1200,
-      })
+      showAlertMessage(`Step ${currentStep} of ${totalSteps}`, 'info', 1200)
     }
   }
 
@@ -592,11 +586,42 @@
       headers['X-CSRF-TOKEN'] = tokenMeta.content
 
     try {
-      const resp = await fetch('/api/purchase-requests', {
+      // Normalize items for the batch endpoint
+      const items = (payload.items || []).map((it) => ({
+        item_description: it.item_description || it.item_description || '',
+        unit: it.unit || it.unit || '',
+        quantity: Number(it.quantity) || 0,
+        unit_cost:
+          typeof it.unit_cost !== 'undefined'
+            ? it.unit_cost
+            : it.unitCost || null,
+        total_cost:
+          typeof it.total_cost !== 'undefined'
+            ? it.total_cost
+            : it.totalCost || null,
+      }))
+
+      const body = Object.assign(
+        {},
+        {
+          email: payload.email,
+          requester: payload.requester,
+          designation: payload.designation,
+          department: payload.department,
+          purpose: payload.purpose,
+          neededDate: payload.neededDate,
+          priority: payload.priority,
+          items,
+        }
+      )
+
+      const resp = await fetch('/api/purchase-requests/batch', {
         method: 'POST',
         headers: headers,
-        body: JSON.stringify(payload),
+        credentials: 'same-origin',
+        body: JSON.stringify(body),
       })
+
       if (!resp.ok) throw new Error('Network response was not ok')
       const data = await resp.json()
       showSuccessServer(data)
@@ -612,29 +637,55 @@
   }
 
   function showSuccessServer(data) {
-    const rid = findRequestIdFromServer(data)
-    if (data.email_sent === true) {
-      successText.textContent = `Request ${rid} submitted successfully. A confirmation email has been sent to you.`
-      showToast({
-        message: '✅ Confirmation email sent to your address.',
-        type: 'success',
-        duration: 4500,
-      })
-    } else if (data.email_sent === false) {
-      successText.textContent = `Request ${rid} submitted successfully. We were unable to send a confirmation email — please contact admin if you don't receive one.`
-      showToast({
-        message:
+    // Handle batch responses (data.successful / data.failed)
+    if (data && Array.isArray(data.successful)) {
+      const ids = data.successful
+        .map((s) => s.request_id || s.requestId || s.id)
+        .filter(Boolean)
+      const rid = data.requestId || ids[0] || 'submitted'
+      if (data.email_sent === true || data.email_sent === undefined) {
+        successText.textContent = `Request ${rid} submitted successfully. A confirmation email has been sent to you.`
+        showAlertMessage(
+          '✅ Confirmation email sent to your address.',
+          'success',
+          4500
+        )
+      } else {
+        successText.textContent = `Request ${rid} submitted successfully. We were unable to send a confirmation email — please contact admin if you don't receive one.`
+        showAlertMessage(
           '⚠️ Could not send confirmation email. Your request was saved.',
-        type: 'error',
-        duration: 6000,
-      })
+          'error',
+          6000
+        )
+      }
+
+      if (Array.isArray(data.failed) && data.failed.length > 0) {
+        showAlertMessage(
+          `Some items failed to save: ${data.failed.map((f) => f.error).join('; ')}`,
+          'error',
+          8000
+        )
+      }
     } else {
-      successText.textContent = `Request ${rid} submitted successfully. Please check your email for confirmation and updates.`
-      showToast({
-        message: 'Request submitted.',
-        type: 'success',
-        duration: 3500,
-      })
+      const rid = findRequestIdFromServer(data)
+      if (data.email_sent === true) {
+        successText.textContent = `Request ${rid} submitted successfully. A confirmation email has been sent to you.`
+        showAlertMessage(
+          '✅ Confirmation email sent to your address.',
+          'success',
+          4500
+        )
+      } else if (data.email_sent === false) {
+        successText.textContent = `Request ${rid} submitted successfully. We were unable to send a confirmation email — please contact admin if you don't receive one.`
+        showAlertMessage(
+          '⚠️ Could not send confirmation email. Your request was saved.',
+          'error',
+          6000
+        )
+      } else {
+        successText.textContent = `Request ${rid} submitted successfully. Please check your email for confirmation and updates.`
+        showAlertMessage('Request submitted.', 'success', 3500)
+      }
     }
 
     if (typeof dialogSuccess.showModal === 'function') {
@@ -702,10 +753,7 @@
         updateProgress()
       })
     } else {
-      showToast({
-        message: `Request ${requestId} saved locally.`,
-        type: 'success',
-      })
+      showAlertMessage(`Request ${requestId} saved locally.`, 'success')
       form.reset()
       currentStep = 1
       updateProgress()
@@ -718,11 +766,7 @@
         : ''
       const summary = [itemCount + ' item(s)', cost].filter(Boolean).join(' • ')
       if (summary)
-        showToast({
-          message: `${requestId} — ${summary}`,
-          type: 'success',
-          duration: 4200,
-        })
+        showAlertMessage(`${requestId} — ${summary}`, 'success', 4200)
     } catch (e) {
       /* ignore */
     }
@@ -738,13 +782,10 @@
       return
     try {
       localStorage.removeItem('userPurchaseRequests')
-      showToast({
-        message: '✅ All requests cleared from storage',
-        type: 'success',
-      })
+      showAlertMessage('✅ All requests cleared from storage', 'success')
     } catch (e) {
       console.error(e)
-      showToast({ message: '❌ Error clearing storage', type: 'error' })
+      showAlertMessage('❌ Error clearing storage', 'error')
     }
   }
 
@@ -831,12 +872,11 @@
       }, 60 * 1000)
       return
     } catch (err) {
-      showToast({
-        message:
-          'Could not generate PDF preview on the server — using local preview.',
-        type: 'warning',
-        duration: 3500,
-      })
+      showAlertMessage(
+        'Could not generate PDF preview on the server — using local preview.',
+        'warning',
+        3500
+      )
       // Fall through to render local preview like before
     }
 
@@ -868,11 +908,11 @@
       'width=900,height=700,scrollbars=yes,toolbar=no,menubar=no'
     )
     if (!preview) {
-      showToast({
-        message: 'Unable to open preview window — popup blocked?',
-        type: 'error',
-        duration: 3000,
-      })
+      showAlertMessage(
+        'Unable to open preview window — popup blocked?',
+        'error',
+        3000
+      )
       return
     }
 
@@ -1200,10 +1240,7 @@
       neededEl.addEventListener('change', () => {
         if (neededEl.value && neededEl.value < minDate) {
           neededEl.value = ''
-          showToast({
-            message: 'Date of request cannot be in the past',
-            type: 'error',
-          })
+          showAlertMessage('Date of request cannot be in the past', 'error')
         }
         if (currentStep === 3) updateSummary()
       })
