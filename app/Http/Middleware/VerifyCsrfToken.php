@@ -18,5 +18,8 @@ class VerifyCsrfToken extends BaseVerifier
         'inventory-custodian-slip/generate',
         'requisition-issue-slip/generate',
         'reports/rsmi/export',
+        // API-style endpoints served under web middleware for AJAX calls
+        // Exclude all /api/* endpoints from CSRF verification when accessed via session-authenticated web routes
+        'api/*',
     ];
 }

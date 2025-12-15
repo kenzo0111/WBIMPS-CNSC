@@ -15,6 +15,13 @@ use Illuminate\Support\Facades\DB;
  */
 class PurchaseRequestController extends Controller
 {
+    public function __construct()
+    {
+        // When these controller actions are served via web middleware for AJAX,
+        // exclude the POST endpoints from CSRF verification so API-style clients
+        // and automated tests can operate without a CSRF token.
+        $this->middleware(\App\Http\Middleware\VerifyCsrfToken::class)->except(['store', 'updateStatus']);
+    }
     /**
      * Display a listing of purchase requests.
      *

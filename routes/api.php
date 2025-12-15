@@ -57,8 +57,12 @@ Route::middleware('throttle:60,1')->group(function () {
 });
 
 // Authenticated API routes
-Route::middleware(['auth', 'throttle:60,1'])->group(function () {
-    Route::get('/purchase-requests', [PurchaseRequestController::class, 'index']);
-    Route::post('/purchase-requests', [PurchaseRequestController::class, 'store']);
-    Route::post('/status-requests/{id}/status', [PurchaseRequestController::class, 'updateStatus']);
-});
+// NOTE: purchase request endpoints require session-based auth (web guard).
+// Keeping these routes in api.php causes 401s for cookie-based sessions because
+// the 'api' middleware group does not start the session. Move them to
+// web.php where the 'web' middleware and session cookie auth are available.
+// Route::middleware(['auth', 'throttle:60,1'])->group(function () {
+//    Route::get('/purchase-requests', [PurchaseRequestController::class, 'index']);
+//    Route::post('/purchase-requests', [PurchaseRequestController::class, 'store']);
+//    Route::post('/status-requests/{id}/status', [PurchaseRequestController::class, 'updateStatus']);
+//});

@@ -10,6 +10,13 @@ beforeEach(function () {
         'status' => 'active',
     ]);
     $this->actingAs($user, 'web');
+    // API endpoints are served under web middleware but exempted from CSRF
+    // in the application; ensure tests don't fail due to CSRF token checks.
+    // Provide a CSRF header like the browser does so POSTs succeed in tests.
+    // Ensure a token exists in the session and use it for the header.
+    $csrf = 'test-csrf-token';
+    $this->withSession(['_token' => $csrf]);
+    $this->withHeader('X-CSRF-TOKEN', $csrf);
 
     // Fake mail to prevent actual email sending
     Mail::fake();

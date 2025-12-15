@@ -8820,7 +8820,10 @@ function exportRsmiCSV() {
   form.style.display = 'none'
 
   // Add CSRF token
-  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+  const csrfToken =
+    document
+      .querySelector('meta[name="csrf-token"]')
+      ?.getAttribute('content') || ''
   const csrfInput = document.createElement('input')
   csrfInput.type = 'hidden'
   csrfInput.name = '_token'

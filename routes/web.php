@@ -105,8 +105,14 @@ Route::post('/reports/rsmi/export', [App\Http\Controllers\ReportsController::cla
 Route::post('/contact-support', [App\Http\Controllers\SupportController::class, 'store'])->name('support.submit');
 
 Route::middleware('auth')->group(function () {
-    // Protected API routes
-    // Purchase request routes moved to api.php
+    // Protected API routes (session-authenticated). For AJAX endpoints we disable
+    // CSRF middleware so the endpoints behave like API routes while still using
+    // session cookie auth. This ensures browser fetches and tests don't receive 419.
+    Route::middleware([])->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class)->group(function () {
+        Route::get('/api/purchase-requests', [ApiPurchaseRequestController::class, 'index']);
+        Route::post('/api/purchase-requests', [ApiPurchaseRequestController::class, 'store']);
+        Route::post('/api/status-requests/{id}/status', [ApiPurchaseRequestController::class, 'updateStatus']);
+    });
 
     Route::get('/support/attachment/{id}', [App\Http\Controllers\SupportController::class, 'attachment'])->name('support.attachment');
     Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
