@@ -97,7 +97,7 @@
       }
 
       const toast = document.createElement('div')
-      toast.className = `ui-alert ui-alert-${type}`
+      toast.className = `ui-toast ui-toast-${type}`
       toast.setAttribute('role', 'status')
       toast.setAttribute('aria-atomic', 'true')
 
@@ -108,31 +108,35 @@
         error: '❌',
       }
 
+      const inner = document.createElement('div')
+      inner.className = 'ui-toast-inner'
+
       const icon = document.createElement('div')
-      icon.className = 'ui-alert-icon'
+      icon.className = 'ui-toast-icon'
       icon.textContent = iconMap[type] || '•'
 
       const text = document.createElement('div')
-      text.className = 'ui-alert-text'
+      text.className = 'ui-toast-text'
       text.textContent = message
 
       const close = document.createElement('button')
-      close.className = 'ui-alert-close'
+      close.className = 'ui-toast-close'
       close.setAttribute('aria-label', 'Dismiss notification')
       close.innerHTML = '✕'
       close.addEventListener('click', () => remove())
 
       const progress = document.createElement('div')
-      progress.className = 'ui-alert-progress'
+      progress.className = 'ui-toast-progress'
 
-      toast.appendChild(icon)
-      toast.appendChild(text)
-      toast.appendChild(close)
+      inner.appendChild(icon)
+      inner.appendChild(text)
+      inner.appendChild(close)
+      toast.appendChild(inner)
       toast.appendChild(progress)
       container.appendChild(toast)
 
       // entrance
-      requestAnimationFrame(() => toast.classList.add('ui-alert-show'))
+      requestAnimationFrame(() => toast.classList.add('ui-toast-in'))
 
       let start = Date.now()
       let elapsed = 0
@@ -165,8 +169,8 @@
       rafId = requestAnimationFrame(tick)
 
       function remove() {
-        toast.classList.remove('ui-alert-show')
-        toast.classList.add('ui-alert-hide')
+        toast.classList.remove('ui-toast-in')
+        toast.classList.add('ui-toast-out')
         setTimeout(() => toast.remove(), 320)
         if (rafId) cancelAnimationFrame(rafId)
       }

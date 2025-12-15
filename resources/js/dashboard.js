@@ -26350,13 +26350,16 @@ async function initStatusManagement(filter = 'all') {
           obj.designation = r.designation || ''
           obj.email = r.email || ''
           obj.department = r.department || r.dept || ''
-          // items may be an array or a string; show first item or joined list
+          // items may be an array or a string; prefer item_description when present
           if (Array.isArray(r.items)) {
             try {
               obj.item = r.items
                 .map((it) =>
                   typeof it === 'object'
-                    ? it.description || it.name || JSON.stringify(it)
+                    ? it.item_description ||
+                      it.description ||
+                      it.name ||
+                      JSON.stringify(it)
                     : it
                 )
                 .join('; ')
@@ -26364,7 +26367,12 @@ async function initStatusManagement(filter = 'all') {
               obj.item = String(r.items)
             }
           } else {
-            obj.item = r.items || r.items_text || r.items_string || ''
+            obj.item =
+              r.item_description ||
+              r.items ||
+              r.items_text ||
+              r.items_string ||
+              ''
           }
           obj.unit = r.unit || ''
           obj.purpose = r.purpose || r.reason || r.justification || ''

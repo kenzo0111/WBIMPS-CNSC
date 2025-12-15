@@ -128,8 +128,23 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php $idx = 0; ?>
-                                    <?php $__currentLoopData = (array) $pr->items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <?php 
+                                        $itemsToDisplay = $batchItems ?? (array) $pr->items;
+                                        if ($batchItems) {
+                                            // For batch, items are per-row PurchaseRequest objects
+                                            $itemsToDisplay = $batchItems->map(function ($itemPr) {
+                                                return [
+                                                    'item_description' => $itemPr->item_description,
+                                                    'unit' => $itemPr->unit,
+                                                    'quantity' => $itemPr->quantity,
+                                                    'unit_cost' => $itemPr->unit_cost,
+                                                    'total_cost' => $itemPr->total_cost,
+                                                ];
+                                            })->toArray();
+                                        }
+                                        $idx = 0; 
+                                    ?>
+                                    <?php $__currentLoopData = $itemsToDisplay; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                         <?php $idx++; ?>
                                         <tr>
                                             <td style="padding:8px 10px;border-bottom:1px solid #f5f5f5;vertical-align:top;"><?php echo e($idx); ?></td>
