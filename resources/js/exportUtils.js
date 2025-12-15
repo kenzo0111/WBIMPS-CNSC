@@ -72,8 +72,20 @@ export async function downloadExcel(
       }
     }
 
+    // Style the title row if present
+    if (options.hasTitle) {
+      const titleRow = worksheet.getRow(1)
+      titleRow.font = { bold: true, size: 16 }
+      titleRow.alignment = { horizontal: 'center' }
+      // Merge cells for title (assuming up to column E)
+      const maxCol = worksheet.columns.length
+      const endCol = String.fromCharCode(65 + maxCol - 1)
+      worksheet.mergeCells(`A1:${endCol}1`)
+    }
+
     // Style the header row if not using a template or override requested
-    const headerRow = worksheet.getRow(options.headerRow || 1)
+    const headerRowNum = options.hasTitle ? 3 : 1
+    const headerRow = worksheet.getRow(options.headerRow || headerRowNum)
     if (!options.templateUrl || options.overrideHeaderStyle) {
       headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
       headerRow.fill = {
@@ -98,16 +110,63 @@ export async function downloadExcel(
 
       // Freeze the header row (if not using a template and not overridden)
       if (!options.templateUrl || options.freezeHeader) {
-        worksheet.views = [{ state: 'frozen', ySplit: 1 }]
+        const freezeRow = options.hasTitle ? 3 : 1
+        worksheet.views = [{ state: 'frozen', ySplit: freezeRow }]
       }
     }
 
     // Add filters to header row (only if not using a template or explicitly requested)
     if (!options.templateUrl || options.addFiltersToHeader) {
+      const filterStart = options.hasTitle ? 'A3' : 'A1'
+      const maxCol = worksheet.columns.length
+      const endCol = String.fromCharCode(65 + maxCol - 1)
       worksheet.autoFilter = {
-        from: 'A1',
-        to: `${String.fromCharCode(65 + worksheet.columns.length - 1)}1`,
+        from: filterStart,
+        to: `${endCol}${options.hasTitle ? 3 : 1}`,
       }
+    }
+
+    // Apply custom formatting
+    if (options.changeColumn) {
+      const col = options.changeColumn
+      worksheet.getColumn(col).eachCell((cell, rowNumber) => {
+        const skipRows = options.hasTitle ? 3 : 2
+        if (rowNumber > skipRows && cell.value) {
+          const val = cell.value.toString()
+          if (val.startsWith('+')) {
+            cell.font = { color: { argb: 'FF16A34A' } } // green
+          } else if (val.startsWith('-')) {
+            cell.font = { color: { argb: 'FFDC2626' } } // red
+          }
+        }
+      })
+    }
+
+    if (options.currencyColumns) {
+      options.currencyColumns.forEach((col) => {
+        worksheet.getColumn(col).eachCell((cell, rowNumber) => {
+          const skipRows = options.hasTitle ? 3 : 2
+          if (rowNumber > skipRows && typeof cell.value === 'number') {
+            cell.numFmt = '"$"#,##0.00'
+          }
+        })
+      })
+    }
+
+    if (options.dateColumns) {
+      options.dateColumns.forEach((col) => {
+        worksheet.getColumn(col).eachCell((cell, rowNumber) => {
+          const skipRows = options.hasTitle ? 3 : 2
+          if (
+            rowNumber > skipRows &&
+            cell.value &&
+            !isNaN(Date.parse(cell.value))
+          ) {
+            cell.value = new Date(cell.value)
+            cell.numFmt = 'yyyy-mm-dd'
+          }
+        })
+      })
     }
 
     // Generate and download the file

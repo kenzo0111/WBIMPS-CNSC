@@ -40,6 +40,9 @@ Route::middleware('throttle:60,1')->group(function () {
     // Purchase Order API routes
     Route::apiResource('purchase-orders', App\Http\Controllers\Api\PurchaseOrderController::class);
     Route::post('/purchase-orders/{id}/status', [App\Http\Controllers\Api\PurchaseOrderController::class, 'updateStatus']);
+
+    // Requisition Issue Slip API routes
+    Route::apiResource('requisition-issue-slips', App\Http\Controllers\Api\RequisitionIssueSlipController::class);
     // Geocoding proxy endpoint
     Route::get('/geocode', [App\Http\Controllers\GeocodeController::class, 'index']);
 

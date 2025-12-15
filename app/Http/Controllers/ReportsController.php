@@ -70,9 +70,8 @@ class ReportsController extends Controller
         // Use Purchase Orders (match frontend logic)
         $query = \App\Models\PurchaseOrder::query();
 
-        // Include purchase orders that would show in RSMI report (submitted, approved, etc.)
-        // Match the frontend logic from renderRsmiReport
-        $query->whereIn('status', ['submitted', 'approved', 'completed', 'issued', 'pending']);
+        // Include purchase orders that would show in RSMI report (match frontend statuses)
+        $query->whereIn('status', ['draft', 'submitted', 'pending', 'approved', 'delivered', 'completed']);
 
         if ($request->filled('department')) {
             $query->where('department', $request->department);
@@ -112,7 +111,7 @@ class ReportsController extends Controller
                     $sheet->setCellValue('A' . $row, $po->id ?? '');
                     $sheet->setCellValue('B' . $row, $po->department ?? '');
                     $sheet->setCellValue('C' . $row, $item['stock_no'] ?? $item['stockNumber'] ?? '');
-                    $sheet->setCellValue('D' . $row, $item['description'] ?? $item['name'] ?? '');
+                    $sheet->setCellValue('D' . $row, $item['item_description'] ?? $item['description'] ?? $item['name'] ?? '');
                     $sheet->setCellValue('E' . $row, $item['unit'] ?? $item['unitMeasure'] ?? '');
                     $sheet->setCellValue('F' . $row, $issueQty);
                     $sheet->setCellValue('G' . $row, $unitCost);
@@ -128,9 +127,9 @@ class ReportsController extends Controller
         $stockSummary = [];
 
         // Group items by stock number for recapitulation
-        foreach ($rsmiRecords as $ris) {
-            if ($ris->items && is_array($ris->items)) {
-                foreach ($ris->items as $item) {
+        foreach ($rsmiRecords as $po) {
+            if ($po->items && is_array($po->items)) {
+                foreach ($po->items as $item) {
                     $stockNo = $item['stock_no'] ?? 'N/A';
                     $issueQty = $item['issue_quantity'] ?? $item['quantity'] ?? 0;
                     $unitCost = $item['unit_cost'] ?? $item['price'] ?? 0;

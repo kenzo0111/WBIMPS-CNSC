@@ -1669,6 +1669,49 @@ async function loadPurchaseOrdersFromAPI() {
   return []
 }
 
+// Load requisition issue slips from API
+async function loadRequisitionIssueSlipsFromAPI() {
+  try {
+    const response = await fetch('/api/requisition-issue-slips', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      credentials: 'same-origin',
+    })
+    if (response.ok) {
+      const data = await response.json()
+      const riss = data.data || []
+
+      // Map to AppState format
+      const allRiss = riss.map((ris) => ({
+        id: ris.ris_no || `RIS-${ris.id}`,
+        databaseId: ris.id,
+        risNo: ris.ris_no || '',
+        entityName: ris.entity_name || '',
+        fundCluster: ris.fund_cluster || '',
+        division: ris.division || '',
+        responsibilityCenterCode: ris.responsibility_center_code || '',
+        office: ris.office || '',
+        purpose: ris.purpose || '',
+        requestDate: formatDate(ris.created_at || ''),
+        items: Array.isArray(ris.items) ? ris.items : [],
+        status: ris.status || 'active',
+      }))
+
+      // Store in AppState
+      AppState.requisitionIssueSlips = allRiss
+
+      return allRiss
+    }
+  } catch (error) {
+    console.error('Error loading requisition issue slips from API:', error)
+  }
+  return []
+}
+
 // Load categories from API and populate MockData.categories
 async function loadCategoriesFromAPI() {
   try {
@@ -2588,6 +2631,7 @@ function renderNotifications(filter = 'all') {
   updateFilterButtons(filter)
 
   listEl.innerHTML = ''
+  listEl.style.padding = '0 4px'
   const unread = (AppState.notifications || []).filter((n) => !n.read).length
   badge.style.display = unread > 0 ? 'flex' : 'none'
   badge.textContent = unread > 9 ? '9+' : unread
@@ -2635,17 +2679,27 @@ function renderNotifications(filter = 'all') {
 
   // Group notifications by type if filter is 'all'
   let groupedNotifications = {}
+  let fullGrouped = {}
   if (filter === 'all') {
-    groupedNotifications = {
+    fullGrouped = {
       error: filteredNotifications.filter((n) => n.type === 'error'),
       warning: filteredNotifications.filter((n) => n.type === 'warning'),
       success: filteredNotifications.filter((n) => n.type === 'success'),
       info: filteredNotifications.filter((n) => n.type === 'info'),
     }
-  } else {
-    // For specific filters, put all in one group
     groupedNotifications = {
+      error: fullGrouped.error.slice(0, 3),
+      warning: fullGrouped.warning.slice(0, 3),
+      success: fullGrouped.success.slice(0, 3),
+      info: fullGrouped.info.slice(0, 3),
+    }
+  } else {
+    // For specific filters, put all in one group, limited to 3
+    fullGrouped = {
       [filter]: filteredNotifications,
+    }
+    groupedNotifications = {
+      [filter]: filteredNotifications.slice(0, 3),
     }
   }
 
@@ -2710,7 +2764,7 @@ function renderNotifications(filter = 'all') {
     sectionHeader.innerHTML = `
             <i data-lucide="${typeIcons[type]}" style="width: 16px; height: 16px; color: ${config.iconColor};"></i>
             <span style="font-size: 12px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px;">${typeLabels[type]}</span>
-            <span style="font-size: 11px; color: #6b7280; margin-left: auto;">${notifications.length}</span>
+            <span style="font-size: 11px; color: #6b7280; margin-left: auto;">${fullGrouped[type] ? fullGrouped[type].length : notifications.length}</span>
         `
     listEl.appendChild(sectionHeader)
 
@@ -2725,7 +2779,7 @@ function renderNotifications(filter = 'all') {
                 align-items: center;
                 gap: 16px;
                 padding: 16px 20px;
-                margin: 0 4px 12px 4px;
+                margin: 0 0 12px 0;
                 background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
                 border: 1px solid ${
                   isUnread ? config.borderColor + '40' : '#e5e7eb'
@@ -2793,6 +2847,7 @@ function renderNotifications(filter = 'all') {
                 <div class="notification-content-enhanced" style="
                   flex: 1;
                   min-width: 0;
+                  overflow: hidden;
                   position: relative;
                   z-index: 1;
                   padding-right: 8px;
@@ -2800,7 +2855,6 @@ function renderNotifications(filter = 'all') {
                   <div style="
                     display: flex;
                     align-items: flex-start;
-                    justify-content: space-between;
                     gap: 8px;
                     margin-bottom: 4px;
                   ">
@@ -2809,7 +2863,7 @@ function renderNotifications(filter = 'all') {
                       font-weight: 600;
                       color: #111827;
                       line-height: 1.4;
-                      word-wrap: break-word;
+                      overflow-wrap: break-word;
                     ">${escapeHtml(n.title)}</div>
                   </div>
                   ${
@@ -2819,7 +2873,7 @@ function renderNotifications(filter = 'all') {
                           color: #6b7280;
                           line-height: 1.5;
                           margin-bottom: 6px;
-                          word-wrap: break-word;
+                          overflow-wrap: break-word;
                         ">${escapeHtml(n.message)}</div>`
                       : ''
                   }
@@ -2844,7 +2898,6 @@ function renderNotifications(filter = 'all') {
                     justify-content: center;
                     gap: 8px;
                     z-index: 2;
-                    margin-left: 4px;
                 ">
                     ${
                       isUnread
@@ -3394,19 +3447,22 @@ function loadPageContent(pageId) {
         ?.addEventListener('change', renderRcpiReport)
       break
     case 'rsmi-reports':
-      renderRsmiReport()
-      document
-        .getElementById('export-rsmi-btn')
-        ?.addEventListener('click', exportRsmiCSV)
-      document
-        .getElementById('rsmi-department-filter')
-        ?.addEventListener('change', renderRsmiReport)
-      document
-        .getElementById('rsmi-date-from')
-        ?.addEventListener('change', renderRsmiReport)
-      document
-        .getElementById('rsmi-date-to')
-        ?.addEventListener('change', renderRsmiReport)
+      loadPurchaseOrdersFromAPI().then(() => {
+        mainContent.innerHTML = generateRsmiReportsPage()
+        renderRsmiReport()
+        document
+          .getElementById('export-rsmi-btn')
+          ?.addEventListener('click', exportRsmiCSV)
+        document
+          .getElementById('rsmi-department-filter')
+          ?.addEventListener('change', renderRsmiReport)
+        document
+          .getElementById('rsmi-date-from')
+          ?.addEventListener('change', renderRsmiReport)
+        document
+          .getElementById('rsmi-date-to')
+          ?.addEventListener('change', renderRsmiReport)
+      })
       break
     // Stock Cards page removed (no event listeners)
     case 'consolidate-monitoring':
@@ -3710,7 +3766,7 @@ function generateDashboardPage() {
           </button>
 
           <!-- Notifications popup (absolute inside header-actions) -->
-          <div id="notifications-menu" style="position:absolute;top:calc(100% + 8px);right:56px;width:380px;display:none;background:#fff;border:1px solid #e5e7eb;border-radius:20px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.05);z-index:1000;overflow:hidden;backdrop-filter:blur(20px);">
+          <div id="notifications-menu" style="position:absolute;top:calc(100% + 8px);right:56px;width:420px;display:none;background:#fff;border:1px solid #e5e7eb;border-radius:20px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.05);z-index:1000;overflow:hidden;backdrop-filter:blur(20px);">
                         <div style="display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid #f1f5f9; background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%); position: relative;">
                             <div style="display: flex; align-items: center; gap: 12px;">
                                 <div style="width: 44px; height: 44px; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); border-radius: 14px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);">
@@ -3770,7 +3826,7 @@ function generateDashboardPage() {
                                 </button>
                             </div>
                         </div>
-                        <div id="notifications-list" style="max-height: 420px; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: #cbd5e1 #f8fafc;">
+                        <div id="notifications-list" style="max-height: 300px; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: #cbd5e1 #f8fafc;">
                             <!-- notifications injected here -->
                         </div>
                         <div style="padding: 16px 24px; border-top: 1px solid #f1f5f9; background: linear-gradient(135deg, #fafbfc 0%, #f1f5f9 100%); display: flex; justify-content: space-between; align-items: center; gap: 12px;">
@@ -7691,7 +7747,13 @@ function generateRsmiReportsPage() {
   const departments = [
     'All',
     ...new Set(
-      (AppState.newRequests || []).map((r) => r.department).filter(Boolean)
+      (AppState.newRequests || [])
+        .concat(
+          AppState.pendingRequests || [],
+          AppState.completedRequests || []
+        )
+        .map((r) => r.department)
+        .filter(Boolean)
     ),
   ]
 
@@ -7923,6 +7985,7 @@ function generateConsolidateMonitoringPage() {
                             <th>Pending</th>
                             <th>Completed</th>
                             <th>Total Amount</th>
+                            <th>Top Items Used</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -8634,6 +8697,12 @@ function renderRsmiReport() {
     ...(AppState.completedRequests || []),
   ]
 
+  // Filter for requests that have items issued (generateRIS or completed)
+  allRequests = allRequests.filter(
+    (r) =>
+      r.generateRIS || ['approved', 'delivered', 'completed'].includes(r.status)
+  )
+
   // Filter requests first
   if (from)
     allRequests = allRequests.filter((r) =>
@@ -8656,8 +8725,9 @@ function renderRsmiReport() {
         itemsIssued.push({
           risNo: r.id,
           centerCode: r.department || '',
-          stockNo: item.id || item.stockNumber || '',
-          description: item.name || item.description || '',
+          stockNo: item.stock_no || item.id || item.stockNumber || '',
+          description:
+            item.item_description || item.name || item.description || '',
           unit: item.unit || item.unitMeasure || '',
           qty: item.quantity || 0,
           unitCost: item.unitCost || item.unitPrice || 0,
@@ -8856,6 +8926,7 @@ function renderConsolidateMonitoring() {
           pending: 0,
           completed: 0,
           amount: 0,
+          items: {}, // Track item usage
         }
       }
       collegeStats[dept].total++
@@ -8864,10 +8935,28 @@ function renderConsolidateMonitoring() {
       if (r.status === 'completed' || r.status === 'approved')
         collegeStats[dept].completed++
       collegeStats[dept].amount += r.totalAmount || 0
+
+      // Track items
+      if (r.item) {
+        const itemName =
+          typeof r.item === 'string'
+            ? r.item
+            : r.item.name || r.item.description || 'Unknown Item'
+        collegeStats[dept].items[itemName] =
+          (collegeStats[dept].items[itemName] || 0) + 1
+      }
     })
 
     const collegeRows = Object.keys(collegeStats).map((dept) => {
       const stats = collegeStats[dept]
+
+      // Get top items (most frequently requested)
+      const topItems = Object.entries(stats.items)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 3)
+        .map(([item, count]) => `${item} (${count})`)
+        .join(', ')
+
       return `
             <tr>
                 <td>${dept}</td>
@@ -8875,13 +8964,17 @@ function renderConsolidateMonitoring() {
                 <td>${stats.pending}</td>
                 <td>${stats.completed}</td>
                 <td>${formatCurrency(stats.amount)}</td>
+                <td>${topItems || 'No items'}</td>
             </tr>
           `
     })
 
     collegeTbody.innerHTML = collegeRows.length
       ? collegeRows.join('')
-      : '<tr><td colspan="5">No data available</td></tr>'
+      : '<tr><td colspan="6">No data available</td></tr>'
+
+    // Store college stats for export
+    window.__consolidationCollegeStats = collegeStats
   }
 
   // Render items requiring attention table
@@ -9083,66 +9176,131 @@ function renderConsolidateChart() {
   __consolidateChartInstance.render()
 }
 
-function renderActivityTimeline() {
+async function renderActivityTimeline() {
   const container = document.getElementById('consolidate-activity-timeline')
   if (!container) return
 
-  // Mock recent activities - in real app, this would come from actual activity logs
-  const activities = [
-    {
-      type: 'stock-in',
-      title: 'New stock received for Office Supplies',
-      time: '2 hours ago',
-      icon: 'package',
-    },
-    {
-      type: 'request',
-      title: 'Purchase request approved for IT Equipment',
-      time: '4 hours ago',
-      icon: 'check-circle',
-    },
-    {
-      type: 'stock-out',
-      title: 'Stock issued for Laboratory Materials',
-      time: '6 hours ago',
-      icon: 'minus-circle',
-    },
-    {
-      type: 'alert',
-      title: 'Low stock alert for Cleaning Supplies',
-      time: '1 day ago',
-      icon: 'alert-triangle',
-    },
-    {
-      type: 'expiration',
-      title: 'Items expiring soon in Medical Supplies',
-      time: '2 days ago',
-      icon: 'clock',
-    },
-  ]
+  try {
+    // Fetch recent activities from API
+    const response = await fetch('/api/activities?pageSize=5')
+    if (!response.ok) throw new Error('Failed to fetch activities')
+    const data = await response.json()
+    const activities = data.data || []
 
-  const activityHtml = activities
-    .map(
-      (activity) => `
-    <div class="activity-item">
-      <div class="activity-icon ${activity.type}">
-        <i data-lucide="${activity.icon}" style="width:16px;height:16px;"></i>
-      </div>
-      <div class="activity-content">
-        <div class="activity-title">${activity.title}</div>
-        <div class="activity-time">${activity.time}</div>
-      </div>
-    </div>
-  `
-    )
-    .join('')
+    // Map API activities to display format
+    const activityItems = activities.map((activity) => {
+      let type = 'activity'
+      let icon = 'activity'
+      let title = activity.description || activity.action || 'Activity logged'
 
-  container.innerHTML = activityHtml
-  createIcons({ icons })
+      // Determine type and icon based on description
+      const desc = (activity.description || '').toLowerCase()
+      if (desc.includes('stock') && desc.includes('in')) {
+        type = 'stock-in'
+        icon = 'package'
+      } else if (desc.includes('stock') && desc.includes('out')) {
+        type = 'stock-out'
+        icon = 'minus-circle'
+      } else if (desc.includes('request') || desc.includes('purchase')) {
+        type = 'request'
+        icon = 'check-circle'
+      } else if (desc.includes('low stock') || desc.includes('alert')) {
+        type = 'alert'
+        icon = 'alert-triangle'
+      } else if (desc.includes('expir')) {
+        type = 'expiration'
+        icon = 'clock'
+      }
+
+      return {
+        type,
+        title,
+        time: timeAgo(activity.created_at),
+        icon,
+      }
+    })
+
+    const activityHtml = activityItems
+      .map(
+        (activity) => `
+      <div class="activity-item">
+        <div class="activity-icon ${activity.type}">
+          <i data-lucide="${activity.icon}" style="width:16px;height:16px;"></i>
+        </div>
+        <div class="activity-content">
+          <div class="activity-title">${escapeHtml(activity.title)}</div>
+          <div class="activity-time">${activity.time}</div>
+        </div>
+      </div>
+    `
+      )
+      .join('')
+
+    container.innerHTML = activityHtml
+    createIcons({ icons })
+  } catch (error) {
+    console.error('Error loading activity timeline:', error)
+    // Fallback to mock data
+    const activities = [
+      {
+        type: 'stock-in',
+        title: 'New stock received for Office Supplies',
+        time: '2 hours ago',
+        icon: 'package',
+      },
+      {
+        type: 'request',
+        title: 'Purchase request approved for IT Equipment',
+        time: '4 hours ago',
+        icon: 'check-circle',
+      },
+      {
+        type: 'stock-out',
+        title: 'Stock issued for Laboratory Materials',
+        time: '6 hours ago',
+        icon: 'minus-circle',
+      },
+      {
+        type: 'alert',
+        title: 'Low stock alert for Cleaning Supplies',
+        time: '1 day ago',
+        icon: 'alert-triangle',
+      },
+      {
+        type: 'expiration',
+        title: 'Items expiring soon in Medical Supplies',
+        time: '2 days ago',
+        icon: 'clock',
+      },
+    ]
+
+    const activityHtml = activities
+      .map(
+        (activity) => `
+      <div class="activity-item">
+        <div class="activity-icon ${activity.type}">
+          <i data-lucide="${activity.icon}" style="width:16px;height:16px;"></i>
+        </div>
+        <div class="activity-content">
+          <div class="activity-title">${activity.title}</div>
+          <div class="activity-time">${activity.time}</div>
+        </div>
+      </div>
+    `
+      )
+      .join('')
+
+    container.innerHTML = activityHtml
+    createIcons({ icons })
+  }
 }
 
 function exportConsolidationCSV() {
-  const rows = [['Metric', 'Value', 'Change']]
+  const rows = [
+    ['Consolidate Monitoring Report'],
+    [],
+    ['Metric', 'Value', 'Change'],
+  ]
   const s = window.__consolidationSummary || {}
 
   const metrics = [
@@ -9157,6 +9315,39 @@ function exportConsolidationCSV() {
   ]
 
   metrics.forEach((metric) => rows.push(metric))
+
+  // Append College/Department Monitoring table
+  const collegeStats = window.__consolidationCollegeStats || {}
+  if (Object.keys(collegeStats).length) {
+    rows.push([]) // blank row separator
+    rows.push([
+      'College / Department',
+      'Total Requests',
+      'Pending',
+      'Completed',
+      'Total Amount',
+      'Top Items Used',
+    ])
+    Object.keys(collegeStats).forEach((dept) => {
+      const stats = collegeStats[dept]
+
+      // Get top items for export
+      const topItems = Object.entries(stats.items || {})
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 3)
+        .map(([item, count]) => `${item} (${count})`)
+        .join(', ')
+
+      rows.push([
+        dept,
+        stats.total || 0,
+        stats.pending || 0,
+        stats.completed || 0,
+        stats.amount || 0,
+        topItems || 'No items',
+      ])
+    })
+  }
 
   // Append Specializations table if any
   const specials = window.__consolidationSpecializations || []
@@ -9173,7 +9364,12 @@ function exportConsolidationCSV() {
     )
   }
 
-  downloadExcel('consolidate-monitoring.xlsx', rows, 'Consolidate Monitoring')
+  downloadExcel('consolidate-monitoring.xlsx', rows, 'Consolidate Monitoring', {
+    hasTitle: true,
+    currencyColumns: [5], // Column E for Total Amount
+    changeColumn: 3, // Column C for Change indicators
+    dateColumns: [3], // Column C for Expiration Date in specializations
+  })
 }
 
 function showStatusDetails(status) {
