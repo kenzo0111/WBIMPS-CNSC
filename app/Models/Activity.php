@@ -166,7 +166,7 @@ class Activity extends SpatieActivity
 
         // If the description already includes subject text (e.g. contains 'of' or numbers) we will use the whole description
         $useFullDesc = false;
-        if (preg_match('/\b(of|#|\d+|unit|units|pdf|pdf\)|\bPO#?\b|REQ-?|ICS|IAR|PAR)\b/i', $desc)) {
+        if (preg_match('/\b(of|#|\d+|unit|units|pdf|pdf\)|\bPO#?\b|REQ-?|\d{4}-\d{2}-\d+|ICS|IAR|PAR)\b/i', $desc)) {
             $useFullDesc = true;
         }
 
@@ -188,7 +188,11 @@ class Activity extends SpatieActivity
                 $subjectPhrase = trim($subjectPhrase);
             }
             // Add 'the' article for readability unless subject looks like an ID
-            $articles = ['#', 'REQ', 'PO', 'ICS', 'IAR', 'PAR'];
+            $articles = ['#', 'PO', 'ICS', 'IAR', 'PAR'];
+            // If the subject is already in the YYYY-MM- format (our new request ID format) don't add 'the'
+            if (preg_match('/^\d{4}-\d{2}/', $subjectPhrase)) {
+                $needsThe = false;
+            }
             $subjectText = $subjectPhrase;
             $needsThe = true;
             foreach ($articles as $a) {

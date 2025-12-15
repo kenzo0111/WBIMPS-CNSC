@@ -39,7 +39,7 @@ return [
 
         'smtp' => [
             'transport' => 'smtp',
-            'scheme' => env('MAIL_SCHEME'),
+            'scheme' => env('MAIL_SCHEME', 'smtp'),
             'url' => env('MAIL_URL'),
             'host' => env('MAIL_HOST', '127.0.0.1'),
             'port' => env('MAIL_PORT', 2525),
@@ -57,9 +57,9 @@ return [
              */
             'stream' => [
                 'ssl' => [
-                    'allow_self_signed' => env('MAIL_ALLOW_SELF_SIGNED', false),
-                    'verify_peer' => env('MAIL_VERIFY_PEER', true),
-                    'verify_peer_name' => env('MAIL_VERIFY_PEER_NAME', true),
+                    'allow_self_signed' => (bool) (env('MAIL_ALLOW_SELF_SIGNED') === 'true' || env('MAIL_ALLOW_SELF_SIGNED') === true),
+                    'verify_peer' => (bool) (env('MAIL_VERIFY_PEER') !== 'false' && env('MAIL_VERIFY_PEER') !== false),
+                    'verify_peer_name' => (bool) (env('MAIL_VERIFY_PEER_NAME') !== 'false' && env('MAIL_VERIFY_PEER_NAME') !== false),
                 ],
             ],
         ],

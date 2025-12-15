@@ -89,7 +89,7 @@ test('can create a purchase request', function () {
 });
 
 test('generates unique request IDs with current year', function () {
-    $currentYear = now()->year;
+    $currentPeriod = now()->format('Y-m');
 
     $response = $this->postJson('/api/purchase-requests', [
         'email' => 'test@example.com',
@@ -100,9 +100,8 @@ test('generates unique request IDs with current year', function () {
     ]);
 
     $response->assertStatus(201);
-
     $requestId = $response->json('request_id');
-    expect($requestId)->toStartWith("REQ-{$currentYear}-");
+    expect($requestId)->toStartWith("{$currentPeriod}-");
 });
 
 test('validates required fields when creating purchase request', function () {
@@ -154,7 +153,7 @@ test('stores total_cost when client sends totalCost explicitly', function () {
 
 test('can update purchase request status by request_id', function () {
     $pr = PurchaseRequest::factory()->create([
-        'request_id' => 'REQ-2025-001',
+        'request_id' => now()->format('Y-m') . '-0001',
         'status' => 'Incoming',
     ]);
 
@@ -168,7 +167,7 @@ test('can update purchase request status by request_id', function () {
         ]);
 
     $this->assertDatabaseHas('purchase_requests', [
-        'request_id' => 'REQ-2025-001',
+        'request_id' => $pr->request_id,
         'status' => 'Approved',
     ]);
 });

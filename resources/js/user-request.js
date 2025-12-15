@@ -717,9 +717,9 @@
       console.error('Error reading local storage', e)
     }
 
-    const y = new Date().getFullYear()
+    const y = new Date().toISOString().slice(0, 7) // YYYY-MM
     const nextNumber = existing.length + 1
-    const requestId = `REQ-${y}-` + String(nextNumber).padStart(3, '0')
+    const requestId = `${y}-` + String(nextNumber).padStart(4, '0')
     const ts = new Date().toISOString()
     const request = Object.assign(
       {},

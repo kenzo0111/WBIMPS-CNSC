@@ -246,7 +246,9 @@ const AppState = {
     {
       id: 'n1',
       title: 'New requisition submitted',
-      message: 'REQ-2025-006 has been submitted for approval',
+      message:
+        new Date().toISOString().slice(0, 7) +
+        '-0006 has been submitted for approval',
       time: '2h ago',
       timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
       read: false,

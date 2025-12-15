@@ -35,7 +35,7 @@ class PurchaseRequestFactory extends Factory
         $first = $items[0] ?? ['quantity' => 1, 'unit_cost' => 0];
 
         return [
-            'request_id' => 'REQ-' . date('Y') . '-' . fake()->unique()->numberBetween(1000, 9999),
+            'request_id' => date('Y-m') . '-' . str_pad((string) fake()->unique()->numberBetween(1, 9999), 4, '0', STR_PAD_LEFT),
             'email' => fake()->safeEmail(),
             'requester' => fake()->name(),
             'department' => fake()->randomElement(['IT', 'HR', 'Finance', 'Operations', 'Admin']),

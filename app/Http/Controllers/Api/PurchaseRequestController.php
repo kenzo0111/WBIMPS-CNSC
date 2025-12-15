@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\PurchaseRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\PurchaseRequestIdGenerator;
 
 /**
  * API Controller for managing Purchase Requests
@@ -65,7 +66,7 @@ class PurchaseRequestController extends Controller
      * Store a newly created purchase request.
      *
      * Validates input data and creates a new purchase request with
-     * a unique request ID in the format: REQ-YYYY-XXX
+     * a unique request ID in the format: YYYY-MM-XXXX (monthly, 4-digit sequence)
      *
      * @return \Illuminate\Http\JsonResponse
      */
@@ -103,33 +104,15 @@ class PurchaseRequestController extends Controller
             $items = array_values(array_filter(array_map('trim', $items)));
         }
 
-        $currentYear = now()->year;
-
-        // Determine the next sequence number for the current year
-        // Database-agnostic approach: fetch all IDs and parse in PHP
-        $existingRequests = DB::table('purchase_requests')
-            ->where('request_id', 'like', "REQ-{$currentYear}-%")
-            ->pluck('request_id');
-
-        $maxNum = 0;
-        foreach ($existingRequests as $requestId) {
-            // Extract the numeric suffix from "REQ-YYYY-NNN"
-            if (preg_match('/REQ-\d{4}-(\d+)$/', $requestId, $matches)) {
-                $num = (int) $matches[1];
-                if ($num > $maxNum) {
-                    $maxNum = $num;
-                }
-            }
-        }
-
-        $nextSeq = $maxNum + 1;
+        // Use centralized generator for request IDs
+        $idGenerator = new PurchaseRequestIdGenerator();
 
         $pr = null;
         $attempts = 0;
         $maxAttempts = 5;
 
         while (is_null($pr) && $attempts < $maxAttempts) {
-            $requestId = sprintf('REQ-%d-%03d', $currentYear, $nextSeq);
+            $requestId = $idGenerator->nextBaseForPeriod();
             try {
                 $pr = PurchaseRequest::create([
                     'request_id' => $requestId,
@@ -162,10 +145,9 @@ class PurchaseRequestController extends Controller
                     ],
                 ]);
             } catch (\Illuminate\Database\QueryException $e) {
-                // If there's a duplicate key for request_id, bump the sequence and retry.
+                // If there's a duplicate key for request_id, retry (next loop will compute a fresh base)
                 $sqlState = $e->getCode();
                 if ($sqlState === '23000' || strpos($e->getMessage(), 'Duplicate') !== false) {
-                    $nextSeq++;
                     $attempts++;
 
                     continue;
@@ -186,45 +168,28 @@ class PurchaseRequestController extends Controller
             $admins = \App\Models\User::whereHas('roles', function ($q) {
                 $q->whereIn('name', ['System Admin', 'Administrator']);
             })->pluck('email')->filter()->toArray();
-            // send to requester
-            \Illuminate\Support\Facades\Mail::to($pr->email)->send(new \App\Mail\PurchaseRequestSubmitted($pr));
+
+            \Illuminate\Support\Facades\Log::info('Attempting to send purchase request submitted email', ['requester' => $pr->email, 'admins' => $admins]);
+
+            // send to requester if an email was provided
+            if (filled($pr->email)) {
+                \Illuminate\Support\Facades\Mail::to($pr->email)->send(new \App\Mail\PurchaseRequestSubmitted($pr));
+                \Illuminate\Support\Facades\Log::info('Purchase request submitted email sent to requester', ['to' => $pr->email, 'request_id' => $pr->request_id ?? $pr->id]);
+            } else {
+                \Illuminate\Support\Facades\Log::warning('No requester email provided; skipping requester notification', ['request_id' => $pr->request_id ?? $pr->id]);
+            }
+
             // send to admins (if any)
             if (!empty($admins)) {
                 \Illuminate\Support\Facades\Mail::to($admins)->send(new \App\Mail\PurchaseRequestSubmitted($pr));
+                \Illuminate\Support\Facades\Log::info('Purchase request submitted email sent to admins', ['admins' => $admins, 'request_id' => $pr->request_id ?? $pr->id]);
             }
+
+            // consider email sent if at least one send was attempted (and no exception was thrown)
             $emailSent = true;
         } catch (\Exception $e) {
-            // If the failure looks like an OpenSSL certificate verification error, try a single insecure fallback
             \Illuminate\Support\Facades\Log::error('Failed sending purchase request submitted email: ' . $e->getMessage());
-            $msg = $e->getMessage();
-            if (stripos($msg, 'certificate verify failed') !== false || stripos($msg, 'stream_socket_enable_crypto') !== false || stripos($msg, 'STARTTLS') !== false) {
-                try {
-                    \Illuminate\Support\Facades\Log::warning('Attempting insecure SMTP retry (verify_peer=false) due to TLS certificate verification failure');
-                    // set runtime stream options for smtp mailer to bypass peer verification (development only)
-                    config([
-                        'mail.mailers.smtp.stream' => [
-                            'ssl' => [
-                                'allow_self_signed' => true,
-                                'verify_peer' => false,
-                                'verify_peer_name' => false,
-                            ],
-                        ]
-                    ]);
-
-                    // retry send once
-                    \Illuminate\Support\Facades\Mail::to($pr->email)->send(new \App\Mail\PurchaseRequestSubmitted($pr));
-                    if (!empty($admins)) {
-                        \Illuminate\Support\Facades\Mail::to($admins)->send(new \App\Mail\PurchaseRequestSubmitted($pr));
-                    }
-                    $emailSent = true;
-                    \Illuminate\Support\Facades\Log::warning('Insecure SMTP retry succeeded (email sent)');
-                } catch (\Exception $e2) {
-                    \Illuminate\Support\Facades\Log::error('Insecure SMTP retry failed: ' . $e2->getMessage());
-                    $emailSent = false;
-                }
-            } else {
-                $emailSent = false;
-            }
+            $emailSent = false;
         }
 
         return response()->json(array_merge($pr->toArray(), ['email_sent' => $emailSent]), 201);
@@ -233,7 +198,7 @@ class PurchaseRequestController extends Controller
     /**
      * Update the status of a purchase request.
      *
-     * Accepts either the numeric DB id or the request_id string (e.g., REQ-2025-007).
+     * Accepts either the numeric DB id or the request_id string (e.g., 2025-12-0001).
      * Logs status changes to the activity table for audit trail.
      *
      * @param  string|int  $id  Purchase request ID (numeric or request_id string)
@@ -245,7 +210,7 @@ class PurchaseRequestController extends Controller
             'status' => 'required|string',
         ]);
 
-        // Try to locate by request_id first (eg. REQ-2025-007), then by numeric id
+        // Try to locate by request_id first (eg. 2025-12-0001), then by numeric id
         $pr = PurchaseRequest::where('request_id', $id)->first();
         if (!$pr && is_numeric($id)) {
             $pr = PurchaseRequest::find((int) $id);
@@ -295,23 +260,9 @@ class PurchaseRequestController extends Controller
             'items.*.total_cost' => 'nullable|numeric|min:0',
         ]);
 
-        // Generate a single request_id for the whole batch (REQ-YYYY-XXX)
-        $currentYear = now()->year;
-        $existingRequests = \Illuminate\Support\Facades\DB::table('purchase_requests')
-            ->where('request_id', 'like', "REQ-{$currentYear}-%")
-            ->pluck('request_id');
-
-        $maxNum = 0;
-        foreach ($existingRequests as $requestId) {
-            if (preg_match('/REQ-\d{4}-(\d+)$/', $requestId, $matches)) {
-                $num = (int) $matches[1];
-                if ($num > $maxNum)
-                    $maxNum = $num;
-            }
-        }
-
-        $nextSeq = $maxNum + 1;
-        $requestIdBase = sprintf('REQ-%d-%03d', $currentYear, $nextSeq);
+        // Generate a single request_id for the whole batch using the generator (YYYY-MM-0001)
+        $idGenerator = new PurchaseRequestIdGenerator();
+        $requestIdBase = $idGenerator->nextBaseForPeriod();
 
         $createdRecords = [];
         DB::transaction(function () use ($data, $requestIdBase, &$createdRecords) {
@@ -357,41 +308,25 @@ class PurchaseRequestController extends Controller
                     $q->whereIn('name', ['System Admin', 'Administrator']);
                 })->pluck('email')->filter()->toArray();
 
+                \Illuminate\Support\Facades\Log::info('Attempting to send batch purchase request submitted email', ['requester' => $createdRecords[0]->email, 'admins' => $admins, 'request_id' => $requestIdBase]);
+
                 // Send email using the first record, but modify mail to handle batch
-                \Illuminate\Support\Facades\Mail::to($createdRecords[0]->email)->send(new \App\Mail\PurchaseRequestSubmitted($createdRecords[0], $createdRecords));
-                if (!empty($admins)) {
-                    \Illuminate\Support\Facades\Mail::to($admins)->send(new \App\Mail\PurchaseRequestSubmitted($createdRecords[0], $createdRecords));
+                if (filled($createdRecords[0]->email)) {
+                    \Illuminate\Support\Facades\Mail::to($createdRecords[0]->email)->send(new \App\Mail\PurchaseRequestSubmitted($createdRecords[0], collect($createdRecords)));
+                    \Illuminate\Support\Facades\Log::info('Batch purchase request email sent to requester', ['to' => $createdRecords[0]->email, 'request_id' => $requestIdBase]);
+                } else {
+                    \Illuminate\Support\Facades\Log::warning('No requester email for batch; skipping requester notification', ['request_id' => $requestIdBase]);
                 }
+
+                if (!empty($admins)) {
+                    \Illuminate\Support\Facades\Mail::to($admins)->send(new \App\Mail\PurchaseRequestSubmitted($createdRecords[0], collect($createdRecords)));
+                    \Illuminate\Support\Facades\Log::info('Batch purchase request email sent to admins', ['admins' => $admins, 'request_id' => $requestIdBase]);
+                }
+
                 $emailSent = true;
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error('Failed sending batch purchase request email: ' . $e->getMessage());
-                $msg = $e->getMessage() ?: '';
-                if (stripos($msg, 'certificate verify failed') !== false || stripos($msg, 'stream_socket_enable_crypto') !== false || stripos($msg, 'STARTTLS') !== false) {
-                    try {
-                        \Illuminate\Support\Facades\Log::warning('Attempting insecure SMTP retry (verify_peer=false) due to TLS certificate verification failure');
-                        config([
-                            'mail.mailers.smtp.stream' => [
-                                'ssl' => [
-                                    'allow_self_signed' => true,
-                                    'verify_peer' => false,
-                                    'verify_peer_name' => false,
-                                ],
-                            ],
-                        ]);
-
-                        \Illuminate\Support\Facades\Mail::to($createdRecords[0]->email)->send(new \App\Mail\PurchaseRequestSubmitted($createdRecords[0], $createdRecords));
-                        if (!empty($admins)) {
-                            \Illuminate\Support\Facades\Mail::to($admins)->send(new \App\Mail\PurchaseRequestSubmitted($createdRecords[0], $createdRecords));
-                        }
-                        $emailSent = true;
-                        \Illuminate\Support\Facades\Log::warning('Insecure SMTP retry succeeded (email sent)');
-                    } catch (\Exception $e2) {
-                        \Illuminate\Support\Facades\Log::error('Insecure SMTP retry failed: ' . $e2->getMessage());
-                        $emailSent = false;
-                    }
-                } else {
-                    $emailSent = false;
-                }
+                $emailSent = false;
             }
         }
 
