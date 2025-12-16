@@ -6934,7 +6934,6 @@ function generatePendingApprovalPage() {
                             <th scope="col">Supplier</th>
                             <th scope="col">Delivery Date</th>
                             <th scope="col">Total Amount</th>
-                            <th scope="col">Priority</th>
                             <th scope="col">Status</th>
                             ${
                               can('manage requests')
@@ -6962,18 +6961,6 @@ function generatePendingApprovalPage() {
                                     <td>${formatCurrency(
                                       request.totalAmount || 0
                                     )}</td>
-                                    <td>
-                                        <span class="${getBadgeClass(
-                                          request.priority || 'low',
-                                          'priority'
-                                        )}">
-                                            ${
-                                              request.priority
-                                                ? capitalize(request.priority)
-                                                : 'Low'
-                                            }
-                                        </span>
-                                    </td>
                                     <td>
                                         <span class="${getBadgeClass(
                                           request.status || 'pending'
@@ -10642,10 +10629,11 @@ function openViewForms(triggerEl, requestId) {
 
   // Always show PO; hide Purchase Request from Procurement Panel when appropriate
   formLinks += `<a class="chooser-link" href="${poHref}" target="_blank" rel="noopener">Purchase Order (PO)</a>\n`
-  // Do not show Purchase Request (PR) on the Procurement Panel (new-request) or Completed Requests view
+  // Do not show Purchase Request (PR) on Procurement Panel (new-request), Completed Requests view, or Pending Approval
   if (
     AppState.currentPage !== 'new-request' &&
-    AppState.currentPage !== 'completed-request'
+    AppState.currentPage !== 'completed-request' &&
+    AppState.currentPage !== 'pending-approval'
   ) {
     formLinks += `<a class="chooser-link" href="${prHref}" target="_blank" rel="noopener">Purchase Request (PR)</a>\n`
   }
