@@ -6653,7 +6653,7 @@ function generateNewRequestPage() {
                 <header>
                     <h1 class="page-title">
                         <i data-lucide="file-plus" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>
-                        Procurement Panel
+                        New Delivery Goods
                     </h1>
                     <p class="page-subtitle">Create and manage new delivery goods</p>
                 </header>
@@ -6662,7 +6662,7 @@ function generateNewRequestPage() {
                     ? `
                 <button class="btn btn-primary" onclick="openPurchaseOrderModal('create')">
                   <i data-lucide="plus" class="icon"></i>
-                  Newly delivered goods
+                  Procurement Panel
                 </button>
                 `
                     : ''
@@ -11614,7 +11614,7 @@ function renderPurchaseOrderWizardStep(requestData) {
                 : `
                 <button class="btn btn-primary" onclick="finalizePurchaseOrderCreation()" style="padding: 10px 24px; font-weight: 500; border-radius: 8px; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); box-shadow: 0 4px 6px rgba(22, 163, 74, 0.25); transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
                     <i data-lucide="check" style="width: 16px; height: 16px;"></i>
-                    Create Purchase Order
+                    Submit Procument Docs
                 </button>
             `
             }

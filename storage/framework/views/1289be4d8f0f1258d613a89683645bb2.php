@@ -158,7 +158,7 @@
                         <div class="nav-item" data-page="new-request">
                             <button class="nav-button">
                                 <i data-lucide="file-plus-2" class="submenu-icon"></i>
-                                <span>Procurement Panel</span>
+                                <span>New Delivery Goods</span>
                             </button>
                         </div>
                         <div class="nav-item" data-page="pending-approval">
