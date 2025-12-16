@@ -244,15 +244,15 @@
             <tr>
                 <td>Printed Name :</td>
                 <td colspan="2">{{ $stockOut->issued_to ?? '' }}</td>
-                <td colspan="2"></td>
+                <td colspan="2">{{ $stockOut->approved_by ?? '' }}</td>
                 <td>{{ $stockOut->issued_by ?? '' }}</td>
                 <td colspan="2">{{ $stockOut->issued_to ?? '' }}</td>
             </tr>
             <tr>
                 <td>Designation :</td>
-                <td colspan="2"></td>
-                <td colspan="2"></td>
-                <td></td>
+                <td colspan="2">{{ $stockOut->issued_to_designation ?? '' }}</td>
+                <td colspan="2">{{ $stockOut->approved_by_designation ?? '' }}</td>
+                <td>{{ $stockOut->issued_by_designation ?? '' }}</td>
                 <td colspan="2"></td>
             </tr>
             <tr>

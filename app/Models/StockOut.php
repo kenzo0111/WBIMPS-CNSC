@@ -40,7 +40,11 @@ class StockOut extends Model
         'total_cost',
         'department',
         'issued_to',
+        'issued_to_designation',
         'issued_by',
+        'issued_by_designation',
+        'approved_by',
+        'approved_by_designation',
         'fund_cluster',
         'responsibility_center_code',
     ];

@@ -26,6 +26,7 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasRoles {
         HasRoles::hasRole as traitHasRole;
+        HasRoles::hasPermissionTo as traitHasPermissionTo;
     }
 
     /**
@@ -115,6 +116,27 @@ class User extends Authenticatable
 
         // spatie exposes hasPermissionTo — check both provided name and slug
         return $this->hasPermissionTo($permission) || $this->hasPermissionTo($slug);
+    }
+
+    /**
+     * Override Spatie's hasPermissionTo to treat the special
+     * 'manage everything' permission as a wildcard that grants
+     * the bearer every permission implicitly.
+     *
+     * @param string|\Spatie\Permission\Models\Permission $permission
+     * @param string|null $guardName
+     * @return bool
+     */
+    public function hasPermissionTo($permission, $guardName = null): bool
+    {
+        // If user has 'manage everything' via any grant, allow everything
+        $all = $this->getAllPermissions()->pluck('name')->map(fn($n) => strtolower($n))->toArray();
+        if (in_array('manage everything', $all, true)) {
+            return true;
+        }
+
+        // Fall back to trait behavior
+        return $this->traitHasPermissionTo($permission, $guardName);
     }
 
     protected function slugify(string $value): string

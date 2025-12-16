@@ -8,7 +8,8 @@ return [
     */
     'models' => [
         'permission' => Spatie\Permission\Models\Permission::class,
-        'role' => Spatie\Permission\Models\Role::class,
+        // Use our application Role extension so we can add custom behavior (e.g. wildcard perms)
+        'role' => App\Models\Role::class,
     ],
 
     'table_names' => [

@@ -17,6 +17,8 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::get('/activities', [ActivityController::class, 'index']);
     Route::get('/activities/{id}', [ActivityController::class, 'show']);
     Route::post('/activities', [ActivityController::class, 'store']);
+    // Search endpoint (multi-resource suggestions)
+    Route::get('/search', [App\Http\Controllers\Api\SearchController::class, 'index']);
     Route::get('/activities', [ActivityController::class, 'index']);
     Route::get('/activities/{id}', [ActivityController::class, 'show']);
     Route::post('/activities', [ActivityController::class, 'store']);

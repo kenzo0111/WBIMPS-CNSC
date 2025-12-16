@@ -158,7 +158,11 @@ test('can create a stock out transaction', function () {
         'unit_cost' => 100.00,
         'department' => 'IT Department',
         'issued_to' => 'Jane Doe',
+        'issued_to_designation' => 'Staff',
         'issued_by' => $this->user->name,
+        'issued_by_designation' => 'Storekeeper',
+        'approved_by' => 'John Approver',
+        'approved_by_designation' => 'Head of Office',
         'purpose' => 'Office use',
         'date_issued' => now()->format('Y-m-d'),
     ];
@@ -173,9 +177,45 @@ test('can create a stock out transaction', function () {
             ],
         ]);
 
+    // Download the generated RIS PDF for this stock out (smoke-check that it returns 200)
+    $createdId = $response->json('data.id');
+    $pdfResponse = $this->get("/stock-out/{$createdId}/pdf");
+    $pdfResponse->assertStatus(200);
+
+    // Render the RIS view directly and assert it contains the approver name (ensures data is passed to the template)
+    $stockOut = \App\Models\StockOut::find($createdId);
+    $risData = (object) [
+        'ris_no' => $stockOut->issue_id,
+        'entity_name' => 'Camarines Norte State College',
+        'fund_cluster' => $stockOut->fund_cluster ?? '',
+        'division' => $stockOut->department ?? '',
+        'responsibility_center_code' => $stockOut->responsibility_center_code ?? '',
+        'purpose' => $stockOut->purpose ?? '',
+        'stock_available' => true,
+        'items' => [],
+        'requested_by_name' => $stockOut->issued_to ?? '',
+        'requested_by_designation' => $stockOut->issued_to_designation ?? '',
+        'requested_by_date' => $stockOut->date_issued ? \Carbon\Carbon::parse($stockOut->date_issued) : null,
+        'approved_by_name' => $stockOut->approved_by ?? '',
+        'approved_by_designation' => $stockOut->approved_by_designation ?? '',
+        'approved_by_date' => $stockOut->approved_by_date ? \Carbon\Carbon::parse($stockOut->approved_by_date) : null,
+        'issued_by_name' => $stockOut->issued_by ?? '',
+        'issued_by_designation' => $stockOut->issued_by_designation ?? '',
+        'issued_by_date' => $stockOut->date_issued ? \Carbon\Carbon::parse($stockOut->date_issued) : null,
+        'received_by_date' => $stockOut->date_issued ? \Carbon\Carbon::parse($stockOut->date_issued) : null,
+    ];
+
+    $html = view('pdf.requisition_issue_slips_pdf', ['ris' => $risData])->render();
+    $this->assertStringContainsString('John Approver', $html);
+
     $this->assertDatabaseHas('stock_out', [
         'transaction_id' => 'SO-2025-001',
         'sku' => 'SKU-12345',
+        'issued_to' => 'Jane Doe',
+        'issued_to_designation' => 'Staff',
+        'issued_by' => $this->user->name,
+        'issued_by_designation' => 'Storekeeper',
+        'approved_by' => 'John Approver',
     ]);
 });
 

@@ -141,3 +141,28 @@ test('each role receives correct permissions and users assigned those roles have
         }
     }
 });
+
+// New test: a role that has only 'manage everything' should implicitly have all permissions
+test('a role with only manage everything implies all permissions', function () {
+    // create a fresh Role and Permission set using our App Role model so custom behavior is present
+    $role = \App\Models\Role::firstOrCreate(['name' => 'Wildcard Role', 'guard_name' => 'web']);
+    // ensure only the universal permission is attached to this role
+    $manageEverything = Permission::firstOrCreate(['name' => 'manage everything', 'guard_name' => 'web']);
+    $role->syncPermissions([$manageEverything]);
+
+    // sanity: role has exactly one permission attached
+    expect($role->permissions->pluck('name')->toArray())->toEqual(['manage everything']);
+
+    // the role should report it has other permissions implicitly
+    expect($role->hasPermissionTo('create requests'))->toBeTrue();
+    expect($role->hasPermissionTo('manage supplies'))->toBeTrue();
+
+    // a user assigned this role should also see implicit permissions
+    $u = User::factory()->create();
+    $u->assignRole($role->name);
+    app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+    $u->refresh();
+
+    expect($u->hasPermissionTo('create requests'))->toBeTrue();
+    expect($u->hasPermissionTo('manage supplies'))->toBeTrue();
+});

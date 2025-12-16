@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
         // Ensure permissions and roles are created before any user-role assignment
         $this->call([
             \Database\Seeders\PermissionSeeder::class,
+            \Database\Seeders\ManagementSeeder::class,
             \Database\Seeders\CategorySeeder::class,
             \Database\Seeders\ItemSeeder::class,
             \Database\Seeders\SupplierSeeder::class,

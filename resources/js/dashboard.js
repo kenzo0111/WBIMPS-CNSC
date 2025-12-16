@@ -1063,12 +1063,33 @@ async function saveStockOutToAPI(stockOutRecord) {
         department: stockOutRecord.department || null,
         // recipient removed; use issued_to consistently
         issued_to: stockOutRecord.issuedTo || stockOutRecord.issued_to || null,
+        issued_to_designation:
+          stockOutRecord.issuedToDesignation ||
+          stockOutRecord.issued_to_designation ||
+          null,
         issued_by: stockOutRecord.issuedBy || stockOutRecord.issued_by || null,
+        issued_by_designation:
+          stockOutRecord.issuedByDesignation ||
+          stockOutRecord.issued_by_designation ||
+          null,
+        approved_by:
+          stockOutRecord.approvedBy || stockOutRecord.approved_by || null,
+        approved_by_designation:
+          stockOutRecord.approvedByDesignation ||
+          stockOutRecord.approved_by_designation ||
+          null,
         purpose: stockOutRecord.purpose,
-        date_issued: stockOutRecord.dateIssued,
-        fund_cluster: stockOutRecord.fundCluster || null,
+        date_issued:
+          stockOutRecord.dateIssued ||
+          stockOutRecord.date_issued ||
+          stockOutRecord.date ||
+          null,
+        fund_cluster:
+          stockOutRecord.fundCluster || stockOutRecord.fund_cluster || null,
         responsibility_center_code:
-          stockOutRecord.responsibilityCenterCode || null,
+          stockOutRecord.responsibilityCenterCode ||
+          stockOutRecord.responsibility_center_code ||
+          null,
       }),
     })
 
@@ -1106,8 +1127,22 @@ async function saveStockOutToAPI(stockOutRecord) {
       // server may provide issued_to or recipient for the target user
       normalized.issuedTo =
         serverRecord.issued_to || serverRecord.issuedTo || ''
+      normalized.issuedToDesignation =
+        serverRecord.issued_to_designation ||
+        serverRecord.issuedToDesignation ||
+        ''
       normalized.issuedBy =
         serverRecord.issued_by || serverRecord.issuedBy || ''
+      normalized.issuedByDesignation =
+        serverRecord.issued_by_designation ||
+        serverRecord.issuedByDesignation ||
+        ''
+      normalized.approvedBy =
+        serverRecord.approved_by || serverRecord.approvedBy || ''
+      normalized.approvedByDesignation =
+        serverRecord.approved_by_designation ||
+        serverRecord.approvedByDesignation ||
+        ''
 
       if (method === 'POST') {
         stockOutData.push(normalized)
@@ -2372,6 +2407,9 @@ function can(permissionName) {
     if (!AppState.currentUser) return false
     if (AppState.currentUser.is_admin) return true
     const perms = AppState.currentUser.permissionNames || []
+    // Support the special wildcard permission 'manage everything' — if the user has it,
+    // they implicitly have every permission in the system.
+    if (perms.includes('manage everything')) return true
     return perms.includes(permissionName)
   } catch (e) {
     return false
@@ -15382,6 +15420,508 @@ function initializePageEvents(pageId) {
     case 'items':
       initializeItemsPageEvents()
       break
+    case 'dashboard':
+      // Initialize header search with dropdown suggestions
+      ;(function () {
+        const headerSearch = document.getElementById('header-search')
+        if (!headerSearch) return
+
+        // Remove previous handlers if re-initialized
+        try {
+          if (headerSearch._headerSearchHandler)
+            headerSearch.removeEventListener(
+              'keydown',
+              headerSearch._headerSearchHandler
+            )
+          if (headerSearch._headerInputHandler)
+            headerSearch.removeEventListener(
+              'input',
+              headerSearch._headerInputHandler
+            )
+          if (headerSearch._headerFocusHandler)
+            headerSearch.removeEventListener(
+              'focus',
+              headerSearch._headerFocusHandler
+            )
+        } catch (e) {}
+
+        // Create or reuse dropdown container
+        let dropdown = document.getElementById('header-search-dropdown')
+        if (!dropdown) {
+          dropdown = document.createElement('div')
+          dropdown.id = 'header-search-dropdown'
+          dropdown.setAttribute('role', 'listbox')
+          dropdown.style.position = 'absolute'
+          dropdown.style.zIndex = '2000'
+          dropdown.style.display = 'none'
+          dropdown.style.background = '#fff'
+          dropdown.style.border = '1px solid rgba(0,0,0,0.08)'
+          dropdown.style.boxShadow = '0 8px 24px rgba(2,6,23,0.08)'
+          dropdown.style.borderRadius = '8px'
+          dropdown.style.maxHeight = '320px'
+          dropdown.style.overflowY = 'auto'
+          dropdown.style.minWidth = '220px'
+          dropdown.style.padding = '6px'
+          document.body.appendChild(dropdown)
+        }
+
+        // inject small stylesheet for suggestion items if not already added
+        if (!document.getElementById('header-search-dropdown-style')) {
+          const s = document.createElement('style')
+          s.id = 'header-search-dropdown-style'
+          s.textContent = `
+            #header-search-dropdown .hs-item { padding:8px 10px; border-radius:6px; cursor:pointer; font-size:14px; color:#0f172a; }
+            #header-search-dropdown .hs-item[aria-selected="true"], #header-search-dropdown .hs-item:hover { background:#f3f4f6; }
+            #header-search-dropdown .hs-type { font-size:11px; color:#6b7280; margin-left:8px; }
+            #header-search-dropdown .hs-highlight { font-weight:700; color:#111827; }
+          `
+          document.head.appendChild(s)
+        }
+
+        // utility: position dropdown under the input
+        function positionDropdown() {
+          try {
+            const rect = headerSearch.getBoundingClientRect()
+            dropdown.style.width = rect.width + 'px'
+            const top = window.scrollY + rect.bottom + 8
+            const left = window.scrollX + rect.left
+            dropdown.style.top = top + 'px'
+            dropdown.style.left = left + 'px'
+          } catch (e) {}
+        }
+
+        // debounce helper
+        function debounce(fn, wait) {
+          let t = null
+          return function (...args) {
+            clearTimeout(t)
+            t = setTimeout(() => fn.apply(this, args), wait)
+          }
+        }
+
+        // highlight matched substring
+        function highlightMatch(text, q) {
+          if (!q) return escapeHtml(text)
+          const esc = q.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')
+          const re = new RegExp(esc, 'ig')
+          return escapeHtml(text).replace(
+            re,
+            (m) => `<span class="hs-highlight">${escapeHtml(m)}</span>`
+          )
+        }
+
+        // Build suggestion list from MockData.Items (fallback if API not desired)
+        function buildSuggestions(q) {
+          if (!q || String(q).trim().length < 1) return []
+          const term = String(q).toLowerCase()
+
+          const suggestions = []
+
+          // Items (match name or sku/id)
+          const items = (MockData.Items || [])
+            .filter((it) => {
+              const name = (it.name || '').toLowerCase()
+              const sku = String(it.id || it.sku || '').toLowerCase()
+              return name.includes(term) || sku.includes(term)
+            })
+            .slice(0, 6)
+            .map((it) => ({
+              type: 'item',
+              id: it.id,
+              label: it.name || String(it.id),
+              meta: String(it.id || it.sku || ''),
+              data: it,
+            }))
+
+          suggestions.push(...items)
+
+          // Suppliers
+          const suppliersSrc =
+            AppState.suppliers ||
+            (window.MockData && window.MockData.suppliers) ||
+            []
+          const suppliers = suppliersSrc
+            .filter((s) =>
+              ((s.name || '') + ' ' + (s.email || '') + ' ' + (s.tin || ''))
+                .toLowerCase()
+                .includes(term)
+            )
+            .slice(0, 3)
+            .map((s) => ({
+              type: 'supplier',
+              id: s.id,
+              label: s.name || s.email || 'Supplier',
+              meta: s.address || s.tin || '',
+              data: s,
+            }))
+
+          suggestions.push(...suppliers)
+
+          // Requests (new/pending/completed)
+          const reqSrc = [
+            ...(AppState.newRequests || []),
+            ...(AppState.pendingRequests || []),
+            ...(AppState.completedRequests || []),
+          ]
+          const reqMatches = reqSrc
+            .filter((r) =>
+              (
+                String(r.id || '') +
+                ' ' +
+                (r.poNumber || '') +
+                ' ' +
+                (r.supplier || '') +
+                ' ' +
+                (r.status || '')
+              )
+                .toLowerCase()
+                .includes(term)
+            )
+            .slice(0, 3)
+            .map((r) => ({
+              type: 'request',
+              id: r.id,
+              label: r.poNumber || String(r.id),
+              meta: r.status || r.supplier || '',
+              data: r,
+            }))
+
+          suggestions.push(...reqMatches)
+
+          // Activities (user logs / generated activities)
+          const activitySrc =
+            (window.MockData && window.MockData.userLogs) ||
+            AppState.userLogs ||
+            []
+          const acts = activitySrc
+            .filter((a) =>
+              (
+                (a.action || a.message || '') +
+                ' ' +
+                ((a.actor && (a.actor.name || a.actor.email)) || '')
+              )
+                .toLowerCase()
+                .includes(term)
+            )
+            .slice(0, 3)
+            .map((a) => ({
+              type: 'activity',
+              id: a.id || '',
+              label: a.action || a.message || '',
+              meta: (a.actor && (a.actor.name || a.actor.email)) || '',
+              data: a,
+            }))
+
+          suggestions.push(...acts)
+
+          // Deduplicate and limit to 10
+          const seen = new Set()
+          const final = []
+          for (const s of suggestions) {
+            const key = `${s.type}:${s.id || s.label}`
+            if (seen.has(key)) continue
+            seen.add(key)
+            final.push(s)
+            if (final.length >= 10) break
+          }
+
+          return final
+        }
+
+        let activeIndex = -1
+        let currentSuggestions = []
+
+        function renderSuggestions(list, q) {
+          currentSuggestions = list || []
+          activeIndex = -1
+          if (!list || list.length === 0) {
+            dropdown.style.display = 'none'
+            dropdown.innerHTML = ''
+            return
+          }
+
+          const typeIcons = {
+            item: 'package',
+            supplier: 'users',
+            request: 'file-text',
+            activity: 'activity',
+          }
+
+          dropdown.innerHTML = list
+            .map((s, i) => {
+              const iconName = typeIcons[s.type] || 'search'
+              const subtitle = s.meta
+                ? `<div style="font-size:12px;color:#6b7280;margin-top:4px;">${escapeHtml(s.meta)}</div>`
+                : ''
+              return `
+                <div class="hs-item" role="option" data-index="${i}" data-type="${escapeHtml(s.type)}" data-id="${escapeHtml(s.id)}">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                      <i data-lucide="${iconName}" style="width:18px;height:18px;color:inherit;opacity:0.9"></i>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                        <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:360px;"><span class="hs-label">${highlightMatch(s.label, q)}</span></div>
+                        <div style="opacity:0.6;font-size:12px;">${escapeHtml(String(s.type || '').toUpperCase())}</div>
+                      </div>
+                      ${subtitle}
+                    </div>
+                  </div>
+                </div>
+              `
+            })
+            .join('')
+
+          // init lucide icons inside dropdown
+          if (window.lucide) setTimeout(() => createIcons({ icons }), 10)
+
+          // add click handlers
+          Array.from(dropdown.querySelectorAll('.hs-item')).forEach((el) => {
+            el.addEventListener('click', function (ev) {
+              try {
+                const idx = Number(el.getAttribute('data-index'))
+                const sel = currentSuggestions[idx]
+                if (!sel) return
+                selectSuggestion(sel)
+              } catch (e) {
+                console.warn('Suggestion click failed', e)
+              }
+            })
+          })
+
+          positionDropdown()
+          dropdown.style.display = 'block'
+        }
+
+        function hideDropdown() {
+          dropdown.style.display = 'none'
+          activeIndex = -1
+          currentSuggestions = []
+        }
+
+        function setActive(idx) {
+          const nodes = dropdown.querySelectorAll('.hs-item')
+          if (!nodes || !nodes.length) return
+          if (activeIndex >= 0 && nodes[activeIndex])
+            nodes[activeIndex].setAttribute('aria-selected', 'false')
+          activeIndex = Math.max(-1, Math.min(idx, nodes.length - 1))
+          if (activeIndex >= 0 && nodes[activeIndex])
+            nodes[activeIndex].setAttribute('aria-selected', 'true')
+          // ensure visible
+          const activeEl = nodes[activeIndex]
+          if (activeEl) activeEl.scrollIntoView({ block: 'nearest' })
+        }
+
+        function selectSuggestion(s) {
+          const q = s.label || s.meta || ''
+          headerSearch.value = q
+          hideDropdown()
+
+          // Type-specific handling
+          if (s.type === 'item') {
+            // Show item detail popup when available
+            const it =
+              s.data ||
+              (MockData.Items || []).find((i) => String(i.id) === String(s.id))
+            if (it) {
+              const qty =
+                typeof it.quantity === 'number'
+                  ? it.quantity
+                  : it.currentStock || 0
+              const threshold = AppState.lowStockThreshold || 10
+              const isLow = qty <= threshold
+              try {
+                showItemDetailPopup(it.name || q, qty, isLow, threshold)
+              } catch (e) {
+                // fallback: navigate to items list with search
+                AppState.ItemSearchTerm = q
+                AppState.currentItemsPage = 1
+                navigateToPage('items')
+                setTimeout(() => {
+                  const itemInput = document.getElementById('Item-search')
+                  if (itemInput) {
+                    itemInput.value = q
+                    itemInput.focus()
+                    updateItemsTable()
+                  }
+                }, 120)
+              }
+              return
+            }
+          }
+
+          if (s.type === 'supplier') {
+            // navigate to suppliers page and open supplier modal view
+            navigateToPage('suppliers')
+            setTimeout(() => {
+              try {
+                openSupplierModal('view', s.id)
+              } catch (e) {
+                // fallback: just focus suppliers table
+                const body = document.getElementById('suppliers-table-body')
+                if (body) body.scrollIntoView()
+              }
+            }, 220)
+            return
+          }
+
+          if (s.type === 'request') {
+            // Prefer opening purchase request view if route available; otherwise open in new tab
+            const routeTemplate =
+              (window.APP_ROUTES && window.APP_ROUTES.purchaseRequestView) ||
+              (window.APP_ROUTES && window.APP_ROUTES.purchaseOrderView)
+            if (routeTemplate) {
+              const href = String(routeTemplate).replace('{id}', s.id)
+              window.open(href, '_blank')
+            } else {
+              navigateToPage('new-request')
+            }
+            return
+          }
+
+          if (s.type === 'activity') {
+            navigateToPage('activity')
+            return
+          }
+
+          // Fallback: treat as items search
+          AppState.ItemSearchTerm = q
+          AppState.currentItemsPage = 1
+          navigateToPage('items')
+          setTimeout(() => {
+            const itemInput = document.getElementById('Item-search')
+            if (itemInput) {
+              itemInput.value = q
+              itemInput.focus()
+              updateItemsTable()
+            }
+          }, 120)
+        }
+
+        const onInput = debounce(async function (e) {
+          const q = String(headerSearch.value || '').trim()
+          if (!q) {
+            hideDropdown()
+            return
+          }
+
+          // Local suggestions (fast)
+          const local = buildSuggestions(q) || []
+
+          // Remote suggestions (server-backed) - merge if available
+          let remote = []
+          try {
+            const url =
+              (window.APP_ROUTES && window.APP_ROUTES.search) || '/api/search'
+            const res = await fetch(`${url}?q=${encodeURIComponent(q)}`, {
+              headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                Accept: 'application/json',
+              },
+              credentials: 'same-origin',
+            })
+            if (res.ok) {
+              const payload = await res.json()
+              if (Array.isArray(payload)) remote = payload
+              else if (payload && Array.isArray(payload.data))
+                remote = payload.data
+            }
+          } catch (err) {
+            console.warn('Search API failed', err)
+          }
+
+          // Merge remote + local, dedupe by type+id/label; prefer remote order
+          const combined = []
+          const seen = new Set()
+          ;[...remote, ...local].forEach((s) => {
+            if (!s) return
+            const key = `${s.type}:${s.id || s.label}`
+            if (seen.has(key)) return
+            seen.add(key)
+            combined.push(s)
+          })
+
+          renderSuggestions(combined.slice(0, 12), q)
+        }, 220)
+
+        const onKeyDown = function (e) {
+          if (e.key === 'ArrowDown') {
+            e.preventDefault()
+            setActive(activeIndex + 1)
+            return
+          }
+          if (e.key === 'ArrowUp') {
+            e.preventDefault()
+            setActive(activeIndex - 1)
+            return
+          }
+          if (e.key === 'Enter') {
+            if (activeIndex >= 0 && currentSuggestions[activeIndex]) {
+              e.preventDefault()
+              selectSuggestion(currentSuggestions[activeIndex])
+              return
+            }
+            // fallback: navigate to items search with current input
+            const q = String(headerSearch.value || '').trim()
+            if (!q) return
+            AppState.ItemSearchTerm = q
+            AppState.currentItemsPage = 1
+            navigateToPage('items')
+            setTimeout(() => {
+              const itemInput = document.getElementById('Item-search')
+              if (itemInput) {
+                itemInput.value = q
+                itemInput.focus()
+                updateItemsTable()
+              }
+            }, 120)
+            hideDropdown()
+            return
+          }
+          if (e.key === 'Escape') {
+            hideDropdown()
+            return
+          }
+        }
+
+        const onFocus = function () {
+          positionDropdown()
+        }
+
+        // Click outside to close handler
+        function onDocClick(ev) {
+          if (!dropdown.contains(ev.target) && ev.target !== headerSearch) {
+            hideDropdown()
+          }
+        }
+
+        // Attach handlers and keep references for cleanup
+        headerSearch.addEventListener('input', onInput)
+        headerSearch.addEventListener('keydown', onKeyDown)
+        headerSearch.addEventListener('focus', onFocus)
+        document.addEventListener('click', onDocClick)
+
+        headerSearch._headerInputHandler = onInput
+        headerSearch._headerSearchHandler = onKeyDown
+        headerSearch._headerFocusHandler = onFocus
+        headerSearch._headerDocClickHandler = onDocClick
+
+        // make header search icon clickable to focus input
+        const parent = headerSearch.parentElement
+        const icon = parent && parent.querySelector('[data-lucide="search"]')
+        if (icon) {
+          icon.setAttribute('role', 'button')
+          icon.setAttribute('tabindex', '0')
+          icon.addEventListener('click', () => headerSearch.focus())
+          icon.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter' || ev.key === ' ') {
+              ev.preventDefault()
+              headerSearch.focus()
+            }
+          })
+        }
+      })()
+      break
     case 'suppliers':
       initSuppliersPageEvents()
       break
@@ -25335,7 +25875,14 @@ function openStockOutModal(mode = 'create', stockId = null) {
         date: record.date,
         department: record.department,
         issuedTo: record.issuedTo,
+        issuedToDesignation:
+          record.issued_to_designation || record.issuedToDesignation || '',
         issuedBy: record.issuedBy,
+        issuedByDesignation:
+          record.issued_by_designation || record.issuedByDesignation || '',
+        approvedBy: record.approved_by || record.approvedBy || '',
+        approvedByDesignation:
+          record.approved_by_designation || record.approvedByDesignation || '',
         fundCluster: record.fundCluster || record.fund_cluster || '',
         responsibilityCenterCode:
           record.responsibilityCenterCode ||
@@ -25351,7 +25898,11 @@ function openStockOutModal(mode = 'create', stockId = null) {
       date: new Date().toISOString().split('T')[0],
       department: '',
       issuedTo: '',
+      issuedToDesignation: '',
       issuedBy: '',
+      issuedByDesignation: '',
+      approvedBy: '',
+      approvedByDesignation: '',
       fundCluster: '',
       responsibilityCenterCode: '',
       purpose: '',
@@ -25672,9 +26223,21 @@ function generateStockOutModal(mode = 'create', headerData = {}) {
                     }" ${isReadOnly ? 'readonly' : ''}>
                 </div>
                 <div class="form-group">
+                    <label class="form-label">Issued To Designation</label>
+                    <input type="text" id="so-issued-to-designation" class="form-input" placeholder="Recipient Designation" value="${
+                      headerData.issuedToDesignation || ''
+                    }" ${isReadOnly ? 'readonly' : ''}>
+                </div>
+                <div class="form-group">
                     <label class="form-label">Issued By</label>
                     <input type="text" id="so-issued-by" class="form-input" placeholder="Issuer Name" value="${
                       headerData.issuedBy || ''
+                    }" ${isReadOnly ? 'readonly' : ''}>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Issued By Designation</label>
+                    <input type="text" id="so-issued-by-designation" class="form-input" placeholder="Issuer Designation" value="${
+                      headerData.issuedByDesignation || ''
                     }" ${isReadOnly ? 'readonly' : ''}>
                 </div>
                 <div class="form-group">
@@ -25697,6 +26260,18 @@ function generateStockOutModal(mode = 'create', headerData = {}) {
                 <label class="form-label">Purpose</label>
                 <input type="text" id="so-purpose" class="form-input" placeholder="Purpose of stock out" value="${
                   headerData.purpose || ''
+                }" ${isReadOnly ? 'readonly' : ''}>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Approved By</label>
+                <input type="text" id="so-approved-by" class="form-input" placeholder="Approver Name" value="${
+                  headerData.approvedBy || ''
+                }" ${isReadOnly ? 'readonly' : ''}>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Approved By Designation</label>
+                <input type="text" id="so-approved-by-designation" class="form-input" placeholder="Approver Designation" value="${
+                  headerData.approvedByDesignation || ''
                 }" ${isReadOnly ? 'readonly' : ''}>
             </div>
         </div>
@@ -25824,6 +26399,14 @@ async function saveStockOut() {
 
     if (!isEdit) {
       // Create mode: use batch endpoint
+      const issuedToDesignation =
+        document.getElementById('so-issued-to-designation')?.value || ''
+      const issuedByDesignation =
+        document.getElementById('so-issued-by-designation')?.value || ''
+      const approvedBy = document.getElementById('so-approved-by')?.value || ''
+      const approvedByDesignation =
+        document.getElementById('so-approved-by-designation')?.value || ''
+
       const items = AppState.stockOutItems.map((item) => ({
         issue_id: issueId,
         sku: item.sku,
@@ -25833,7 +26416,11 @@ async function saveStockOut() {
         total_cost: item.totalCost,
         department: department,
         issued_to: issuedTo,
+        issued_to_designation: issuedToDesignation,
         issued_by: issuedBy,
+        issued_by_designation: issuedByDesignation,
+        approved_by: approvedBy,
+        approved_by_designation: approvedByDesignation,
         date_issued: date,
         fund_cluster: fundCluster,
         responsibility_center_code: responsibilityCenterCode,
@@ -25874,7 +26461,11 @@ async function saveStockOut() {
             totalCost: created.total_cost,
             department: created.department,
             issuedTo: created.issued_to,
+            issuedToDesignation: created.issued_to_designation || '',
             issuedBy: created.issued_by,
+            issuedByDesignation: created.issued_by_designation || '',
+            approvedBy: created.approved_by || '',
+            approvedByDesignation: created.approved_by_designation || '',
             date: formatDate(created.date_issued),
             dateIssued: created.date_issued,
             fundCluster: created.fund_cluster,
@@ -25895,9 +26486,34 @@ async function saveStockOut() {
         await deleteStockOutFromAPI(delId)
       }
 
-      const promises = AppState.stockOutItems.map((item) =>
-        saveStockOutToAPI(item)
-      )
+      // Collect header fields and inject into each item before saving
+      const issuedToDesignation =
+        document.getElementById('so-issued-to-designation')?.value || ''
+      const issuedByDesignation =
+        document.getElementById('so-issued-by-designation')?.value || ''
+      const approvedBy = document.getElementById('so-approved-by')?.value || ''
+      const approvedByDesignation =
+        document.getElementById('so-approved-by-designation')?.value || ''
+
+      const promises = AppState.stockOutItems.map((item) => {
+        const augmented = Object.assign({}, item, {
+          issued_to: issuedTo,
+          issued_to_designation: issuedToDesignation,
+          issued_by: issuedBy,
+          issued_by_designation: issuedByDesignation,
+          approved_by: approvedBy,
+          approved_by_designation: approvedByDesignation,
+          // Provide both aliases so saveStockOutToAPI and the server accept the date value
+          date_issued: date,
+          dateIssued: date,
+          department: department,
+          fund_cluster: fundCluster,
+          responsibility_center_code: responsibilityCenterCode,
+          purpose: purpose,
+          issue_id: AppState.currentStockOutIssueId,
+        })
+        return saveStockOutToAPI(augmented)
+      })
       await Promise.all(promises)
     }
 
@@ -25968,6 +26584,18 @@ function renderStockOutTransactionRow(group) {
   const unitCostDisplay =
     unitCosts.length === 1 ? formatCurrency(unitCosts[0]) : 'Various'
 
+  // Additional fields: designations and approver
+  const issuedToDesignation =
+    first.issuedToDesignation || first.issued_to_designation || ''
+  const issuedByDesignation =
+    first.issuedByDesignation || first.issued_by_designation || ''
+  const approvedBy = first.approvedBy || first.approved_by || ''
+  const approvedByDesignation =
+    first.approvedByDesignation || first.approved_by_designation || ''
+
+  const issuedToHtml = `${issuedTo}${issuedToDesignation ? `<div style="font-size:11px;color:#6b7280;">${issuedToDesignation}</div>` : ''}`
+  const issuedByHtml = `${issuedBy}${issuedByDesignation ? `<div style="font-size:11px;color:#6b7280;">${issuedByDesignation}</div>` : ''}${approvedBy ? `<div style="font-size:11px;color:#6b7280;margin-top:4px;"><strong>Approved:</strong> ${approvedBy}${approvedByDesignation ? ' (' + approvedByDesignation + ')' : ''}</div>` : ''}`
+
   return `
         <tr data-id="${first.id}">
             <td class="font-semibold">${issueId}</td>
@@ -25978,8 +26606,8 @@ function renderStockOutTransactionRow(group) {
             <td>${unitCostDisplay}</td>
             <td class="font-semibold">${formatCurrency(totalCost)}</td>
             <td><span class="badge">${departmentLabel}</span></td>
-            <td>${issuedTo}</td>
-            <td>${issuedBy}</td>
+            <td>${issuedToHtml}</td>
+            <td>${issuedByHtml}</td>
             <td>
                 <div class="table-actions">
                     <button class="icon-action-btn" title="View" onclick="viewStockOutDetails('${
@@ -26023,6 +26651,16 @@ function renderStockOutRow(s) {
   const departmentLabel = getDepartmentLabel(department)
   const issuedTo = s?.issuedTo || ''
   const issuedBy = s?.issuedBy || ''
+  const issuedToDesignation =
+    s?.issuedToDesignation || s?.issued_to_designation || ''
+  const issuedByDesignation =
+    s?.issuedByDesignation || s?.issued_by_designation || ''
+  const approvedBy = s?.approvedBy || s?.approved_by || ''
+  const approvedByDesignation =
+    s?.approvedByDesignation || s?.approved_by_designation || ''
+
+  const issuedToHtml = `${issuedTo}${issuedToDesignation ? `<div style="font-size:11px;color:#6b7280;">${issuedToDesignation}</div>` : ''}`
+  const issuedByHtml = `${issuedBy}${issuedByDesignation ? `<div style="font-size:11px;color:#6b7280;">${issuedByDesignation}</div>` : ''}${approvedBy ? `<div style="font-size:11px;color:#6b7280;margin-top:4px;"><strong>Approved:</strong> ${approvedBy}${approvedByDesignation ? ' (' + approvedByDesignation + ')' : ''}</div>` : ''}`
 
   return `
         <tr data-id="${id}">
@@ -26034,8 +26672,8 @@ function renderStockOutRow(s) {
             <td>${formatCurrency(unitCost)}</td>
             <td class="font-semibold">${formatCurrency(totalCost)}</td>
             <td><span class="badge">${departmentLabel}</span></td>
-            <td>${issuedTo}</td>
-            <td>${issuedBy}</td>
+            <td>${issuedToHtml}</td>
+            <td>${issuedByHtml}</td>
             <td>
                 <div class="table-actions">
                     <button class="icon-action-btn" title="View" onclick="viewStockOutDetails('${id}')">
