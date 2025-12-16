@@ -4,11 +4,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="shortcut icon" href="{{ asset('images/UCN1.png') }}" type="image/png">
-  <link rel="icon" href="{{ asset('images/UCN1.png') }}" type="image/png">
-  <meta name="csrf-token" content="{{ csrf_token() }}" />
+  <link rel="shortcut icon" href="<?php echo e(asset('images/UCN1.png')); ?>" type="image/png">
+  <link rel="icon" href="<?php echo e(asset('images/UCN1.png')); ?>" type="image/png">
+  <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>" />
   <title>Reset Password - SPMO Access System</title>
-  @vite(['resources/css/index.css', 'resources/css/AccessSystem.css', 'resources/css/access-system-overrides.css'])
+  <?php echo app('Illuminate\Foundation\Vite')(['resources/css/index.css', 'resources/css/AccessSystem.css', 'resources/css/access-system-overrides.css']); ?>
   <style>
     /* System style from Forgot Password (applied to Reset page) */
     .reset-header {
@@ -179,7 +179,7 @@
   <header>
     <div class="header-container">
       <div class="logo">
-        <img src="{{ asset('images/cnscrefine.png') }}" alt="CNSC Logo" />
+        <img src="<?php echo e(asset('images/cnscrefine.png')); ?>" alt="CNSC Logo" />
         <div class="logo-text">
           <h1>Supply and Property Management Office</h1>
           <hr />
@@ -209,7 +209,7 @@
           </div>
 
           <div class="user-email">
-            Resetting password for: <strong>{{ $email }}</strong>
+            Resetting password for: <strong><?php echo e($email); ?></strong>
           </div>
 
           <div id="errorMessage" class="error-message"></div>
@@ -238,7 +238,7 @@
             <input class="form-input" id="password_confirmation" name="password_confirmation" type="password" placeholder="Re-enter new password" required minlength="8" />
           </div>
 
-          <input type="hidden" name="token" id="token" value="{{ $token }}" />
+          <input type="hidden" name="token" id="token" value="<?php echo e($token); ?>" />
 
           <button class="login-btn" type="submit">
             <span class="btn-text">Reset Password</span>
@@ -246,7 +246,7 @@
           </button>
 
           <div class="back-to-login">
-            <a href="{{ route('login') }}">← Back to Login</a>
+            <a href="<?php echo e(route('login')); ?>">← Back to Login</a>
           </div>
         </form>
       </div>
@@ -271,7 +271,7 @@
       <h3>Password Reset!</h3>
       <p>Your password has been reset successfully. You can now login with your new password.</p>
       <menu>
-        <button class="primary-btn" value="ok" type="submit" onclick="window.location.href='{{ route('login') }}'">
+        <button class="primary-btn" value="ok" type="submit" onclick="window.location.href='<?php echo e(route('login')); ?>'">
           Go to Login
         </button>
       </menu>
@@ -325,7 +325,7 @@
         loading.showModal();
         loading.addEventListener('cancel', ev => ev.preventDefault(), { once: true });
 
-        const response = await fetch('{{ route('password.reset.update') }}', {
+        const response = await fetch('<?php echo e(route('password.reset.update')); ?>', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -352,7 +352,7 @@
 
         // Auto redirect after 2 seconds
         setTimeout(() => {
-          window.location.href = '{{ route('login') }}';
+          window.location.href = '<?php echo e(route('login')); ?>';
         }, 2000);
 
       } catch (error) {
@@ -436,3 +436,4 @@
 </body>
 
 </html>
+<?php /**PATH C:\xampp\htdocs\SupplySystem\resources\views/reset-password.blade.php ENDPATH**/ ?>
