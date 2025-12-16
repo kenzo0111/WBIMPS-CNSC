@@ -23,6 +23,7 @@
     window.APP_ROUTES.inventoryCustodianSlipView = "<?php echo e(url('/inventory-custodian-slip/view/{id}')); ?>";
     window.APP_ROUTES.inspectionAcceptanceReportView = "<?php echo e(url('/inspection-acceptance-report/view/{id}')); ?>";
   </script>
+
 </head>
 
 <body>
@@ -148,12 +149,12 @@
   </dialog>
 
   <!-- Simple alert dialog used for validation messages -->
-  <dialog id="alertDialog" class="login-dialog" aria-live="polite">
+  <dialog id="alertDialog" class="alert-dialog" aria-live="polite" aria-label="Validation Message">
     <form method="dialog">
       <h3>Attention</h3>
       <p id="alertText">Message</p>
       <menu>
-        <button id="alertOk" type="submit" value="ok">OK</button>
+        <button id="alertOk" type="submit" value="ok" class="primary-btn">OK</button>
       </menu>
     </form>
   </dialog>

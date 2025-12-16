@@ -1,15 +1,18 @@
-/* Inline styles for dialogs (centered) */
+/* Dialog Styles */
 dialog.loading-dialog,
 dialog.success-dialog,
-dialog.login-dialog {
-  border: none;
-  border-radius: 14px;
-  padding: 32px 40px;
-  box-shadow: 0 10px 40px -5px rgba(0, 0, 0, 0.25);
+dialog.alert-dialog {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(20, 20, 20, 0.85);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  color: white;
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   font-family: system-ui, sans-serif;
 }
 
-/* Force centering for all dialogs when open */
 dialog[open] {
   position: fixed;
   top: 50%;
@@ -18,20 +21,32 @@ dialog[open] {
   margin: 0;
   max-width: 460px;
   width: calc(100% - 40px);
+  animation: dialogFadeIn 0.3s ease-out;
+}
+
+@keyframes dialogFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -40%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
 }
 
 dialog.loading-dialog {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
   align-items: center;
   text-align: center;
 }
 
 .loading-spinner {
-  width: 58px;
-  height: 58px;
-  border: 5px solid #e5e7eb;
+  width: 60px;
+  height: 60px;
+  border: 4px solid rgba(255, 255, 255, 0.1);
   border-top-color: #dc2626;
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -44,10 +59,10 @@ dialog.loading-dialog {
 }
 
 .loading-text {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
-  color: #374151;
-  letter-spacing: 0.3px;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.5px;
 }
 
 dialog.success-dialog {
@@ -62,8 +77,8 @@ dialog.success-dialog {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 12px;
-  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.4);
+  margin: 0 auto 16px;
+  box-shadow: 0 0 20px rgba(22, 163, 74, 0.4);
 }
 
 .success-icon svg {
@@ -73,18 +88,17 @@ dialog.success-dialog {
 }
 
 dialog.success-dialog h3 {
-  margin: 0 0 4px;
-  font-size: 22px;
-  font-weight: 600;
-  color: #111827;
-  font-family: system-ui, sans-serif;
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
 }
 
 dialog.success-dialog p {
-  margin: 0 0 20px;
-  color: #4b5563;
-  font-size: 14px;
-  font-family: system-ui, sans-serif;
+  margin: 0 0 24px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 dialog.success-dialog menu {
@@ -94,32 +108,49 @@ dialog.success-dialog menu {
   margin: 0;
 }
 
-.primary-btn {
+/* Alert dialog styling (validation / attention) */
+dialog.alert-dialog {
+  text-align: center;
+}
+
+dialog.alert-dialog h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+}
+
+dialog.alert-dialog p {
+  margin: 0 0 24px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 15px;
+}
+
+dialog.alert-dialog menu {
+  display: flex;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  gap: 12px;
+}
+
+/* Small utility for dialog buttons to match visual language */
+dialog .dialog-btn,
+dialog button[type='submit'] {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+dialog .dialog-btn.dialog-btn-confirm,
+dialog button.primary-btn {
   background: #dc2626;
   color: #fff;
-  border: none;
-  padding: 10px 26px;
-  border-radius: 999px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  letter-spacing: 0.5px;
-  box-shadow: 0 4px 14px -2px rgba(220, 38, 38, 0.5);
-  transition: background 0.25s, transform 0.25s;
-}
-
-.primary-btn:hover {
-  background: #b91c1c;
-}
-
-.primary-btn:active {
-  transform: translateY(1px);
-}
-
-dialog::backdrop {
-  background: rgba(17, 24, 39, 0.55);
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
+  box-shadow: 0 8px 20px rgba(220, 38, 38, 0.18);
 }
 
 /* Enhanced Alert Styles */

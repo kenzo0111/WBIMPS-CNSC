@@ -8,7 +8,7 @@
   <link rel="icon" href="{{ asset('images/UCN1.png') }}" type="image/png">
   <meta name="csrf-token" content="{{ csrf_token() }}" />
   <title>Reset Password - SPMO Access System</title>
-  @vite('resources/css/AccessSystem.css')
+  @vite(['resources/css/index.css', 'resources/css/AccessSystem.css', 'resources/css/access-system-overrides.css'])
   <style>
     /* Additional styles for reset password page */
     .reset-header {
@@ -67,123 +67,7 @@
       margin: 4px 0;
     }
 
-    dialog.loading-dialog,
-    dialog.success-dialog {
-      border: none;
-      border-radius: 14px;
-      padding: 32px 40px;
-      box-shadow: 0 10px 40px -5px rgba(0, 0, 0, .25);
-      font-family: system-ui, sans-serif;
-    }
 
-    dialog[open] {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      margin: 0;
-      max-width: 460px;
-      width: calc(100% - 40px);
-    }
-
-    dialog.loading-dialog {
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-      align-items: center;
-      text-align: center;
-    }
-
-    .loading-spinner {
-      width: 58px;
-      height: 58px;
-      border: 5px solid #e5e7eb;
-      border-top-color: #dc2626;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    .loading-text {
-      font-size: 15px;
-      font-weight: 500;
-      color: #374151;
-      letter-spacing: .3px;
-    }
-
-    dialog.success-dialog {
-      text-align: center;
-    }
-
-    .success-icon {
-      width: 70px;
-      height: 70px;
-      border-radius: 50%;
-      background: #16a34a;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 12px;
-      box-shadow: 0 4px 12px rgba(22, 163, 74, .4);
-    }
-
-    .success-icon svg {
-      width: 38px;
-      height: 38px;
-      color: #fff;
-    }
-
-    dialog.success-dialog h3 {
-      margin: 0 0 4px;
-      font-size: 22px;
-      font-weight: 600;
-      color: #111827;
-    }
-
-    dialog.success-dialog p {
-      margin: 0 0 20px;
-      color: #4b5563;
-      font-size: 14px;
-    }
-
-    dialog.success-dialog menu {
-      display: flex;
-      justify-content: center;
-      padding: 0;
-      margin: 0;
-    }
-
-    .primary-btn {
-      background: #dc2626;
-      color: #fff;
-      border: none;
-      padding: 10px 26px;
-      border-radius: 999px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      letter-spacing: .5px;
-      box-shadow: 0 4px 14px -2px rgba(220, 38, 38, .5);
-      transition: background .25s, transform .25s;
-    }
-
-    .primary-btn:hover {
-      background: #b91c1c;
-    }
-
-    .primary-btn:active {
-      transform: translateY(1px);
-    }
-
-    dialog::backdrop {
-      background: rgba(17, 24, 39, .55);
-      backdrop-filter: blur(3px);
-    }
 
     .error-message {
       background: #fee2e2;
