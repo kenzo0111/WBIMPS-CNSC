@@ -26454,81 +26454,59 @@ function generateStockOutModal(mode = 'create', headerData = {}) {
             <h3 style="margin: 0 0 16px 0; font-size: 15px; font-weight: 600; color: #374151; display:flex; align-items:center; gap:8px;">
                 <i data-lucide="clipboard" style="width:16px;height:16px;"></i> Transaction Details
             </h3>
-            <div class="grid-2">
+            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: start;">
                 <div class="form-group">
                     <label class="form-label">Date Issued</label>
-                    <input type="date" id="so-date" class="form-input" value="${
-                      headerData.date || ''
-                    }" ${isReadOnly ? 'readonly' : ''}>
+                    <input type="date" id="so-date" class="form-input" value="${headerData.date || ''}" ${isReadOnly ? 'readonly' : ''}>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Department</label>
-                    <select id="so-dept" class="form-select" ${
-                      isReadOnly ? 'disabled' : ''
-                    }>
+                    <select id="so-dept" class="form-select" ${isReadOnly ? 'disabled' : ''}>
                         <option value="">Select Department</option>
-                        ${generateDepartmentOptionsHTML(
-                          headerData.department || ''
-                        )}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Issued To</label>
-                    <input type="text" id="so-issued-to" class="form-input" placeholder="Recipient Name" value="${
-                      headerData.issuedTo || ''
-                    }" ${isReadOnly ? 'readonly' : ''}>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Issued To Designation</label>
-                    <input type="text" id="so-issued-to-designation" class="form-input" placeholder="Recipient Designation" value="${
-                      headerData.issuedToDesignation || ''
-                    }" ${isReadOnly ? 'readonly' : ''}>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Issued By</label>
-                    <input type="text" id="so-issued-by" class="form-input" placeholder="Issuer Name" value="${
-                      headerData.issuedBy || ''
-                    }" ${isReadOnly ? 'readonly' : ''}>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Issued By Designation</label>
-                    <input type="text" id="so-issued-by-designation" class="form-input" placeholder="Issuer Designation" value="${
-                      headerData.issuedByDesignation || ''
-                    }" ${isReadOnly ? 'readonly' : ''}>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Fund Cluster</label>
-                    <select id="so-fund-cluster" class="form-select" ${
-                      isReadOnly ? 'disabled' : ''
-                    }>
-                        <option value="">Select fund cluster</option>
-                        ${generateFundClusterOptionsHTML(headerData.fundCluster || '')}
+                        ${generateDepartmentOptionsHTML(headerData.department || '')}
                     </select>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Responsibility Center Code</label>
-                    <input type="text" id="so-responsibility-center" class="form-input" placeholder="Responsibility Center Code" value="${
-                      headerData.responsibilityCenterCode || ''
-                    }" ${isReadOnly ? 'readonly' : ''}>
+                    <input type="text" id="so-responsibility-center" class="form-input" placeholder="Responsibility Center Code" value="${headerData.responsibilityCenterCode || ''}" ${isReadOnly ? 'readonly' : ''}>
                 </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Purpose</label>
-                <input type="text" id="so-purpose" class="form-input" placeholder="Purpose of stock out" value="${
-                  headerData.purpose || ''
-                }" ${isReadOnly ? 'readonly' : ''}>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Approved By</label>
-                <input type="text" id="so-approved-by" class="form-input" placeholder="Approver Name" value="${
-                  headerData.approvedBy || ''
-                }" ${isReadOnly ? 'readonly' : ''}>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Approved By Designation</label>
-                <input type="text" id="so-approved-by-designation" class="form-input" placeholder="Approver Designation" value="${
-                  headerData.approvedByDesignation || ''
-                }" ${isReadOnly ? 'readonly' : ''}>
+                <div class="form-group">
+                    <label class="form-label">Fund Cluster</label>
+                    <select id="so-fund-cluster" class="form-select" ${isReadOnly ? 'disabled' : ''}>
+                        <option value="">Select fund cluster</option>
+                        ${generateFundClusterOptionsHTML(headerData.fundCluster || '')}
+                    </select>
+                </div>
+
+                <div class="form-group" style="grid-column: 1 / span 2;">
+                    <label class="form-label">Issued To</label>
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" id="so-issued-to" class="form-input" placeholder="Recipient Name" value="${headerData.issuedTo || ''}" ${isReadOnly ? 'readonly' : ''} style="flex:2;">
+                        <input type="text" id="so-issued-to-designation" class="form-input" placeholder="Designation" value="${headerData.issuedToDesignation || ''}" ${isReadOnly ? 'readonly' : ''} style="flex:1;">
+                    </div>
+                </div>
+
+                <div class="form-group" style="grid-column: 3 / span 2;">
+                    <label class="form-label">Issued By</label>
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" id="so-issued-by" class="form-input" placeholder="Issuer Name" value="${headerData.issuedBy || ''}" ${isReadOnly ? 'readonly' : ''} style="flex:2;">
+                        <input type="text" id="so-issued-by-designation" class="form-input" placeholder="Designation" value="${headerData.issuedByDesignation || ''}" ${isReadOnly ? 'readonly' : ''} style="flex:1;">
+                    </div>
+                </div>
+
+                <div class="form-group" style="grid-column: 1 / span 2;">
+                    <label class="form-label">Approved By</label>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <input type="text" id="so-approved-by" class="form-input" readonly style="flex:2; background:#f3f4f6; border-color:#e5e7eb;" value="ARSENIO GEN A. GARCILLANOSA">
+                        <input type="text" id="so-approved-by-designation" class="form-input" readonly style="flex:1; background:#f3f4f6; border-color:#e5e7eb;" value="SUPPLY OFFICER III/ADMIN OFFICER V">
+                    </div>
+                    <small style="color:#6b7280; display:block; margin-top:6px;">Approved by is fixed to the Supply Officer.</small>
+                </div>
+
+                <div class="form-group" style="grid-column: 3 / span 2;">
+                    <label class="form-label">Purpose</label>
+                    <input type="text" id="so-purpose" class="form-input" placeholder="Purpose of stock out" value="${headerData.purpose || ''}" ${isReadOnly ? 'readonly' : ''}>
+                </div>
             </div>
         </div>
 
@@ -26539,7 +26517,7 @@ function generateStockOutModal(mode = 'create', headerData = {}) {
             <h3 style="margin: 0 0 16px 0; font-size: 15px; font-weight: 600; color: #ea580c; display:flex; align-items:center; gap:8px;">
                 <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> Add Items
             </h3>
-            <div style="display: grid; grid-template-columns: 2fr 3fr 3fr 1fr 1fr 1fr; gap: 12px; align-items: end;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 2fr 1fr 1fr auto; gap: 12px; align-items: end;">
                 <div class="form-group" style="margin:0;">
                     <label class="form-label" style="font-size:12px;">Category</label>
                     <select id="so-category" class="form-select" style="font-size:13px; padding:8px;">
@@ -26547,30 +26525,35 @@ function generateStockOutModal(mode = 'create', headerData = {}) {
                     </select>
                 </div>
                 <div class="form-group" style="margin:0;">
-                    <label class="form-label" style="font-size:12px;">SKU (By Category)</label>
+                    <label class="form-label" style="font-size:12px;">SKU</label>
                     <select id="so-sku" class="form-select" style="font-size:13px; padding:8px;">
                         ${generateAllSkusByCategory()}
                     </select>
                 </div>
                 <div class="form-group" style="margin:0;">
                     <label class="form-label" style="font-size:12px;">Item Name</label>
-                    <input type="text" id="so-Item" class="form-input" readonly style="background:#f9fafb; font-size:13px; padding:8px;">
-                    <div id="so-stock-badge" style="font-size:11px; margin-top:4px;"></div>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <input type="text" id="so-Item" class="form-input" readonly style="background:#f9fafb; font-size:13px; padding:8px; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        <div id="so-stock-badge" style="font-size:11px; margin-left:6px; white-space:nowrap; color:#6b7280; flex-shrink:0;"></div>
+                    </div>
                 </div>
                 <div class="form-group" style="margin:0;">
-                    <label class="form-label" style="font-size:12px;">Cost</label>
+                    <label class="form-label" style="font-size:12px;">Unit Cost</label>
                     <input type="text" id="so-uc" class="form-input" readonly style="background:#f9fafb; font-size:13px; padding:8px;">
                 </div>
                 <div class="form-group" style="margin:0;">
                     <label class="form-label" style="font-size:12px;">Qty</label>
                     <input type="number" id="so-qty" class="form-input" min="1" placeholder="0" style="font-size:13px; padding:8px;" oninput="updateStockOutTotal()">
                 </div>
-                <div class="form-group" style="margin:0;">
-                    <button type="button" onclick="addStockOutItem()" class="btn btn-primary" style="width:100%; padding:9px; justify-content:center; background: #ea580c;">Add</button>
+                <div class="form-group" style="margin:0; display:flex; align-items:center;">
+                    <button type="button" onclick="addStockOutItem()" class="btn btn-primary" style="padding:9px 14px; justify-content:center; background: #ea580c;">Add</button>
                 </div>
             </div>
-            <div style="text-align:right; margin-top:8px; font-size:13px; color:#6b7280;">
-                Subtotal: <span id="so-add-total" style="font-weight:600; color:#111827;">₱0.00</span>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                <div style="font-size:13px; color:#6b7280;">Tip: Select SKU to autofill item and available stock.</div>
+                <div style="text-align:right; font-size:13px; color:#6b7280;">
+                    Subtotal: <span id="so-add-total" style="font-weight:600; color:#111827;">₱0.00</span>
+                </div>
             </div>
         </div>
         `
