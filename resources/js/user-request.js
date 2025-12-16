@@ -1106,6 +1106,62 @@
       .join('')
   }
 
+  // Derive a short Responsibility Center Code from a department label.
+  // Strategy:
+  // - If the label contains parentheses, use the content inside (e.g., "College of Arts and Sciences (CAS)" -> "CAS").
+  // - If the label includes an explicit uppercase acronym, prefer that.
+  // - Otherwise, build an acronym from significant words (ignore common stop words).
+  function deriveResponsibilityCenterCode(label) {
+    if (!label) return ''
+
+    // If user picks an 'Other' option, let them enter manually
+    if (/other/i.test(label)) return ''
+
+    // Use content inside parentheses when available
+    const parenMatch = label.match(/\(([^)]+)\)/)
+    if (parenMatch) {
+      const inside = parenMatch[1].trim()
+      if (/enter manually/i.test(inside)) return ''
+      return inside
+    }
+
+    // Prefer explicit uppercase acronyms in the label
+    const caps = label.match(/\b([A-Z]{2,})\b/g)
+    if (caps && caps.length) return caps[0]
+
+    // Build a short acronym from significant words
+    const stopWords = [
+      'of',
+      'and',
+      'the',
+      'for',
+      'office',
+      'college',
+      'center',
+      'unit',
+      'division',
+      'services',
+      'campus',
+      'campuses',
+      'administrative',
+      'academic',
+      'research',
+      'support',
+    ]
+
+    const words = label
+      .split(/[^A-Za-z0-9]+/)
+      .filter(Boolean)
+      .filter((w) => !stopWords.includes(w.toLowerCase()))
+
+    if (words.length === 0) return ''
+
+    return words
+      .map((w) => w[0].toUpperCase())
+      .slice(0, 4)
+      .join('')
+  }
+
   // --- Event wiring ---
   function handleActionClick(e) {
     const btn = e.target.closest('button')
@@ -1148,6 +1204,22 @@
         '<option value="" disabled selected>Select Department</option>'
       deptSelect.innerHTML =
         defaultOption + generateDepartmentOptionsHTMLWithLabels()
+
+      // Auto-fill Responsibility Center Code when department changes
+      deptSelect.addEventListener('change', () => {
+        const codeInput = byId('responsibilityCenterCode')
+        if (!codeInput) return
+        // Use the selected value (JS populates the option value with the label),
+        // but fall back to the option text if needed.
+        const selectedLabel =
+          deptSelect.value ||
+          deptSelect.options[deptSelect.selectedIndex]?.text ||
+          ''
+        const code = deriveResponsibilityCenterCode(selectedLabel)
+        codeInput.value = code
+        // Update the summary if we're on the review step
+        if (currentStep === 3) updateSummary()
+      })
     }
 
     // Add initial item row

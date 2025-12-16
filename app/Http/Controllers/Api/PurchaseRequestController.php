@@ -210,31 +210,39 @@ class PurchaseRequestController extends Controller
             'status' => 'required|string',
         ]);
 
-        // Try to locate by request_id first (eg. 2025-12-0001), then by numeric id
-        $pr = PurchaseRequest::where('request_id', $id)->first();
-        if (!$pr && is_numeric($id)) {
-            $pr = PurchaseRequest::find((int) $id);
+        // Try to locate rows by request_id first (eg. 2025-12-0001). If none found, try numeric id
+        $prs = PurchaseRequest::where('request_id', $id)->get();
+
+        if ($prs->isEmpty()) {
+            if (is_numeric($id)) {
+                $single = PurchaseRequest::find((int) $id);
+                if (!$single)
+                    return response()->json(['error' => 'Purchase request not found'], 404);
+                $prs = collect([$single]);
+            } else {
+                return response()->json(['error' => 'Purchase request not found'], 404);
+            }
         }
 
-        if (!$pr) {
-            return response()->json(['error' => 'Purchase request not found'], 404);
+        $oldStatuses = $prs->pluck('status')->unique()->implode(', ');
+        $updatedCount = 0;
+        foreach ($prs as $pr) {
+            $pr->status = $data['status'];
+            $pr->save();
+            $updatedCount++;
         }
-
-        $old = $pr->status;
-        $pr->status = $data['status'];
-        $pr->save();
 
         // Optionally log activity
         try {
             activity()
                 ->causedBy(\Illuminate\Support\Facades\Auth::user())
-                ->withProperties(['request_id' => $pr->request_id ?? $pr->id])
-                ->log(sprintf('Purchase request %s status changed from %s to %s', $pr->request_id ?? $pr->id, $old, $pr->status));
+                ->withProperties(['request_id' => $id, 'updated_rows' => $updatedCount])
+                ->log(sprintf('Purchase request %s status changed from %s to %s (updated %d rows)', $id, $oldStatuses, $data['status'], $updatedCount));
         } catch (\Exception $e) {
             // ignore logging failures
         }
 
-        return response()->json($pr);
+        return response()->json(['updated' => $updatedCount, 'status' => $data['status']]);
     }
 
     /**
@@ -260,45 +268,89 @@ class PurchaseRequestController extends Controller
             'items.*.total_cost' => 'nullable|numeric|min:0',
         ]);
 
-        // Generate a single request_id for the whole batch using the generator (YYYY-MM-0001)
+        // Generate single request_id for the whole batch so multiple items share the same Request ID
         $idGenerator = new PurchaseRequestIdGenerator();
-        $requestIdBase = $idGenerator->nextBaseForPeriod();
+
+        $batchRequestId = $idGenerator->nextBaseForPeriod();
 
         $createdRecords = [];
-        DB::transaction(function () use ($data, $requestIdBase, &$createdRecords) {
-            $idx = 0;
-            foreach ($data['items'] as $item) {
-                $idx++;
-                // make per-item request_id unique by appending an index suffix
-                $perItemRequestId = $requestIdBase . '-' . sprintf('%02d', $idx);
-                $qty = (int) ($item['quantity'] ?? 0);
-                $unitCost = isset($item['unit_cost']) ? (float) $item['unit_cost'] : (isset($item['unitCost']) ? (float) $item['unitCost'] : null);
-                $lineTotal = isset($item['total_cost']) ? (float) $item['total_cost'] : ($unitCost !== null ? $qty * $unitCost : null);
+        $fallbackToPerItem = false;
 
-                $created = PurchaseRequest::create([
-                    'request_id' => $perItemRequestId,
-                    'email' => $data['email'],
-                    'requester' => $data['requester'],
-                    'designation' => $data['designation'] ?? null,
-                    'department' => $data['department'],
-                    'items' => null, // No longer using items array
-                    'item_description' => $item['item_description'],
-                    'unit' => $item['unit'] ?? null,
-                    'quantity' => $qty,
-                    'unit_cost' => $unitCost,
-                    'total_cost' => $lineTotal,
-                    'purpose' => $data['purpose'] ?? null,
-                    'needed_date' => $data['neededDate'] ?? null,
-                    'priority' => $data['priority'] ?? 'Low',
-                    'status' => 'Incoming',
-                    'submitted_at' => now(),
-                    'metadata' => ['batch' => true],
-                ]);
-                $createdRecords[] = $created;
+        // First attempt: try to create all rows sharing the same batchRequestId. If the DB still has
+        // a unique constraint on request_id, this will fail; in that case we fall back to creating
+        // per-item request_ids (backwards-compatible behavior).
+        try {
+            DB::transaction(function () use ($data, $batchRequestId, &$createdRecords) {
+                foreach ($data['items'] as $item) {
+                    $qty = (int) ($item['quantity'] ?? 0);
+                    $unitCost = isset($item['unit_cost']) ? (float) $item['unit_cost'] : (isset($item['unitCost']) ? (float) $item['unitCost'] : null);
+                    $lineTotal = isset($item['total_cost']) ? (float) $item['total_cost'] : ($unitCost !== null ? $qty * $unitCost : null);
+
+                    $created = PurchaseRequest::create([
+                        'request_id' => $batchRequestId,
+                        'email' => $data['email'],
+                        'requester' => $data['requester'],
+                        'designation' => $data['designation'] ?? null,
+                        'department' => $data['department'],
+                        'items' => null, // record individual line items on separate rows
+                        'item_description' => $item['item_description'],
+                        'unit' => $item['unit'] ?? null,
+                        'quantity' => $qty,
+                        'unit_cost' => $unitCost,
+                        'total_cost' => $lineTotal,
+                        'purpose' => $data['purpose'] ?? null,
+                        'needed_date' => $data['neededDate'] ?? null,
+                        'priority' => $data['priority'] ?? 'Low',
+                        'status' => 'Incoming',
+                        'submitted_at' => now(),
+                        'metadata' => ['batch' => true],
+                    ]);
+                    $createdRecords[] = $created;
+                }
+            });
+        } catch (\Illuminate\Database\QueryException $e) {
+            // If the failure is due to a duplicate key on request_id (unique index still present),
+            // fallback to per-item request ids. Otherwise rethrow.
+            $message = $e->getMessage();
+            if (stripos($message, 'duplicate') !== false || stripos($message, 'unique') !== false || stripos($message, 'request_id') !== false) {
+                $fallbackToPerItem = true;
+                $createdRecords = [];
+                // Secondary approach: create each item with its own generated request id
+                DB::transaction(function () use ($data, $idGenerator, &$createdRecords) {
+                    foreach ($data['items'] as $item) {
+                        $perItemRequestId = $idGenerator->nextBaseForPeriod();
+                        $qty = (int) ($item['quantity'] ?? 0);
+                        $unitCost = isset($item['unit_cost']) ? (float) $item['unit_cost'] : (isset($item['unitCost']) ? (float) $item['unitCost'] : null);
+                        $lineTotal = isset($item['total_cost']) ? (float) $item['total_cost'] : ($unitCost !== null ? $qty * $unitCost : null);
+
+                        $created = PurchaseRequest::create([
+                            'request_id' => $perItemRequestId,
+                            'email' => $data['email'],
+                            'requester' => $data['requester'],
+                            'designation' => $data['designation'] ?? null,
+                            'department' => $data['department'],
+                            'items' => null,
+                            'item_description' => $item['item_description'],
+                            'unit' => $item['unit'] ?? null,
+                            'quantity' => $qty,
+                            'unit_cost' => $unitCost,
+                            'total_cost' => $lineTotal,
+                            'purpose' => $data['purpose'] ?? null,
+                            'needed_date' => $data['neededDate'] ?? null,
+                            'priority' => $data['priority'] ?? 'Low',
+                            'status' => 'Incoming',
+                            'submitted_at' => now(),
+                            'metadata' => ['batch' => true],
+                        ]);
+                        $createdRecords[] = $created;
+                    }
+                });
+            } else {
+                throw $e;
             }
-        });
+        }
 
-        $results = ['data' => $createdRecords, 'requestId' => $requestIdBase, 'failed' => []];
+        $results = ['data' => $createdRecords, 'request_id' => $fallbackToPerItem ? null : $batchRequestId, 'batch_items' => $createdRecords, 'failed' => [], 'fallback' => $fallbackToPerItem];
 
         // Try to send notification email to requester and admins (best-effort)
         $emailSent = false;
@@ -308,19 +360,19 @@ class PurchaseRequestController extends Controller
                     $q->whereIn('name', ['System Admin', 'Administrator']);
                 })->pluck('email')->filter()->toArray();
 
-                \Illuminate\Support\Facades\Log::info('Attempting to send batch purchase request submitted email', ['requester' => $createdRecords[0]->email, 'admins' => $admins, 'request_id' => $requestIdBase]);
+                \Illuminate\Support\Facades\Log::info('Attempting to send batch purchase request submitted email', ['requester' => $createdRecords[0]->email, 'admins' => $admins, 'request_id' => $batchRequestId]);
 
-                // Send email using the first record, but modify mail to handle batch
+                // Send email using the first record as representative; mail class accepts the batch collection
                 if (filled($createdRecords[0]->email)) {
                     \Illuminate\Support\Facades\Mail::to($createdRecords[0]->email)->send(new \App\Mail\PurchaseRequestSubmitted($createdRecords[0], collect($createdRecords)));
-                    \Illuminate\Support\Facades\Log::info('Batch purchase request email sent to requester', ['to' => $createdRecords[0]->email, 'request_id' => $requestIdBase]);
+                    \Illuminate\Support\Facades\Log::info('Batch purchase request email sent to requester', ['to' => $createdRecords[0]->email, 'request_id' => $batchRequestId]);
                 } else {
-                    \Illuminate\Support\Facades\Log::warning('No requester email for batch; skipping requester notification', ['request_id' => $requestIdBase]);
+                    \Illuminate\Support\Facades\Log::warning('No requester email for batch; skipping requester notification', ['request_id' => $batchRequestId]);
                 }
 
                 if (!empty($admins)) {
                     \Illuminate\Support\Facades\Mail::to($admins)->send(new \App\Mail\PurchaseRequestSubmitted($createdRecords[0], collect($createdRecords)));
-                    \Illuminate\Support\Facades\Log::info('Batch purchase request email sent to admins', ['admins' => $admins, 'request_id' => $requestIdBase]);
+                    \Illuminate\Support\Facades\Log::info('Batch purchase request email sent to admins', ['admins' => $admins, 'request_id' => $batchRequestId]);
                 }
 
                 $emailSent = true;
@@ -331,6 +383,7 @@ class PurchaseRequestController extends Controller
         }
 
         $results['email_sent'] = $emailSent;
-        return response()->json(array_merge($createdRecords[0]->toArray(), ['batch_items' => $createdRecords, 'email_sent' => $emailSent]), 201);
+        // Return the normalized results (contains batch_items, request_id (or null if fallback), and fallback flag)
+        return response()->json($results, 201);
     }
 }

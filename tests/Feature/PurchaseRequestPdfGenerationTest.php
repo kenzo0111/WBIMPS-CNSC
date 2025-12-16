@@ -14,7 +14,7 @@ class PurchaseRequestPdfGenerationTest extends TestCase
     {
         $payload = [
             'entity_name' => 'Camarines Norte State College',
-            'pr_no' => 'PR-2025-001',
+            'pr_no' => now()->format('Y-m') . '-0001',
             'date' => now()->toDateString(),
             'purpose' => 'Test generation of PDF',
             'requested_by' => 'Jane Doe',
@@ -39,7 +39,7 @@ class PurchaseRequestPdfGenerationTest extends TestCase
     {
         $payload = [
             'entity_name' => 'CNSC',
-            'pr_no' => 'PR-STR-01',
+            'pr_no' => now()->format('Y-m') . '-0002',
             'date' => now()->toDateString(),
             'purpose' => 'multiline test',
             'requested_by' => 'Jane Doe',

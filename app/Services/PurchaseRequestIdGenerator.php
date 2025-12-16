@@ -14,23 +14,33 @@ class PurchaseRequestIdGenerator
     {
         $period = $period ?? now()->format('Y-m');
 
+        // DB-agnostic approach: collect all request_ids for the period and pick the maximum
         $existingRequests = DB::table('purchase_requests')
-            ->where('request_id', 'like', "$period-%")
+            ->where('request_id', 'like', "{$period}-%")
             ->pluck('request_id');
 
-        $maxNum = 0;
-        foreach ($existingRequests as $requestId) {
-            if (preg_match('/\d{4}-\d{2}-(\d+)$/', $requestId, $matches)) {
-                $num = (int) $matches[1];
-                if ($num > $maxNum) {
-                    $maxNum = $num;
+        $maxSeq = 0;
+        foreach ($existingRequests as $rid) {
+            // Capture the first numeric segment immediately after the period: YYYY-MM-<seq>
+            if (preg_match('/^' . preg_quote($period, '/') . '-(\d+)/', $rid, $m)) {
+                $num = (int) $m[1];
+                if ($num > $maxSeq) {
+                    $maxSeq = $num;
                 }
             }
         }
 
-        $nextSeq = $maxNum + 1;
+        $next = $maxSeq + 1;
 
-        return sprintf('%s-%04d', $period, $nextSeq);
+        return sprintf('%s-%04d', $period, $next);
+    }
+
+    /**
+     * Alias for nextBaseForPeriod to make intent clearer when requesting next sequential id.
+     */
+    public function nextForPeriod(?string $period = null): string
+    {
+        return $this->nextBaseForPeriod($period);
     }
 
     /**

@@ -27099,8 +27099,67 @@ async function initStatusManagement(filter = 'all') {
   refreshStatusCards()
 }
 
+function groupStatusRequests() {
+  const byId = {}
+  ;(AppState.statusRequests || []).forEach((r) => {
+    const id = r.id || r.request_id || r.requestId || ''
+    if (!id) return
+    if (!byId[id]) {
+      byId[id] = {
+        id,
+        requester: r.requester,
+        designation: r.designation,
+        department: r.department,
+        priority: r.priority,
+        status: r.status,
+        updatedAt: r.updatedAt,
+        cost: 0,
+        items: [],
+        _rows: [],
+        purpose: r.purpose || r._raw?.purpose || '',
+        neededDate: r.neededDate || r._raw?.needed_date || '',
+        returnRemarks:
+          r.returnRemarks ||
+          r._raw?.returnRemarks ||
+          r._raw?.return_remarks ||
+          [],
+      }
+    }
+
+    // push item details
+    byId[id].items.push({
+      item_description:
+        r._raw?.item_description || r.item || r.item_description || '',
+      unit: r.unit || '',
+      quantity: r.quantity || 0,
+      unit_cost: r._raw?.unit_cost || r.unit_cost || 0,
+      total_cost: r._raw?.total_cost || r.total_cost || 0,
+    })
+
+    byId[id].cost += Number(r.total_cost || r.cost || 0)
+    // keep row for advanced details
+    byId[id]._rows.push(r)
+    // merge returnRemarks
+    if (r.returnRemarks && r.returnRemarks.length) {
+      byId[id].returnRemarks = Array.from(
+        new Set([...(byId[id].returnRemarks || []), ...r.returnRemarks])
+      )
+    }
+    // keep latest updatedAt
+    if (
+      !byId[id].updatedAt ||
+      new Date(r.updatedAt) > new Date(byId[id].updatedAt)
+    ) {
+      byId[id].updatedAt = r.updatedAt
+    }
+  })
+  return Object.values(byId)
+}
+
 function refreshStatusCards() {
-  const counts = (AppState.statusRequests || []).reduce((acc, r) => {
+  // Count distinct request IDs rather than individual line rows
+  const groups = groupStatusRequests()
+  const counts = (groups || []).reduce((acc, r) => {
     acc[r.status] = (acc[r.status] || 0) + 1
     return acc
   }, {})
@@ -27213,12 +27272,14 @@ function hasMultipleItems(itemStr) {
 
 // ===== Dummy Rows =====
 function renderStatusRows(status) {
-  const list = (AppState.statusRequests || []).filter((r) =>
+  // Use grouped requests (one row per request_id)
+  const grouped = groupStatusRequests().filter((r) =>
     status === 'all' ? true : r.status === status
   )
-  if (!list.length)
+  if (!grouped.length)
     return `<tr><td colspan="9" style="text-align:center;padding:16px;color:#6b7280;">No records</td></tr>`
-  const html = list
+
+  const html = grouped
     .map((r) => {
       const priorityColor =
         r.priority === 'high'
@@ -27259,7 +27320,7 @@ function renderStatusRows(status) {
                 <td>
                     ${r.id}
                     ${
-                      r.source === 'user-form'
+                      r._rows && r._rows[0] && r._rows[0].source === 'user-form'
                         ? '<span class="badge blue" style="font-size:10px;margin-left:4px;" title="Submitted via User Request Form"><i data-lucide="user" style="width:10px;height:10px;"></i>User</span>'
                         : ''
                     }
@@ -27286,15 +27347,18 @@ function renderStatusRows(status) {
 
 // Update a status request row (used by inline onclick handlers)
 async function updateStatusRow(id, newStatus) {
-  // Update local AppState first for snappy UI
-  const rec = (AppState.statusRequests || []).find((r) => r.id === id)
-  if (!rec) {
+  // Update local AppState first for snappy UI: update all rows with matching request_id
+  const recs = (AppState.statusRequests || []).filter((r) => r.id === id)
+  if (!recs.length) {
     showAlert('Request not found', 'error')
     return
   }
-  const oldStatus = rec.status
-  rec.status = newStatus
-  rec.updatedAt = new Date().toISOString().split('T')[0]
+  const oldStatuses = recs.map((r) => r.status)
+  const nowDate = new Date().toISOString().split('T')[0]
+  recs.forEach((r) => {
+    r.status = newStatus
+    r.updatedAt = nowDate
+  })
 
   // Optimistically refresh UI
   refreshStatusCards()
@@ -27316,7 +27380,9 @@ async function updateStatusRow(id, newStatus) {
     showAlert('Status updated', 'success')
   } catch (e) {
     // Revert on failure
-    rec.status = oldStatus
+    recs.forEach((r, idx) => {
+      r.status = oldStatuses[idx] || r.status
+    })
     refreshStatusCards()
     if (tbody)
       tbody.innerHTML = renderStatusRows(AppState.currentStatusFilter || 'all')
@@ -27448,7 +27514,8 @@ function filterByStatus(status) {
 
 // ===== Return Modal with Remarks =====
 function showReturnModal(requestId) {
-  const rec = (AppState.statusRequests || []).find((r) => r.id === requestId)
+  const grouped = groupStatusRequests()
+  const rec = grouped.find((r) => r.id === requestId)
   if (!rec) {
     showAlert('Request not found', 'error')
     return
@@ -27654,13 +27721,16 @@ function confirmReturn(requestId) {
     }
   }
 
-  // Update the request with return status and remarks
-  const rec = (AppState.statusRequests || []).find((r) => r.id === requestId)
-  if (rec) {
-    rec.status = 'returned'
-    rec.returnRemarks = reasons
-    rec.updatedAt = new Date().toISOString().split('T')[0]
-  }
+  // Update all underlying rows for this request with return status and remarks
+  const rows = (AppState.statusRequests || []).filter((r) => r.id === requestId)
+  const nowDate = new Date().toISOString().split('T')[0]
+  rows.forEach((r) => {
+    r.status = 'returned'
+    r.returnRemarks = reasons
+    r.updatedAt = nowDate
+    // also attach to raw if available
+    if (r._raw) r._raw.returnRemarks = reasons
+  })
 
   // Close modal
   closeReturnModal()
@@ -27672,10 +27742,15 @@ function confirmReturn(requestId) {
   try {
     createIcons({ icons })
   } catch (e) {}
+
+  // Persist status change using existing status update flow
+  updateStatusRow(requestId, 'returned')
 }
 // Lightweight viewer for status management entries
 function viewStatusRequest(id) {
-  const rec = (AppState.statusRequests || []).find((r) => r.id === id)
+  // Look up grouped request by id
+  const grouped = groupStatusRequests()
+  const rec = grouped.find((g) => g.id === id)
   if (!rec) {
     showAlert('Request not found', 'error')
     return
@@ -27693,9 +27768,7 @@ function viewStatusRequest(id) {
                             <i data-lucide="eye" style="width: 32px; height: 32px; color: white;"></i>
                         </div>
                         <div style="flex: 1;">
-                            <h2 id="status-view-title" class="modal-title" style="color: white; font-size: 24px; margin-bottom: 4px;">Request ${
-                              rec.id
-                            }</h2>
+                            <h2 id="status-view-title" class="modal-title" style="color: white; font-size: 24px; margin-bottom: 4px;">Request ${rec.id}</h2>
                             <p class="modal-subtitle" style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0;">Quick status overview</p>
                         </div>
                     </div>
@@ -27730,21 +27803,15 @@ function viewStatusRequest(id) {
                             </button>`
                             : ''
                         }
-                        <button class="btn btn-danger" onclick="updateStatusRow('${
-                          rec.id
-                        }','rejected'); closeStatusView();" style="padding: 8px 16px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+                        <button class="btn btn-danger" onclick="updateStatusRow('${rec.id}','rejected'); closeStatusView();" style="padding: 8px 16px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
                             <i data-lucide="x-circle" style="width: 16px; height: 16px;"></i>
                             Reject
                         </button>
-                        <button class="btn btn-warning" onclick="updateStatusRow('${
-                          rec.id
-                        }','cancelled'); closeStatusView();" style="padding: 8px 16px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+                        <button class="btn btn-warning" onclick="updateStatusRow('${rec.id}','cancelled'); closeStatusView();" style="padding: 8px 16px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
                             <i data-lucide="ban" style="width: 16px; height: 16px;"></i>
                             Cancel
                         </button>
-                        <button class="btn btn-info" onclick="showReturnModal('${
-                          rec.id
-                        }'); closeStatusView();" style="padding: 8px 16px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+                        <button class="btn btn-info" onclick="showReturnModal('${rec.id}'); closeStatusView();" style="padding: 8px 16px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
                             <i data-lucide="undo-2" style="width: 16px; height: 16px;"></i>
                             Return
                         </button>
@@ -27767,12 +27834,17 @@ function viewStatusRequest(id) {
   }
   const grid = overlay.querySelector('#status-view-body')
   if (grid) {
+    const itemsHtml =
+      rec.items && Array.isArray(rec.items) && rec.items.length > 0
+        ? `<table style="width:100%;border-collapse:collapse;margin:8px 0 12px 0;"><thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid #e5e7eb;">Description</th><th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">Unit</th><th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right;">Qty</th><th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right;">Unit</th><th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right;">Total</th></tr></thead><tbody>${rec.items.map((i) => `<tr><td style="padding:6px 8px;">${i.item_description}</td><td style="padding:6px 8px;">${i.unit || '-'}</td><td style="padding:6px 8px;text-align:right;">${i.quantity}</td><td style="padding:6px 8px;text-align:right;">${i.unit_cost ? formatCurrency(i.unit_cost) : '-'}</td><td style="padding:6px 8px;text-align:right;">${i.total_cost ? formatCurrency(i.total_cost) : '-'}</td></tr>`).join('')}</tbody></table>`
+        : '<div style="color:#6b7280">No items</div>'
+
     grid.innerHTML = `
             <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
                 <i data-lucide="package" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                Item
+                Item(s)
             </dt>
-            <dd style="margin: 0; color: #111827; white-space:normal; word-break:break-word;">${formatItemDisplay(rec.item)}</dd>
+            <dd style="margin: 0; color: #111827; white-space:normal; word-break:break-word;">${itemsHtml}</dd>
             
             <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
                 <i data-lucide="user" style="width: 14px; height: 14px; color: #6b7280;"></i>
@@ -27797,18 +27869,6 @@ function viewStatusRequest(id) {
                 Department
             </dt>
             <dd style="margin: 0; color: #111827;">${rec.department}</dd>
-            
-            ${
-              rec.unit
-                ? `
-                <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
-                    <i data-lucide="building" style="width: 14px; height: 14px; color: #6b7280;"></i>
-                    Unit
-                </dt>
-                <dd style="margin: 0; color: #111827;">${rec.unit}</dd>
-            `
-                : ''
-            }
             
             <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
                 <i data-lucide="flag" style="width: 14px; height: 14px; color: #6b7280;"></i>
@@ -27874,7 +27934,7 @@ function viewStatusRequest(id) {
             }
             
             ${
-              rec.source === 'user-form'
+              rec._rows && rec._rows[0] && rec._rows[0].source === 'user-form'
                 ? `
                 <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
                     <i data-lucide="info" style="width: 14px; height: 14px; color: #6b7280;"></i>

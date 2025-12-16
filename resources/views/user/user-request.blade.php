@@ -196,11 +196,11 @@
 
                             <div class="form-group">
                                 <label class="form-label" for="prNo">PR No.</label>
-                                <input class="form-input" id="prNo" name="prNo" type="text" placeholder="e.g., PR-2025-001" />
+                                <input class="form-input" id="prNo" name="prNo" type="text" placeholder="e.g., 2025-12-0001" />
                             </div>
                             <div class="form-group">
                                 <label class="form-label" for="dtsNo">DTS No.</label>
-                                <input class="form-input" id="dtsNo" name="dtsNo" type="text" placeholder="e.g., DTS-2025-001" />
+                                <input class="form-input" id="dtsNo" name="dtsNo" type="text" placeholder="e.g., 2025-12-0001" />
                             </div>
                             <div class="form-group">
                                 <label class="form-label" for="fundCluster">Fund Cluster</label>
