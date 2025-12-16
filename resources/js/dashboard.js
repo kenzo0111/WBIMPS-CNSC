@@ -26915,7 +26915,7 @@ async function initStatusManagement(filter = 'all') {
                 <div class="enhanced-filter-bar" style="margin-bottom: 0;">
                     <div class="filter-left">
                         <div class="enhanced-search">
-                            <input type="text" class="form-input" id="searchInput" placeholder="Search by Requester, ID, or Item">
+                            <input type="text" class="form-input" id="searchInput" placeholder="Search by Requester or ID">
                             <i data-lucide="search" class="search-icon"></i>
                         </div>
                         <div class="filter-wrapper">
@@ -26945,9 +26945,6 @@ async function initStatusManagement(filter = 'all') {
                       <th>Requester</th>
                       <th>Designation</th>
                       <th>Department</th>
-                      <th style="white-space:normal; max-width:240px;">Item</th>
-                      <th>Quantity</th>
-                      <th>Unit</th>
                       <th>Priority</th>
                       <th>Date Updated</th>
                       <th>Details</th>
@@ -27220,7 +27217,7 @@ function renderStatusRows(status) {
     status === 'all' ? true : r.status === status
   )
   if (!list.length)
-    return `<tr><td colspan="11" style="text-align:center;padding:16px;color:#6b7280;">No records</td></tr>`
+    return `<tr><td colspan="9" style="text-align:center;padding:16px;color:#6b7280;">No records</td></tr>`
   const html = list
     .map((r) => {
       const priorityColor =
@@ -27270,20 +27267,7 @@ function renderStatusRows(status) {
                 <td>${r.requester}</td>
                 <td>${r.designation || '-'}</td>
                 <td>${r.department}</td>
-                <td>${formatItemDisplay(r.item)}</td>
-                <td>${
-                  hasMultipleItems(r.item)
-                    ? 'various'
-                    : typeof r.quantity !== 'undefined'
-                      ? r.quantity || r.quantity === 0
-                        ? r.quantity
-                        : '-'
-                      : '-'
-                }</td>
-                <td>${hasMultipleItems(r.item) ? 'various' : r.unit || '-'}</td>
-                <td><span style="color:${priorityColor};font-weight:bold;">${
-                  r.priority.charAt(0).toUpperCase() + r.priority.slice(1)
-                }</span></td>
+                <td><span style="color:${priorityColor};font-weight:bold;">${r.priority.charAt(0).toUpperCase() + r.priority.slice(1)}</span></td>
                 <td>${r.updatedAt}</td>
                 <td>${actionsHtml}</td>
                 <td>${formatCurrency(r.cost || 0)}</td>
@@ -27420,9 +27404,9 @@ function applyFilters() {
   const rows = document.querySelectorAll('#status-table-body tr')
   rows.forEach((row) => {
     const text = row.innerText.toLowerCase()
-    const department = row.cells[2].innerText.toLowerCase()
-    // After adding Quantity and Unit columns, Priority is now at cell index 6
-    const rowPriority = row.cells[6].innerText.toLowerCase()
+    const department = row.cells[3].innerText.toLowerCase()
+    // Priority is at cell index 4 after removing Item/Quantity/Unit columns
+    const rowPriority = row.cells[4].innerText.toLowerCase()
 
     let match = true
     if (search && !text.includes(search)) match = false
@@ -27788,9 +27772,7 @@ function viewStatusRequest(id) {
                 <i data-lucide="package" style="width: 14px; height: 14px; color: #6b7280;"></i>
                 Item
             </dt>
-            <dd style="margin: 0; color: #111827; white-space:normal; word-break:break-word;">${formatRequestItemAsTable(
-              rec.item
-            )}</dd>
+            <dd style="margin: 0; color: #111827; white-space:normal; word-break:break-word;">${formatItemDisplay(rec.item)}</dd>
             
             <dt style="font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px;">
                 <i data-lucide="user" style="width: 14px; height: 14px; color: #6b7280;"></i>
