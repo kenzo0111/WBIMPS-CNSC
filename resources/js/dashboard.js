@@ -6615,13 +6615,21 @@ function generateStockOutPage() {
 }
 
 function generateNewRequestPage() {
-  // Department dropdown uses the global department categories to ensure consistency
-  const departmentCategories = getDepartmentCategories()
-  const allDepartments = []
-  Object.values(departmentCategories).forEach((depts) => {
-    depts.forEach((d) => allDepartments.push(d.label))
+  // Department dropdown populated from existing table data (AppState.newRequests). Fallback to global list if none found.
+  const deptSet = new Set()
+  ;(AppState.newRequests || []).forEach((r) => {
+    if (r.department) deptSet.add(r.department)
   })
-  const departmentsOptionsHTML = allDepartments
+  let departments = Array.from(deptSet).sort()
+  if (departments.length === 0) {
+    const departmentCategories = getDepartmentCategories()
+    const allDepartments = []
+    Object.values(departmentCategories).forEach((depts) => {
+      depts.forEach((d) => allDepartments.push(d.label))
+    })
+    departments = allDepartments
+  }
+  const departmentsOptionsHTML = departments
     .map((d) => `<option value="${d}">`)
     .join('')
 
@@ -6647,7 +6655,7 @@ function generateNewRequestPage() {
                         <i data-lucide="file-plus" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>
                         Procurement Panel
                     </h1>
-                    <p class="page-subtitle">Create and manage new delivery requests</p>
+                    <p class="page-subtitle">Create and manage new delivery goods</p>
                 </header>
                 ${
                   can('create requests')
@@ -6668,20 +6676,11 @@ function generateNewRequestPage() {
             <section class="enhanced-filter-bar" aria-label="Filters">
                 <div class="filter-left">
                     <div class="enhanced-search">
-                        <input type="search" class="form-input" placeholder="Search requests..." id="requestSearch" aria-label="Search requests">
+                        <input type="search" class="form-input" placeholder="Search purchase..." id="requestSearch" aria-label="Search requests">
                         <i data-lucide="search" class="search-icon"></i>
                     </div>
 
-                    <label for="newRequestStatusFilter" class="visually-hidden">Filter by Status</label>
-                    <div class="filter-wrapper">
-                        <i data-lucide="filter" class="filter-icon"></i>
-                        <select class="filter-dropdown" id="newRequestStatusFilter">
-                            <option value="">All Status</option>
-                            <option value="draft">Draft</option>
-                            <option value="submitted">Submitted</option>
-                            <option value="pending">Pending</option>
-                        </select>
-                    </div>
+                    <!-- Status filter removed per request -->
 
                     <label for="newRequestDepartmentFilter" class="visually-hidden">Filter by Department</label>
                     <div class="filter-wrapper">
@@ -6730,7 +6729,7 @@ function generateNewRequestPage() {
                             <th scope="col">Delivery Date</th>
                             <th scope="col">Total Amount</th>
                             <th scope="col">Status</th>
-                            <th scope="col">Requested By</th>
+                            <th scope="col">Created By</th>
                             <th scope="col">Department</th>
                             <th scope="col">Action</th>
                         </tr>
@@ -6919,30 +6918,9 @@ function generatePendingApprovalPage() {
                         <i data-lucide="search" class="search-icon"></i>
                     </div>
 
-                    <!-- Status Filter -->
-                    <label for="statusFilter" class="visually-hidden">Filter by Status</label>
-                    <div class="filter-wrapper">
-                        <i data-lucide="filter" class="filter-icon"></i>
-                        <select class="filter-dropdown" id="statusFilter">
-                            <option value="">All Status</option>
-                            <option value="pending">Pending</option>
-                            <option value="under-review">Under Review</option>
-                            <option value="awaiting-approval">Awaiting Approval</option>
-                        </select>
-                    </div>
+                    <!-- Status Filter removed per request -->
 
-                    <!-- Priority Filter -->
-                    <label for="priorityFilter" class="visually-hidden">Filter by Priority</label>
-                    <div class="filter-wrapper">
-                        <i data-lucide="alert-circle" class="filter-icon"></i>
-                        <select class="filter-dropdown" id="priorityFilter">
-                            <option value="">All Priority</option>
-                            <option value="urgent">Urgent</option>
-                            <option value="high">High</option>
-                            <option value="medium">Medium</option>
-                            <option value="low">Low</option>
-                        </select>
-                    </div>
+                    <!-- Priority filter removed per request -->
                 </div>
             </section>
 
@@ -7089,7 +7067,7 @@ function generateCompletedRequestPage() {
                         <i data-lucide="check-circle" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>
                         Completed Request
                     </h1>
-                    <p class="page-subtitle">View completed and archived purchase requests</p>
+                    <p class="page-subtitle">View completed and archived purchase orders</p>
                 </header>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <!-- Updated: show total rendered completed-type requests (approved, delivered, completed) -->
@@ -7113,18 +7091,7 @@ function generateCompletedRequestPage() {
                         <i data-lucide="search" class="search-icon"></i>
                     </div>
 
-                    <!-- Status Filter -->
-                    <label for="completedStatusFilter" class="visually-hidden">Filter by Status</label>
-                    <div class="filter-wrapper">
-                        <i data-lucide="filter" class="filter-icon"></i>
-                        <select class="filter-dropdown" id="completedStatusFilter">
-                            <option value="">All Status</option>
-                            <option value="approved">Approved</option>
-                            <option value="delivered">Delivered</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                        </select>
-                    </div>
+                    <!-- Status Filter removed per request -->
 
                     <!-- payment filter removed -->
                 </div>
@@ -7196,6 +7163,13 @@ function generateCompletedRequestPage() {
                       }')">
                         <i data-lucide="eye"></i>
                       </button>
+                                            ${
+                                              can('manage requests')
+                                                ? `<button class="icon-action-btn icon-action-accent" title="Set status" onclick="openStatusChooser(this, '${request.id}')">
+                        <i data-lucide="sliders"></i>
+                      </button>`
+                                                : ''
+                                            }
                                             <button class="icon-action-btn" title="Download" onclick="openDownloadFormsChooser(this, '${
                                               request.id
                                             }')">
@@ -11151,7 +11125,8 @@ function openDownloadFormsChooser(triggerEl, requestId) {
     })
 
   // Handle download button
-  downloadBtn.addEventListener('click', async () => {
+  // Use invisible iframes to trigger multiple downloads reliably (bypasses new-tab popup blocking)
+  downloadBtn.addEventListener('click', () => {
     const selectedForms = Array.from(formCheckboxes)
       .filter((cb) => cb.checked)
       .map((cb) => ({
@@ -11163,51 +11138,74 @@ function openDownloadFormsChooser(triggerEl, requestId) {
 
     if (selectedForms.length === 0) return
 
-    // Download each selected form as PDF with a slight delay between downloads
-    for (let i = 0; i < selectedForms.length; i++) {
-      const form = selectedForms[i]
+    // Container to hold temporary iframes
+    const iframeContainer = document.createElement('div')
+    iframeContainer.style.display = 'none'
+    iframeContainer.id = `download-iframes-${Date.now()}`
+    document.body.appendChild(iframeContainer)
 
+    selectedForms.forEach((form, idx) => {
       try {
-        if (form.method === 'POST') {
-          // For POST requests, we need to submit a form with the request ID
-          const formElement = document.createElement('form')
-          formElement.method = 'POST'
-          formElement.action = form.downloadUrl
-          formElement.target = '_blank'
-          formElement.style.display = 'none'
+        const url = (form.downloadUrl || '').replace('{id}', actualId)
 
-          // Add CSRF token
+        if (form.method === 'POST') {
+          // For POST: create an iframe and submit a form targeting it
+          const iframeName = `download-iframe-${Date.now()}-${idx}`
+          const iframe = document.createElement('iframe')
+          iframe.name = iframeName
+          iframeContainer.appendChild(iframe)
+
+          const f = document.createElement('form')
+          f.method = 'POST'
+          f.action = url
+          f.target = iframeName
+          f.style.display = 'none'
+
           const csrfInput = document.createElement('input')
           csrfInput.type = 'hidden'
           csrfInput.name = '_token'
           csrfInput.value =
             document.querySelector('meta[name="csrf-token"]')?.content || ''
-          formElement.appendChild(csrfInput)
+          f.appendChild(csrfInput)
 
-          // Add request ID
           const idInput = document.createElement('input')
           idInput.type = 'hidden'
           idInput.name = 'request_id'
           idInput.value = actualId
-          formElement.appendChild(idInput)
+          f.appendChild(idInput)
 
-          document.body.appendChild(formElement)
-          formElement.submit()
-          document.body.removeChild(formElement)
+          document.body.appendChild(f)
+          f.submit()
+          document.body.removeChild(f)
+
+          // Cleanup iframe after a short while
+          setTimeout(() => {
+            if (iframe && iframe.parentNode)
+              iframe.parentNode.removeChild(iframe)
+          }, 20000)
         } else {
-          // For GET requests (like PO), use the download URL directly
-          const downloadUrl = form.downloadUrl.replace('{id}', actualId)
-          window.open(downloadUrl, '_blank')
-        }
+          // For GET: create an invisible iframe with src set to the PDF url
+          const iframe = document.createElement('iframe')
+          iframe.src = url
+          iframe.style.display = 'none'
+          iframeContainer.appendChild(iframe)
 
-        // Add a small delay between downloads to avoid browser blocking
-        if (i < selectedForms.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 500))
+          // Cleanup iframe after a short while
+          setTimeout(() => {
+            if (iframe && iframe.parentNode)
+              iframe.parentNode.removeChild(iframe)
+          }, 20000)
         }
       } catch (error) {
         console.error(`Failed to download ${form.label}:`, error)
       }
-    }
+    })
+
+    // Cleanup container after all downloads should have started
+    setTimeout(() => {
+      if (iframeContainer && iframeContainer.parentNode)
+        iframeContainer.parentNode.removeChild(iframeContainer)
+    }, 30000)
 
     // Close the chooser
     closeChooser(true)
@@ -11256,6 +11254,258 @@ function openDownloadFormsChooser(triggerEl, requestId) {
 }
 
 window.openDownloadFormsChooser = openDownloadFormsChooser
+// Small status chooser popover for Completed Requests (Delivered / Completed)
+function openStatusChooser(triggerEl, requestId) {
+  const previousActive = document.activeElement
+
+  // Remove existing chooser
+  const existing = document.getElementById('request-status-chooser')
+  if (existing) existing.remove()
+
+  const request =
+    AppState.completedRequests.find((r) => r.id === requestId) ||
+    AppState.newRequests.find((r) => r.id === requestId) ||
+    AppState.pendingRequests.find((r) => r.id === requestId) ||
+    null
+
+  const container = document.createElement('div')
+  container.id = 'request-status-chooser'
+  container.setAttribute('role', 'dialog')
+  container.setAttribute('aria-modal', 'false')
+  container.tabIndex = -1
+
+  container.style.position = 'absolute'
+  container.style.zIndex = 1200
+  container.style.minWidth = '220px'
+  container.style.background = 'white'
+  container.style.border = '1px solid rgba(0,0,0,0.08)'
+  container.style.boxShadow = '0 8px 24px rgba(2,6,23,0.12)'
+  container.style.borderRadius = '8px'
+  container.style.padding = '8px'
+  container.style.opacity = '0'
+  container.style.transform = 'translateY(6px)'
+  container.style.transition = 'opacity 160ms ease, transform 160ms ease'
+
+  // Ensure global chooser styles exist (re-use the same as other choosers)
+  if (!document.getElementById('global-chooser-close-style')) {
+    const css = document.createElement('style')
+    css.id = 'global-chooser-close-style'
+    css.textContent = `
+      .chooser-close-btn {
+        padding: 8px 10px;
+        border-radius: 6px;
+        border: 1px solid rgba(15,23,42,0.06);
+        background: #ffffff;
+        color: #0f172a;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background 120ms ease, transform 60ms ease;
+      }
+      .chooser-close-btn:hover {
+        background: #f3f4f6;
+      }
+      .chooser-link {
+        display: block;
+        padding: 8px 10px;
+        border-radius: 6px;
+        color: #0f172a;
+        text-decoration: none;
+        border: 1px solid rgba(15,23,42,0.06);
+        transition: background 120ms ease, transform 60ms ease, box-shadow 120ms ease;
+        background: #ffffff;
+        text-align: left;
+      }
+      .chooser-link:hover {
+        background: #f3f4f6;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 18px rgba(2,6,23,0.06);
+      }
+    `
+    document.head.appendChild(css)
+  }
+
+  // Build content
+  container.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button class="chooser-link" id="mark-delivered-btn" type="button">Mark as Delivered</button>
+      <button class="chooser-link" id="mark-completed-btn" type="button">Mark as Completed</button>
+      <div style="display:flex;justify-content:flex-end;margin-top:6px;"><button class="chooser-close-btn" type="button">Close</button></div>
+    </div>
+  `
+
+  document.body.appendChild(container)
+
+  // Position container near triggerEl (simple positioning)
+  const rect = triggerEl.getBoundingClientRect()
+  const docEl = document.documentElement
+  const top = rect.bottom + window.scrollY + 6
+  const left = Math.min(
+    Math.max(window.scrollX + rect.left - 8, 8),
+    window.innerWidth - 320
+  )
+  container.style.top = `${top}px`
+  container.style.left = `${left}px`
+
+  setTimeout(() => {
+    container.style.opacity = '1'
+    container.style.transform = 'translateY(0)'
+  }, 8)
+
+  function closeChooser(returnFocus = true) {
+    container.style.opacity = '0'
+    container.style.transform = 'translateY(6px)'
+    setTimeout(() => {
+      if (container && container.parentNode)
+        container.parentNode.removeChild(container)
+    }, 160)
+    document.removeEventListener('click', onDocClick)
+    container.removeEventListener('keydown', onKeyDown)
+    if (
+      returnFocus &&
+      previousActive &&
+      typeof previousActive.focus === 'function'
+    )
+      previousActive.focus()
+  }
+
+  function onDocClick(e) {
+    if (!container.contains(e.target) && e.target !== triggerEl) {
+      closeChooser(true)
+    }
+  }
+
+  function onKeyDown(e) {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      closeChooser(true)
+      return
+    }
+  }
+
+  container.addEventListener('keydown', onKeyDown)
+  setTimeout(() => document.addEventListener('click', onDocClick), 0)
+
+  // Wire up buttons
+  const deliveredBtn = container.querySelector('#mark-delivered-btn')
+  const completedBtn = container.querySelector('#mark-completed-btn')
+  const closeBtn = container.querySelector('.chooser-close-btn')
+
+  deliveredBtn.addEventListener('click', async () => {
+    closeChooser(true)
+    await markRequestDelivered(requestId)
+  })
+
+  completedBtn.addEventListener('click', async () => {
+    closeChooser(true)
+    await markRequestCompleted(requestId)
+  })
+
+  closeBtn.addEventListener('click', () => closeChooser(true))
+}
+
+async function markRequestDelivered(requestId) {
+  const ok = await showConfirm(
+    `Mark request ${requestId} as delivered?`,
+    'Confirm'
+  )
+  if (!ok) return
+
+  const request =
+    AppState.completedRequests.find((r) => r.id === requestId) ||
+    AppState.newRequests.find((r) => r.id === requestId) ||
+    AppState.pendingRequests.find((r) => r.id === requestId) ||
+    null
+
+  if (!request) return showAlert('Request not found', 'error')
+
+  const dbId = request.databaseId || requestId
+
+  try {
+    showAlert('Updating status to delivered...', 'info')
+    const response = await fetch(`/api/purchase-orders/${dbId}/status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({ status: 'delivered' }),
+    })
+
+    if (!response.ok) {
+      const err = await response.json()
+      throw new Error(err.message || 'Failed to mark as delivered')
+    }
+
+    request.status = 'delivered'
+    request.deliveredBy = 'Admin'
+    request.deliveredDate = new Date().toISOString().split('T')[0]
+
+    showAlert(`Request ${requestId} marked as delivered.`, 'success')
+    try {
+      if (typeof saveStatusRequests === 'function') saveStatusRequests()
+    } catch (e) {}
+    loadPageContent('completed-request')
+  } catch (error) {
+    console.error(error)
+    showAlert(error.message || 'Failed to update status', 'error')
+  }
+}
+
+async function markRequestCompleted(requestId) {
+  const ok = await showConfirm(
+    `Mark request ${requestId} as completed?`,
+    'Confirm'
+  )
+  if (!ok) return
+
+  const request =
+    AppState.completedRequests.find((r) => r.id === requestId) ||
+    AppState.newRequests.find((r) => r.id === requestId) ||
+    AppState.pendingRequests.find((r) => r.id === requestId) ||
+    null
+
+  if (!request) return showAlert('Request not found', 'error')
+
+  const dbId = request.databaseId || requestId
+
+  try {
+    showAlert('Updating status to completed...', 'info')
+    const response = await fetch(`/api/purchase-orders/${dbId}/status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({ status: 'completed' }),
+    })
+
+    if (!response.ok) {
+      const err = await response.json()
+      throw new Error(err.message || 'Failed to mark as completed')
+    }
+
+    request.status = 'completed'
+    request.completedBy = 'Admin'
+    request.completedDate = new Date().toISOString().split('T')[0]
+
+    showAlert(`Request ${requestId} marked as completed.`, 'success')
+    try {
+      if (typeof saveStatusRequests === 'function') saveStatusRequests()
+    } catch (e) {}
+    loadPageContent('completed-request')
+  } catch (error) {
+    console.error(error)
+    showAlert(error.message || 'Failed to update status', 'error')
+  }
+}
+
+window.openStatusChooser = openStatusChooser
+window.markRequestDelivered = markRequestDelivered
+window.markRequestCompleted = markRequestCompleted
 
 // ---------------------- //
 // Purchase Order Wizard  //
@@ -16828,14 +17078,7 @@ function initializeNewRequestPageEvents() {
     })
   }
 
-  // Initialize status filter
-  const statusFilter = document.getElementById('newRequestStatusFilter')
-  if (statusFilter) {
-    statusFilter.addEventListener('change', function (e) {
-      AppState.currentNewRequestsPage = 1
-      updateNewRequestsTable()
-    })
-  }
+  // Status filter removed
 
   // Initialize department filter
   const departmentFilter = document.getElementById('newRequestDepartmentFilter')
@@ -16868,13 +17111,28 @@ function initializeNewRequestPageEvents() {
 function updateNewRequestsTable() {
   const searchTerm =
     document.getElementById('requestSearch')?.value.toLowerCase() || ''
-  const statusFilter =
-    document.getElementById('newRequestStatusFilter')?.value || ''
   const departmentFilter =
     document.getElementById('newRequestDepartmentFilter')?.value || ''
 
   // Start with all new requests
   let filteredRequests = [...(AppState.newRequests || [])]
+
+  // Keep the department datalist in sync with current data
+  try {
+    const deptDatalist = document.getElementById('newRequestDepartmentOptions')
+    if (deptDatalist) {
+      const ds = new Set()
+      ;(AppState.newRequests || []).forEach((r) => {
+        if (r.department) ds.add(r.department)
+      })
+      const depts = Array.from(ds).sort()
+      deptDatalist.innerHTML = depts
+        .map((d) => `<option value="${d}">`)
+        .join('')
+    }
+  } catch (e) {
+    console.debug('Failed to refresh department filter options', e)
+  }
 
   // Apply search filter
   if (searchTerm) {
@@ -16892,10 +17150,12 @@ function updateNewRequestsTable() {
     )
   }
 
-  // Apply status filter
-  if (statusFilter) {
+  // Apply status filter (status filter UI removed; use AppState.currentStatusFilter)
+  const statusFilter = AppState.currentStatusFilter || ''
+  if (statusFilter && statusFilter.toLowerCase() !== 'all') {
     filteredRequests = filteredRequests.filter(
-      (request) => request.status === statusFilter
+      (request) =>
+        (request.status || '').toLowerCase() === statusFilter.toLowerCase()
     )
   }
 
@@ -17025,21 +17285,13 @@ function initializeCompletedRequestPageEvents() {
     })
   }
 
-  // Initialize status filter
-  const statusFilter = document.getElementById('completedStatusFilter')
-  if (statusFilter) {
-    statusFilter.addEventListener('change', function (e) {
-      updateCompletedRequestsTable()
-    })
-  }
+  // Status filter removed
 }
 
 // Update Completed Requests Table with filters
 function updateCompletedRequestsTable() {
   const searchTerm =
     document.getElementById('completedSearch')?.value.toLowerCase() || ''
-  const statusFilter =
-    document.getElementById('completedStatusFilter')?.value || ''
 
   // Get all completed requests
   const allCompleted = AppState.completedRequests || []
@@ -17192,9 +17444,10 @@ async function approveRequest(requestId) {
   }
 
   try {
-    // Show loading
-    showAlert('Approving request...', 'info')
-
+    // Show loading (avoid duplicate toasts when already on Pending Approval page)
+    if (AppState.currentPage !== 'pending-approval') {
+      showAlert('Approving request...', 'info')
+    }
     // Call API to update status
     const response = await fetch(
       `/api/purchase-orders/${request.databaseId}/status`,
@@ -17305,9 +17558,10 @@ async function rejectRequest(requestId) {
   }
 
   try {
-    // Show loading
-    showAlert('Rejecting request...', 'info')
-
+    // Show loading (avoid duplicate toasts when already on Pending Approval page)
+    if (AppState.currentPage !== 'pending-approval') {
+      showAlert('Rejecting request...', 'info')
+    }
     // Call API to update status
     const response = await fetch(
       `/api/purchase-orders/${request.databaseId}/status`,

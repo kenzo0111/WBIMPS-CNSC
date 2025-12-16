@@ -5,8 +5,21 @@ import { createIcons, icons } from 'lucide'
 window.lucide = { createIcons, icons }
 
 // Global Alert System
+// Prevent showing duplicate consecutive alerts of the same message/type within a short window
+let _lastAlert = { message: null, type: null, ts: 0 }
 function showAlert(message, type = 'info', duration = 4000) {
+  // Deduplicate identical alerts shown in quick succession (e.g., two flows both reporting success)
   try {
+    const now = Date.now()
+    if (
+      message === _lastAlert.message &&
+      type === _lastAlert.type &&
+      now - _lastAlert.ts < 1200
+    ) {
+      return
+    }
+    _lastAlert = { message, type, ts: now }
+
     let container = document.getElementById('ui-alert-container')
     if (!container) {
       container = document.createElement('div')
