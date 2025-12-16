@@ -10666,9 +10666,15 @@ function openViewForms(triggerEl, requestId) {
   // Determine which forms to show based on the request's configuration
   let formLinks = ''
 
-  // Always show PO and PR
+  // Always show PO; hide Purchase Request from Procurement Panel when appropriate
   formLinks += `<a class="chooser-link" href="${poHref}" target="_blank" rel="noopener">Purchase Order (PO)</a>\n`
-  formLinks += `<a class="chooser-link" href="${prHref}" target="_blank" rel="noopener">Purchase Request (PR)</a>\n`
+  // Do not show Purchase Request (PR) on the Procurement Panel (new-request) or Completed Requests view
+  if (
+    AppState.currentPage !== 'new-request' &&
+    AppState.currentPage !== 'completed-request'
+  ) {
+    formLinks += `<a class="chooser-link" href="${prHref}" target="_blank" rel="noopener">Purchase Request (PR)</a>\n`
+  }
 
   // Show dynamic forms only if they were checked
   if (request) {
@@ -10960,13 +10966,9 @@ function openDownloadFormsChooser(triggerEl, requestId) {
       viewHref: buildHref('purchaseOrderView', '/purchase-order/view/{id}'),
       downloadUrl: `${baseUrl}/purchase-order/{id}/pdf`,
     },
-    {
-      id: 'pr',
-      label: 'Purchase Request (PR)',
-      viewHref: buildHref('purchaseRequestView', '/purchase-request/view/{id}'),
-      downloadUrl: `${baseUrl}/purchase-request/generate`,
-      method: 'POST',
-    },
+    // Purchase Request (PR) removed from download chooser per UX preference
+    // Entry intentionally omitted
+
     {
       id: 'ics',
       label: 'Inventory Custodian Slip (ICS)',

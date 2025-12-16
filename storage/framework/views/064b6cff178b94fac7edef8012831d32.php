@@ -41,11 +41,11 @@
 
 	<table class="meta-row" style="margin-bottom:6px;">
 		<tr>
-			<td class="meta-left"><strong>Entity Name :</strong> {{ $entityName ?? '____________________________________' }}</td>
+			<td class="meta-left"><strong>Entity Name :</strong> <?php echo e($entityName ?? '____________________________________'); ?></td>
 		</tr>
 		<tr>
-			<td class="meta-left"><strong>Fund Cluster:</strong> {{ $fundCluster ?? '____________________________________' }}</td>
-            <td class="meta-right"><strong>PAR No.:</strong> {{ $parNo ?? '_______________' }}</td>
+			<td class="meta-left"><strong>Fund Cluster:</strong> <?php echo e($fundCluster ?? '____________________________________'); ?></td>
+            <td class="meta-right"><strong>PAR No.:</strong> <?php echo e($parNo ?? '_______________'); ?></td>
 		</tr>
 	</table>
 
@@ -61,15 +61,15 @@
 			</tr>
 		</thead>
 		<tbody>
-			{{-- Render items from database if available --}}
-			@if(isset($items) && is_array($items) && count($items) > 0)
-				@foreach($items as $item)
+			
+			<?php if(isset($items) && is_array($items) && count($items) > 0): ?>
+				<?php $__currentLoopData = $items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
 				<tr>
-					<td>{{ $item['quantity'] ?? '&nbsp;' }}</td>
-					<td>{{ $item['unit'] ?? '&nbsp;' }}</td>
-					<td>{{ $item['description'] ?? '&nbsp;' }}</td>
-					<td>{{ $item['stock_number'] ?? $item['property_number'] ?? '&nbsp;' }}</td>
-				@php
+					<td><?php echo e($item['quantity'] ?? '&nbsp;'); ?></td>
+					<td><?php echo e($item['unit'] ?? '&nbsp;'); ?></td>
+					<td><?php echo e($item['description'] ?? '&nbsp;'); ?></td>
+					<td><?php echo e($item['stock_number'] ?? $item['property_number'] ?? '&nbsp;'); ?></td>
+				<?php
 					$itemDate = $item['date_acquired'] ?? $item['acquired_date'] ?? $item['date'] ?? null;
 					if ($itemDate) {
 						try {
@@ -80,20 +80,20 @@
 					} else {
 						$displayDate = $date ?? '&nbsp;';
 					}
-				@endphp
-				<td>{{ $displayDate }}</td>
-					<td style="text-align: right;">{{ isset($item['amount']) && $item['amount'] > 0 ? number_format($item['amount'], 2) : '&nbsp;' }}</td>
+				?>
+				<td><?php echo e($displayDate); ?></td>
+					<td style="text-align: right;"><?php echo e(isset($item['amount']) && $item['amount'] > 0 ? number_format($item['amount'], 2) : '&nbsp;'); ?></td>
 				</tr>
-				@endforeach
+				<?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
 				
-				{{-- Add empty rows to fill the page if needed --}}
-				@php
+				
+				<?php
 					$remainingRows = ($rows ?? 18) - count($items);
 					$remainingRows = max(0, $remainingRows); // Ensure non-negative
-				@endphp
+				?>
 				
-				@if($remainingRows > 0)
-					@for ($i = 0; $i < $remainingRows; $i++)
+				<?php if($remainingRows > 0): ?>
+					<?php for($i = 0; $i < $remainingRows; $i++): ?>
 					<tr>
 						<td>&nbsp;</td>
 						<td>&nbsp;</td>
@@ -102,19 +102,19 @@
 						<td>&nbsp;</td>
 						<td>&nbsp;</td>
 					</tr>
-					@endfor
-				@endif
+					<?php endfor; ?>
+				<?php endif; ?>
 				
-				{{-- Grand Total Row --}}
-				@if(isset($grandTotal) && $grandTotal > 0)
+				
+				<?php if(isset($grandTotal) && $grandTotal > 0): ?>
 				<tr>
 					<td colspan="5" style="text-align: right; font-weight: bold;">Grand Total:</td>
-					<td style="text-align: right; font-weight: bold;">{{ number_format($grandTotal, 2) }}</td>
+					<td style="text-align: right; font-weight: bold;"><?php echo e(number_format($grandTotal, 2)); ?></td>
 				</tr>
-				@endif
-			@else
-				{{-- Provide empty rows when no items exist --}}
-				@for ($i = 0; $i < ($rows ?? 18); $i++)
+				<?php endif; ?>
+			<?php else: ?>
+				
+				<?php for($i = 0; $i < ($rows ?? 18); $i++): ?>
 				<tr>
 					<td>&nbsp;</td>
 					<td>&nbsp;</td>
@@ -123,8 +123,8 @@
 					<td>&nbsp;</td>
 					<td>&nbsp;</td>
 				</tr>
-				@endfor
-			@endif
+				<?php endfor; ?>
+			<?php endif; ?>
 		</tbody>
 		<tfoot>
 			<tr>
@@ -132,26 +132,26 @@
 					<div><strong>Received by:</strong></div>
 					<div style="height:60px;"></div>
 					<div class="sign-line"></div>
-					<div style="margin-top:4px;">{{ $receivedByName ?? '_______________________________________' }}</div>
+					<div style="margin-top:4px;"><?php echo e($receivedByName ?? '_______________________________________'); ?></div>
 					<div class="small">Signature over Printed Name of End User</div>
 					<div style="height:6px;"></div>
-					<div>{{ $receivedByPosition ?? '__________________________________' }}</div>
+					<div><?php echo e($receivedByPosition ?? '__________________________________'); ?></div>
 					<div class="small">Position/Office</div>
 					<div style="height:6px;"></div>
-					<div>{{ $receivedDate ?? '_________________' }}</div>
+					<div><?php echo e($receivedDate ?? '_________________'); ?></div>
 					<div class="small">Date</div>
 				</td>
 				<td colspan="3" style="vertical-align: top; padding: 12px 6px;">
 					<div><strong>Issued by:</strong></div>
 					<div style="height:60px;"></div>
 					<div class="sign-line"></div>
-					<div style="margin-top:4px;">{{ $issuedByName ?? 'ARSENIO GEM A. GARCILLANOSA' }}</div>
+					<div style="margin-top:4px;"><?php echo e($issuedByName ?? 'ARSENIO GEM A. GARCILLANOSA'); ?></div>
 					<div class="small">Signature over Printed Name of Supply and/or Property Custodian</div>
 					<div style="height:6px;"></div>
-					<div>{{ $issuedByPosition ?? 'SUPPLY OFFICER III/ADMIN OFFICER V' }}</div>
+					<div><?php echo e($issuedByPosition ?? 'SUPPLY OFFICER III/ADMIN OFFICER V'); ?></div>
 					<div class="small">Position/Office</div>
 					<div style="height:6px;"></div>
-					<div>{{ $issuedDate ?? '_________________' }}</div>
+					<div><?php echo e($issuedDate ?? '_________________'); ?></div>
 					<div class="small">Date</div>
 				</td>
 			</tr>
@@ -161,3 +161,4 @@
 </body>
 </html>
 
+<?php /**PATH C:\xampp\htdocs\SupplySystem\resources\views/pdf/property_acknowledge_report_pdf.blade.php ENDPATH**/ ?>
