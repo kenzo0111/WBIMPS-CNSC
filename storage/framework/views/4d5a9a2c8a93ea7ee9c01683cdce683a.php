@@ -401,29 +401,36 @@
         </div>
     </main>
 
-    <!-- Confirmation Dialog -->
-    <dialog id="requestDialog" class="login-dialog">
+    <!-- Confirmation Dialog (styled) -->
+    <dialog id="requestDialog" class="success-dialog" aria-live="polite" aria-label="Confirm Submission">
         <form method="dialog">
             <h3>Confirm Submission</h3>
-            <p id="dialogText">Review details?</p>
+            <p id="dialogText">Please review your details before submitting. Proceed?</p>
             <menu>
                 <button type="submit" value="cancel">Cancel</button>
-                <button type="submit" value="confirm">Submit</button>
+                <button type="submit" value="confirm" class="primary-btn">Submit</button>
             </menu>
         </form>
+    </dialog>
+
+    <!-- Loading Dialog -->
+    <dialog id="loadingDialog" class="loading-dialog" aria-live="assertive" aria-label="Submitting" data-no-close>
+        <div class="loading-spinner" role="status" aria-hidden="true"></div>
+        <div class="loading-text">Submitting your request…</div>
     </dialog>
 
     <!-- Success Dialog -->
-    <dialog id="successDialog" class="login-dialog">
+    <dialog id="successDialog" class="success-dialog" aria-live="polite" aria-label="Request Sent">
         <form method="dialog">
+            <div class="success-icon" role="img" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+            </div>
             <h3>Request Sent</h3>
-            <p id="successText">Your request has been submitted.</p>
+            <p id="successText">Your request has been submitted successfully.</p>
             <menu>
-                <button type="submit" value="ok">OK</button>
+                <button type="submit" value="ok" class="primary-btn">OK</button>
             </menu>
         </form>
-    </dialog>
-
     </dialog>
 
 </body>

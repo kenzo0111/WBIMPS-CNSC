@@ -5,6 +5,7 @@
   const form = document.getElementById('purchaseRequestForm')
   const dialogConfirm = document.getElementById('requestDialog')
   const dialogSuccess = document.getElementById('successDialog')
+  const dialogLoading = document.getElementById('loadingDialog')
   const dialogText = document.getElementById('dialogText')
   const successText = document.getElementById('successText')
 
@@ -480,6 +481,7 @@
     if (!stepEl) return true
 
     let ok = true
+    let firstInvalid = null
 
     if (currentStep === 2) {
       // Validate items table
@@ -494,6 +496,7 @@
             if (!String(input.value || '').trim().length) {
               input.style.borderColor = '#ff4444'
               input.style.boxShadow = '0 0 10px rgba(255, 68, 68, 0.3)'
+              if (!firstInvalid) firstInvalid = input
               ok = false
             } else {
               input.style.borderColor = 'rgba(255, 255, 255, 0.2)'
@@ -501,8 +504,14 @@
             }
           })
         })
-        if (!ok)
+        if (!ok) {
           showAlertMessage('Please fill in all item details', 'error', 3000)
+          // focus first invalid item field
+          if (firstInvalid) {
+            firstInvalid.focus()
+            firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }
       }
     }
 
@@ -514,6 +523,13 @@
       let valid = true
       if (field.type === 'radio') {
         valid = !!document.querySelector(`input[name="${field.name}"]:checked`)
+        if (!valid && !firstInvalid) {
+          // focus the first radio in this group
+          const firstRadio = document.querySelector(
+            `input[name="${field.name}"]`
+          )
+          firstInvalid = firstRadio || field
+        }
       } else {
         valid = String(field.value || '').trim().length > 0
       }
@@ -521,6 +537,7 @@
       if (!valid) {
         field.style.borderColor = '#ff4444'
         field.style.boxShadow = '0 0 10px rgba(255, 68, 68, 0.3)'
+        if (!firstInvalid) firstInvalid = field
         ok = false
       } else {
         field.style.borderColor = 'rgba(255, 255, 255, 0.2)'
@@ -528,8 +545,20 @@
       }
     })
 
-    if (!ok && currentStep !== 2)
-      showAlertMessage('Please fill in all required fields', 'error', 3000)
+    if (!ok) {
+      // if not an item validation error, show generic message
+      if (currentStep !== 2)
+        showAlertMessage('Please fill in all required fields', 'error', 3000)
+      // Focus first invalid field for accessibility and clarity
+      if (firstInvalid) {
+        try {
+          firstInvalid.focus()
+        } catch (e) {
+          /* ignore */
+        }
+        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    }
     return ok
   }
 
@@ -581,6 +610,15 @@
 
     if (!proceed) return
 
+    // show loading dialog while submitting (if supported)
+    if (dialogLoading && typeof dialogLoading.showModal === 'function') {
+      try {
+        dialogLoading.showModal()
+      } catch (e) {
+        /* ignore unsupported */
+      }
+    }
+
     const headers = {
       'Content-Type': 'application/json',
       'X-Requested-With': 'XMLHttpRequest',
@@ -628,10 +666,28 @@
 
       if (!resp.ok) throw new Error('Network response was not ok')
       const data = await resp.json()
+      // close loading before showing success
+      try {
+        if (dialogLoading && dialogLoading.open) dialogLoading.close()
+      } catch (e) {
+        /* ignore */
+      }
       showSuccessServer(data)
     } catch (err) {
       console.error('Server save failed, falling back to localStorage', err)
+      try {
+        if (dialogLoading && dialogLoading.open) dialogLoading.close()
+      } catch (e) {
+        /* ignore */
+      }
       showSuccessLocal(payload)
+    } finally {
+      // ensure loading is closed
+      try {
+        if (dialogLoading && dialogLoading.open) dialogLoading.close()
+      } catch (e) {
+        /* ignore */
+      }
     }
   }
 
@@ -695,12 +751,15 @@
     if (typeof dialogSuccess.showModal === 'function') {
       dialogSuccess.showModal()
       // only reset once the user closes the success dialog
-      dialogSuccess.addEventListener('close', function onClose() {
-        dialogSuccess.removeEventListener('close', onClose)
-        form.reset()
-        currentStep = 1
-        updateProgress()
-      })
+      dialogSuccess.addEventListener(
+        'close',
+        function onClose() {
+          form.reset()
+          currentStep = 1
+          updateProgress()
+        },
+        { once: true }
+      )
     } else {
       form.reset()
       currentStep = 1
@@ -750,12 +809,15 @@
     successText.textContent = `Request ${requestId} saved locally and will be visible in the dashboard. Please contact admin if you need confirmation.`
     if (typeof dialogSuccess.showModal === 'function') {
       dialogSuccess.showModal()
-      dialogSuccess.addEventListener('close', function onClose() {
-        dialogSuccess.removeEventListener('close', onClose)
-        form.reset()
-        currentStep = 1
-        updateProgress()
-      })
+      dialogSuccess.addEventListener(
+        'close',
+        function onClose() {
+          form.reset()
+          currentStep = 1
+          updateProgress()
+        },
+        { once: true }
+      )
     } else {
       showAlertMessage(`Request ${requestId} saved locally.`, 'success')
       form.reset()

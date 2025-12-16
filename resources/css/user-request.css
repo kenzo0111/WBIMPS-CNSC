@@ -207,7 +207,9 @@ header {
   backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--glass-border);
   border-radius: var(--card-radius);
-  box-shadow: var(--shadow-strong), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow:
+    var(--shadow-strong),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   animation: fadeInUp 0.8s ease-out 0.15s both;
   display: flex;
   flex-direction: column;
@@ -640,71 +642,168 @@ header {
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-/* =========================================
-   10. Dialogs & Summary (Step 3)
-   ========================================= */
-dialog:not([open]) {
-  display: none !important;
+/* Dialog Styles */
+dialog.loading-dialog,
+dialog.success-dialog {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(20, 20, 20, 0.85);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  color: white;
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  font-family: system-ui, sans-serif;
 }
 
+/* Force centering for dialogs when open */
+dialog[open] {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  max-width: 460px;
+  width: calc(100% - 40px);
+  animation: dialogFadeIn 0.3s ease-out;
+}
+
+@keyframes dialogFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -40%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+dialog.loading-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #dc2626;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.5px;
+}
+
+dialog.success-dialog {
+  text-align: center;
+}
+
+.success-icon {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: #16a34a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  box-shadow: 0 0 20px rgba(22, 163, 74, 0.4);
+}
+
+.success-icon svg {
+  width: 38px;
+  height: 38px;
+  color: #fff;
+}
+
+dialog.success-dialog h3 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+}
+
+dialog.success-dialog p {
+  margin: 0 0 24px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+dialog.success-dialog menu {
+  display: flex;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  gap: 0.75rem;
+}
+
+/* Dialog buttons: default secondary & primary styles */
+dialog.success-dialog menu button,
+dialog.loading-dialog menu button {
+  min-width: 100px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    background 0.12s ease;
+}
+
+dialog.success-dialog menu button:hover,
+dialog.loading-dialog menu button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+dialog.success-dialog menu button:active,
+dialog.loading-dialog menu button:active {
+  transform: translateY(0);
+}
+
+/* Primary button (accent) */
+dialog.success-dialog menu button.primary-btn {
+  background: linear-gradient(135deg, var(--accent-gold), #ffaa00);
+  color: #000;
+  border: none;
+  box-shadow: 0 8px 30px rgba(255, 213, 0, 0.25);
+}
+
+/* Cancel / secondary button */
+dialog.success-dialog menu button[value='cancel'] {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Ensure backdrop and hidden behavior remains */
 dialog::backdrop {
   background: rgba(17, 24, 39, 0.65);
   backdrop-filter: blur(4px);
 }
 
-dialog.login-dialog {
-  border: none;
-  border-radius: 16px;
-  padding: 1.5rem;
-  width: min(94%, 440px);
-  box-shadow: 0 18px 50px rgba(6, 18, 28, 0.5);
-  background: linear-gradient(180deg, var(--dialog-bg), #fbfdff);
-  color: var(--dialog-text);
-}
-
-dialog[open].login-dialog {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  margin: 0;
-  animation: fadeInUp 0.3s ease-out;
-}
-
-dialog.login-dialog h3 {
-  font-size: 1.2rem;
-  margin-bottom: 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-dialog.login-dialog h3::before {
-  content: '';
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--dialog-accent);
-}
-
-dialog.login-dialog menu {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
-  margin-top: 1.5rem;
-}
-
-dialog.login-dialog button {
-  padding: 0.6rem 1rem;
-  border-radius: 8px;
-  border: none;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-dialog.login-dialog button[value='confirm'] {
-  background: var(--dialog-accent);
-  color: #fff;
+dialog:not([open]) {
+  display: none !important;
 }
 
 /* Summary Box */
@@ -1000,7 +1099,9 @@ input[type='number']::-webkit-inner-spin-button {
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
   transform: translateY(-8px) scale(0.995);
   opacity: 0;
-  transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.22s ease;
+  transition:
+    transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1),
+    opacity 0.22s ease;
   pointer-events: auto;
 }
 
