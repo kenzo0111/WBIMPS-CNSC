@@ -44,7 +44,6 @@
     // Include optional PR/pdf-specific fields if available
     obj.entityName = byId('entityName')?.value || ''
     obj.prNo = byId('prNo')?.value || ''
-    obj.dtsNo = byId('dtsNo')?.value || ''
     obj.fundCluster = byId('fundCluster')?.value || ''
     obj.responsibilityCenterCode = byId('responsibilityCenterCode')?.value || ''
     obj.approvedBy = byId('approvedBy')?.value || ''
@@ -401,7 +400,6 @@
       'priority',
       'entityName',
       'prNo',
-      'dtsNo',
       'fundCluster',
       'responsibilityCenterCode',
       'approvedBy',

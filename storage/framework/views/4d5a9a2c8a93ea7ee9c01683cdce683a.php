@@ -199,11 +199,7 @@
                                 <input class="form-input" id="prNo" name="prNo" type="text" placeholder="e.g., 2025-12-0001" />
                             </div>
                             <div class="form-group">
-                                <label class="form-label" for="dtsNo">DTS No.</label>
-                                <input class="form-input" id="dtsNo" name="dtsNo" type="text" placeholder="e.g., 2025-12-0001" />
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="fundCluster">Fund Cluster</label>
+                                <label class="form-label" for="fundCluster">Fund Cluster</label> 
                                 <select class="form-input" id="fundCluster" name="fundCluster">
                                     <option value="" disabled selected>Select Fund Cluster</option>
                                     <option value="01 - Regular Agency Fund">01 - Regular Agency Fund</option>
@@ -363,10 +359,6 @@
                                         <div class="review-item">
                                             <span class="label">PR No.</span>
                                             <span class="value" id="summary-prNo">-</span>
-                                        </div>
-                                        <div class="review-item">
-                                            <span class="label">DTS No.</span>
-                                            <span class="value" id="summary-dtsNo">-</span>
                                         </div>
                                         <div class="review-item">
                                             <span class="label">Fund Cluster</span>
